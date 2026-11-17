@@ -7,6 +7,7 @@ import RespinAnkifyClientUseCase from '../usecases/ankify/RespinAnkifyClientUseC
 import {
   NoActiveAnkifyClientError,
   SendAlreadyRunningError,
+  SendDeadlineExceededError,
   SendUploadToRacUseCase,
   UploadNotFoundError,
 } from '../usecases/ankify/SendUploadToRacUseCase';
@@ -55,6 +56,7 @@ import {
   NoAvailablePortError,
 } from '../services/ankify/RacService';
 import {
+  AnkiConnectTimeoutError,
   AnkiConnectUnreachableError,
   AnkiFullSyncRequiredError,
 } from '../services/ankify/AnkiConnectClient';
@@ -757,8 +759,17 @@ class AnkifyController {
         });
         return;
       }
-      if (error instanceof AnkiConnectUnreachableError) {
+      if (error instanceof SendDeadlineExceededError) {
         console.info(`[ankify] send stopped: ${error.name}`);
+        res.status(504).json({ message: error.message });
+        return;
+      }
+      if (error instanceof AnkiConnectUnreachableError) {
+        const action =
+          error instanceof AnkiConnectTimeoutError
+            ? ` action=${error.action}`
+            : '';
+        console.info(`[ankify] send stopped: ${error.name}${action}`);
         res.status(503).json({
           message:
             'AnkiConnect is unreachable. Make sure the hosted Anki container is healthy.',

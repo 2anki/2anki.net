@@ -3,6 +3,7 @@ import {
   ANKI_CONNECT_SYNC_TIMEOUT_MS,
   AnkiConnectClient,
   AnkiConnectError,
+  AnkiConnectMalformedResponseError,
   AnkiConnectTimeoutError,
   AnkiConnectUnreachableError,
   AnkiFullSyncRequiredError,
@@ -523,23 +524,53 @@ describe('AnkiConnectClient', () => {
     expect(err.message).toContain('timed out');
   });
 
-  test('counts reading the response body against the per-call timeout', async () => {
-    vi.useFakeTimers();
-    try {
-      const fetchImpl = vi.fn(
-        async (_url: string, init: { signal: AbortSignal }) => ({
-          ok: true,
-          status: 200,
-          statusText: 'OK',
-          json: () =>
-            new Promise((_resolve, reject) => {
-              init.signal.addEventListener('abort', () =>
-                reject(new Error('aborted'))
-              );
-            }),
-        })
-      ) as unknown as typeof fetch;
-      const client = new AnkiConnectClient('http://x', fetchImpl, 5_000);
+  describe('a body that is still arriving when the per-call timeout passes', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    const makeSlowBodyFetch = (bodyMs: number) =>
+      vi.fn(async (_url: string, init: { signal: AbortSignal }) => ({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: () =>
+          new Promise((resolve, reject) => {
+            init.signal.addEventListener('abort', () =>
+              reject(new Error('aborted'))
+            );
+            setTimeout(
+              () => resolve({ result: ['Default'], error: null }),
+              bodyMs
+            );
+          }),
+      })) as unknown as typeof fetch;
+
+    test('still succeeds for a default client, whose timeout ends at the headers', async () => {
+      const client = new AnkiConnectClient(
+        'http://x',
+        makeSlowBodyFetch(15_000),
+        5_000
+      );
+
+      const pending = client.deckNames().catch((e) => e);
+      await vi.advanceTimersByTimeAsync(15_000);
+
+      await expect(pending).resolves.toEqual(['Default']);
+    });
+
+    test('times out for a client whose timeout covers the whole response', async () => {
+      const client = new AnkiConnectClient(
+        'http://x',
+        makeSlowBodyFetch(15_000),
+        5_000,
+        null,
+        'response'
+      );
 
       const pending = client.deckNames().catch((e) => e);
       await vi.advanceTimersByTimeAsync(5_000);
@@ -547,9 +578,25 @@ describe('AnkiConnectClient', () => {
 
       expect(err).toBeInstanceOf(AnkiConnectTimeoutError);
       expect(err.action).toBe('deckNames');
-    } finally {
-      vi.useRealTimers();
-    }
+    });
+  });
+
+  test('throws AnkiConnectMalformedResponseError, still an unreachable error with the same message, when the body is not JSON', async () => {
+    const fetchImpl = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => {
+        throw new SyntaxError('Unexpected token < in JSON');
+      },
+    })) as unknown as typeof fetch;
+    const client = new AnkiConnectClient('http://x', fetchImpl);
+
+    const err = await client.deckNames().catch((e) => e);
+
+    expect(err).toBeInstanceOf(AnkiConnectMalformedResponseError);
+    expect(err).toBeInstanceOf(AnkiConnectUnreachableError);
+    expect(err.message).toBe('AnkiConnect unreachable at http://x');
   });
 
   test('sync aborts on the longer sync timeout, not the per-call default', async () => {

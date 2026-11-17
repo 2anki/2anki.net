@@ -7,7 +7,10 @@ import { AnkifySyncMappingsRepository } from '../data_layer/ankify/AnkifySyncMap
 import UploadRepository from '../data_layer/UploadRespository';
 import { getDatabase } from '../data_layer';
 import { RacService } from '../services/ankify/RacService';
-import { ankiConnectFactory } from '../services/ankify/buildAnkiConnectClient';
+import {
+  ankiConnectFactory,
+  ankiConnectSendFactory,
+} from '../services/ankify/buildAnkiConnectClient';
 import { notionBlockChildrenFetcherFactory } from '../services/ankify/notionBlockChildrenFetcher';
 import ProvisionAnkifyClientUseCase from '../usecases/ankify/ProvisionAnkifyClientUseCase';
 import ListAnkifyClientsUseCase from '../usecases/ankify/ListAnkifyClientsUseCase';
@@ -338,7 +341,7 @@ const AnkifyRouter = () => {
       mappings,
       uploads,
       loadApkgForSend,
-      ankiConnectFactory,
+      ankiConnectSendFactory,
       logsRepo,
       templateOverridesProvider
     ),
@@ -493,6 +496,8 @@ const AnkifyRouter = () => {
    *         description: Upload too large to process
    *       503:
    *         description: AnkiConnect unreachable
+   *       504:
+   *         description: Send stopped at its time limit; the message gives the counts
    */
   router.post('/api/ankify/dispatch', RequireAnkifyAccess, (req, res) =>
     controller.sendUpload(req, res)
