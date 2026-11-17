@@ -659,8 +659,9 @@ export class McpToolsService {
     if (storageKey == null) {
       throw new Error('Upload not found.');
     }
-    const parsed = await this.previewService.load(`${owner}:${key}`, () =>
-      this.downloadService.getStoredDeckBody(storageKey, this.storage)
+    const parsed = await this.previewService.load(
+      `${owner}:${key}`,
+      this.downloadService.storedDeckSource(storageKey, this.storage)
     );
     if (parsed == null) {
       throw new Error('Upload not found.');

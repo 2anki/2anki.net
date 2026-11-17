@@ -1,10 +1,15 @@
 import { vi } from 'vitest';
 import { buildModernCollection } from '../../test/fixtures/apkg/buildModernCollection';
 import { buildTinyApkg } from '../../test/fixtures/apkg/buildTinyApkg';
-import ApkgPreviewService from './ApkgPreviewService';
+import ApkgPreviewService, { type DeckSource } from './ApkgPreviewService';
 import { ApkgTooLargeError } from './extractApkg';
 import { parseCollection } from './parseCollection';
+import { resetPreviewMemoryLimitsForTesting } from './previewMemoryLimits';
 import { NormalizedCollection } from './types';
+
+beforeEach(() => {
+  resetPreviewMemoryLimitsForTesting();
+});
 
 const IO_TEMPLATE_QFMT =
   '<div id="image-occlusion-container">{{Image}}<canvas id="image-occlusion-canvas"></canvas></div><script>anki.imageOcclusion.setup();</script>';
@@ -459,12 +464,20 @@ describe('ApkgPreviewService — modern-schema cloze export', () => {
   });
 });
 
+function storedDeck(
+  read: () => Promise<Buffer | null | undefined>,
+  storedBytes = 4096
+): DeckSource {
+  return { storedSize: async () => storedBytes, read };
+}
+
 describe('ApkgPreviewService.load', () => {
   it('parses the bytes the reader returns', async () => {
     const service = new ApkgPreviewService();
 
-    const parsed = await service.load('owner-1:deck.apkg', async () =>
-      buildTinyApkg()
+    const parsed = await service.load(
+      'owner-1:deck.apkg',
+      storedDeck(async () => buildTinyApkg())
     );
 
     expect(parsed?.collection.cards).toHaveLength(1);
@@ -474,8 +487,8 @@ describe('ApkgPreviewService.load', () => {
     const service = new ApkgPreviewService();
     const readBytes = vi.fn().mockResolvedValue(buildTinyApkg());
 
-    await service.load('owner-1:deck.apkg', readBytes);
-    await service.load('owner-1:deck.apkg', readBytes);
+    await service.load('owner-1:deck.apkg', storedDeck(readBytes));
+    await service.load('owner-1:deck.apkg', storedDeck(readBytes));
 
     expect(readBytes).toHaveBeenCalledTimes(1);
   });
@@ -491,8 +504,9 @@ describe('ApkgPreviewService.load', () => {
     );
 
     const loads = Array.from({ length: 8 }, () =>
-      service.load('owner-1:deck.apkg', readBytes)
+      service.load('owner-1:deck.apkg', storedDeck(readBytes))
     );
+    await vi.waitFor(() => expect(readBytes).toHaveBeenCalledTimes(1));
     release(buildTinyApkg());
     const results = await Promise.all(loads);
 
@@ -503,19 +517,23 @@ describe('ApkgPreviewService.load', () => {
 
   it('passes a refusal to every waiting load and lets the next load read again', async () => {
     const service = new ApkgPreviewService();
-    const readBytes = vi
+    const storedSize = vi
       .fn()
       .mockRejectedValueOnce(new ApkgTooLargeError())
-      .mockResolvedValueOnce(buildTinyApkg());
+      .mockResolvedValueOnce(4096);
+    const source: DeckSource = {
+      storedSize,
+      read: async () => buildTinyApkg(),
+    };
 
-    const first = service.load('owner-1:deck.apkg', readBytes);
-    const second = service.load('owner-1:deck.apkg', readBytes);
+    const first = service.load('owner-1:deck.apkg', source);
+    const second = service.load('owner-1:deck.apkg', source);
 
     await expect(first).rejects.toBeInstanceOf(ApkgTooLargeError);
     await expect(second).rejects.toBeInstanceOf(ApkgTooLargeError);
-    expect(readBytes).toHaveBeenCalledTimes(1);
+    expect(storedSize).toHaveBeenCalledTimes(1);
 
-    const retried = await service.load('owner-1:deck.apkg', readBytes);
+    const retried = await service.load('owner-1:deck.apkg', source);
     expect(retried?.collection.cards).toHaveLength(1);
   });
 
@@ -523,8 +541,12 @@ describe('ApkgPreviewService.load', () => {
     const service = new ApkgPreviewService();
     const readBytes = vi.fn().mockResolvedValue(null);
 
-    expect(await service.load('owner-1:gone.apkg', readBytes)).toBeNull();
-    expect(await service.load('owner-1:gone.apkg', readBytes)).toBeNull();
+    expect(
+      await service.load('owner-1:gone.apkg', storedDeck(readBytes))
+    ).toBeNull();
+    expect(
+      await service.load('owner-1:gone.apkg', storedDeck(readBytes))
+    ).toBeNull();
     expect(readBytes).toHaveBeenCalledTimes(2);
   });
 
@@ -534,8 +556,8 @@ describe('ApkgPreviewService.load', () => {
     const readB = vi.fn().mockResolvedValue(buildTinyApkg('B front', 'B'));
 
     const [a, b] = await Promise.all([
-      service.load('owner-1:a.apkg', readA),
-      service.load('owner-1:b.apkg', readB),
+      service.load('owner-1:a.apkg', storedDeck(readA)),
+      service.load('owner-1:b.apkg', storedDeck(readB)),
     ]);
 
     expect(readA).toHaveBeenCalledTimes(1);

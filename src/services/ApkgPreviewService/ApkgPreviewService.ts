@@ -1,5 +1,17 @@
+import {
+  WaitAbandonedError,
+  type WeightedSemaphore,
+} from '../../lib/rateLimit/WeightedSemaphore';
 import { composeOcclusionSvg } from './composeOcclusionSvg';
+import { estimateParsedBytes } from './estimateParsedBytes';
 import { extractApkg, parseMediaManifest } from './extractApkg';
+import type { ParseCacheBudget } from './ParseCacheBudget';
+import {
+  coldLoadWeight,
+  PREVIEW_READ_TIME_LIMIT_MS,
+  sharedPreviewLimits,
+} from './previewMemoryLimits';
+import { SharedInterest } from './SharedInterest';
 import { parseCollection } from './parseCollection';
 import { parseOcclusionField } from './parseOcclusionField';
 import { applyClozeToFields } from './renderCloze';
@@ -55,46 +67,165 @@ export interface CardRenderOptions {
   print?: boolean;
 }
 
+export interface DeckSource {
+  storedSize: () => Promise<number>;
+  read: (signal: AbortSignal) => Promise<Buffer | null | undefined>;
+}
+
+export class PreviewReadTimedOutError extends Error {
+  constructor() {
+    super('Could not load the deck.');
+    this.name = 'PreviewReadTimedOutError';
+  }
+}
+
+function untilAborted<T>(work: Promise<T>, signal: AbortSignal): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const onAbort = () => reject(signal.reason);
+    if (signal.aborted) {
+      onAbort();
+    } else {
+      signal.addEventListener('abort', onAbort, { once: true });
+    }
+    work
+      .then(resolve, reject)
+      .finally(() => signal.removeEventListener('abort', onAbort));
+  });
+}
+
+export interface PreviewMemoryLimits {
+  coldLoads: WeightedSemaphore;
+  cacheBudget: ParseCacheBudget;
+  now: () => number;
+}
+
+interface InFlightLoad {
+  promise: Promise<ParsedApkg | null>;
+  interest: SharedInterest;
+}
+
 export default class ApkgPreviewService {
   private readonly cache = new Map<string, ParsedApkg>();
-  private readonly inFlight = new Map<string, Promise<ParsedApkg | null>>();
+  private readonly inFlight = new Map<string, InFlightLoad>();
+  private readonly limits: PreviewMemoryLimits;
+
+  constructor(limits: Partial<PreviewMemoryLimits> = {}) {
+    const shared = sharedPreviewLimits();
+    this.limits = {
+      coldLoads: limits.coldLoads ?? shared.coldLoads,
+      cacheBudget: limits.cacheBudget ?? shared.cacheBudget,
+      now: limits.now ?? Date.now,
+    };
+  }
 
   async parse(cacheKey: string, bytes: Buffer): Promise<ParsedApkg> {
-    return (await this.load(cacheKey, async () => bytes)) as ParsedApkg;
+    const inMemory: DeckSource = {
+      storedSize: async () => bytes.length,
+      read: async () => bytes,
+    };
+    return (await this.load(cacheKey, inMemory)) as ParsedApkg;
   }
 
   load(
     cacheKey: string,
-    readBytes: () => Promise<Buffer | null | undefined>
+    source: DeckSource,
+    signal?: AbortSignal
   ): Promise<ParsedApkg | null> {
     const cached = this.fromCache(cacheKey);
     if (cached) return Promise.resolve(cached);
     const pending = this.inFlight.get(cacheKey);
-    if (pending) return pending;
-    const loading = this.readAndParse(cacheKey, readBytes).finally(() => {
-      this.inFlight.delete(cacheKey);
+    if (pending) {
+      pending.interest.join(signal);
+      return pending.promise;
+    }
+    const interest = new SharedInterest(() => {
+      if (this.inFlight.get(cacheKey) === entry) this.inFlight.delete(cacheKey);
     });
-    this.inFlight.set(cacheKey, loading);
-    return loading;
+    const entry: InFlightLoad = {
+      interest,
+      promise: this.loadCold(cacheKey, source, interest).finally(() => {
+        if (this.inFlight.get(cacheKey) === entry) {
+          this.inFlight.delete(cacheKey);
+        }
+      }),
+    };
+    this.inFlight.set(cacheKey, entry);
+    interest.join(signal);
+    return entry.promise;
   }
 
   private fromCache(cacheKey: string): ParsedApkg | null {
     const existing = this.cache.get(cacheKey);
-    if (existing && Date.now() - existing.parsedAt < CACHE_TTL_MS) {
-      this.cache.delete(cacheKey);
-      this.cache.set(cacheKey, existing);
-      return existing;
+    if (existing == null) return null;
+    if (this.isExpired(existing)) {
+      this.drop(cacheKey, existing);
+      return null;
     }
-    return null;
+    this.cache.delete(cacheKey);
+    this.cache.set(cacheKey, existing);
+    this.limits.cacheBudget.touch(existing);
+    return existing;
   }
 
-  private async readAndParse(
+  private isExpired(parsed: ParsedApkg): boolean {
+    return this.limits.now() - parsed.parsedAt >= CACHE_TTL_MS;
+  }
+
+  private drop(cacheKey: string, parsed: ParsedApkg): void {
+    if (this.cache.get(cacheKey) === parsed) this.cache.delete(cacheKey);
+    this.limits.cacheBudget.forget(parsed);
+  }
+
+  private async loadCold(
     cacheKey: string,
-    readBytes: () => Promise<Buffer | null | undefined>
+    source: DeckSource,
+    interest: SharedInterest
   ): Promise<ParsedApkg | null> {
-    const bytes = await readBytes();
-    if (bytes == null) return null;
-    return this.parseFresh(cacheKey, bytes);
+    const weight = coldLoadWeight(await source.storedSize());
+    const { coldLoads } = this.limits;
+    const queuedAhead = coldLoads.wouldWait(weight) ? coldLoads.waiting : null;
+    const queuedAt = this.limits.now();
+    const release = await coldLoads.acquire(weight, interest.signal);
+    if (queuedAhead != null) {
+      console.info('[apkg-preview] cold load waited for a slot', {
+        waitedMs: this.limits.now() - queuedAt,
+        queuedAhead,
+      });
+    }
+    try {
+      const bytes = await this.readWithinLimit(source, interest);
+      interest.commit();
+      if (bytes == null) return null;
+      return await this.parseFresh(cacheKey, bytes);
+    } finally {
+      release();
+    }
+  }
+
+  // Only the storage read waits on anything outside the process; the parse
+  // after it works on bytes already in memory.
+  private async readWithinLimit(
+    source: DeckSource,
+    interest: SharedInterest
+  ): Promise<Buffer | null | undefined> {
+    const timeLimit = new AbortController();
+    const timer = setTimeout(
+      () => timeLimit.abort(),
+      PREVIEW_READ_TIME_LIMIT_MS
+    );
+    const signal = AbortSignal.any([timeLimit.signal, interest.signal]);
+    try {
+      return await untilAborted(source.read(signal), signal);
+    } catch (error) {
+      if (interest.signal.aborted) throw new WaitAbandonedError();
+      if (timeLimit.signal.aborted) {
+        console.info('[apkg-preview] stored deck read stopped at time limit');
+        throw new PreviewReadTimedOutError();
+      }
+      throw error;
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   private async parseFresh(
@@ -108,15 +239,35 @@ export default class ApkgPreviewService {
       collection,
       mediaMap,
       mediaEntries: archive.mediaEntries,
-      parsedAt: Date.now(),
+      parsedAt: this.limits.now(),
     };
+    this.remember(cacheKey, parsed);
+    return parsed;
+  }
+
+  private remember(cacheKey: string, parsed: ParsedApkg): void {
+    for (const [key, entry] of this.cache) {
+      if (this.isExpired(entry)) this.drop(key, entry);
+    }
+    const previous = this.cache.get(cacheKey);
+    if (previous != null) this.drop(cacheKey, previous);
+    const admitted = this.limits.cacheBudget.admit(
+      parsed,
+      estimateParsedBytes(parsed),
+      () => {
+        if (this.cache.get(cacheKey) === parsed) this.cache.delete(cacheKey);
+      }
+    );
+    if (!admitted) {
+      console.info('[apkg-preview] parsed deck served without caching');
+      return;
+    }
     this.cache.set(cacheKey, parsed);
     while (this.cache.size > MAX_CACHE_ENTRIES) {
-      const oldestKey = this.cache.keys().next().value;
-      if (!oldestKey) break;
-      this.cache.delete(oldestKey);
+      const oldest = this.cache.entries().next().value;
+      if (oldest == null) break;
+      this.drop(oldest[0], oldest[1]);
     }
-    return parsed;
   }
 
   getMeta(parsed: ParsedApkg): PreviewMeta {

@@ -36,6 +36,8 @@ import {
 } from '../services/ApkgPreviewService/extractApkg';
 import { NotionService } from '../services/NotionService/NotionService';
 import { ConcurrencyLimiter } from '../lib/rateLimit/ConcurrencyLimiter';
+import { WaitAbandonedError } from '../lib/rateLimit/WeightedSemaphore';
+import { clientGoneSignal } from '../lib/http/clientGoneSignal';
 import JobRepository from '../data_layer/JobRepository';
 import sendErrorResponse from '../lib/sendErrorResponse';
 import { isPaying } from '../lib/isPaying';
@@ -219,8 +221,8 @@ class ApkgController {
     private readonly jobRepository?: JobRepository,
     private readonly recordServerError?: ServerErrorRecorder,
     // Caps concurrent Chrome renders on the process. Held for the render's
-    // lifetime (acquired before preview, released in a finally after it
-    // settles), so a client abort cannot free the slot while Chrome runs.
+    // lifetime (acquired once the deck is parsed, released in a finally after
+    // it settles), so a client abort cannot free the slot while Chrome runs.
     private readonly previewConcurrency: ConcurrencyLimiter = new ConcurrencyLimiter(
       2
     )
@@ -238,8 +240,10 @@ class ApkgController {
       res.status(404).json({ message: 'Upload not found.' });
       return null;
     }
-    const parsed = await this.previewService.load(`${owner}:${key}`, () =>
-      this.downloadService.getStoredDeckBody(storageKey, new StorageHandler())
+    const parsed = await this.previewService.load(
+      `${owner}:${key}`,
+      this.downloadService.storedDeckSource(storageKey, new StorageHandler()),
+      clientGoneSignal(res)
     );
     if (parsed == null) {
       res.status(404).json({ message: 'Upload not found.' });
@@ -254,8 +258,9 @@ class ApkgController {
       if (!parsed) return;
       res.json(this.previewService.getMeta(parsed));
     } catch (error) {
+      if (error instanceof WaitAbandonedError) return;
       if (sendApkgTooLarge(res, error)) return;
-      if (this.downloadService.isMissingDownloadError(error)) {
+      if (this.downloadService.isMissingStoredDeckError(error)) {
         res.status(404).json({ message: 'Upload is no longer available.' });
         return;
       }
@@ -285,8 +290,9 @@ class ApkgController {
         )
       );
     } catch (error) {
+      if (error instanceof WaitAbandonedError) return;
       if (sendApkgTooLarge(res, error)) return;
-      if (this.downloadService.isMissingDownloadError(error)) {
+      if (this.downloadService.isMissingStoredDeckError(error)) {
         res.status(404).json({ message: 'Upload is no longer available.' });
         return;
       }
@@ -314,8 +320,9 @@ class ApkgController {
       res.setHeader('Cache-Control', 'private, max-age=300');
       res.send(buffer);
     } catch (error) {
+      if (error instanceof WaitAbandonedError) return;
       if (sendApkgTooLarge(res, error)) return;
-      if (this.downloadService.isMissingDownloadError(error)) {
+      if (this.downloadService.isMissingStoredDeckError(error)) {
         res.status(404).send();
         return;
       }
@@ -402,11 +409,11 @@ class ApkgController {
       }
       const upload = await readDeckUpload(req, res, 'print_preview');
       if (upload == null) return;
-      const fileBuffer = upload.deck;
       const useCase = new ExportApkgToPdfUseCase(
         this.previewService,
         this.pdfRenderService
       );
+      const parsed = await useCase.parseForPreview(upload.deck);
       if (!this.previewConcurrency.tryAcquire()) {
         res.status(503).json({
           message:
@@ -415,8 +422,8 @@ class ApkgController {
         return;
       }
       try {
-        const result = await useCase.preview(
-          fileBuffer,
+        const result = await useCase.previewParsed(
+          parsed,
           pdfOptions,
           PREVIEW_CARD_LIMIT
         );
@@ -583,7 +590,7 @@ class ApkgController {
       res.send(result.buffer);
     } catch (error) {
       if (sendApkgTooLarge(res, error)) return;
-      if (this.downloadService.isMissingDownloadError(error)) {
+      if (this.downloadService.isMissingStoredDeckError(error)) {
         res.status(404).json({ message: 'Upload is no longer available.' });
         return;
       }

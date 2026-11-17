@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import path from 'path';
 import ApkgPreviewService from '../../services/ApkgPreviewService/ApkgPreviewService';
 import ApkgToNotionBlocksService, {
@@ -105,7 +106,7 @@ export default class ImportApkgToNotionUseCase {
   ): Promise<void> {
     const maxNotes = options.maxNotes;
     try {
-      const cacheKey = `import:${owner}:${Date.now()}`;
+      const cacheKey = `import:${owner}:${randomUUID()}`;
       const parsed = await this.previewService.parse(cacheKey, fileBuffer);
 
       const result = this.blocksService.transform(

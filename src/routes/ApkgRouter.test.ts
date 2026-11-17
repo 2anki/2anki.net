@@ -6,7 +6,8 @@ import type { AddressInfo } from 'node:net';
 
 const getPrintUsage = vi.fn();
 const incrementPrintUsage = vi.fn();
-const preview = vi.fn();
+const parseForPreview = vi.fn();
+const previewParsed = vi.fn();
 const execute = vi.fn();
 
 vi.mock('../data_layer', () => ({
@@ -46,7 +47,7 @@ vi.mock('../usecases/apkg/ExportApkgToPdfUseCase', async (importOriginal) => {
     ...actual,
     __esModule: true,
     default: vi.fn().mockImplementation(function () {
-      return { preview, execute };
+      return { parseForPreview, previewParsed, execute };
     }),
   };
 });
@@ -76,7 +77,8 @@ describe('ApkgRouter print preview', () => {
   beforeEach(() => {
     getPrintUsage.mockReset().mockResolvedValue({ prints_used: 1 });
     incrementPrintUsage.mockReset().mockResolvedValue(undefined);
-    preview.mockReset().mockResolvedValue({
+    parseForPreview.mockReset().mockResolvedValue({ parsedAt: 0 });
+    previewParsed.mockReset().mockResolvedValue({
       image: Buffer.from('png'),
       totalCards: 10,
       previewedCards: 3,

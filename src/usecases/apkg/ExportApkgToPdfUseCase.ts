@@ -357,8 +357,25 @@ export default class ExportApkgToPdfUseCase {
     options: PdfOptions = DEFAULT_PDF_OPTIONS,
     limit = PREVIEW_CARD_LIMIT
   ): Promise<ExportApkgToPdfPreviewResult> {
-    const cacheKey = `pdf-preview:${crypto.randomUUID()}`;
-    const parsed = await this.previewService.parse(cacheKey, fileBuffer);
+    return this.previewParsed(
+      await this.parseForPreview(fileBuffer),
+      options,
+      limit
+    );
+  }
+
+  parseForPreview(fileBuffer: Buffer): Promise<ParsedApkg> {
+    return this.previewService.parse(
+      `pdf-preview:${crypto.randomUUID()}`,
+      fileBuffer
+    );
+  }
+
+  async previewParsed(
+    parsed: ParsedApkg,
+    options: PdfOptions = DEFAULT_PDF_OPTIONS,
+    limit = PREVIEW_CARD_LIMIT
+  ): Promise<ExportApkgToPdfPreviewResult> {
     const meta = this.previewService.getMeta(parsed);
     const deckName =
       meta.decks.length > 0 ? meta.decks[0].fullName : 'Flashcards';

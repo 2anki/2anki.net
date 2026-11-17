@@ -57,6 +57,8 @@ import { Client as NotionClient } from '@notionhq/client';
 import NotionRepository from '../data_layer/NotionRespository';
 import { UnsupportedNotionBlockRepository } from '../data_layer/UnsupportedNotionBlockRepository';
 import StorageHandler from '../lib/storage/StorageHandler';
+import DownloadService from '../services/DownloadService';
+import DownloadRepository from '../data_layer/DownloadRepository';
 import { parseCollection } from '../services/ApkgPreviewService/parseCollection';
 import {
   extractApkg,
@@ -291,14 +293,14 @@ const AnkifyRouter = () => {
     new UsersRepository(db)
   );
   const storage = new StorageHandler();
+  const downloadService = new DownloadService(new DownloadRepository(db));
 
   const fetchApkgBytes = async (key: string): Promise<Buffer> => {
-    const data = await storage.getFileContents(key);
-    const body = data.Body;
+    const body = await downloadService.getStoredDeckBody(key, storage);
     if (body == null) {
       throw new Error(`APKG body missing for key ${key}`);
     }
-    return Buffer.isBuffer(body) ? body : Buffer.from(body as Uint8Array);
+    return body;
   };
 
   const ankifyNotionRepo = new NotionRepository(db);
@@ -495,6 +497,8 @@ const AnkifyRouter = () => {
    *         description: Upload not found for this user
    *       409:
    *         description: No active Ankify client
+   *       413:
+   *         description: Upload too large to process
    *       503:
    *         description: AnkiConnect unreachable
    */

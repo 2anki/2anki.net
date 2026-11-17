@@ -73,6 +73,7 @@ import {
 } from '../usecases/ankify/OpenDeckInAnkiUseCase';
 import { GetDeckMaturityUseCase } from '../usecases/ankify/GetDeckMaturityUseCase';
 import { track } from '../services/events/track';
+import { ApkgTooLargeError } from '../services/ApkgPreviewService/extractApkg';
 import { ListLeechesUseCase } from '../usecases/ankify/ListLeechesUseCase';
 import { EditLeechNoteUseCase } from '../usecases/ankify/EditLeechNoteUseCase';
 import { DeleteLeechNoteUseCase } from '../usecases/ankify/DeleteLeechNoteUseCase';
@@ -734,6 +735,11 @@ class AnkifyController {
     } catch (error) {
       if (error instanceof UploadNotFoundError) {
         res.status(404).json({ message: 'Upload not found' });
+        return;
+      }
+      if (error instanceof ApkgTooLargeError) {
+        console.info('[ankify] upload refused: too large');
+        res.status(413).json({ message: error.message });
         return;
       }
       if (error instanceof NoActiveAnkifyClientError) {

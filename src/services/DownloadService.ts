@@ -3,12 +3,17 @@ import StorageHandler, {
 } from '../lib/storage/StorageHandler';
 import DownloadRepository from '../data_layer/DownloadRepository';
 import { anonRecoveryKey } from '../lib/upload/anonymousRecovery';
+import type { DeckSource } from './ApkgPreviewService/ApkgPreviewService';
 import {
   ApkgTooLargeError,
   MAX_TOTAL_DECOMPRESSED_BYTES,
 } from './ApkgPreviewService/extractApkg';
 
-const HEAD_MISSING_NAME = 'NotFound';
+const SIZE_CHECK_MISSING_NAME = 'NotFound';
+
+// A stored deck above this is sent by a short-lived storage link instead of
+// being read into memory and served from there. Far above almost every deck.
+export const BUFFERED_COPY_MAX_BYTES = 100 * 1024 * 1024;
 
 const TRANSIENT_ERROR_NAMES = new Set([
   'TimeoutError',
@@ -29,6 +34,10 @@ const TRANSIENT_SOCKET_CODES = new Set([
   'ENETUNREACH',
   'ENOTFOUND',
 ]);
+
+function isKnownSize(size: number | undefined): size is number {
+  return typeof size === 'number' && Number.isFinite(size) && size >= 0;
+}
 
 function getErrorName(error: unknown): string | undefined {
   return (error as { name?: string })?.name;
@@ -73,34 +82,44 @@ class DownloadService {
     storageKey: string,
     storage: StorageHandler
   ): Promise<Buffer | undefined> {
-    await this.assertReadableSize(storageKey, storage);
+    await this.readableStoredSize(storageKey, storage);
     return this.readStoredBody(storageKey, storage);
   }
 
-  async assertReadableSize(
+  storedDeckSource(storageKey: string, storage: StorageHandler): DeckSource {
+    return {
+      storedSize: () => this.readableStoredSize(storageKey, storage),
+      read: (signal) => this.readStoredBody(storageKey, storage, signal),
+    };
+  }
+
+  async readableStoredSize(
     storageKey: string,
     storage: StorageHandler
-  ): Promise<void> {
-    if (await this.isTooLargeToRead(storageKey, storage)) {
+  ): Promise<number> {
+    const size = await storage.getObjectSize(storageKey);
+    if (!isKnownSize(size) || size > MAX_TOTAL_DECOMPRESSED_BYTES) {
       console.info('[apkg-preview] stored deck refused before read: too large');
       throw new ApkgTooLargeError();
     }
+    return size;
   }
 
   async readStoredBody(
     storageKey: string,
-    storage: StorageHandler
+    storage: StorageHandler,
+    signal?: AbortSignal
   ): Promise<Buffer | undefined> {
-    const file = await storage.getFileContents(storageKey);
+    const file = await storage.getFileContents(storageKey, signal);
     return file?.Body;
   }
 
-  async isTooLargeToRead(
+  async isTooLargeToBuffer(
     storageKey: string,
     storage: StorageHandler
   ): Promise<boolean> {
     const size = await storage.getObjectSize(storageKey);
-    return size == null || size > MAX_TOTAL_DECOMPRESSED_BYTES;
+    return !isKnownSize(size) || size > BUFFERED_COPY_MAX_BYTES;
   }
 
   async getFileStream(
@@ -134,11 +153,18 @@ class DownloadService {
   isMissingDownloadError(error: unknown) {
     const errorName = getErrorName(error);
     if (errorName == null) return false;
-    return errorName.includes('NoSuchKey') || errorName === HEAD_MISSING_NAME;
+    return errorName.includes('NoSuchKey');
+  }
+
+  isMissingStoredDeckError(error: unknown) {
+    return (
+      this.isMissingDownloadError(error) ||
+      getErrorName(error) === SIZE_CHECK_MISSING_NAME
+    );
   }
 
   isTransientStorageError(error: unknown) {
-    if (this.isMissingDownloadError(error)) return false;
+    if (this.isMissingStoredDeckError(error)) return false;
     const statusCode = getStorageStatusCode(error);
     if (statusCode != null && statusCode >= 500) return true;
     const errorName = getErrorName(error);
