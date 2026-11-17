@@ -511,23 +511,69 @@ describe('BlockHandler empty back cards', () => {
     });
   });
 
-  describe('the Notion link option on callout cards', () => {
-    it('drops a callout with no children and counts it', async () => {
-      const tree: Record<string, FakeBlock[]> = {};
-      tree[PARENT_PAGE] = [
-        toggleWithBullets(tree, 't-Full', 'Full'),
-        callout('c-Note', 'A lone callout'),
-      ];
-      const rules = new ParserRules();
-      rules.setFlashcardTypes(['toggle', 'callout']);
-      const handler = makeHandler(parentOnly(tree), true, LINK_ON);
-      const decks = await convert(handler, rules);
+  describe('the Notion link option on childless non-toggle flashcard types', () => {
+    it.each([
+      [
+        'paragraph',
+        paragraph('x-1', 'A fact'),
+        '<p class="" id="x-1">A fact</p>',
+      ],
+      [
+        'quote',
+        block('x-1', 'quote', {
+          rich_text: richText('A fact'),
+          color: 'default',
+        }),
+        '<blockquote class="" id="x-1">A fact</blockquote>',
+      ],
+      [
+        'code',
+        block('x-1', 'code', {
+          rich_text: richText('A fact'),
+          caption: [],
+          language: 'plain text',
+        }),
+        '<pre id="x-1" class="code"><code>A fact</code></pre>',
+      ],
+      [
+        'heading_1',
+        block('x-1', 'heading_1', {
+          rich_text: richText('A fact'),
+          color: 'default',
+          is_toggleable: false,
+        }),
+        '<h1 id="x-1" class="">A fact</h1>',
+      ],
+      [
+        'callout',
+        callout('x-1', 'A fact'),
+        '<figure id="x-1" class="callout" style="white-space:pre-wrap;display:flex"><div></div><div style="width:100%">A fact</div></figure>',
+      ],
+    ])(
+      'keeps a childless %s card with the link, as on main',
+      async (type, lone, front) => {
+        const tree: Record<string, FakeBlock[]> = {};
+        tree[PARENT_PAGE] = [lone];
+        const rules = new ParserRules();
+        rules.setFlashcardTypes([type]);
+        const handler = makeHandler(parentOnly(tree), true, LINK_ON);
+        const decks = await convert(handler, rules);
 
-      expect(
-        delivered(decks).flatMap((deck) => deck.cards.map((c) => c.notionId))
-      ).toEqual(['t-Full']);
-      expect(handler.emptyBackCount).toBe(1);
-    });
+        expect(delivered(decks)).toEqual([
+          {
+            name: 'Parent',
+            cards: [
+              {
+                name: front,
+                back: linkTo(PARENT_PAGE, 'x-1'),
+                notionId: 'x-1',
+              },
+            ],
+          },
+        ]);
+        expect(handler.emptyBackCount).toBe(0);
+      }
+    );
   });
 
   describe('the Notion link option with strikethrough tags on', () => {
@@ -1028,6 +1074,32 @@ describe('BlockHandler empty back cards', () => {
   });
 
   describe('deck rules without page on a paid conversion', () => {
+    it('links a child page card to the child page, anchored to its block, with the Notion link option on', async () => {
+      const tree: Record<string, FakeBlock[]> = {};
+      tree[PARENT_PAGE] = [childPage(CHILD_PAGE, 'Child')];
+      tree[CHILD_PAGE] = [toggleWithBullets(tree, 't-Q1', 'Q1')];
+      const sdk = makeSdk(tree, {
+        [PARENT_PAGE]: page(PARENT_PAGE, 'Parent'),
+        [CHILD_PAGE]: page(CHILD_PAGE, 'Child'),
+      });
+      const rules = new ParserRules();
+      rules.setDeckTypes(['database']);
+      const decks = await convert(makeHandler(sdk, true, LINK_ON), rules);
+
+      expect(delivered(decks)).toEqual([
+        {
+          name: 'Parent::Child',
+          cards: [
+            {
+              name: 'Q1',
+              back: backOf('t-Q1', 'Q1') + linkTo(CHILD_PAGE, 't-Q1'),
+              notionId: 't-Q1',
+            },
+          ],
+        },
+      ]);
+    });
+
     it('drops a blank toggle from the child page deck', async () => {
       const tree: Record<string, FakeBlock[]> = {};
       tree[PARENT_PAGE] = [childPage(CHILD_PAGE, 'Child')];

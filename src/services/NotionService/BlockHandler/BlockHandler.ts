@@ -954,11 +954,7 @@ class BlockHandler implements IBlockRenderer {
         back = card.back;
       } else {
         name = await blockToStaticMarkup(this, block as BlockObjectResponse);
-        const backSide = await this.renderBackSide(
-          block as BlockObjectResponse
-        );
-        back = backSide.html;
-        emptyInNotion = backSide.emptyInNotion;
+        back = await this.getBackSide(block as BlockObjectResponse);
       }
 
       if (!name) {
@@ -2333,11 +2329,15 @@ class BlockHandler implements IBlockRenderer {
         : new Map<string, HeadingContext>();
 
     this.settings.parentBlockId = block.id;
+    const deckNotionLink =
+      block.type === 'child_page' && notionBaseLink != null
+        ? `https://www.notion.so/${block.id.replaceAll('-', '')}`
+        : notionBaseLink;
     let cards = await this.getFlashcards(
       rules,
       cardBlocks,
       tags,
-      notionBaseLink,
+      deckNotionLink,
       childHeadingTagMap,
       childHeadingContextMap
     );
