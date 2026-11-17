@@ -29,6 +29,7 @@ import { stripLeadingDeckNumbering } from '../../../lib/parser/helpers/stripLead
 import Note from '../../../lib/parser/Note';
 import type { EmptyDeckReason } from '../../../usecases/jobs/EmptyDeckError';
 import { countEmptyBacks } from '../../../lib/parser/countEmptyBacks';
+import { hasVisibleContent } from '../../../lib/parser/hasVisibleContent';
 import ParserRules from '../../../lib/parser/ParserRules';
 import CardOption from '../../../lib/parser/Settings';
 import TagRegistry from '../../../lib/parser/TagRegistry';
@@ -44,6 +45,7 @@ import type { IBlockRenderer } from './types';
 import BlockColumn from '../blocks/lists/BlockColumn';
 import { tableRowsToCards } from '../blocks/lists/BlockTable';
 import { blockToStaticMarkup } from '../helpers/blockToStaticMarkup';
+import { getRichTextFromBlock } from '../helpers/getRichTextFromBlock';
 import { getToggleColor } from '../helpers/getToggleColor';
 import { getToggleSummaryRichText } from '../helpers/getToggleSummaryRichText';
 import { isToggleHeading } from '../helpers/isToggleHeading';
@@ -224,9 +226,55 @@ interface PromotedToggleCard {
   block: BlockObjectResponse;
   name: string;
   back: string;
+  emptyInNotion: boolean;
   tags: string[];
   media: string[];
 }
+
+interface BackSide {
+  html: string | null;
+  emptyInNotion: boolean;
+}
+
+const EMPTY_TEXT_BLOCK_TYPES = new Set([
+  'paragraph',
+  'heading_1',
+  'heading_2',
+  'heading_3',
+  'bulleted_list_item',
+  'numbered_list_item',
+  'quote',
+  'callout',
+]);
+
+const isEmptyTextBlock = (child: GetBlockResponse): boolean => {
+  if (
+    !isFullBlock(child) ||
+    child.has_children ||
+    !EMPTY_TEXT_BLOCK_TYPES.has(child.type)
+  ) {
+    return false;
+  }
+  const richText = getRichTextFromBlock(child);
+  return (
+    richText != null &&
+    richText.every((item) => item.type === 'text' && !item.plain_text.trim())
+  );
+};
+
+const isEmptyInNotion = (
+  block: BlockObjectResponse,
+  children: ListBlockChildrenResponse
+): boolean => {
+  if (!block.has_children) {
+    return true;
+  }
+  return (
+    !children.has_more &&
+    children.results.length > 0 &&
+    children.results.every(isEmptyTextBlock)
+  );
+};
 
 const nonCollectingTagRegistry = () => new TagRegistry(() => false);
 
@@ -683,7 +731,7 @@ class BlockHandler implements IBlockRenderer {
         this.settings,
         this.tagRegistry
       ).replaceAll('\n', '<br />');
-      const back = await this.getBackSide(child);
+      const { html: back, emptyInNotion } = await this.renderBackSide(child);
       const tags = this.tagRegistry.tags();
       this.tagRegistry.clear();
       const media = this.exporter.media;
@@ -693,6 +741,7 @@ class BlockHandler implements IBlockRenderer {
           block: child,
           name: wrapWithColorClass(getToggleColor(child), name),
           back: wrapBlockWithColorClass(getToggleColor(child), back),
+          emptyInNotion,
           tags,
           media,
         });
@@ -714,45 +763,56 @@ class BlockHandler implements IBlockRenderer {
     block: BlockObjectResponse,
     handleChildren?: boolean
   ): Promise<string | null> {
+    return (await this.renderBackSide(block, handleChildren)).html;
+  }
+
+  private async renderBackSide(
+    block: BlockObjectResponse,
+    handleChildren?: boolean
+  ): Promise<BackSide> {
     let children: Awaited<ReturnType<typeof this.fetchBackSideChildren>>;
     try {
       children = await this.fetchBackSideChildren(block);
     } catch (fetchError: unknown) {
       console.info('Get back side failed');
       console.error(fetchError);
-      return null;
+      return { html: null, emptyInNotion: false };
     }
+    const emptyInNotion = isEmptyInNotion(block, children.response);
 
     try {
-      return await renderBack(
+      const html = await renderBack(
         this,
         children.requestChildren,
         children.response,
         handleChildren
       );
+      return { html, emptyInNotion };
     } catch {
       console.info(
         `Back side render failed for block ${block.id}, retrying with fresh block content`
       );
       try {
         children = await this.fetchBackSideChildren(block);
-        return await renderBack(
+        const html = await renderBack(
           this,
           children.requestChildren,
           children.response,
           handleChildren
         );
+        return { html, emptyInNotion: false };
       } catch (retryError: unknown) {
         console.warn(
           `Back side media unrecoverable for block ${block.id}; delivering recoverable content with a placeholder`,
           retryError
         );
-        return await renderBackResilient(
+        const html = await renderBackResilient(
           this,
           children.requestChildren,
           children.response,
           handleChildren
         );
+        return { html, emptyInNotion: false };
       }
     }
   }
@@ -764,6 +824,20 @@ class BlockHandler implements IBlockRenderer {
     return notionBaseLink
       ? `${notionBaseLink}#${id.replace(/-/g, '')}`
       : undefined;
+  }
+
+  private appendsNotionLink(
+    note: Note,
+    isBasicAndEmptyInNotion: boolean
+  ): boolean {
+    if (!this.settings.addNotionLink || note.mcq) {
+      return false;
+    }
+    return (
+      !isBasicAndEmptyInNotion ||
+      note.hasClozeDeletion() ||
+      hasVisibleContent(note.back)
+    );
   }
 
   recordUnsupportedBlockType(type: string): void {
@@ -848,6 +922,7 @@ class BlockHandler implements IBlockRenderer {
 
       let name: string;
       let back: null | string = '';
+      let emptyInNotion = false;
 
       const fullBlock = isFullBlock(block) ? block : null;
       const toggleSummary = fullBlock
@@ -863,7 +938,9 @@ class BlockHandler implements IBlockRenderer {
         if (!name) {
           name = await this.getToggleFrontMedia(fullBlock);
         }
-        back = await this.getBackSide(fullBlock);
+        const backSide = await this.renderBackSide(fullBlock);
+        back = backSide.html;
+        emptyInNotion = backSide.emptyInNotion;
         const toggleColor = getToggleColor(fullBlock);
         if (name) {
           name = wrapWithColorClass(toggleColor, name);
@@ -930,7 +1007,7 @@ class BlockHandler implements IBlockRenderer {
         ankiNote.back = back || '';
       }
       ankiNote.notionLink = this.__notionLink(block.id, notionBaseLink);
-      if (this.settings.addNotionLink && !ankiNote.mcq) {
+      if (this.appendsNotionLink(ankiNote, isBasicType && emptyInNotion)) {
         ankiNote.back += RenderNotionLink(ankiNote.notionLink!, this);
       }
       ankiNote.notionId = block.id;
@@ -992,7 +1069,7 @@ class BlockHandler implements IBlockRenderer {
             notionBaseLink
           );
           nestedNote.notionId = nested.block.id;
-          if (this.settings.addNotionLink) {
+          if (this.appendsNotionLink(nestedNote, nested.emptyInNotion)) {
             nestedNote.back += RenderNotionLink(nestedNote.notionLink!, this);
           }
           nestedNote.name = perserveNewlinesIfApplicable(
@@ -1777,6 +1854,10 @@ class BlockHandler implements IBlockRenderer {
     }
 
     const currentDeckName = toText(getDeckName(parentName, title));
+    const notionBaseLink =
+      this.settings.addNotionLink && page != null && isFullPage(page)
+        ? page.url
+        : undefined;
 
     // Depth-first traversal: process current page, then children
     if (rules.permitsDeckAsPage() && page) {
@@ -1816,12 +1897,6 @@ class BlockHandler implements IBlockRenderer {
           : new Map<string, HeadingContext>();
       this.settings.parentBlockId = page.id;
 
-      let notionBaseLink =
-        this.settings.addNotionLink && this.settings.parentBlockId
-          ? isFullPage(page)
-            ? page?.url
-            : undefined
-          : undefined;
       const dropAlreadySeen = (list: Note[]): Note[] =>
         list.filter((card) => {
           if (
@@ -1925,7 +2000,8 @@ class BlockHandler implements IBlockRenderer {
               rules,
               tags,
               flashCardTypes,
-              globalSeenIds
+              globalSeenIds,
+              notionBaseLink
             )
           );
           continue;
@@ -1956,7 +2032,8 @@ class BlockHandler implements IBlockRenderer {
             rules,
             tags,
             flashCardTypes,
-            globalSeenIds
+            globalSeenIds,
+            notionBaseLink
           )
         );
       }
@@ -2219,7 +2296,8 @@ class BlockHandler implements IBlockRenderer {
     rules: ParserRules,
     tags: string[],
     flashCardTypes: string[],
-    globalSeenIds: Set<string>
+    globalSeenIds: Set<string>,
+    notionBaseLink: string | undefined
   ): Promise<Deck> {
     const res = await this.api.getBlocks({
       createdAt: block.created_time,
@@ -2251,11 +2329,15 @@ class BlockHandler implements IBlockRenderer {
         : new Map<string, HeadingContext>();
 
     this.settings.parentBlockId = block.id;
+    const deckNotionLink =
+      block.type === 'child_page' && notionBaseLink != null
+        ? `https://www.notion.so/${block.id.replaceAll('-', '')}`
+        : notionBaseLink;
     let cards = await this.getFlashcards(
       rules,
       cardBlocks,
       tags,
-      undefined,
+      deckNotionLink,
       childHeadingTagMap,
       childHeadingContextMap
     );
@@ -2276,7 +2358,7 @@ class BlockHandler implements IBlockRenderer {
         this.settings.deckName || this.firstPageTitle || '',
         this.applyDeckNameNumbering(getSubDeckName(block))
       ),
-      rescue.cards,
+      Deck.CleanCards(rescue.cards),
       undefined,
       buildDeckStyle(this.settings),
       get16DigitRandomId(),

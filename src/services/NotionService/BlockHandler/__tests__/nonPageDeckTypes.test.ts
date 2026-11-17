@@ -50,6 +50,18 @@ function toggle(id: string, summary: string, hasChildren = false): FakeBlock {
   };
 }
 
+function answer(id: string): FakeBlock {
+  return {
+    object: 'block',
+    id,
+    type: 'paragraph',
+    has_children: false,
+    created_time: TS,
+    last_edited_time: TS,
+    paragraph: { rich_text: richText('An answer'), color: 'default' },
+  };
+}
+
 function buildApi(
   blocksByParent: Record<string, FakeBlock[]>
 ): NotionAPIWrapper {
@@ -145,11 +157,12 @@ function heading(id: string, text: string, hasChildren = true): FakeBlock {
 
 describe('findFlashcardsFromPage non-page deck types', () => {
   it('turns a toggle into a top-level deck sourced from its children', async () => {
-    const childCard = toggle('child-card', 'Question on the toggle');
+    const childCard = toggle('child-card', 'Question on the toggle', true);
     const deckToggle = toggle('deck-toggle', 'My toggle deck', true);
     const api = buildApi({
       root: [deckToggle],
       'deck-toggle': [childCard],
+      'child-card': [answer('child-answer')],
     });
     const settings = settingsWithSplit(true);
     const handler = newHandler(api, settings);
@@ -178,7 +191,7 @@ describe('findFlashcardsFromPage non-page deck types', () => {
   ])(
     'turns a %s block into a top-level deck sourced from its children',
     async (deckType) => {
-      const childCard = toggle('child-card', 'Inner question');
+      const childCard = toggle('child-card', 'Inner question', true);
       const deckBlock: FakeBlock = {
         object: 'block',
         id: 'deck-block',
@@ -191,6 +204,7 @@ describe('findFlashcardsFromPage non-page deck types', () => {
       const api = buildApi({
         root: [deckBlock],
         'deck-block': [childCard],
+        'child-card': [answer('child-answer')],
       });
       const settings = settingsWithSplit(true);
       const handler = newHandler(api, settings);
@@ -210,11 +224,12 @@ describe('findFlashcardsFromPage non-page deck types', () => {
   );
 
   it('lets DECK win over FLASHCARD when a type is in both', async () => {
-    const childCard = toggle('child-card', 'Child question');
+    const childCard = toggle('child-card', 'Child question', true);
     const deckToggle = toggle('deck-toggle', 'Toggle as deck', true);
     const api = buildApi({
       root: [deckToggle],
       'deck-toggle': [childCard],
+      'child-card': [answer('child-answer')],
     });
     const settings = settingsWithSplit(true);
     const handler = newHandler(api, settings);
@@ -260,14 +275,16 @@ describe('findFlashcardsFromPage non-page deck types', () => {
   });
 
   it('splits two headings into separate decks from deck_is even when split-sections-into-decks is off', async () => {
-    const firstCard = toggle('card-1', 'German question');
-    const secondCard = toggle('card-2', 'Maths question');
+    const firstCard = toggle('card-1', 'German question', true);
+    const secondCard = toggle('card-2', 'Maths question', true);
     const germanHeading = heading('german', 'German');
     const mathsHeading = heading('maths', 'Maths');
     const api = buildApi({
       root: [germanHeading, mathsHeading],
       german: [firstCard],
       maths: [secondCard],
+      'card-1': [answer('answer-1')],
+      'card-2': [answer('answer-2')],
     });
     const handler = newHandler(api, settingsWithSplit(false));
 
@@ -286,14 +303,16 @@ describe('findFlashcardsFromPage non-page deck types', () => {
   });
 
   it('splits two headings into separate top-level decks when the option is on', async () => {
-    const firstCard = toggle('card-1', 'German question');
-    const secondCard = toggle('card-2', 'Maths question');
+    const firstCard = toggle('card-1', 'German question', true);
+    const secondCard = toggle('card-2', 'Maths question', true);
     const germanHeading = heading('german', 'German');
     const mathsHeading = heading('maths', 'Maths');
     const api = buildApi({
       root: [germanHeading, mathsHeading],
       german: [firstCard],
       maths: [secondCard],
+      'card-1': [answer('answer-1')],
+      'card-2': [answer('answer-2')],
     });
     const handler = newHandler(api, settingsWithSplit(true));
 
@@ -437,9 +456,13 @@ describe('findFlashcardsFromPage non-page deck types on the free plan', () => {
   });
 
   it('still splits the toggle into its own deck on a paid plan', async () => {
-    const childCard = toggle('child-card', 'Child question');
+    const childCard = toggle('child-card', 'Child question', true);
     const deckToggle = toggle('deck-toggle', 'A toggle', true);
-    const api = buildApi({ root: [deckToggle], 'deck-toggle': [childCard] });
+    const api = buildApi({
+      root: [deckToggle],
+      'deck-toggle': [childCard],
+      'child-card': [answer('child-answer')],
+    });
 
     const handler = newHandler(api, settingsWithSplit(false), true);
     const decks = await handler.findFlashcardsFromPage({
