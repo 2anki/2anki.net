@@ -6,9 +6,12 @@ import { CookiesProvider } from 'react-cookie';
 import i18n from '../../lib/i18n';
 import MagicLinkPage from './MagicLinkPage';
 
+const mockValidateMagicToken = vi.fn();
+
 vi.mock('../../lib/backend/get2ankiApi', () => ({
   get2ankiApi: () => ({
-    validateMagicToken: vi.fn(),
+    validateMagicToken: mockValidateMagicToken,
+    confirmMagicLink: vi.fn(),
     requestMagicLink: vi.fn(),
   }),
 }));
@@ -36,7 +39,7 @@ describe('MagicLinkPage in German', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        'Dieser Link ist ungültig oder abgelaufen. Fordere einen neuen an.'
+        'Dieser Link wurde schon verwendet oder ist abgelaufen. Lass dir unten einen neuen schicken.'
       )
     ).toBeInTheDocument();
     expect(screen.getByText('E-Mail')).toBeInTheDocument();
@@ -44,5 +47,31 @@ describe('MagicLinkPage in German', () => {
     expect(
       screen.getByRole('button', { name: 'Neuen Link senden' })
     ).toBeInTheDocument();
+  });
+
+  it('asks in German before signing in from another browser', async () => {
+    mockValidateMagicToken.mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          confirm: true,
+          purpose: 'login',
+          email: 'l•••@example.com',
+        }),
+    });
+    render(
+      <CookiesProvider>
+        <MemoryRouter initialEntries={['/auth/magic?token=abc123']}>
+          <MagicLinkPage />
+        </MemoryRouter>
+      </CookiesProvider>
+    );
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Als l•••@example.com bei 2anki anmelden?',
+      })
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Anmelden' })).toBeEnabled();
   });
 });

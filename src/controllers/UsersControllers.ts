@@ -14,7 +14,7 @@ const newPasswordRateLimiter = new InMemoryRateLimiter({
 import AuthenticationService, {
   UserWithOwner,
 } from '../services/AuthenticationService';
-import UsersService from '../services/UsersService';
+import UsersService, { type MagicTokenClaim } from '../services/UsersService';
 import { getRedirect } from './helpers/getRedirect';
 import { recordUnverifiedSignin } from './helpers/recordUnverifiedSignin';
 import { sanitizeRelativeRedirect } from './helpers/sanitizeRelativeRedirect';
@@ -71,6 +71,14 @@ import { UsersId } from '../data_layer/public/Users';
 import { isPaying } from '../lib/isPaying';
 import NotionRepository from '../data_layer/NotionRespository';
 import hashToken from '../lib/misc/hashToken';
+import {
+  clearMagicLinkBinding,
+  isBoundToThisBrowser,
+  isPrefetchRequest,
+  isSameOriginJsonRequest,
+  rememberMagicLinkBinding,
+} from '../lib/auth/magicLinkBinding';
+import { maskEmail } from '../lib/auth/maskEmail';
 import { extractCountryFromRequest } from '../lib/http/extractCountryFromRequest';
 import { isBotUserAgent } from '../lib/http/isBotUserAgent';
 import { analyticsAnonId } from '../lib/http/consentRegion';
@@ -92,6 +100,31 @@ function readAnalyticsAnonId(req: express.Request): string | null {
   const cookies = req.cookies as Record<string, unknown> | undefined;
   const anonId = cookies?.anon_id;
   return analyticsAnonId(req, typeof anonId === 'string' ? anonId : null);
+}
+
+const MAGIC_LINK_EXPIRED = {
+  message: 'This link is invalid or has expired.',
+  code: 'expired',
+} as const;
+
+type MagicLinkOutcome =
+  | 'signed_in_direct'
+  | 'confirmed'
+  | 'confirm_shown'
+  | 'prefetch_ignored'
+  | 'already_signed_in'
+  | 'spent'
+  | 'invalid';
+
+function logMagicLink(
+  outcome: MagicLinkOutcome,
+  claim: { userId: number | null; purpose?: string }
+): void {
+  console.info('password_reset.magic_link', {
+    outcome,
+    purpose: claim.purpose ?? null,
+    user_id_hash: claim.userId == null ? null : hashToken(String(claim.userId)),
+  });
 }
 
 interface UnboundCallbackRefusal {
@@ -1508,8 +1541,9 @@ class UsersController {
       return res.status(400).json({ message: 'Invalid purpose' });
     }
 
+    let issuedToken: string | undefined;
     try {
-      await this.userService.requestMagicLink(
+      issuedToken = await this.userService.requestMagicLink(
         email.trim(),
         purpose,
         readFirstTouchCookie(req).signupOrigin,
@@ -1523,15 +1557,18 @@ class UsersController {
       );
     } catch (error) {
       if (error instanceof MagicLinkRateLimitError) {
+        rememberMagicLinkBinding(req, res, undefined);
         return res.status(200).json({ message: 'ok' });
       }
       if (error instanceof MagicLinkSuppressedError) {
+        rememberMagicLinkBinding(req, res, undefined);
         return res
           .status(200)
           .json({ message: 'suppressed', suppressed: true });
       }
       return next(error);
     }
+    rememberMagicLinkBinding(req, res, issuedToken);
     return res.status(200).json({ message: 'ok' });
   }
 
@@ -1575,70 +1612,163 @@ class UsersController {
     }
 
     try {
-      const result = await this.userService.verifyMagicToken(token);
-      if (result == null) {
-        return res
-          .status(400)
-          .json({ message: 'This link is invalid or has expired.' });
+      const pending = await this.userService.peekMagicToken(token);
+      if (pending == null) {
+        return await this.#refuseSpentMagicLink(req, res, token, req.query);
       }
-
-      if (result.purpose === 'login') {
-        const user = await this.userService.getUserById(
-          result.userId.toString()
-        );
-        if (user == null) {
-          return res
-            .status(400)
-            .json({ message: 'This link is invalid or has expired.' });
-        }
-        recordUnverifiedSignin(user, 'magic_link');
-        // Before the new session exists: confirming an address can end the
-        // sessions an unproven account already held.
-        await this.userService.markEmailVerified(
-          user.id.toString(),
-          'magic_link'
-        );
-        const jwtToken = await this.authService.newJWTToken(user.id);
-        await this.authService.persistToken(jwtToken, user.id.toString());
-        await this.userService.updateLastLoginAt(user.id.toString());
-        res.cookie('token', jwtToken, sessionCookieOptions());
-        const mcpReturn = takeMcpLoginReturn(req, res);
-        const redirect =
-          sanitizeRelativeRedirect(req.query?.redirect) ?? mcpReturn;
-        if (redirect != null) {
-          return res.status(200).json({ token: jwtToken, redirect });
-        }
-        return res.status(200).json({ token: jwtToken });
+      if (isPrefetchRequest(req)) {
+        logMagicLink('prefetch_ignored', pending);
+        return await this.#askToConfirmMagicLink(res, pending);
       }
-
-      if (result.purpose === 'password_reset') {
-        const user = await this.userService.getUserById(
-          result.userId.toString()
-        );
-        if (user == null) {
-          return res
-            .status(400)
-            .json({ message: 'This link is invalid or has expired.' });
-        }
-        const resetToken = crypto.randomUUID();
-        await this.userService.updateResetToken(user.id.toString(), resetToken);
-        recordUnverifiedSignin(user, 'magic_link_reset');
-        await this.userService.markEmailVerified(
-          user.id.toString(),
-          'magic_link_reset'
-        );
-        return res
-          .status(200)
-          .json({ purpose: 'password_reset', reset_token: resetToken });
+      if (isBoundToThisBrowser(req, token)) {
+        return await this.#redeemMagicLink(req, res, token, {
+          via: 'signed_in_direct',
+          redirect: req.query?.redirect,
+        });
       }
-
-      return res
-        .status(400)
-        .json({ message: 'This link is invalid or has expired.' });
+      logMagicLink('confirm_shown', pending);
+      return await this.#askToConfirmMagicLink(res, pending);
     } catch (error) {
       console.error('Magic link verification failed:', error);
       next(error);
     }
+  }
+
+  async confirmMagicLink(
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction
+  ) {
+    if (!isSameOriginJsonRequest(req)) {
+      return res
+        .status(403)
+        .json({ message: 'Open the link from your email.' });
+    }
+    if (!this.#magicConfirmLimiter.check(hashIp(resolveClientIp(req)))) {
+      return res
+        .status(429)
+        .json({ message: 'Too many attempts. Try again in a few minutes.' });
+    }
+    const token = req.body?.token;
+    if (typeof token !== 'string' || token.length === 0) {
+      return res.status(400).json({ message: 'Token is required' });
+    }
+
+    try {
+      return await this.#redeemMagicLink(req, res, token, {
+        via: 'confirmed',
+        redirect: req.body?.redirect,
+      });
+    } catch (error) {
+      console.error('Magic link confirmation failed:', error);
+      next(error);
+    }
+  }
+
+  readonly #magicConfirmLimiter = new InMemoryRateLimiter({
+    windowMs: 15 * 60 * 1000,
+    perKeyMax: 10,
+    globalMax: 500,
+  });
+
+  async #askToConfirmMagicLink(
+    res: express.Response,
+    pending: MagicTokenClaim
+  ) {
+    if (pending.purpose !== 'login' && pending.purpose !== 'password_reset') {
+      return res.status(400).json(MAGIC_LINK_EXPIRED);
+    }
+    const user = await this.userService.getUserById(pending.userId.toString());
+    if (user?.email == null) {
+      return res.status(400).json(MAGIC_LINK_EXPIRED);
+    }
+    return res.status(200).json({
+      confirm: true,
+      purpose: pending.purpose,
+      email: maskEmail(user.email),
+    });
+  }
+
+  async #refuseSpentMagicLink(
+    req: express.Request,
+    res: express.Response,
+    token: string,
+    input: { redirect?: unknown } | undefined
+  ) {
+    const owner = await this.userService.findSpentMagicTokenOwner(token);
+    if (owner != null) {
+      const signedIn = await this.#sessionUser(req.cookies?.token);
+      if (signedIn != null && Number(signedIn.id) === owner) {
+        logMagicLink('already_signed_in', { userId: owner });
+        const redirect = sanitizeRelativeRedirect(input?.redirect);
+        return res
+          .status(200)
+          .json(
+            redirect == null ? { signedIn: true } : { signedIn: true, redirect }
+          );
+      }
+    }
+    logMagicLink(owner == null ? 'invalid' : 'spent', { userId: owner });
+    return res.status(400).json(MAGIC_LINK_EXPIRED);
+  }
+
+  async #redeemMagicLink(
+    req: express.Request,
+    res: express.Response,
+    token: string,
+    options: { via: 'signed_in_direct' | 'confirmed'; redirect: unknown }
+  ) {
+    const result = await this.userService.consumeMagicToken(token);
+    if (result == null) {
+      return this.#refuseSpentMagicLink(req, res, token, options);
+    }
+    if (options.via === 'signed_in_direct') {
+      clearMagicLinkBinding(res);
+    }
+    logMagicLink(options.via, result);
+
+    if (result.purpose === 'login') {
+      const user = await this.userService.getUserById(result.userId.toString());
+      if (user == null) {
+        return res.status(400).json(MAGIC_LINK_EXPIRED);
+      }
+      recordUnverifiedSignin(user, 'magic_link');
+      // Before the new session exists: confirming an address can end the
+      // sessions an unproven account already held.
+      await this.userService.markEmailVerified(
+        user.id.toString(),
+        'magic_link'
+      );
+      const jwtToken = await this.authService.newJWTToken(user.id);
+      await this.authService.persistToken(jwtToken, user.id.toString());
+      await this.userService.updateLastLoginAt(user.id.toString());
+      res.cookie('token', jwtToken, sessionCookieOptions());
+      const mcpReturn = takeMcpLoginReturn(req, res);
+      const redirect = sanitizeRelativeRedirect(options.redirect) ?? mcpReturn;
+      if (redirect != null) {
+        return res.status(200).json({ token: jwtToken, redirect });
+      }
+      return res.status(200).json({ token: jwtToken });
+    }
+
+    if (result.purpose === 'password_reset') {
+      const user = await this.userService.getUserById(result.userId.toString());
+      if (user == null) {
+        return res.status(400).json(MAGIC_LINK_EXPIRED);
+      }
+      const resetToken = crypto.randomUUID();
+      await this.userService.updateResetToken(user.id.toString(), resetToken);
+      recordUnverifiedSignin(user, 'magic_link_reset');
+      await this.userService.markEmailVerified(
+        user.id.toString(),
+        'magic_link_reset'
+      );
+      return res
+        .status(200)
+        .json({ purpose: 'password_reset', reset_token: resetToken });
+    }
+
+    return res.status(400).json(MAGIC_LINK_EXPIRED);
   }
 
   async markOnboarded(_req: express.Request, res: express.Response) {

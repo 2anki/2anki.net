@@ -2,7 +2,7 @@
   "magicLink": {
     "verifying": "Weryfikowanie linku",
     "expiredTitle": "Link wygasł lub jest nieprawidłowy",
-    "invalidOrExpired": "Ten link jest nieprawidłowy lub wygasł. Poproś o nowy.",
+    "invalidOrExpired": "Ten link został już użyty lub wygasł. Poproś poniżej o nowy.",
     "somethingWrong": "Coś poszło nie tak. Spróbuj ponownie.",
     "couldNotSend": "Nie udało się wysłać nowego linku. Spróbuj ponownie.",
     "newLinkSent": "Nowy link został wysłany na adres {{email}}.",
@@ -10,7 +10,13 @@
     "emailPlaceholder": "Adres e-mail",
     "sending": "Wysyłanie",
     "sendNewLink": "Wyślij nowy link",
-    "backToLogin": "Powrót do logowania"
+    "backToLogin": "Powrót do logowania",
+    "confirmLoginTitle": "Zalogować się do 2anki jako {{email}}?",
+    "confirmResetTitle": "Zresetować hasło dla {{email}}?",
+    "confirmHint": "Ten link otwarto w innej przeglądarce niż ta, w której o niego poproszono.",
+    "confirmLoginButton": "Zaloguj się",
+    "confirmResetButton": "Zresetuj hasło",
+    "confirming": "Sprawdzanie linku"
   },
   "claim": {
     "goToAccount": "Przejdź do konta",

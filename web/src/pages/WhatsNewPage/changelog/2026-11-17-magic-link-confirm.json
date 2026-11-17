@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-17-magic-link-confirm",
+  "date": "2026-11-17",
+  "type": "fix",
+  "title": "Sign-in links keep working when your email app opens them first — on another device, confirm with one click"
+}

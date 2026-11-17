@@ -2,7 +2,7 @@
   "magicLink": {
     "verifying": "リンクを確認しています",
     "expiredTitle": "リンクの有効期限が切れているか無効です",
-    "invalidOrExpired": "このリンクは無効か、有効期限が切れています。新しいリンクをリクエストしてください。",
+    "invalidOrExpired": "このリンクは使用済みか、有効期限が切れています。下から新しいリンクを送信してください。",
     "somethingWrong": "問題が発生しました。もう一度お試しください。",
     "couldNotSend": "新しいリンクを送信できませんでした。もう一度お試しください。",
     "newLinkSent": "新しいリンクを {{email}} に送信しました。",
@@ -10,7 +10,13 @@
     "emailPlaceholder": "メールアドレス",
     "sending": "送信中",
     "sendNewLink": "新しいリンクを送信",
-    "backToLogin": "ログインに戻る"
+    "backToLogin": "ログインに戻る",
+    "confirmLoginTitle": "{{email}} として 2anki にログインしますか？",
+    "confirmResetTitle": "{{email}} のパスワードを再設定しますか？",
+    "confirmHint": "このリンクは、リクエストしたブラウザとは別のブラウザで開かれました。",
+    "confirmLoginButton": "ログイン",
+    "confirmResetButton": "パスワードを再設定",
+    "confirming": "リンクを確認しています"
   },
   "claim": {
     "goToAccount": "アカウントへ",

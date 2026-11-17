@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { useCookies } from 'react-cookie';
@@ -9,10 +9,42 @@ import { NoIndex } from '../../components/NoIndex/NoIndex';
 import styles from '../../styles/auth.module.css';
 import sharedStyles from '../../styles/shared.module.css';
 
+type MagicLinkPurpose = 'login' | 'password_reset';
+
 type MagicLinkState =
   | { status: 'loading' }
+  | {
+      status: 'confirm';
+      token: string;
+      purpose: MagicLinkPurpose;
+      email: string;
+      sending: boolean;
+    }
   | { status: 'error'; message: string }
   | { status: 'success' };
+
+interface MagicLinkAnswer {
+  token?: string;
+  redirect?: string;
+  purpose?: string;
+  reset_token?: string;
+  confirm?: boolean;
+  signedIn?: boolean;
+  email?: string;
+}
+
+interface MagicLinkReply {
+  ok: boolean;
+  data: MagicLinkAnswer;
+}
+
+async function readReply(request: Promise<Response>): Promise<MagicLinkReply> {
+  const response = await request;
+  if (response.ok) {
+    return { ok: true, data: await response.json() };
+  }
+  return { ok: false, data: await response.json().catch(() => ({})) };
+}
 
 function MagicLinkVerification() {
   const { t } = useTranslation('accountx');
@@ -31,6 +63,41 @@ function MagicLinkVerification() {
 
   const token = searchParams.get('token');
   const redirect = sanitizeRelativeRedirect(searchParams.get('redirect'));
+  const verification = useRef<{
+    token: string;
+    reply: Promise<MagicLinkReply>;
+  } | null>(null);
+
+  const follow = useCallback(
+    ({ ok, data }: MagicLinkReply, linkToken: string) => {
+      if (!ok) {
+        setState({ status: 'error', message: t('magicLink.invalidOrExpired') });
+        return;
+      }
+      if (data.purpose === 'password_reset' && data.reset_token != null) {
+        globalThis.location.href = `/users/r/${data.reset_token}`;
+        return;
+      }
+      if (data.confirm === true && data.email != null) {
+        setState({
+          status: 'confirm',
+          token: linkToken,
+          purpose:
+            data.purpose === 'password_reset' ? 'password_reset' : 'login',
+          email: data.email,
+          sending: false,
+        });
+        return;
+      }
+      if (data.token != null) {
+        setCookie('token', data.token);
+      }
+      setState({ status: 'success' });
+      globalThis.location.href =
+        sanitizeRelativeRedirect(data.redirect) ?? '/search';
+    },
+    [setCookie, t]
+  );
 
   useEffect(() => {
     if (token == null) {
@@ -45,32 +112,21 @@ function MagicLinkVerification() {
     const validToken = token;
     stripUrlParam('token');
 
+    if (verification.current?.token !== validToken) {
+      verification.current = {
+        token: validToken,
+        reply: readReply(
+          get2ankiApi().validateMagicToken(validToken, redirect)
+        ),
+      };
+    }
+    const { reply } = verification.current;
+
     async function validateToken() {
       try {
-        const response = await get2ankiApi().validateMagicToken(
-          validToken,
-          redirect
-        );
+        const answer = await reply;
         if (cancelled) return;
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.purpose === 'password_reset') {
-            globalThis.location.href = `/users/r/${data.reset_token}`;
-            return;
-          }
-
-          setCookie('token', data.token);
-          setState({ status: 'success' });
-          globalThis.location.href =
-            sanitizeRelativeRedirect(data.redirect) ?? '/search';
-        } else {
-          const errorData = await response.json().catch(() => ({}));
-          setState({
-            status: 'error',
-            message: errorData.message ?? t('magicLink.invalidOrExpired'),
-          });
-        }
+        follow(answer, validToken);
       } catch {
         if (cancelled) return;
         setState({
@@ -84,7 +140,24 @@ function MagicLinkVerification() {
     return () => {
       cancelled = true;
     };
-  }, [token, redirect, setCookie, t]);
+  }, [token, redirect, follow, t]);
+
+  const handleConfirm = async (linkToken: string) => {
+    setState((current) =>
+      current.status === 'confirm' ? { ...current, sending: true } : current
+    );
+    try {
+      follow(
+        await readReply(get2ankiApi().confirmMagicLink(linkToken, redirect)),
+        linkToken
+      );
+    } catch {
+      setState({
+        status: 'error',
+        message: t('magicLink.somethingWrong'),
+      });
+    }
+  };
 
   const handleResendLink = async (event: React.SyntheticEvent) => {
     event.preventDefault();
@@ -121,6 +194,42 @@ function MagicLinkVerification() {
               {t('magicLink.verifying')}
             </span>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (state.status === 'confirm') {
+    const isReset = state.purpose === 'password_reset';
+    const actionLabel = isReset
+      ? t('magicLink.confirmResetButton')
+      : t('magicLink.confirmLoginButton');
+    return (
+      <div className={styles.formPage}>
+        <div className={styles.formCard}>
+          <h1 className={styles.formTitle} data-hj-suppress>
+            {isReset
+              ? t('magicLink.confirmResetTitle', { email: state.email })
+              : t('magicLink.confirmLoginTitle', { email: state.email })}
+          </h1>
+          <p className={sharedStyles.formDescription}>
+            {t('magicLink.confirmHint')}
+          </p>
+          <div className={styles.field}>
+            <button
+              type="button"
+              className={styles.submitButton}
+              disabled={state.sending}
+              onClick={() => handleConfirm(state.token)}
+            >
+              {state.sending ? t('magicLink.confirming') : actionLabel}
+            </button>
+          </div>
+          <p className={styles.footerText}>
+            <a rel="noreferrer" href="/login">
+              {t('magicLink.backToLogin')}
+            </a>
+          </p>
         </div>
       </div>
     );

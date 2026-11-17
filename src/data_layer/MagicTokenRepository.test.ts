@@ -1,4 +1,101 @@
-import { InMemoryMagicTokenRepository } from './MagicTokenRepository';
+import knex, { type Knex } from 'knex';
+
+import {
+  InMemoryMagicTokenRepository,
+  MagicTokenRepository,
+} from './MagicTokenRepository';
+
+describe('MagicTokenRepository', () => {
+  let db: Knex;
+  let repo: MagicTokenRepository;
+  const inFifteenMinutes = () => new Date(Date.now() + 15 * 60 * 1000);
+
+  beforeEach(async () => {
+    db = knex({
+      client: 'better-sqlite3',
+      connection: { filename: ':memory:' },
+      useNullAsDefault: true,
+    });
+    await db.schema.createTable('magic_tokens', (t) => {
+      t.increments('id');
+      t.string('token', 128).unique();
+      t.integer('owner');
+      t.string('purpose', 20);
+      t.timestamp('created_at').defaultTo(db.fn.now());
+      t.timestamp('expires_at');
+      t.timestamp('used_at').nullable();
+    });
+    repo = new MagicTokenRepository(db);
+  });
+
+  afterEach(async () => {
+    await db.destroy();
+  });
+
+  describe('consumeValidToken', () => {
+    it('spends a live token once and returns its owner and purpose', async () => {
+      await repo.create('live', 7, 'login', inFifteenMinutes());
+
+      const first = await repo.consumeValidToken('live');
+      const second = await repo.consumeValidToken('live');
+
+      expect(first).toMatchObject({
+        token: 'live',
+        owner: 7,
+        purpose: 'login',
+      });
+      expect(first?.used_at).not.toBeNull();
+      expect(second).toBeNull();
+    });
+
+    it('spends exactly one of two concurrent attempts', async () => {
+      await repo.create('race', 7, 'login', inFifteenMinutes());
+
+      const results = await Promise.all([
+        repo.consumeValidToken('race'),
+        repo.consumeValidToken('race'),
+      ]);
+
+      expect(results.filter((r) => r != null)).toHaveLength(1);
+    });
+
+    it('refuses an expired token and leaves it unspent', async () => {
+      await repo.create('old', 7, 'login', new Date(Date.now() - 1000));
+
+      expect(await repo.consumeValidToken('old')).toBeNull();
+      expect((await repo.findByToken('old'))?.used_at).toBeNull();
+    });
+
+    it('updates only an unspent, unexpired row', () => {
+      const at = new Date('2026-11-17T12:00:00Z');
+      const pg = knex({ client: 'pg' });
+      const query = new MagicTokenRepository(pg)
+        .consumeQuery('tok', at)
+        .toSQL();
+
+      expect(query.sql).toBe(
+        'update "magic_tokens" set "used_at" = ? where "token" = ? and "used_at" is null and "expires_at" > ?'
+      );
+      expect(query.bindings).toEqual([at, 'tok', at]);
+    });
+  });
+
+  describe('findByToken', () => {
+    it('returns a spent token with its owner', async () => {
+      await repo.create('spent', 9, 'login', inFifteenMinutes());
+      await repo.consumeValidToken('spent');
+
+      expect(await repo.findByToken('spent')).toMatchObject({
+        owner: 9,
+        purpose: 'login',
+      });
+    });
+
+    it('returns null for an unknown token', async () => {
+      expect(await repo.findByToken('nope')).toBeNull();
+    });
+  });
+});
 
 describe('InMemoryMagicTokenRepository', () => {
   const NOW = new Date('2026-05-12T12:00:00Z');
