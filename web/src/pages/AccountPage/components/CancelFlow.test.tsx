@@ -1,18 +1,16 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CancelFlow } from './CancelFlow';
-import { track } from '../../../lib/analytics/track';
 
-vi.mock('../../../lib/analytics/track', () => ({
-  track: vi.fn(),
-}));
+const PERIOD_END_SECONDS = Date.parse('2030-01-01T00:30:00.000Z') / 1000;
 
 const renderFlow = (
   overrides: Partial<Parameters<typeof CancelFlow>[0]> = {}
 ) => {
-  const props = {
+  const props: Parameters<typeof CancelFlow>[0] = {
     isCancelling: false,
+    access: { kind: 'untilPeriodEnd', periodEnd: PERIOD_END_SECONDS },
     onCancel: vi.fn(),
     onKeep: vi.fn(),
     ...overrides,
@@ -21,8 +19,15 @@ const renderFlow = (
   return props;
 };
 
+let originalZone: string | undefined;
+
 beforeEach(() => {
-  vi.mocked(track).mockClear();
+  originalZone = process.env.TZ;
+  process.env.TZ = 'Europe/Berlin';
+});
+
+afterEach(() => {
+  process.env.TZ = originalZone;
 });
 
 describe('CancelFlow comment capture', () => {
@@ -97,7 +102,6 @@ describe('CancelFlow opening step', () => {
       screen.getByRole('radio', { name: 'Too expensive' })
     ).not.toBeChecked();
     expect(screen.queryByText(/Pause/)).not.toBeInTheDocument();
-    expect(track).not.toHaveBeenCalled();
   });
 
   it('labels the flow for assistive tech in the reader language', () => {
@@ -108,14 +112,59 @@ describe('CancelFlow opening step', () => {
     ).toBeInTheDocument();
   });
 
-  it('offers cancel and keep side by side', () => {
+  it('offers keep as the primary action, ahead of a danger-styled cancel', () => {
+    renderFlow();
+
+    const keep = screen.getByRole('button', { name: 'Keep subscription' });
+    const cancel = screen.getByRole('button', { name: 'Cancel subscription' });
+    expect(keep).toHaveClass(/btnPrimary/);
+    expect(cancel).toHaveClass(/btnDanger/);
+    expect(cancel).not.toHaveClass(/btnPrimary/);
+    expect(keep.compareDocumentPosition(cancel)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING
+    );
+  });
+});
+
+describe('CancelFlow says when access ends before the confirm', () => {
+  it('names the period end with its local date and time, ahead of the buttons', () => {
+    renderFlow();
+
+    const notice = screen.getByText(
+      "You keep access until January 1, 2030 at 1:30 AM, the end of the period you paid for. Your card won't be charged again."
+    );
+    const keep = screen.getByRole('button', { name: 'Keep subscription' });
+    expect(notice.compareDocumentPosition(keep)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING
+    );
+  });
+
+  it('describes the cancel button with the notice, so it is read on focus', () => {
     renderFlow();
 
     expect(
       screen.getByRole('button', { name: 'Cancel subscription' })
-    ).toBeInTheDocument();
+    ).toHaveAccessibleDescription(
+      "You keep access until January 1, 2030 at 1:30 AM, the end of the period you paid for. Your card won't be charged again."
+    );
+  });
+
+  it('says it without a date when the subscription has no period end', () => {
+    renderFlow({ access: { kind: 'untilPeriodEnd', periodEnd: null } });
+
     expect(
-      screen.getByRole('button', { name: 'Keep subscription' })
+      screen.getByText(
+        "You keep access until the end of the period you paid for. Your card won't be charged again."
+      )
     ).toBeInTheDocument();
+  });
+
+  it('promises no access when the plan ends on cancel', () => {
+    renderFlow({ access: { kind: 'notPromised' } });
+
+    expect(screen.queryByText(/You keep access/)).toBeNull();
+    expect(
+      screen.getByRole('button', { name: 'Cancel subscription' })
+    ).not.toHaveAccessibleDescription(/access/);
   });
 });

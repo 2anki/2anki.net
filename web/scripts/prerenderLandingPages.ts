@@ -267,10 +267,10 @@ function rewriteRoot(html: string, copy: LandingCopy): string {
 
 const NOTION_MARKETPLACE_META = {
   pathname: '/notion-marketplace',
-  title: 'Sync Notion to Anki automatically | 2anki',
+  title: 'Turn Notion pages into Anki flashcards | 2anki',
   description:
-    'Connect your Notion workspace and your notes become Anki flashcards automatically. No exports, no zips. Included with Pro at $7.99/mo.',
-  h1: 'Your Notion notes become Anki cards — automatically',
+    'Turn your Notion pages into Anki flashcards. Unlimited cards on a monthly plan, or pay once with a Day Pass. No exports, no zips.',
+  h1: 'Your Notion notes become Anki cards',
   subhead:
     'Connect your workspace in 5 minutes. No exports, no zips, no manual steps.',
 };

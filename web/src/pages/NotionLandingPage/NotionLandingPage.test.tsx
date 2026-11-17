@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { MemoryRouter } from 'react-router-dom';
@@ -35,6 +35,23 @@ describe('NotionLandingPage', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it('titles the page for turning Notion pages into cards, with no automatic sync promise', async () => {
+    renderPage();
+
+    await waitFor(() =>
+      expect(document.title).toBe(
+        'Turn Notion pages into Anki flashcards | 2anki'
+      )
+    );
+    const description = document
+      .querySelector('meta[name="description"]')
+      ?.getAttribute('content');
+    expect(description).toBe(
+      'Turn your Notion pages into Anki flashcards. Unlimited cards on a monthly plan, or pay once with a Day Pass. No exports, no zips.'
+    );
+    expect(`${document.title} ${description}`).not.toMatch(/automatic|sync/i);
   });
 
   it('renders the hero headline', () => {

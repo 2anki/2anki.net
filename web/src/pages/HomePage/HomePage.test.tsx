@@ -1,4 +1,6 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '@testing-library/jest-dom';
@@ -23,6 +25,77 @@ function renderHome(isLoggedIn = false) {
     </QueryClientProvider>
   );
 }
+
+const HOME_CSS = readFileSync(join(__dirname, 'HomePage.module.css'), 'utf8');
+
+interface GridRule {
+  readonly media: string | null;
+  readonly columns: number;
+}
+
+function columnsIn(declarations: string): number | null {
+  const match = /grid-template-columns:\s*([^;]+);/.exec(declarations);
+  if (match == null) return null;
+  const repeat = /^repeat\((\d+),/.exec(match[1].trim());
+  return repeat == null ? 1 : Number(repeat[1]);
+}
+
+function featureGridRules(css: string): GridRule[] {
+  const rules: GridRule[] = [];
+  const mediaBlock = /@media\s*\(([^)]*)\)\s*\{((?:[^{}]*\{[^{}]*\})*)\s*\}/g;
+  const gridRule = /\.featuresGrid\s*\{([^}]*)\}/g;
+  const outside = css.replace(mediaBlock, '');
+  for (const [, body] of outside.matchAll(gridRule)) {
+    const columns = columnsIn(body);
+    if (columns != null) rules.push({ media: null, columns });
+  }
+  for (const [, media, block] of css.matchAll(mediaBlock)) {
+    for (const [, body] of block.matchAll(gridRule)) {
+      const columns = columnsIn(body);
+      if (columns != null) rules.push({ media, columns });
+    }
+  }
+  return rules;
+}
+
+function mediaApplies(media: string | null, viewportWidth: number): boolean {
+  if (media == null) return true;
+  const [, kind, px] = /(max|min)-width:\s*(\d+)px/.exec(media) ?? [];
+  return kind === 'max'
+    ? viewportWidth <= Number(px)
+    : viewportWidth >= Number(px);
+}
+
+function featureGridColumnsAt(viewportWidth: number): number {
+  const applying = featureGridRules(HOME_CSS).filter((rule) =>
+    mediaApplies(rule.media, viewportWidth)
+  );
+  if (applying.length === 0) throw new Error('no featuresGrid columns found');
+  return applying[applying.length - 1].columns;
+}
+
+describe('HomePage feature grid', () => {
+  it.each([
+    [375, 1],
+    [768, 2],
+    [1024, 4],
+    [1440, 4],
+  ])(
+    'fills every row at %spx, with %s columns and no orphan tile',
+    (width, expectedColumns) => {
+      renderHome();
+      const section = screen
+        .getByRole('heading', { name: 'Other ways to use 2anki' })
+        .closest('section');
+      if (section == null) throw new Error('feature section not found');
+      const tiles = within(section).getAllByRole('link');
+
+      expect(tiles).toHaveLength(8);
+      expect(featureGridColumnsAt(width)).toBe(expectedColumns);
+      expect(tiles.length % featureGridColumnsAt(width)).toBe(0);
+    }
+  );
+});
 
 describe('HomePage (anonymous)', () => {
   beforeEach(() => {

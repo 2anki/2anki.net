@@ -139,6 +139,20 @@ export const en: EmailStrings = {
     replyLine: 'Questions about your pass? Reply to this email.',
     signoff: 'The 2anki Team',
   },
+  subscriptionResumingSoon: {
+    subject: 'Your 2anki subscription resumes on {{resumeDate}}',
+    heading: 'Your subscription resumes on {{resumeDate}}',
+    body: 'Your 2anki.net subscription pause ends on {{resumeDate}}. Billing resumes automatically at {{amount}} per month from that date.',
+    bodyAtRegularPrice:
+      'Your 2anki.net subscription pause ends on {{resumeDate}}. Billing resumes automatically at your regular price from that date.',
+    nothingToDo:
+      'Nothing to do if you want to keep going — your decks and settings are exactly as you left them.',
+    cancelPrefix: 'To cancel instead, go to your',
+    cancelLink: 'account page',
+    cancelSuffix:
+      " before {{resumeDate}}. Cancelling during the pause ends your subscription right away, and you won't be charged again.",
+    replyLine: 'Questions? Reply to this email.',
+  },
   commercialShared: {
     unsubscribe: "Don't want emails like this? Unsubscribe",
   },

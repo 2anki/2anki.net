@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-17-cancel-flow-access-end-date",
+  "date": "2026-11-17",
+  "type": "fix",
+  "title": "Cancelling a subscription shows the date your access ends before you confirm, with Keep subscription as the main button"
+}

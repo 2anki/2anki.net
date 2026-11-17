@@ -35,11 +35,11 @@
           </tr>
           <tr>
             <td class="email-body" style="padding: 32px 24px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 15px; line-height: 1.6; color: #374151;">
-              <h1 style="margin: 0 0 16px; font-size: 20px; font-weight: 600; color: #1f2937;">Your subscription resumes on {{resumeDate}}</h1>
-              <p style="margin: 0 0 16px;">Your 2anki.net subscription pause ends on {{resumeDate}}. Billing resumes automatically at {{amount}} per month from that date.</p>
-              <p style="margin: 0 0 16px;">Nothing to do if you want to keep going — your decks and settings are exactly as you left them.</p>
-              <p style="margin: 0 0 16px;">To extend the pause or cancel instead, visit your <a href="https://2anki.net/account" class="email-link" style="color: #3b82f6; text-decoration: none;">account page</a> before {{resumeDate}}.</p>
-              <p style="margin: 0 0 16px;">Questions? Reply to this email.</p>
+              <h1 style="margin: 0 0 16px; font-size: 20px; font-weight: 600; color: #1f2937;">{{heading}}</h1>
+              <p style="margin: 0 0 16px;">{{body}}</p>
+              <p style="margin: 0 0 16px;">{{nothingToDo}}</p>
+              <p style="margin: 0 0 16px;">{{cancelPrefix}} <a href="https://2anki.net/account" class="email-link" style="color: #3b82f6; text-decoration: none;">{{cancelLink}}</a>{{cancelSuffix}}</p>
+              <p style="margin: 0 0 16px;">{{replyLine}}</p>
             </td>
           </tr>
           <tr>

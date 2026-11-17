@@ -105,7 +105,7 @@ export interface IEmailService {
   sendSubscriptionResumingSoonEmail(
     email: string,
     resumeDate: Date,
-    amount: string
+    amount: string | null
   ): Promise<void>;
   sendMagicLinkEmail(
     email: string,
@@ -1032,18 +1032,35 @@ export class EmailService implements IEmailService {
   async sendSubscriptionResumingSoonEmail(
     email: string,
     resumeDate: Date,
-    amount: string
+    amount: string | null
   ): Promise<void> {
-    const formattedDate = resumeDate.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+    const language = await this.resolveLanguage(email);
+    const copy = getEmailStrings(language).subscriptionResumingSoon;
+    const formattedDate = resumeDate.toLocaleDateString(
+      language === 'de' ? 'de-DE' : 'en-US',
+      {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      }
+    );
+    const fill = (line: string) =>
+      line
+        .replace(/{{resumeDate}}/g, () => formattedDate)
+        .replace(/{{amount}}/g, () => amount ?? '');
+    const body = amount == null ? copy.bodyAtRegularPrice : copy.body;
+    const subject = fill(copy.subject);
 
     const markup = SUBSCRIPTION_RESUMING_SOON_TEMPLATE.replace(
-      /{{resumeDate}}/g,
-      formattedDate
-    ).replace(/{{amount}}/g, amount);
+      '{{heading}}',
+      () => fill(copy.heading)
+    )
+      .replace('{{body}}', () => fill(body))
+      .replace('{{nothingToDo}}', () => copy.nothingToDo)
+      .replace('{{cancelPrefix}}', () => fill(copy.cancelPrefix))
+      .replace('{{cancelLink}}', () => copy.cancelLink)
+      .replace('{{cancelSuffix}}', () => fill(copy.cancelSuffix))
+      .replace('{{replyLine}}', () => copy.replyLine);
 
     const $ = cheerio.load(markup);
     const text = $('body').text().replace(/\s+/g, ' ').trim();
@@ -1051,7 +1068,7 @@ export class EmailService implements IEmailService {
     const msg = {
       to: email,
       from: this.defaultSender,
-      subject: `Your 2anki subscription resumes on ${formattedDate}`,
+      subject,
       text,
       html: markup,
       replyTo: 'support@2anki.net',
@@ -1420,7 +1437,7 @@ export class UnimplementedEmailService implements IEmailService {
   sendSubscriptionResumingSoonEmail(
     email: string,
     resumeDate: Date,
-    amount: string
+    amount: string | null
   ): Promise<void> {
     console.info(
       'sendSubscriptionResumingSoonEmail not handled',

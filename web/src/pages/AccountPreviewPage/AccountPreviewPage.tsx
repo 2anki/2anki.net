@@ -6,10 +6,15 @@ import {
   PlanDetails,
   AccountDeletion,
 } from '../AccountPage/components';
-import { CancelFlow } from '../AccountPage/components/CancelFlow';
+import { CancelAccess, CancelFlow } from '../AccountPage/components/CancelFlow';
 import previewStyles from './AccountPreviewPage.module.css';
 
 const noop = () => undefined;
+
+const PREVIEW_PERIOD_END_ACCESS: CancelAccess = {
+  kind: 'untilPeriodEnd',
+  periodEnd: Date.UTC(2026, 5, 15) / 1000,
+};
 
 interface Variant {
   label: string;
@@ -110,7 +115,12 @@ const variants: Variant[] = [
           <p className={accountStyles.legacyNote}>
             Cancelling forfeits this legacy rate.
           </p>
-          <CancelFlow isCancelling={false} onCancel={noop} onKeep={noop} />
+          <CancelFlow
+            isCancelling={false}
+            access={PREVIEW_PERIOD_END_ACCESS}
+            onCancel={noop}
+            onKeep={noop}
+          />
         </section>
         <AccountDeletion />
       </>
@@ -118,7 +128,7 @@ const variants: Variant[] = [
   },
   {
     label: 'Cancel flow — standard monthly',
-    note: 'Standard sub mid-cancel: reason step first, cancel and keep side by side.',
+    note: 'Standard sub mid-cancel: reason step, the access end date, then keep ahead of cancel.',
     render: () => (
       <>
         <UserProfile user={{ name: 'Casey Pro', email: 'casey@example.com' }} />
@@ -127,7 +137,12 @@ const variants: Variant[] = [
           <p className={accountStyles.statusLine}>
             $7.99 / month · Renews <strong>15 June 2026</strong>
           </p>
-          <CancelFlow isCancelling={false} onCancel={noop} onKeep={noop} />
+          <CancelFlow
+            isCancelling={false}
+            access={PREVIEW_PERIOD_END_ACCESS}
+            onCancel={noop}
+            onKeep={noop}
+          />
         </section>
         <AccountDeletion />
       </>

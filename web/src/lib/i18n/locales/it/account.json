@@ -62,6 +62,8 @@
     "processing": "Elaborazione…",
     "cancelSubscription": "Disdici l'abbonamento",
     "keepSubscription": "Mantieni l'abbonamento",
+    "accessUntil": "Mantieni l'accesso fino al {{date}}, alla fine del periodo che hai pagato. La tua carta non verrà più addebitata.",
+    "accessUntilPeriodEnd": "Mantieni l'accesso fino alla fine del periodo che hai pagato. La tua carta non verrà più addebitata.",
     "commentAria": "Commento facoltativo",
     "commentPlaceholder": "Vuoi aggiungere qualcosa? (facoltativo)",
     "commentPlaceholderTechnical": "Cosa non ha funzionato? (facoltativo)"

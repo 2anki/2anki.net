@@ -96,6 +96,18 @@ export interface SemesterRenewalStrings {
   signoff: string;
 }
 
+export interface SubscriptionResumingSoonStrings {
+  subject: string;
+  heading: string;
+  body: string;
+  bodyAtRegularPrice: string;
+  nothingToDo: string;
+  cancelPrefix: string;
+  cancelLink: string;
+  cancelSuffix: string;
+  replyLine: string;
+}
+
 export interface CommercialSharedStrings {
   unsubscribe: string;
 }
@@ -112,6 +124,7 @@ export interface EmailStrings {
   passEnding: PassEndingStrings;
   semesterPassEnding: PassEndingStrings;
   semesterRenewal: SemesterRenewalStrings;
+  subscriptionResumingSoon: SubscriptionResumingSoonStrings;
   commercialShared: CommercialSharedStrings;
 }
 
