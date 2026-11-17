@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+import { vi, type MockedFunction } from 'vitest';
 import BlockHandler from './BlockHandler';
 import CardOption from '../../../lib/parser/Settings/CardOption';
 import CustomExporter from '../../../lib/parser/exporters/CustomExporter';
@@ -7,8 +7,22 @@ import Workspace from '../../../lib/parser/WorkSpace';
 import Deck from '../../../lib/parser/Deck';
 import NotionAPIWrapper from '../NotionAPIWrapper';
 import { setupTests } from '../../../test/configure-jest';
+import { downloadMediaOrSkip } from '../helpers/downloadMediaOrSkip';
 
-beforeEach(() => setupTests());
+vi.mock('../helpers/downloadMediaOrSkip', () => ({
+  __esModule: true,
+  downloadMediaOrSkip: vi.fn(),
+}));
+
+const mockedDownload = downloadMediaOrSkip as MockedFunction<
+  typeof downloadMediaOrSkip
+>;
+
+beforeEach(() => {
+  setupTests();
+  mockedDownload.mockReset();
+  mockedDownload.mockResolvedValue(null);
+});
 
 const PARENT_PAGE = '11111111-1111-4111-8111-111111111111';
 const CHILD_PAGE = '22222222-2222-4222-8222-222222222222';
@@ -193,15 +207,37 @@ function backOf(id: string, front: string) {
   );
 }
 
+const imageBlock = (id: string) =>
+  block(id, 'image', {
+    type: 'external',
+    external: { url: 'https://example.com/cell.png' },
+    caption: [],
+  });
+const childDatabase = (id: string, title: string) =>
+  block(id, 'child_database', { title });
+
+function failingChildrenFor(
+  sdk: ReturnType<typeof makeSdk>,
+  failingId: string
+) {
+  const list = sdk.blocks.children.list.getMockImplementation()!;
+  sdk.blocks.children.list.mockImplementation(async (args) => {
+    if (args.block_id === failingId) {
+      throw new Error('children fetch failed');
+    }
+    return list(args);
+  });
+  return sdk;
+}
+
 function linkTo(pageId: string, blockId: string) {
   const href = `https://www.notion.so/${pageId.replaceAll('-', '')}#${blockId.replaceAll('-', '')}`;
   return `<div style="text-align:center"><a style="text-decoration:none;color:grey" href="${href}">Open in Notion</a></div>`;
 }
 
-const SUB_DECK_LINK =
-  '<div style="text-align:center"><a style="text-decoration:none;color:grey">Open in Notion</a></div>';
-
 const LINK_ON = { 'add-notion-link': 'true' };
+
+const LONG_ANSWER = 'Mitochondria convert nutrients into energy. '.repeat(35);
 
 const PLANS = [
   ['paid', true],
@@ -433,7 +469,7 @@ describe('BlockHandler empty back cards', () => {
   });
 
   describe('the Notion link option with nested toggle promotion on', () => {
-    it('does not promote a nested toggle whose answer is only an empty paragraph', async () => {
+    it('drops a promoted nested toggle whose answer is only an empty paragraph and counts it', async () => {
       const tree: Record<string, FakeBlock[]> = {};
       tree[PARENT_PAGE] = [toggle('t-Outer', 'Outer')];
       tree['t-Outer'] = [
@@ -495,7 +531,7 @@ describe('BlockHandler empty back cards', () => {
   });
 
   describe('the Notion link option with strikethrough tags on', () => {
-    it('drops a toggle whose answer is only struck text and keeps the tagged full card', async () => {
+    it('keeps a toggle whose answer is only struck text, with the link, as before', async () => {
       const tree: Record<string, FakeBlock[]> = {};
       tree[PARENT_PAGE] = [
         toggle('t-Full', 'Full'),
@@ -520,10 +556,15 @@ describe('BlockHandler empty back cards', () => {
       const decks = await convert(handler);
 
       const cards = delivered(decks).flatMap((deck) => deck.cards);
-      expect(cards.map((c) => c.notionId)).toEqual(['t-Full']);
-      expect(decks[0].cards[0].tags).toEqual(['biology']);
-      expect(cards[0].back.endsWith(linkTo(PARENT_PAGE, 't-Full'))).toBe(true);
-      expect(handler.emptyBackCount).toBe(1);
+      expect(cards.map((c) => c.notionId)).toEqual(['t-Full', 't-Struck']);
+      expect(decks[0].cards.map((c) => c.tags)).toEqual([
+        ['biology'],
+        ['biology'],
+      ]);
+      expect(cards[1].back).toBe(
+        '<p class="" id="p-struck"></p>' + linkTo(PARENT_PAGE, 't-Struck')
+      );
+      expect(handler.emptyBackCount).toBe(0);
     });
   });
 
@@ -607,7 +648,176 @@ describe('BlockHandler empty back cards', () => {
     }
   );
 
+  describe('a toggle whose answer the card cannot show, with the Notion link option on', () => {
+    function pageWithOneToggle(children: FakeBlock[]) {
+      const tree: Record<string, FakeBlock[]> = {};
+      tree[PARENT_PAGE] = [toggle('t-Q', 'Q')];
+      tree['t-Q'] = children;
+      return parentOnly(tree);
+    }
+
+    const linkOnlyCard = {
+      name: 'Q',
+      back: linkTo(PARENT_PAGE, 't-Q'),
+      notionId: 't-Q',
+    };
+
+    it('keeps a toggle holding an image with embed images off, with the link, as on main', async () => {
+      const handler = makeHandler(
+        pageWithOneToggle([imageBlock('i-1')]),
+        true,
+        {
+          ...LINK_ON,
+          'embed-images': 'false',
+        }
+      );
+      const decks = await convert(handler);
+
+      expect(delivered(decks)).toEqual([
+        { name: 'Parent', cards: [linkOnlyCard] },
+      ]);
+      expect(handler.emptyBackCount).toBe(0);
+    });
+
+    it('keeps a toggle holding an image with text only back on, with the link, as on main', async () => {
+      const handler = makeHandler(
+        pageWithOneToggle([imageBlock('i-1')]),
+        true,
+        {
+          ...LINK_ON,
+          paragraph: 'true',
+        }
+      );
+      const decks = await convert(handler);
+
+      expect(delivered(decks)).toEqual([
+        {
+          name: 'Parent',
+          cards: [
+            {
+              name: 'Q',
+              back: 'https://www.notion.so/11111111111141118111111111111111#tQ',
+              notionId: 't-Q',
+            },
+          ],
+        },
+      ]);
+    });
+
+    it('keeps a toggle holding an inline database, with the link, as on main', async () => {
+      const handler = makeHandler(
+        pageWithOneToggle([childDatabase('d-1', 'Vocabulary')]),
+        true,
+        LINK_ON
+      );
+      const decks = await convert(handler);
+
+      expect(delivered(decks)).toEqual([
+        { name: 'Parent', cards: [linkOnlyCard] },
+      ]);
+    });
+
+    it('keeps a toggle whose children could not be fetched, with the link, as on main', async () => {
+      const sdk = failingChildrenFor(
+        pageWithOneToggle([paragraph('p-1', 'An answer')]),
+        't-Q'
+      );
+      const handler = makeHandler(sdk, true, LINK_ON);
+      const decks = await convert(handler);
+
+      expect(delivered(decks)).toEqual([
+        { name: 'Parent', cards: [linkOnlyCard] },
+      ]);
+    });
+
+    it('keeps a toggle whose image failed to download, with the link, as on main', async () => {
+      const handler = makeHandler(
+        pageWithOneToggle([imageBlock('i-1')]),
+        true,
+        LINK_ON
+      );
+      const decks = await convert(handler);
+
+      expect(delivered(decks)).toEqual([
+        { name: 'Parent', cards: [linkOnlyCard] },
+      ]);
+      expect(mockedDownload).toHaveBeenCalled();
+      expect(handler.droppedAssetCount).toBe(1);
+    });
+  });
+
+  describe('a long toggle beside an empty toggle and headings, with the Notion link option on', () => {
+    function longToggleAndHeadings() {
+      const tree: Record<string, FakeBlock[]> = {};
+      tree[PARENT_PAGE] = [
+        toggle('t-Long', 'Long'),
+        emptyToggle('t-Empty', 'Empty'),
+        heading('h1', 'Cells'),
+        paragraph('p1', 'Cells are the basic unit of life.'),
+        heading('h2', 'Tissues'),
+        paragraph('p2', 'Tissues are groups of similar cells.'),
+        heading('h3', 'Organs'),
+        paragraph('p3', 'Organs are groups of tissues.'),
+      ];
+      tree['t-Long'] = [paragraph('p-long', LONG_ANSWER)];
+      return parentOnly(tree);
+    }
+
+    it('measures the long card alone and delivers the heading structure, as with the link off', async () => {
+      const linkOn = makeHandler(longToggleAndHeadings(), true, LINK_ON);
+      const linkOff = makeHandler(longToggleAndHeadings(), true);
+      const withLink = await convert(linkOn);
+      const withoutLink = await convert(linkOff);
+
+      const fronts = (decks: Deck[]) =>
+        delivered(decks).map((deck) => [
+          deck.name,
+          deck.cards.map((card) => card.name),
+        ]);
+      expect(fronts(withLink)).toEqual(fronts(withoutLink));
+      expect(fronts(withLink)).toEqual([
+        ['Parent', ['Cells', 'Tissues', 'Organs']],
+      ]);
+      expect(linkOn.inducedRule?.outcome).toBe('rescue_shipped');
+      expect(linkOff.inducedRule?.outcome).toBe('rescue_shipped');
+    });
+  });
+
   describe('a toggle sub-deck on a paid conversion', () => {
+    it('keeps a sub-deck toggle holding an image with embed images off, with the link to its page', async () => {
+      const tree: Record<string, FakeBlock[]> = {};
+      tree[PARENT_PAGE] = [toggle('t-Chapter', 'Chapter')];
+      tree['t-Chapter'] = [toggle('t-Q1', 'Q1'), emptyToggle('t-Q2', 'Q2')];
+      tree['t-Q1'] = [imageBlock('i-1')];
+      const handler = makeHandler(parentOnly(tree), true, {
+        ...LINK_ON,
+        'embed-images': 'false',
+      });
+      const decks = await convert(handler, toggleSubDeckRules());
+
+      expect(delivered(decks)[1]).toEqual({
+        name: 'Parent::Chapter',
+        cards: [
+          { name: 'Q1', back: linkTo(PARENT_PAGE, 't-Q1'), notionId: 't-Q1' },
+        ],
+      });
+    });
+
+    it('links a sub-deck card to its page with text only back on', async () => {
+      const tree: Record<string, FakeBlock[]> = {};
+      tree[PARENT_PAGE] = [toggle('t-Chapter', 'Chapter')];
+      tree['t-Chapter'] = [toggle('t-Q1', 'Q1')];
+      tree['t-Q1'] = [paragraph('p-1', 'An answer')];
+      const handler = makeHandler(parentOnly(tree), true, {
+        ...LINK_ON,
+        paragraph: 'true',
+      });
+      const decks = await convert(handler, toggleSubDeckRules());
+
+      expect(delivered(decks)[1].cards[0].back).toBe(
+        'An answerhttps://www.notion.so/11111111111141118111111111111111#tQ1'
+      );
+    });
     it('drops the sub-deck cards with empty backs and keeps the rest', async () => {
       const tree: Record<string, FakeBlock[]> = {};
       tree[PARENT_PAGE] = [toggle('t-Chapter', 'Chapter')];
@@ -695,7 +905,7 @@ describe('BlockHandler empty back cards', () => {
         cards: [
           {
             name: 'Q1',
-            back: backOf('t-Q1', 'Q1') + SUB_DECK_LINK,
+            back: backOf('t-Q1', 'Q1') + linkTo(PARENT_PAGE, 't-Q1'),
             notionId: 't-Q1',
           },
         ],
