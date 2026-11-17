@@ -33,6 +33,13 @@ describe('Semester Pass renewal copy in every locale', () => {
     }
   );
 
+  it.each(LANGS)(
+    '%s says confirming also ends connected app sessions such as Claude',
+    (lang) => {
+      expect(strings(lang).confirmEmailEffects).toContain('Claude');
+    }
+  );
+
   it.each(LANGS)('%s carries no end date in the banner copy', (lang) => {
     expect(strings(lang).title).not.toContain('{{date}}');
     expect(strings(lang).body).not.toContain('{{date}}');

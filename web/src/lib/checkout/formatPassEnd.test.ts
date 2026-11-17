@@ -17,12 +17,12 @@ describe('formatPassEnd', () => {
 
   it.each([
     ['Europe/Berlin', LATE_EVENING_UTC, 'January 11, 2027 at 12:30 AM'],
-    ['Europe/Berlin', JUST_AFTER_MIDNIGHT_UTC, 'January 11, 2027 at 01:30 AM'],
-    ['America/New_York', LATE_EVENING_UTC, 'January 10, 2027 at 06:30 PM'],
+    ['Europe/Berlin', JUST_AFTER_MIDNIGHT_UTC, 'January 11, 2027 at 1:30 AM'],
+    ['America/New_York', LATE_EVENING_UTC, 'January 10, 2027 at 6:30 PM'],
     [
       'America/New_York',
       JUST_AFTER_MIDNIGHT_UTC,
-      'January 10, 2027 at 07:30 PM',
+      'January 10, 2027 at 7:30 PM',
     ],
   ])(
     'writes the end in the viewer zone %s with its time, %s as %s',
@@ -37,7 +37,7 @@ describe('formatPassEnd', () => {
     process.env.TZ = 'Europe/Berlin';
 
     expect(formatPassEnd(LATE_EVENING_UTC, 'de')).toBe(
-      '11. Januar 2027 um 00:30'
+      '11. Januar 2027 um 0:30'
     );
   });
 

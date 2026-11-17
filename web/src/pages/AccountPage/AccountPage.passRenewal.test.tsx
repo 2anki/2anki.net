@@ -17,6 +17,7 @@ interface HolderLocals {
   subscriber: boolean;
   semesterRenewalOpen?: boolean;
   semesterRenewalNeedsConfirmedEmail?: boolean;
+  patreon?: boolean;
 }
 
 const jsonResponse = (body: unknown, status = 200) =>
@@ -81,9 +82,6 @@ const semesterInFinalWeek = (
   ...overrides,
 });
 
-const countOf = (text: string) =>
-  document.body.textContent?.split(text).length ?? 1;
-
 describe('AccountPage pass end and Semester Pass renewal', () => {
   let originalZone: string | undefined;
 
@@ -125,14 +123,17 @@ describe('AccountPage pass end and Semester Pass renewal', () => {
       ).toBeEnabled();
     });
 
-    it('shows the end date and time once on the page, on the plan line', async () => {
+    it('shows the end date and time once in the banner area, on the plan line above the banner', async () => {
       stubServer(semesterInFinalWeek());
       renderAccountPage();
 
       expect(
         await screen.findByText('Ends January 11, 2027 at 12:30 AM')
       ).toBeInTheDocument();
-      expect(countOf('January 11, 2027')).toBe(2);
+      const region = screen.getByRole('region', {
+        name: 'Semester Pass renewal',
+      });
+      expect(region.textContent).not.toContain('2027');
     });
   });
 
@@ -160,7 +161,7 @@ describe('AccountPage pass end and Semester Pass renewal', () => {
       ).toBeInTheDocument();
       expect(
         within(region).getByText(
-          'Confirming signs you out on your other devices, and your password stops working. Choose “Forgot your password?” on the sign-in page to set a new one.'
+          'Confirming signs you out on your other devices and in connected apps such as Claude, and your password stops working. Choose “Forgot your password?” on the sign-in page to set a new one.'
         )
       ).toBeInTheDocument();
       expect(within(region).queryByRole('button')).toBeNull();
@@ -223,6 +224,18 @@ describe('AccountPage pass end and Semester Pass renewal', () => {
     });
   });
 
+  describe('lifetime user who also holds a Semester Pass in its final week', () => {
+    it('shows Lifetime and no renewal', async () => {
+      stubServer(semesterInFinalWeek({ patreon: true }));
+      renderAccountPage();
+
+      expect(await screen.findByText('Lifetime')).toBeInTheDocument();
+      expect(
+        screen.queryByRole('region', { name: 'Semester Pass renewal' })
+      ).toBeNull();
+    });
+  });
+
   describe('German reader', () => {
     it('labels the region with a noun phrase and heads it in German', async () => {
       await i18n.changeLanguage('de');
@@ -239,7 +252,7 @@ describe('AccountPage pass end and Semester Pass renewal', () => {
         })
       ).toBeInTheDocument();
       expect(
-        screen.getByText('Endet am 11. Januar 2027 um 00:30')
+        screen.getByText('Endet am 11. Januar 2027 um 0:30')
       ).toBeInTheDocument();
     });
   });
@@ -249,13 +262,13 @@ describe('AccountPage pass end and Semester Pass renewal', () => {
     [
       'Europe/Berlin',
       JUST_AFTER_MIDNIGHT_UTC,
-      'Ends January 11, 2027 at 01:30 AM',
+      'Ends January 11, 2027 at 1:30 AM',
     ],
-    ['America/New_York', IN_FINAL_WEEK, 'Ends January 10, 2027 at 06:30 PM'],
+    ['America/New_York', IN_FINAL_WEEK, 'Ends January 10, 2027 at 6:30 PM'],
     [
       'America/New_York',
       JUST_AFTER_MIDNIGHT_UTC,
-      'Ends January 10, 2027 at 07:30 PM',
+      'Ends January 10, 2027 at 7:30 PM',
     ],
   ])('a reader in %s', (zone, passExpiresAt, expected) => {
     it(`shows a pass ending at ${passExpiresAt} as "${expected}", the same moment the email writes in UTC`, async () => {

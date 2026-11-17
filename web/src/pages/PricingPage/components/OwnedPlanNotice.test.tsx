@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import i18n from '../../../lib/i18n';
 import {
   OwnedPlanNotice,
   ownsOngoingAccess,
@@ -70,6 +71,46 @@ describe('OwnedPlanNotice', () => {
     );
 
     expect(screen.getByText(/Semester Pass/)).toBeInTheDocument();
+  });
+
+  describe('pass end', () => {
+    const NOW = new Date('2027-01-08T12:00:00.000Z');
+    let originalZone: string | undefined;
+
+    beforeEach(() => {
+      originalZone = process.env.TZ;
+      process.env.TZ = 'Europe/Berlin';
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(NOW);
+    });
+
+    afterEach(async () => {
+      vi.useRealTimers();
+      process.env.TZ = originalZone;
+      await i18n.changeLanguage('en');
+    });
+
+    it.each([
+      ['en', 'January 11, 2027 at 12:30 AM'],
+      ['de', '11. Januar 2027 um 0:30'],
+    ])(
+      'writes the end with its time in the chosen language (%s), as the account page does',
+      async (language, expected) => {
+        await i18n.changeLanguage(language);
+
+        render(
+          <OwnedPlanNotice
+            entitlement={{
+              subscriber: true,
+              passKind: '120d',
+              passExpiresAt: '2027-01-10T23:30:00.000Z',
+            }}
+          />
+        );
+
+        expect(screen.getByRole('status')).toHaveTextContent(expected);
+      }
+    );
   });
 
   it('says a subscriber is already on Pro', () => {

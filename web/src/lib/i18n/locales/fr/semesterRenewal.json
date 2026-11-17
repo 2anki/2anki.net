@@ -3,7 +3,7 @@
   "title": "Renouvelle ton Semester Pass",
   "body": "Renouvelle maintenant et les 120 prochains jours commencent dès que celui-ci se termine : tu ne perds aucun jour. Un seul paiement, rien ne se renouvelle tout seul.",
   "confirmEmailFirst": "Un forfait est déjà facturé à cet e-mail, donc le renouvellement demande d'abord un e-mail confirmé. Déconnecte-toi, choisis « M'envoyer un lien de connexion » sur la page de connexion et ouvre le lien que nous t'envoyons. Ensuite, renouvelle ici.",
-  "confirmEmailEffects": "La confirmation te déconnecte de tes autres appareils et ton mot de passe ne fonctionne plus. Choisis « Mot de passe oublié ? » sur la page de connexion pour en définir un nouveau.",
+  "confirmEmailEffects": "La confirmation te déconnecte de tes autres appareils et des applis connectées comme Claude, et ton mot de passe ne fonctionne plus. Choisis « Mot de passe oublié ? » sur la page de connexion pour en définir un nouveau.",
   "renew": "Renouveler le Semester Pass",
   "renewWithPrice": "Renouveler le Semester Pass · {{price}}",
   "opening": "Ouverture du paiement",

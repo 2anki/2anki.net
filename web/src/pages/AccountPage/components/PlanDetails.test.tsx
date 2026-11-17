@@ -77,7 +77,7 @@ describe('PlanDetails', () => {
     process.env.TZ = originalZone;
     expect(screen.getByText('Week Pass')).toBeInTheDocument();
     expect(
-      screen.getByText('Ends November 18, 2026 at 01:00 AM')
+      screen.getByText('Ends November 18, 2026 at 1:00 AM')
     ).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'See plans' })).toBeNull();
   });

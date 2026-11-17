@@ -3,7 +3,7 @@
   "title": "Rinnova il tuo Semester Pass",
   "body": "Rinnova ora e i prossimi 120 giorni iniziano non appena finisce questo, così non perdi nessun giorno. Un solo pagamento, niente si rinnova da solo.",
   "confirmEmailFirst": "C'è già un piano fatturato a questa email, quindi per rinnovare serve prima un'email confermata. Esci, scegli «Inviami un link di accesso» nella pagina di accesso e apri il link che ti inviamo. Poi rinnova qui.",
-  "confirmEmailEffects": "La conferma ti disconnette dagli altri dispositivi e la tua password smette di funzionare. Scegli «Hai dimenticato la password?» nella pagina di accesso per impostarne una nuova.",
+  "confirmEmailEffects": "La conferma ti disconnette dagli altri dispositivi e dalle app collegate come Claude, e la tua password smette di funzionare. Scegli «Hai dimenticato la password?» nella pagina di accesso per impostarne una nuova.",
   "renew": "Rinnova il Semester Pass",
   "renewWithPrice": "Rinnova il Semester Pass · {{price}}",
   "opening": "Apertura del pagamento",

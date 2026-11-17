@@ -108,8 +108,8 @@ export const de: DeepPartial<EmailStrings> = {
     signoff: 'Das 2anki-Team',
   },
   semesterPassEnding: {
-    subject: 'Dein Semester Pass endet am {{endDate}}',
-    title: 'Dein Semester Pass endet am {{endDate}}',
+    subject: 'Verlängere deinen Semester Pass, bevor er am {{endDate}} endet',
+    title: 'Verlängere deinen Semester Pass, bevor er am {{endDate}} endet',
     intro:
       'Dein Semester Pass endet am {{endDate}}. Hier ist, was als Nächstes mit deinem Konto passiert, in zwei Varianten.',
     withoutPlanHeading: 'Ohne Verlängerung',

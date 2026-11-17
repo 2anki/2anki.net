@@ -3,7 +3,7 @@
   "title": "Semester Pass verlängern",
   "body": "Verlängere jetzt, und die nächsten 120 Tage beginnen, sobald dieser Pass endet. Du verlierst keinen Tag. Eine einmalige Zahlung, nichts verlängert sich von selbst.",
   "confirmEmailFirst": "Für diese E-Mail-Adresse läuft schon ein Plan, deshalb braucht die Verlängerung zuerst eine bestätigte Adresse. Melde dich ab, wähle auf der Anmeldeseite „Anmeldelink per E-Mail senden“ und öffne den Link, den wir dir schicken. Danach verlängerst du hier.",
-  "confirmEmailEffects": "Die Bestätigung meldet dich auf deinen anderen Geräten ab, und dein Passwort funktioniert nicht mehr. Wähle auf der Anmeldeseite „Passwort vergessen?“, um ein neues festzulegen.",
+  "confirmEmailEffects": "Die Bestätigung meldet dich auf deinen anderen Geräten und in verbundenen Apps wie Claude ab, und dein Passwort funktioniert nicht mehr. Wähle auf der Anmeldeseite „Passwort vergessen?“, um ein neues festzulegen.",
   "renew": "Semester Pass verlängern",
   "renewWithPrice": "Semester Pass verlängern · {{price}}",
   "opening": "Checkout wird geöffnet",

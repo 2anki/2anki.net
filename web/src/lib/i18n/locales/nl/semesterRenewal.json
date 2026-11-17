@@ -3,7 +3,7 @@
   "title": "Verleng je Semester Pass",
   "body": "Verleng nu en de volgende 120 dagen beginnen zodra deze pass afloopt, dus je verliest geen dag. Eén betaling, niets verlengt vanzelf.",
   "confirmEmailFirst": "Er wordt al een plan gefactureerd op dit e-mailadres, dus voor verlengen heb je eerst een bevestigd e-mailadres nodig. Log uit, kies ‘Mail me een inloglink’ op de inlogpagina en open de link die we je sturen. Verleng daarna hier.",
-  "confirmEmailEffects": "Bevestigen logt je uit op je andere apparaten en je wachtwoord werkt dan niet meer. Kies ‘Wachtwoord vergeten?’ op de inlogpagina om een nieuw wachtwoord in te stellen.",
+  "confirmEmailEffects": "Bevestigen logt je uit op je andere apparaten en in gekoppelde apps zoals Claude, en je wachtwoord werkt dan niet meer. Kies ‘Wachtwoord vergeten?’ op de inlogpagina om een nieuw wachtwoord in te stellen.",
   "renew": "Semester Pass verlengen",
   "renewWithPrice": "Semester Pass verlengen · {{price}}",
   "opening": "Afrekenen wordt geopend",

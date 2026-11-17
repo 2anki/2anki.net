@@ -103,8 +103,8 @@ export const en: EmailStrings = {
     signoff: 'The 2anki Team',
   },
   semesterPassEnding: {
-    subject: 'Your Semester Pass ends on {{endDate}}',
-    title: 'Your Semester Pass ends on {{endDate}}',
+    subject: 'Renew your Semester Pass before it ends on {{endDate}}',
+    title: 'Renew your Semester Pass before it ends on {{endDate}}',
     intro:
       'Your Semester Pass ends on {{endDate}}. Here is what happens to your account next, in two versions.',
     withoutPlanHeading: 'Without a renewal',

@@ -80,7 +80,7 @@ describe('pass end emails', () => {
 
       const msg = lastMessage();
       expect(msg.subject).toBe(
-        'Your Semester Pass ends on 10 January 2027 at 23:30 UTC'
+        'Renew your Semester Pass before it ends on 10 January 2027 at 23:30 UTC'
       );
       expect(msg.text).toContain(
         'Your Semester Pass ends on 10 January 2027 at 23:30 UTC. Here is what happens to your account next, in two versions. Without a renewal After it ends: the free limit is back. 100 cards a month.'
@@ -128,7 +128,7 @@ describe('pass end emails', () => {
 
       const msg = lastMessage();
       expect(msg.subject).toBe(
-        'Dein Semester Pass endet am 10. Januar 2027 um 23:30 UTC'
+        'Verlängere deinen Semester Pass, bevor er am 10. Januar 2027 um 23:30 UTC endet'
       );
       expect(msg.text).toContain('Mit Verlängerung');
       expect(msg.text).toContain('Semester Pass verlängern');
@@ -167,7 +167,7 @@ describe('pass end emails', () => {
 
       const msg = lastMessage();
       expect(msg.subject).toBe(
-        'Dein Semester Pass endet am 11. Januar 2027 um 00:30 UTC'
+        'Dein Semester Pass endet am 11. Januar 2027 um 0:30 UTC'
       );
       expect(msg.text).toContain(
         'Verlängere ihn jetzt, und die nächsten 120 Tage beginnen, sobald dein aktueller Pass endet.'
@@ -192,7 +192,7 @@ describe('pass end emails', () => {
 
     it.each([
       [LATE_EVENING_UTC.toISOString(), '10 January 2027 at 23:30 UTC'],
-      [JUST_AFTER_MIDNIGHT_UTC.toISOString(), '11 January 2027 at 00:30 UTC'],
+      [JUST_AFTER_MIDNIGHT_UTC.toISOString(), '11 January 2027 at 0:30 UTC'],
     ])(
       'writes a pass ending at %s as %s in both Semester Pass emails',
       async (isoExpiry, expected) => {
@@ -212,9 +212,25 @@ describe('pass end emails', () => {
           expiresAt
         );
         expect(lastMessage().subject).toBe(
-          `Your Semester Pass ends on ${expected}`
+          `Renew your Semester Pass before it ends on ${expected}`
         );
       }
     );
+  });
+
+  it('gives the week-before and day-before Semester emails different subjects, so a mail client does not thread them', async () => {
+    await serviceFor(null).sendSemesterRenewalEmail(
+      'semester@example.com',
+      'tok-renewal',
+      LATE_EVENING_UTC
+    );
+    const weekBefore = lastMessage().subject;
+    await serviceFor(null).sendSemesterPassEndingEmail(
+      'semester@example.com',
+      'tok-semester',
+      LATE_EVENING_UTC
+    );
+
+    expect(lastMessage().subject).not.toBe(weekBefore);
   });
 });

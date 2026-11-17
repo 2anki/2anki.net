@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { formatPassEnd } from '../../../lib/checkout/formatPassEnd';
 import styles from '../PricingPage.module.css';
 
 export interface PricingEntitlement {
@@ -43,7 +44,7 @@ export function activePassKind(
 export function OwnedPlanNotice({
   entitlement,
 }: Readonly<{ entitlement: PricingEntitlement | undefined }>) {
-  const { t } = useTranslation('account');
+  const { t, i18n } = useTranslation('account');
 
   const passKind = activePassKind(entitlement);
   if (passKind != null) {
@@ -51,7 +52,7 @@ export function OwnedPlanNotice({
       <output className={styles.contextBanner}>
         {t('accessBanner.active', {
           passLabel: PASS_LABELS[passKind] ?? passKind,
-          date: new Date(entitlement!.passExpiresAt!).toLocaleDateString(),
+          date: formatPassEnd(entitlement!.passExpiresAt!, i18n.language),
         })}
       </output>
     );

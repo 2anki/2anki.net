@@ -28,17 +28,17 @@ describe('purchaseConflictMessage', () => {
     [
       'Europe/Berlin',
       '2027-01-11T00:30:00.000Z',
-      'January 11, 2027 at 01:30 AM',
+      'January 11, 2027 at 1:30 AM',
     ],
     [
       'America/New_York',
       '2027-01-10T23:30:00.000Z',
-      'January 10, 2027 at 06:30 PM',
+      'January 10, 2027 at 6:30 PM',
     ],
     [
       'America/New_York',
       '2027-01-11T00:30:00.000Z',
-      'January 10, 2027 at 07:30 PM',
+      'January 10, 2027 at 7:30 PM',
     ],
   ])('for a reader in %s', (zone, expiresAt, expected) => {
     const originalZone = process.env.TZ;
