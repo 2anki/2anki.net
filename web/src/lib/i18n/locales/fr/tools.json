@@ -8,7 +8,6 @@
     "wrongType": "Cet outil fonctionne avec les fichiers de paquet Anki (.apkg). Pour transformer des notes en paquet Anki, utilise la page Créer des cartes.",
     "corrupted": "Impossible de lire ce fichier. Assure-toi que c'est un paquet Anki (.apkg) valide et réessaie.",
     "genericError": "Une erreur est survenue lors de la génération du PDF. Réessaie.",
-    "authMessage": "Connecte-toi pour utiliser l'export PDF.",
     "upgradeMessage": "Ton PDF gratuit de ce mois-ci a été utilisé.",
     "paperSize": "Format du papier",
     "orientation": "Orientation",
@@ -43,7 +42,15 @@
     "seeAllPlans": "Voir tous les forfaits",
     "previewAnother": "Autre aperçu",
     "emptyDeck": "Ce paquet n'a aucune carte à imprimer. Choisis un autre .apkg.",
-    "makingPreview": "Création de ton aperçu"
+    "makingPreview": "Création de ton aperçu",
+    "signInTitle": "Connecte-toi pour prévisualiser et imprimer ce paquet",
+    "signInBody": "Avec un compte, l'aperçu est gratuit, tout comme 1 PDF par mois. Une fois connecté, ajoute à nouveau le paquet ici.",
+    "cancel": "Annuler",
+    "tryAgain": "Réessayer",
+    "tooLarge": "Ce paquet est trop volumineux pour être imprimé. Divise-le en paquets plus petits dans Anki et réessaie.",
+    "tooManyPreviews": "Trop d'aperçus en même temps. Réessaie dans un instant.",
+    "networkError": "Impossible de joindre 2anki. Vérifie ta connexion et réessaie.",
+    "serverError": "Un problème est survenu de notre côté pendant la création de l'aperçu. Réessaie dans un instant."
   },
   "import": {
     "title": "Importer dans Notion",

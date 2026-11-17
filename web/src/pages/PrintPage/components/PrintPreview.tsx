@@ -18,6 +18,7 @@ interface PrintPreviewProps {
   passBusy: boolean;
   errorMessage: string | null;
   downloadError?: ReactNode;
+  onRetry?: () => void;
   onUpdatePreview: () => void;
   onDownload: () => void;
   onPass: () => void;
@@ -36,6 +37,7 @@ export default function PrintPreview({
   passBusy,
   errorMessage,
   downloadError = null,
+  onRetry,
   onUpdatePreview,
   onDownload,
   onPass,
@@ -67,6 +69,15 @@ export default function PrintPreview({
       <div className={styles.previewPanel}>
         <p className={sharedStyles.notificationDanger}>{errorMessage}</p>
         <div className={styles.previewActions}>
+          {onRetry != null && (
+            <button
+              type="button"
+              className={sharedStyles.btnPrimary}
+              onClick={onRetry}
+            >
+              {t('print.tryAgain')}
+            </button>
+          )}
           <button
             type="button"
             className={sharedStyles.btnSecondary}

@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-17-print-sign-in-before-upload",
+  "date": "2026-11-17",
+  "type": "fix",
+  "title": "Print asks you to sign in before it sends your deck, and says why a preview failed with a way to try again"
+}

@@ -8,7 +8,6 @@
     "wrongType": "To narzędzie działa z plikami talii Anki (.apkg). Aby zamienić notatki w talię Anki, użyj strony Prześlij.",
     "corrupted": "Nie udało się odczytać tego pliku. Upewnij się, że to prawidłowa talia Anki (.apkg), i spróbuj ponownie.",
     "genericError": "Coś poszło nie tak przy generowaniu pliku PDF. Spróbuj ponownie.",
-    "authMessage": "Zaloguj się, aby korzystać z eksportu PDF.",
     "upgradeMessage": "Twój darmowy plik PDF na ten miesiąc został wykorzystany.",
     "paperSize": "Rozmiar papieru",
     "orientation": "Orientacja",
@@ -45,7 +44,15 @@
     "seeAllPlans": "Zobacz wszystkie plany",
     "previewAnother": "Inny podgląd",
     "emptyDeck": "Ta talia nie ma kart do druku. Wybierz inny plik .apkg.",
-    "makingPreview": "Tworzenie podglądu"
+    "makingPreview": "Tworzenie podglądu",
+    "signInTitle": "Zaloguj się, aby zobaczyć podgląd i wydrukować tę talię",
+    "signInBody": "Z kontem podgląd jest bezpłatny, a do tego 1 plik PDF miesięcznie. Po zalogowaniu dodaj tutaj talię jeszcze raz.",
+    "cancel": "Anuluj",
+    "tryAgain": "Spróbuj ponownie",
+    "tooLarge": "Ta talia jest za duża do wydruku. Podziel ją w Anki na mniejsze talie i spróbuj ponownie.",
+    "tooManyPreviews": "Za dużo podglądów naraz. Spróbuj ponownie za chwilę.",
+    "networkError": "Nie udało się połączyć z 2anki. Sprawdź połączenie i spróbuj ponownie.",
+    "serverError": "Coś poszło nie tak po naszej stronie podczas tworzenia podglądu. Spróbuj ponownie za chwilę."
   },
   "import": {
     "title": "Importuj do Notion",

@@ -18,6 +18,7 @@ const ALLOWED_REDIRECT_PATHS = [
   '/settings',
   '/anki',
   '/card-options',
+  '/print',
 ];
 
 const ALLOWED_REDIRECT_ORIGINS = ALLOWED_ORIGINS.map((origin) => {

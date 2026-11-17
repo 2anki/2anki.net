@@ -8,7 +8,6 @@
     "wrongType": "Esta herramienta funciona con archivos de mazo de Anki (.apkg). Para convertir notas en un mazo de Anki, usa la página de subida.",
     "corrupted": "No se pudo leer este archivo. Asegúrate de que sea un mazo de Anki (.apkg) válido e inténtalo de nuevo.",
     "genericError": "Algo salió mal al generar el PDF. Inténtalo de nuevo.",
-    "authMessage": "Inicia sesión para usar la exportación a PDF.",
     "upgradeMessage": "Ya has usado tu PDF gratuito de este mes.",
     "paperSize": "Tamaño del papel",
     "orientation": "Orientación",
@@ -43,7 +42,15 @@
     "seeAllPlans": "Ver todos los planes",
     "previewAnother": "Otra vista previa",
     "emptyDeck": "Este mazo no tiene tarjetas para imprimir. Elige otro .apkg.",
-    "makingPreview": "Creando tu vista previa"
+    "makingPreview": "Creando tu vista previa",
+    "signInTitle": "Inicia sesión para ver e imprimir este mazo",
+    "signInBody": "Con una cuenta, la vista previa es gratis, y también 1 PDF al mes. Después de iniciar sesión, vuelve a añadir el mazo aquí.",
+    "cancel": "Cancelar",
+    "tryAgain": "Inténtalo de nuevo",
+    "tooLarge": "Este mazo es demasiado grande para imprimirlo. Divídelo en mazos más pequeños en Anki e inténtalo de nuevo.",
+    "tooManyPreviews": "Hay demasiadas vistas previas a la vez. Inténtalo de nuevo en un momento.",
+    "networkError": "No se pudo conectar con 2anki. Revisa tu conexión e inténtalo de nuevo.",
+    "serverError": "Algo falló por nuestra parte al crear la vista previa. Inténtalo de nuevo en un momento."
   },
   "import": {
     "title": "Importar a Notion",

@@ -41,6 +41,7 @@ describe('asLoginReturn', () => {
     ['/api/download/u/abc123', '/api/download/u/abc123'],
     ['/limit', '/limit'],
     ['/limit?kind=card_count&next=//evil.com', '/limit?kind=card_count'],
+    ['/print', '/print'],
   ])('keeps %s as a same-origin path (%s)', (input, expected) => {
     expect(asLoginReturn(input)).toBe(expected);
   });

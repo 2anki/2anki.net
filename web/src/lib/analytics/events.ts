@@ -106,6 +106,7 @@ export const KNOWN_EVENTS = new Set([
   'apkg_print_cta_clicked',
   'apkg_upload_handoff_clicked',
   'print_preview_shown',
+  'print_sign_in_shown',
   'columns_guessed_notice_shown',
   'structure_rescued_notice_shown',
   'unsupported_blocks_notice_shown',

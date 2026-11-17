@@ -8,7 +8,6 @@
     "wrongType": "This tool works with Anki deck files (.apkg). To turn notes into an Anki deck, use the Upload page.",
     "corrupted": "Couldn't read this file. Make sure it's a valid Anki deck (.apkg) and try again.",
     "genericError": "Something went wrong while generating the PDF. Try again.",
-    "authMessage": "Log in to use PDF export.",
     "upgradeMessage": "Your free PDF for this month has been used.",
     "paperSize": "Paper size",
     "orientation": "Orientation",
@@ -43,7 +42,15 @@
     "seeAllPlans": "See all plans",
     "previewAnother": "Preview another",
     "emptyDeck": "This deck has no cards to print. Pick another .apkg.",
-    "makingPreview": "Making your preview"
+    "makingPreview": "Making your preview",
+    "signInTitle": "Sign in to preview and print this deck",
+    "signInBody": "Previewing is free with an account, and so is 1 PDF a month. After you sign in, add the deck again here.",
+    "cancel": "Cancel",
+    "tryAgain": "Try again",
+    "tooLarge": "This deck is too large to print. Split it into smaller decks in Anki and try again.",
+    "tooManyPreviews": "Too many previews at once. Try again in a moment.",
+    "networkError": "Couldn't reach 2anki. Check your connection and try again.",
+    "serverError": "Something broke on our end while making the preview. Try again in a moment."
   },
   "import": {
     "title": "Import to Notion",

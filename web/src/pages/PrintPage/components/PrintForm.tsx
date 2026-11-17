@@ -29,7 +29,11 @@ type PrintState =
   | 'error'
   | 'done'
   | 'choose'
-  | 'notADeck';
+  | 'notADeck'
+  | 'waitingForSession'
+  | 'signIn';
+type Session = 'loading' | 'signedIn' | 'signedOut' | 'unreadable';
+type SignInReason = 'signed_out' | 'session_ended';
 type PaperSize = 'A4' | 'Letter' | 'Legal';
 type Orientation = 'portrait' | 'landscape';
 type Margins = 'narrow' | 'normal' | 'wide';
@@ -45,8 +49,11 @@ interface PrintMessages {
   wrongType: string;
   corrupted: string;
   genericError: string;
-  auth: string;
   upgrade: string;
+  tooLarge: string;
+  tooManyPreviews: string;
+  networkError: string;
+  serverError: string;
 }
 
 interface DownloadError {
@@ -54,16 +61,30 @@ interface DownloadError {
   message: string;
 }
 
+interface PreviewError {
+  message: string;
+  retry: boolean;
+}
+
 const CARD_LIMIT_PATTERN = /PDF export supports up to/i;
+const INVALID_DECK_PATTERN = /Invalid .apkg/i;
+const SIGN_IN_RETURN = '/print';
 
 function optionsKey(options: PrintOptions): string {
   return `${options.backgroundColor}|${options.paperSize}|${options.orientation}|${options.margins}`;
 }
 
-async function extractErrorMessage(
-  response: Response,
-  fallback: string
-): Promise<string> {
+function sessionOf(
+  userId: number | null | undefined,
+  loaded: boolean,
+  failed: boolean
+): Session {
+  if (userId != null) return 'signedIn';
+  if (loaded) return 'signedOut';
+  return failed ? 'unreadable' : 'loading';
+}
+
+async function readServerMessage(response: Response): Promise<string | null> {
   try {
     const body = await response.clone().json();
     if (typeof body?.message === 'string' && body.message.trim().length > 0) {
@@ -72,7 +93,7 @@ async function extractErrorMessage(
   } catch {
     /* response not JSON */
   }
-  return fallback;
+  return null;
 }
 
 function toUserMessage(
@@ -80,24 +101,34 @@ function toUserMessage(
   status: number,
   messages: PrintMessages
 ): string {
-  if (status === 401) return messages.auth;
-  if (status === 402 || status === 403) return messages.upgrade;
-  if (/Invalid .apkg/i.test(serverMessage)) return messages.corrupted;
+  if (status === 403) return messages.upgrade;
+  if (INVALID_DECK_PATTERN.test(serverMessage)) return messages.corrupted;
   return serverMessage;
 }
 
-function toPreviewErrorMessage(
-  serverMessage: string,
+function toPreviewError(
   status: number,
+  serverMessage: string | null,
   messages: PrintMessages
-): string {
-  if (status === 401) return messages.auth;
-  if (/Invalid .apkg/i.test(serverMessage)) return messages.corrupted;
-  return messages.genericError;
+): PreviewError {
+  if (status === 413) return { message: messages.tooLarge, retry: false };
+  if (status === 429 || status === 503) {
+    return { message: messages.tooManyPreviews, retry: true };
+  }
+  if (status === 408 || (status === 400 && serverMessage == null)) {
+    return { message: messages.networkError, retry: true };
+  }
+  if (status >= 500) return { message: messages.serverError, retry: true };
+  if (serverMessage != null && INVALID_DECK_PATTERN.test(serverMessage)) {
+    return { message: messages.corrupted, retry: false };
+  }
+  return { message: serverMessage ?? messages.genericError, retry: false };
 }
 
 function toPreviewState(state: PrintState): PrintPreviewState {
-  if (state === 'previewing') return 'rendering';
+  if (state === 'previewing' || state === 'waitingForSession') {
+    return 'rendering';
+  }
   if (state === 'empty') return 'empty';
   if (state === 'error') return 'error';
   return 'ready';
@@ -115,17 +146,21 @@ export default function PrintForm() {
     wrongType: t('print.wrongType'),
     corrupted: t('print.corrupted'),
     genericError: t('print.genericError'),
-    auth: t('print.authMessage'),
     upgrade: t('print.upgradeMessage'),
+    tooLarge: t('print.tooLarge'),
+    tooManyPreviews: t('print.tooManyPreviews'),
+    networkError: t('print.networkError'),
+    serverError: t('print.serverError'),
   };
 
-  const { data } = useUserLocals();
+  const { data, isError: localsFailed } = useUserLocals();
   const paying = isPayingUser(data?.locals);
   const freePrintAvailable = data?.freePrintAvailable ?? null;
+  const session = sessionOf(data?.user?.id, data != null, localsFailed);
 
   const [state, setState] = useState<PrintState>('idle');
   const [pickError, setPickError] = useState<string | null>(null);
-  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [previewError, setPreviewError] = useState<PreviewError | null>(null);
   const [downloadError, setDownloadError] = useState<DownloadError | null>(
     null
   );
@@ -140,6 +175,7 @@ export default function PrintForm() {
   const chosenEntryRef = useRef<string | null>(null);
   const [deckChoices, setDeckChoices] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const previewOnSignInRef = useRef(false);
 
   const [backgroundColor, setBackgroundColor] = useState('#ffffff');
   const [paperSize, setPaperSize] = useState<PaperSize>('A4');
@@ -179,6 +215,7 @@ export default function PrintForm() {
     setDeckChoices([]);
     selectedFileRef.current = null;
     chosenEntryRef.current = null;
+    previewOnSignInRef.current = false;
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -196,6 +233,12 @@ export default function PrintForm() {
       setState('notADeck');
     }
     return true;
+  };
+
+  const askToSignIn = (reason: SignInReason) => {
+    previewOnSignInRef.current = reason === 'signed_out';
+    setState('signIn');
+    track('print_sign_in_shown', { reason });
   };
 
   const runPreview = async (file: File) => {
@@ -225,16 +268,51 @@ export default function PrintForm() {
           previewedCards: body.previewedCards,
           freePrintAvailable: paying || freePrintAvailable !== false,
         });
+      } else if (response.status === 401) {
+        askToSignIn('session_ended');
       } else if (!(await answerDeckUpload(response))) {
-        const raw = await extractErrorMessage(response, messages.genericError);
-        setPreviewError(toPreviewErrorMessage(raw, response.status, messages));
+        setPreviewError(
+          toPreviewError(
+            response.status,
+            await readServerMessage(response),
+            messages
+          )
+        );
         setState('error');
       }
     } catch {
-      setPreviewError(messages.genericError);
+      setPreviewError({ message: messages.networkError, retry: true });
       setState('error');
     }
   };
+
+  const previewWhenSignedIn = async (file: File) => {
+    if (session === 'loading') {
+      setState('waitingForSession');
+    } else if (session === 'signedOut') {
+      askToSignIn('signed_out');
+    } else {
+      await runPreview(file);
+    }
+  };
+
+  useEffect(() => {
+    const file = selectedFileRef.current;
+    if (file == null) return;
+    if (state === 'waitingForSession' && session !== 'loading') {
+      void previewWhenSignedIn(file);
+    } else if (state === 'signIn' && session === 'signedOut') {
+      previewOnSignInRef.current = true;
+    } else if (
+      state === 'signIn' &&
+      session === 'signedIn' &&
+      previewOnSignInRef.current
+    ) {
+      previewOnSignInRef.current = false;
+      void runPreview(file);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, state]);
 
   const handleFile = async (file: File) => {
     if (!isDeckUploadName(file.name)) {
@@ -245,7 +323,7 @@ export default function PrintForm() {
     setPickError(null);
     selectedFileRef.current = file;
     chosenEntryRef.current = null;
-    await runPreview(file);
+    await previewWhenSignedIn(file);
   };
 
   const handleDeckChosen = async (entry: string) => {
@@ -301,12 +379,16 @@ export default function PrintForm() {
         link.click();
         globalThis.URL.revokeObjectURL(url);
         setState('done');
+      } else if (response.status === 401) {
+        askToSignIn('session_ended');
       } else if (response.status === 402) {
         setFreePrintUsedOverride(true);
+        setDownloadError({ status: 402, message: messages.upgrade });
       } else if (await answerDeckUpload(response)) {
         return;
       } else {
-        const raw = await extractErrorMessage(response, messages.genericError);
+        const raw =
+          (await readServerMessage(response)) ?? messages.genericError;
         setDownloadError({
           status: response.status,
           message: toUserMessage(raw, response.status, messages),
@@ -366,12 +448,6 @@ export default function PrintForm() {
         <>
           {' '}
           <Link to="/pricing">{t('print.upgradeUnlimited')}</Link>
-        </>
-      )}
-      {downloadError.status === 401 && (
-        <>
-          {' '}
-          <Link to="/login">{t('print.logIn')}</Link>
         </>
       )}
       {downloadError.status === 403 && (
@@ -518,10 +594,49 @@ export default function PrintForm() {
         <NotADeckHandoff file={selectedFileRef.current} onCancel={resetForm} />
       )}
 
+      {state === 'signIn' && (
+        <section
+          className={styles.previewPanel}
+          aria-labelledby="print-sign-in-title"
+        >
+          <h2 id="print-sign-in-title" className={styles.signInTitle}>
+            {t('print.signInTitle')}
+          </h2>
+          {selectedFileRef.current != null && (
+            <p className={styles.signInFile} data-hj-suppress>
+              {selectedFileRef.current.name}
+            </p>
+          )}
+          <p className={styles.previewLede}>{t('print.signInBody')}</p>
+          <div className={styles.previewActions}>
+            <Link
+              to={`/register?redirect=${SIGN_IN_RETURN}`}
+              className={`${sharedStyles.btnPrimary} ${styles.signInAction}`}
+            >
+              {t('limit.signUpFree', { ns: 'accountx' })}
+            </Link>
+            <a
+              href={`/login?redirect=${SIGN_IN_RETURN}`}
+              className={`${sharedStyles.btnSecondary} ${styles.signInAction}`}
+            >
+              {t('print.logIn')}
+            </a>
+            <button
+              type="button"
+              className={styles.previewAnotherLink}
+              onClick={resetForm}
+            >
+              {t('print.cancel')}
+            </button>
+          </div>
+        </section>
+      )}
+
       {state !== 'idle' &&
         state !== 'done' &&
         state !== 'choose' &&
-        state !== 'notADeck' && (
+        state !== 'notADeck' &&
+        state !== 'signIn' && (
           <PrintPreview
             state={previewState}
             imageSrc={previewImage}
@@ -532,8 +647,9 @@ export default function PrintForm() {
             optionsChanged={optionsChanged}
             downloadBusy={downloadBusy}
             passBusy={passBusy}
-            errorMessage={previewError}
+            errorMessage={previewError?.message ?? null}
             downloadError={downloadErrorNode}
+            onRetry={previewError?.retry ? handleUpdatePreview : undefined}
             onUpdatePreview={handleUpdatePreview}
             onDownload={downloadFullPdf}
             onPass={handlePass}

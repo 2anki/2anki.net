@@ -8,7 +8,6 @@
     "wrongType": "Questo strumento funziona con i file di mazzi Anki (.apkg). Per trasformare gli appunti in un mazzo Anki, usa la pagina di caricamento.",
     "corrupted": "Non siamo riusciti a leggere questo file. Assicurati che sia un mazzo Anki valido (.apkg) e riprova.",
     "genericError": "Qualcosa è andato storto durante la generazione del PDF. Riprova.",
-    "authMessage": "Accedi per usare l'esportazione in PDF.",
     "upgradeMessage": "Il tuo PDF gratuito di questo mese è stato usato.",
     "paperSize": "Formato carta",
     "orientation": "Orientamento",
@@ -43,7 +42,15 @@
     "seeAllPlans": "Vedi tutti i piani",
     "previewAnother": "Un'altra anteprima",
     "emptyDeck": "Questo mazzo non ha carte da stampare. Scegli un altro .apkg.",
-    "makingPreview": "Creazione dell'anteprima"
+    "makingPreview": "Creazione dell'anteprima",
+    "signInTitle": "Accedi per vedere in anteprima e stampare questo mazzo",
+    "signInBody": "Con un account l'anteprima è gratuita, e lo è anche 1 PDF al mese. Dopo l'accesso, aggiungi di nuovo il mazzo qui.",
+    "cancel": "Annulla",
+    "tryAgain": "Riprova",
+    "tooLarge": "Questo mazzo è troppo grande per essere stampato. Dividilo in mazzi più piccoli in Anki e riprova.",
+    "tooManyPreviews": "Troppe anteprime in corso. Riprova tra un momento.",
+    "networkError": "Impossibile raggiungere 2anki. Controlla la connessione e riprova.",
+    "serverError": "Qualcosa si è rotto da parte nostra durante la creazione dell'anteprima. Riprova tra un momento."
   },
   "import": {
     "title": "Importa in Notion",

@@ -170,6 +170,7 @@ export const KNOWN_EVENTS = new Set([
   'apkg_upload_handoff_clicked',
   'deck_upload_resolved',
   'print_preview_shown',
+  'print_sign_in_shown',
   'ankify_decklist_sorted',
   'empty_back_notice_shown',
   'cherry_skipped_notice_shown',

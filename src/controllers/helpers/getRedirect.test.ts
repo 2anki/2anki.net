@@ -36,6 +36,7 @@ describe('getRedirect security tests', () => {
       '/settings',
       '/anki',
       '/card-options',
+      '/print',
     ];
 
     validPaths.forEach((path) => {
@@ -109,6 +110,7 @@ describe('getRedirect security tests', () => {
       '/api/internal',
       '/../../etc/passwd',
       '/malicious',
+      '/printer',
     ];
 
     invalidPaths.forEach((path) => {
