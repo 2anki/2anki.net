@@ -1560,6 +1560,7 @@ class UsersController {
 
     let issuedToken: string | undefined;
     try {
+      requireMagicLinkSecret();
       issuedToken = await this.userService.requestMagicLink(
         email.trim(),
         purpose,

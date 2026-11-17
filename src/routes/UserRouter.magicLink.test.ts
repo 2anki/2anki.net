@@ -996,11 +996,30 @@ describe('without the hashing secret', () => {
     expect(await usedAt(token)).toBeNull();
   });
 
-  it('fails closed on request: a generic 500, no link sent, no binding', async () => {
+  it.each([
+    ['an unset', undefined],
+    ['an empty', ''],
+  ])(
+    'fails closed on request with %s secret: a generic 500, no link sent, no binding',
+    async (_label, secret) => {
+      vi.stubEnv('THE_HASHING_SECRET', secret);
+
+      const res = await requestLink(new Browser());
+
+      expect(res.status).toBe(500);
+      expect(await res.json()).toEqual(GENERIC_SERVER_ERROR);
+      expect(sentTokens()).toEqual([]);
+      expect(cookieNames(res)).toEqual([]);
+    }
+  );
+
+  it('creates no account on request when the secret is unset', async () => {
     vi.stubEnv('THE_HASHING_SECRET', undefined);
+    const usersBefore = await holder.db!('users');
 
-    const res = await requestLink(new Browser());
+    const res = await requestLink(new Browser(), 'brand-new@example.com');
 
+    expect(await holder.db!('users')).toHaveLength(usersBefore.length);
     expect(res.status).toBe(500);
     expect(await res.json()).toEqual(GENERIC_SERVER_ERROR);
     expect(sentTokens()).toEqual([]);
