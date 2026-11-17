@@ -47,6 +47,11 @@ vi.mock('./middleware/RequireAuthentication', () => ({
 }));
 
 import ApkgRouter from './ApkgRouter';
+import { resetPreviewMemoryLimitsForTesting } from '../services/ApkgPreviewService/previewMemoryLimits';
+
+beforeEach(() => {
+  resetPreviewMemoryLimitsForTesting();
+});
 
 const STORED_KEY = 'stored/7/deck.apkg';
 

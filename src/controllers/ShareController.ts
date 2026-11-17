@@ -162,8 +162,12 @@ class ShareController {
         `share:${token}`,
         {
           storedSize: async () => storedSize,
-          read: () =>
-            this.downloadService.readStoredBody(share.upload_key, this.storage),
+          read: (signal) =>
+            this.downloadService.readStoredBody(
+              share.upload_key,
+              this.storage,
+              signal
+            ),
         },
         clientGoneSignal(res)
       );

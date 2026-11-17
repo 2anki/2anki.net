@@ -131,15 +131,32 @@ describe('DownloadService.storedDeckSource', () => {
 
     expect(await source.storedSize()).toBe(4096);
     expect(storage.getFileContents).not.toHaveBeenCalled();
-    expect((await source.read())?.toString()).toBe('x');
   });
 
-  it('refuses a deck over the limit from its size check', async () => {
+  it('reads the body under the signal it is given', async () => {
     const storage = {
-      getObjectSize: vi
-        .fn()
-        .mockResolvedValue(MAX_TOTAL_DECOMPRESSED_BYTES + 1),
+      getFileContents: vi.fn().mockResolvedValue({ Body: Buffer.from('x') }),
     };
+    const source = makeService().storedDeckSource(
+      'stored/1/deck.apkg',
+      storage as never
+    );
+    const limit = new AbortController();
+
+    expect((await source.read(limit.signal))?.toString()).toBe('x');
+    expect(storage.getFileContents).toHaveBeenCalledWith(
+      'stored/1/deck.apkg',
+      limit.signal
+    );
+  });
+
+  it.each([
+    MAX_TOTAL_DECOMPRESSED_BYTES + 1,
+    Number.NaN,
+    Number.POSITIVE_INFINITY,
+    -1,
+  ])('refuses a stored size of %s from its size check', async (size) => {
+    const storage = { getObjectSize: vi.fn().mockResolvedValue(size) };
     const source = makeService().storedDeckSource(
       'stored/1/deck.apkg',
       storage as never
@@ -155,6 +172,8 @@ describe('DownloadService.isTooLargeToBuffer', () => {
     [BUFFERED_COPY_MAX_BYTES, false],
     [BUFFERED_COPY_MAX_BYTES + 1, true],
     [undefined, true],
+    [Number.NaN, true],
+    [-1, true],
   ])('answers %s bytes with %s', async (size, expected) => {
     const storage = { getObjectSize: vi.fn().mockResolvedValue(size) };
 

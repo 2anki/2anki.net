@@ -2,7 +2,21 @@ import {
   COLD_LOAD_BUDGET_BYTES,
   COLD_LOAD_MIN_WEIGHT_BYTES,
   coldLoadWeight,
+  resetPreviewMemoryLimitsForTesting,
+  sharedPreviewLimits,
 } from './previewMemoryLimits';
+
+describe('resetPreviewMemoryLimitsForTesting', () => {
+  it('replaces a held cold-load limit and a filled cache budget with empty ones', async () => {
+    await sharedPreviewLimits().coldLoads.acquire(COLD_LOAD_BUDGET_BYTES);
+    sharedPreviewLimits().cacheBudget.admit({}, 100, () => {});
+
+    resetPreviewMemoryLimitsForTesting();
+
+    expect(sharedPreviewLimits().coldLoads.inUse).toBe(0);
+    expect(sharedPreviewLimits().cacheBudget.totalBytes).toBe(0);
+  });
+});
 
 describe('coldLoadWeight', () => {
   it('weighs a small deck at the minimum, so at most four run at once', () => {

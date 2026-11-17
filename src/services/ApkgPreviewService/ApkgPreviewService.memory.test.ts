@@ -5,12 +5,16 @@ import {
   WaitAbandonedError,
   WeightedSemaphore,
 } from '../../lib/rateLimit/WeightedSemaphore';
-import ApkgPreviewService, { type DeckSource } from './ApkgPreviewService';
+import ApkgPreviewService, {
+  type DeckSource,
+  PreviewReadTimedOutError,
+} from './ApkgPreviewService';
 import { estimateParsedBytes } from './estimateParsedBytes';
 import { ParseCacheBudget } from './ParseCacheBudget';
 import {
   COLD_LOAD_BUDGET_BYTES,
   COLD_LOAD_MIN_WEIGHT_BYTES,
+  PREVIEW_READ_TIME_LIMIT_MS,
 } from './previewMemoryLimits';
 
 const MIB = 1024 * 1024;
@@ -283,6 +287,104 @@ describe('ApkgPreviewService cold loads', () => {
 
     expect((await later)?.collection.cards).toHaveLength(1);
     expect(deck.reads()).toBe(1);
+  });
+});
+
+describe('ApkgPreviewService storage read time limit', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('hands the slot to the next waiter once a stalled read passes the time limit, and caches nothing', async () => {
+    const limits = freshLimits();
+    const service = new ApkgPreviewService(limits);
+    const log: string[] = [];
+    const stalled = heldRead(COLD_LOAD_BUDGET_BYTES, log, 'stalled');
+    const next = heldRead(4096, log, 'next');
+
+    const timedOut = service
+      .load('owner-1:stalled.apkg', stalled.source)
+      .catch((error: unknown) => error);
+    const waiting = service.load('owner-1:next.apkg', next.source);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(log).toEqual(['stalled']);
+
+    await vi.advanceTimersByTimeAsync(PREVIEW_READ_TIME_LIMIT_MS - 1);
+    expect(log).toEqual(['stalled']);
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(await timedOut).toBeInstanceOf(PreviewReadTimedOutError);
+    expect(log).toEqual(['stalled', 'next']);
+    next.finish();
+    expect((await waiting)?.collection.cards).toHaveLength(1);
+    expect(limits.cacheBudget.totalBytes).toBe(await tinyDeckEstimate('next'));
+  });
+
+  it('aborts the signal it gave the read at the time limit', async () => {
+    const service = new ApkgPreviewService(freshLimits());
+    let readSignal: AbortSignal | undefined;
+    const source: DeckSource = {
+      storedSize: async () => 4096,
+      read: (signal) => {
+        readSignal = signal;
+        return new Promise<Buffer>(() => {});
+      },
+    };
+
+    const timedOut = service
+      .load('owner-1:stalled.apkg', source)
+      .catch((error: unknown) => error);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(readSignal?.aborted).toBe(false);
+    await vi.advanceTimersByTimeAsync(PREVIEW_READ_TIME_LIMIT_MS);
+
+    expect(readSignal?.aborted).toBe(true);
+    expect(await timedOut).toBeInstanceOf(PreviewReadTimedOutError);
+  });
+
+  it('reads the deck again on the next request after a timed-out read', async () => {
+    const service = new ApkgPreviewService(freshLimits());
+    const log: string[] = [];
+    const stalled = heldRead(4096, log, 'retry');
+    const timedOut = service
+      .load('owner-1:retry.apkg', stalled.source)
+      .catch((error: unknown) => error);
+    await vi.advanceTimersByTimeAsync(PREVIEW_READ_TIME_LIMIT_MS);
+    expect(await timedOut).toBeInstanceOf(PreviewReadTimedOutError);
+
+    const retried = service.load(
+      'owner-1:retry.apkg',
+      countingSource('retry').source
+    );
+
+    expect((await retried)?.collection.cards).toHaveLength(1);
+  });
+
+  it('stops a running read once every caller waiting for it has gone', async () => {
+    const limits = freshLimits();
+    const service = new ApkgPreviewService(limits);
+    let readSignal: AbortSignal | undefined;
+    const source: DeckSource = {
+      storedSize: async () => 4096,
+      read: (signal) => {
+        readSignal = signal;
+        return new Promise<Buffer>(() => {});
+      },
+    };
+    const gone = new AbortController();
+
+    const load = service.load('owner-1:left.apkg', source, gone.signal);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(limits.coldLoads.inUse).toBe(COLD_LOAD_MIN_WEIGHT_BYTES);
+    gone.abort();
+
+    await expect(load).rejects.toBeInstanceOf(WaitAbandonedError);
+    expect(readSignal?.aborted).toBe(true);
+    expect(limits.coldLoads.inUse).toBe(0);
   });
 });
 

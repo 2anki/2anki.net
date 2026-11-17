@@ -52,6 +52,11 @@ vi.mock('../data_layer/DownloadRepository', () => ({
 }));
 
 import ShareRouter from './ShareRouter';
+import { resetPreviewMemoryLimitsForTesting } from '../services/ApkgPreviewService/previewMemoryLimits';
+
+beforeEach(() => {
+  resetPreviewMemoryLimitsForTesting();
+});
 
 const bodyRead = vi.fn();
 

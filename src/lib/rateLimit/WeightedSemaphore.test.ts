@@ -127,6 +127,22 @@ describe('WeightedSemaphore', () => {
     expect(semaphore.inUse).toBe(0);
   });
 
+  it.each([Number.NaN, Number.POSITIVE_INFINITY, -1])(
+    'refuses a weight of %s and keeps its count intact',
+    async (weight) => {
+      const semaphore = new WeightedSemaphore(10);
+      await semaphore.acquire(4);
+
+      await expect(semaphore.acquire(weight)).rejects.toBeInstanceOf(
+        RangeError
+      );
+
+      expect(semaphore.inUse).toBe(4);
+      expect(semaphore.waiting).toBe(0);
+      expect(semaphore.wouldWait(6)).toBe(false);
+    }
+  );
+
   it('says whether a request would have to wait', async () => {
     const semaphore = new WeightedSemaphore(10);
     expect(semaphore.wouldWait(50)).toBe(false);

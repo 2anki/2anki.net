@@ -30,7 +30,7 @@ describe('SharedInterest', () => {
     expect(interest.signal.aborted).toBe(false);
   });
 
-  it('ignores callers leaving after the work has started', () => {
+  it('ignores callers leaving after it was committed', () => {
     const abandoned = vi.fn();
     const interest = new SharedInterest(abandoned);
     const gone = new AbortController();

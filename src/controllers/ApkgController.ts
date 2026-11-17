@@ -221,8 +221,8 @@ class ApkgController {
     private readonly jobRepository?: JobRepository,
     private readonly recordServerError?: ServerErrorRecorder,
     // Caps concurrent Chrome renders on the process. Held for the render's
-    // lifetime (acquired before preview, released in a finally after it
-    // settles), so a client abort cannot free the slot while Chrome runs.
+    // lifetime (acquired once the deck is parsed, released in a finally after
+    // it settles), so a client abort cannot free the slot while Chrome runs.
     private readonly previewConcurrency: ConcurrencyLimiter = new ConcurrencyLimiter(
       2
     )
@@ -409,11 +409,11 @@ class ApkgController {
       }
       const upload = await readDeckUpload(req, res, 'print_preview');
       if (upload == null) return;
-      const fileBuffer = upload.deck;
       const useCase = new ExportApkgToPdfUseCase(
         this.previewService,
         this.pdfRenderService
       );
+      const parsed = await useCase.parseForPreview(upload.deck);
       if (!this.previewConcurrency.tryAcquire()) {
         res.status(503).json({
           message:
@@ -422,8 +422,8 @@ class ApkgController {
         return;
       }
       try {
-        const result = await useCase.preview(
-          fileBuffer,
+        const result = await useCase.previewParsed(
+          parsed,
           pdfOptions,
           PREVIEW_CARD_LIMIT
         );

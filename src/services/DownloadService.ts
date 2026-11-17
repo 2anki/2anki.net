@@ -35,6 +35,10 @@ const TRANSIENT_SOCKET_CODES = new Set([
   'ENOTFOUND',
 ]);
 
+function isKnownSize(size: number | undefined): size is number {
+  return typeof size === 'number' && Number.isFinite(size) && size >= 0;
+}
+
 function getErrorName(error: unknown): string | undefined {
   return (error as { name?: string })?.name;
 }
@@ -85,7 +89,7 @@ class DownloadService {
   storedDeckSource(storageKey: string, storage: StorageHandler): DeckSource {
     return {
       storedSize: () => this.readableStoredSize(storageKey, storage),
-      read: () => this.readStoredBody(storageKey, storage),
+      read: (signal) => this.readStoredBody(storageKey, storage, signal),
     };
   }
 
@@ -94,7 +98,7 @@ class DownloadService {
     storage: StorageHandler
   ): Promise<number> {
     const size = await storage.getObjectSize(storageKey);
-    if (size == null || size > MAX_TOTAL_DECOMPRESSED_BYTES) {
+    if (!isKnownSize(size) || size > MAX_TOTAL_DECOMPRESSED_BYTES) {
       console.info('[apkg-preview] stored deck refused before read: too large');
       throw new ApkgTooLargeError();
     }
@@ -103,9 +107,10 @@ class DownloadService {
 
   async readStoredBody(
     storageKey: string,
-    storage: StorageHandler
+    storage: StorageHandler,
+    signal?: AbortSignal
   ): Promise<Buffer | undefined> {
-    const file = await storage.getFileContents(storageKey);
+    const file = await storage.getFileContents(storageKey, signal);
     return file?.Body;
   }
 
@@ -114,7 +119,7 @@ class DownloadService {
     storage: StorageHandler
   ): Promise<boolean> {
     const size = await storage.getObjectSize(storageKey);
-    return size == null || size > BUFFERED_COPY_MAX_BYTES;
+    return !isKnownSize(size) || size > BUFFERED_COPY_MAX_BYTES;
   }
 
   async getFileStream(

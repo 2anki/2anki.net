@@ -4,7 +4,12 @@ import { buildTinyApkg } from '../../test/fixtures/apkg/buildTinyApkg';
 import ApkgPreviewService, { type DeckSource } from './ApkgPreviewService';
 import { ApkgTooLargeError } from './extractApkg';
 import { parseCollection } from './parseCollection';
+import { resetPreviewMemoryLimitsForTesting } from './previewMemoryLimits';
 import { NormalizedCollection } from './types';
+
+beforeEach(() => {
+  resetPreviewMemoryLimitsForTesting();
+});
 
 const IO_TEMPLATE_QFMT =
   '<div id="image-occlusion-container">{{Image}}<canvas id="image-occlusion-canvas"></canvas></div><script>anki.imageOcclusion.setup();</script>';

@@ -33,6 +33,11 @@ export class WeightedSemaphore {
   }
 
   acquire(weight: number, signal?: AbortSignal): Promise<() => void> {
+    if (!Number.isFinite(weight) || weight < 0) {
+      return Promise.reject(
+        new RangeError(`A weight must be a finite number >= 0, got ${weight}`)
+      );
+    }
     if (signal?.aborted) {
       return Promise.reject(new WaitAbandonedError());
     }

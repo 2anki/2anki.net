@@ -3,7 +3,7 @@ import { GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Readable } from 'node:stream';
 
-import StorageHandler from './StorageHandler';
+import StorageHandler, { StorageReadAbortedError } from './StorageHandler';
 
 const mockSend = vi.hoisted(() => vi.fn());
 
@@ -55,6 +55,58 @@ describe('StorageHandler.getFileContents', () => {
     const result = await handler.getFileContents('some/key.apkg');
 
     expect(result.Body).toBeUndefined();
+  });
+
+  it('passes the abort signal to the request', async () => {
+    mockSend.mockResolvedValueOnce({
+      Body: {
+        transformToByteArray: vi.fn().mockResolvedValue(new Uint8Array([1])),
+      },
+    });
+    const limit = new AbortController();
+
+    await new StorageHandler().getFileContents('some/key.apkg', limit.signal);
+
+    expect(mockSend).toHaveBeenCalledWith(expect.any(GetObjectCommand), {
+      abortSignal: limit.signal,
+    });
+  });
+
+  it('stops reading a body that stalls once the signal aborts, and destroys it', async () => {
+    const destroy = vi.fn();
+    mockSend.mockResolvedValueOnce({
+      Body: {
+        transformToByteArray: () => new Promise<Uint8Array>(() => {}),
+        destroy,
+      },
+    });
+    const limit = new AbortController();
+
+    const read = new StorageHandler().getFileContents(
+      'some/key.apkg',
+      limit.signal
+    );
+    await vi.waitFor(() => expect(mockSend).toHaveBeenCalledTimes(1));
+    limit.abort();
+
+    await expect(read).rejects.toBeInstanceOf(StorageReadAbortedError);
+    expect(destroy).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not start reading the body when the signal aborted while the headers arrived', async () => {
+    const limit = new AbortController();
+    const transformToByteArray = vi.fn();
+    const destroy = vi.fn();
+    mockSend.mockImplementationOnce(async () => {
+      limit.abort();
+      return { Body: { transformToByteArray, destroy } };
+    });
+
+    await expect(
+      new StorageHandler().getFileContents('some/key.apkg', limit.signal)
+    ).rejects.toBeInstanceOf(StorageReadAbortedError);
+    expect(transformToByteArray).not.toHaveBeenCalled();
+    expect(destroy).toHaveBeenCalledTimes(1);
   });
 });
 

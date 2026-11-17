@@ -1026,10 +1026,13 @@ describe('ApkgController.previewPdf — temp upload cleanup', () => {
 });
 
 describe('ApkgController.previewPdf', () => {
+  const parsedDeck = { parsedAt: 0 };
+  let parseMock: Mock;
   let previewMock: Mock;
 
   beforeEach(() => {
     trackMock.mockClear();
+    parseMock = vi.fn().mockResolvedValue(parsedDeck);
     previewMock = vi.fn().mockResolvedValue({
       image: Buffer.from('fake-png'),
       totalCards: 42,
@@ -1037,7 +1040,7 @@ describe('ApkgController.previewPdf', () => {
       deckName: 'deck',
     });
     (ExportApkgToPdfUseCase as Mock).mockImplementation(function () {
-      return { preview: previewMock };
+      return { parseForPreview: parseMock, previewParsed: previewMock };
     });
   });
 
@@ -1097,11 +1100,8 @@ describe('ApkgController.previewPdf', () => {
 
     await controller.previewPdf(makeReq({ body: {} }) as Request, res);
 
-    expect(previewMock).toHaveBeenCalledWith(
-      expect.any(Buffer),
-      expect.any(Object),
-      3
-    );
+    expect(parseMock).toHaveBeenCalledWith(expect.any(Buffer));
+    expect(previewMock).toHaveBeenCalledWith(parsedDeck, expect.any(Object), 3);
     expect(res.json).toHaveBeenCalledWith({
       image: `data:image/png;base64,${Buffer.from('fake-png').toString('base64')}`,
       totalCards: 42,
@@ -1129,7 +1129,7 @@ describe('ApkgController.previewPdf', () => {
   });
 
   it('answers 400 Invalid .apkg file for a corrupted upload', async () => {
-    previewMock.mockRejectedValueOnce(
+    parseMock.mockRejectedValueOnce(
       new InvalidApkgError(
         'End of central directory record signature not found'
       )
@@ -1224,6 +1224,19 @@ describe('ApkgController.previewPdf', () => {
 
     expect(limiter.inFlight).toBe(0);
     errorSpy.mockRestore();
+  });
+
+  it('never acquires a render slot for a deck that fails to parse', async () => {
+    parseMock.mockRejectedValueOnce(new InvalidApkgError('not a zip'));
+    const limiter = new ConcurrencyLimiter(1);
+    const controller = makeController(undefined, limiter);
+    const res = makePreviewRes({ owner: 42 });
+
+    await controller.previewPdf(makeReq({ body: {} }) as Request, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(limiter.inFlight).toBe(0);
+    expect(previewMock).not.toHaveBeenCalled();
   });
 
   it('never acquires a render slot for a request that fails validation', async () => {

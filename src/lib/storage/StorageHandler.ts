@@ -24,6 +24,45 @@ export interface StoredObjectStream {
   contentLength: number | undefined;
 }
 
+export class StorageReadAbortedError extends Error {
+  constructor() {
+    super('The storage read was stopped.');
+    this.name = 'StorageReadAbortedError';
+  }
+}
+
+interface DrainableBody {
+  transformToByteArray: () => Promise<Uint8Array>;
+}
+
+function destroyBody(body: DrainableBody): void {
+  const stream = body as unknown as Partial<Readable>;
+  if (typeof stream.destroy === 'function') stream.destroy();
+}
+
+// The signal on send stops the request; a body that stops arriving after the
+// headers is only released by destroying its stream.
+function readBodyUntilAborted(
+  body: DrainableBody,
+  signal: AbortSignal
+): Promise<Uint8Array> {
+  if (signal.aborted) {
+    destroyBody(body);
+    return Promise.reject(new StorageReadAbortedError());
+  }
+  return new Promise((resolve, reject) => {
+    const onAbort = () => {
+      destroyBody(body);
+      reject(new StorageReadAbortedError());
+    };
+    signal.addEventListener('abort', onAbort, { once: true });
+    body
+      .transformToByteArray()
+      .then(resolve, reject)
+      .finally(() => signal.removeEventListener('abort', onAbort));
+  });
+}
+
 class StorageHandler {
   s3: S3Client;
 
@@ -103,17 +142,25 @@ class StorageHandler {
     return files;
   }
 
-  async getFileContents(key: string): Promise<StoredObject> {
-    const response = await this.s3.send(
-      new GetObjectCommand({
-        Bucket: StorageHandler.DefaultBucketName(),
-        Key: key,
-      })
-    );
+  async getFileContents(
+    key: string,
+    signal?: AbortSignal
+  ): Promise<StoredObject> {
+    const command = new GetObjectCommand({
+      Bucket: StorageHandler.DefaultBucketName(),
+      Key: key,
+    });
+    const response =
+      signal == null
+        ? await this.s3.send(command)
+        : await this.s3.send(command, { abortSignal: signal });
     if (response.Body == null) {
       return { Body: undefined };
     }
-    const bytes = await response.Body.transformToByteArray();
+    const bytes =
+      signal == null
+        ? await response.Body.transformToByteArray()
+        : await readBodyUntilAborted(response.Body, signal);
     return { Body: Buffer.from(bytes) };
   }
 

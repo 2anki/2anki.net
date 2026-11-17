@@ -1,12 +1,15 @@
-import type { WeightedSemaphore } from '../../lib/rateLimit/WeightedSemaphore';
+import {
+  WaitAbandonedError,
+  type WeightedSemaphore,
+} from '../../lib/rateLimit/WeightedSemaphore';
 import { composeOcclusionSvg } from './composeOcclusionSvg';
 import { estimateParsedBytes } from './estimateParsedBytes';
 import { extractApkg, parseMediaManifest } from './extractApkg';
 import type { ParseCacheBudget } from './ParseCacheBudget';
 import {
   coldLoadWeight,
-  sharedColdLoads,
-  sharedParseCacheBudget,
+  PREVIEW_READ_TIME_LIMIT_MS,
+  sharedPreviewLimits,
 } from './previewMemoryLimits';
 import { SharedInterest } from './SharedInterest';
 import { parseCollection } from './parseCollection';
@@ -66,7 +69,28 @@ export interface CardRenderOptions {
 
 export interface DeckSource {
   storedSize: () => Promise<number>;
-  read: () => Promise<Buffer | null | undefined>;
+  read: (signal: AbortSignal) => Promise<Buffer | null | undefined>;
+}
+
+export class PreviewReadTimedOutError extends Error {
+  constructor() {
+    super('Could not load the deck.');
+    this.name = 'PreviewReadTimedOutError';
+  }
+}
+
+function untilAborted<T>(work: Promise<T>, signal: AbortSignal): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const onAbort = () => reject(signal.reason);
+    if (signal.aborted) {
+      onAbort();
+    } else {
+      signal.addEventListener('abort', onAbort, { once: true });
+    }
+    work
+      .then(resolve, reject)
+      .finally(() => signal.removeEventListener('abort', onAbort));
+  });
 }
 
 export interface PreviewMemoryLimits {
@@ -86,9 +110,10 @@ export default class ApkgPreviewService {
   private readonly limits: PreviewMemoryLimits;
 
   constructor(limits: Partial<PreviewMemoryLimits> = {}) {
+    const shared = sharedPreviewLimits();
     this.limits = {
-      coldLoads: limits.coldLoads ?? sharedColdLoads,
-      cacheBudget: limits.cacheBudget ?? sharedParseCacheBudget,
+      coldLoads: limits.coldLoads ?? shared.coldLoads,
+      cacheBudget: limits.cacheBudget ?? shared.cacheBudget,
       now: limits.now ?? Date.now,
     };
   }
@@ -161,7 +186,6 @@ export default class ApkgPreviewService {
     const queuedAhead = coldLoads.wouldWait(weight) ? coldLoads.waiting : null;
     const queuedAt = this.limits.now();
     const release = await coldLoads.acquire(weight, interest.signal);
-    interest.commit();
     if (queuedAhead != null) {
       console.info('[apkg-preview] cold load waited for a slot', {
         waitedMs: this.limits.now() - queuedAt,
@@ -169,11 +193,38 @@ export default class ApkgPreviewService {
       });
     }
     try {
-      const bytes = await source.read();
+      const bytes = await this.readWithinLimit(source, interest);
+      interest.commit();
       if (bytes == null) return null;
       return await this.parseFresh(cacheKey, bytes);
     } finally {
       release();
+    }
+  }
+
+  // Only the storage read waits on anything outside the process; the parse
+  // after it works on bytes already in memory.
+  private async readWithinLimit(
+    source: DeckSource,
+    interest: SharedInterest
+  ): Promise<Buffer | null | undefined> {
+    const timeLimit = new AbortController();
+    const timer = setTimeout(
+      () => timeLimit.abort(),
+      PREVIEW_READ_TIME_LIMIT_MS
+    );
+    const signal = AbortSignal.any([timeLimit.signal, interest.signal]);
+    try {
+      return await untilAborted(source.read(signal), signal);
+    } catch (error) {
+      if (interest.signal.aborted) throw new WaitAbandonedError();
+      if (timeLimit.signal.aborted) {
+        console.info('[apkg-preview] stored deck read stopped at time limit');
+        throw new PreviewReadTimedOutError();
+      }
+      throw error;
+    } finally {
+      clearTimeout(timer);
     }
   }
 

@@ -1,6 +1,5 @@
-// Callers sharing one queued load. Its signal aborts only once every caller
-// has gone and none of them joined without a signal, and never after the
-// load has started.
+// Callers sharing one load. Its signal aborts only once every caller has gone
+// and none of them joined without a signal, and never after commit().
 export class SharedInterest {
   private readonly controller = new AbortController();
   private waiting = 0;
