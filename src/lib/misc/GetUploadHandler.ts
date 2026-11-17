@@ -66,6 +66,43 @@ export function withNormalizedFilenames(
 }
 
 export const UPLOAD_FIELD = 'pakker';
+export const UPLOAD_FIELD_ALIAS = 'file';
+export const ACCEPTED_UPLOAD_FIELDS: readonly string[] = [
+  UPLOAD_FIELD,
+  UPLOAD_FIELD_ALIAS,
+];
+
+export class MixedUploadFieldsError extends Error {
+  constructor() {
+    super('files arrived under more than one upload field');
+    this.name = 'MixedUploadFieldsError';
+  }
+}
+
+function oneUploadFieldPerRequest(): NonNullable<multer.Options['fileFilter']> {
+  let firstField: string | null = null;
+  return (_req, file, decide) => {
+    firstField ??= file.fieldname;
+    if (file.fieldname === firstField) {
+      decide(null, true);
+    } else {
+      decide(new MixedUploadFieldsError());
+    }
+  };
+}
+
+function withFilesAsArray(
+  handler: express.RequestHandler
+): express.RequestHandler {
+  return (req, res, next) => {
+    handler(req, res, (error?: unknown) => {
+      if (req.files != null && !Array.isArray(req.files)) {
+        req.files = Object.values(req.files).flat();
+      }
+      next(error);
+    });
+  };
+}
 
 export const getUploadHandler = (res: express.Response): UploadHandler => {
   const paying = isPaying(res.locals);
@@ -74,7 +111,10 @@ export const getUploadHandler = (res: express.Response): UploadHandler => {
   const handler = multer({
     limits: getUploadLimits(paying),
     dest: process.env.UPLOAD_BASE,
-  }).array(UPLOAD_FIELD, maxUploadCount);
+    fileFilter: oneUploadFieldPerRequest(),
+  }).fields(
+    ACCEPTED_UPLOAD_FIELDS.map((name) => ({ name, maxCount: maxUploadCount }))
+  );
 
-  return withNormalizedFilenames(handler);
+  return withNormalizedFilenames(withFilesAsArray(handler));
 };

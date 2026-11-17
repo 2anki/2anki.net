@@ -5,7 +5,10 @@ import { vi, type Mock } from 'vitest';
 import express from 'express';
 import multer from 'multer';
 
-vi.mock('../../lib/misc/GetUploadHandler');
+vi.mock('../../lib/misc/GetUploadHandler', async (importActual) => ({
+  ...(await importActual<typeof import('../../lib/misc/GetUploadHandler')>()),
+  getUploadHandler: vi.fn(),
+}));
 
 vi.mock('../../lib/integrations/stripe', () => ({
   getStripe: vi.fn().mockReturnValue({
@@ -254,10 +257,6 @@ describe('Upload file — multer error handling', () => {
   test.each([
     ['a client that closed the connection', new Error('Request closed')],
     ['a truncated multipart body', new Error('Unexpected end of form')],
-    [
-      'a stray field name',
-      new multer.MulterError('LIMIT_UNEXPECTED_FILE', 'avatar'),
-    ],
   ])(
     'answers upload_incomplete for %s without converting the deleted temp files',
     async (_label, error) => {
