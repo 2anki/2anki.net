@@ -233,8 +233,13 @@ class ApkgController {
       return null;
     }
     const { owner } = res.locals;
+    const storageKey = await this.downloadService.findStoredKey(owner, key);
+    if (storageKey == null) {
+      res.status(404).json({ message: 'Upload not found.' });
+      return null;
+    }
     const parsed = await this.previewService.load(`${owner}:${key}`, () =>
-      this.downloadService.getFileBody(owner, key, new StorageHandler())
+      this.downloadService.getStoredDeckBody(storageKey, new StorageHandler())
     );
     if (parsed == null) {
       res.status(404).json({ message: 'Upload not found.' });

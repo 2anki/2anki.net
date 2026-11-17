@@ -655,8 +655,12 @@ export class McpToolsService {
     pageSize = PREVIEW_CARD_LIMIT
   ): Promise<DeckPreview> {
     const { key, job } = await this.resolveDeckKey(owner, identifier);
+    const storageKey = await this.downloadService.findStoredKey(owner, key);
+    if (storageKey == null) {
+      throw new Error('Upload not found.');
+    }
     const parsed = await this.previewService.load(`${owner}:${key}`, () =>
-      this.downloadService.getFileBody(owner, key, this.storage)
+      this.downloadService.getStoredDeckBody(storageKey, this.storage)
     );
     if (parsed == null) {
       throw new Error('Upload not found.');

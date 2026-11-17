@@ -134,6 +134,34 @@ describe('ApkgRouter stored deck preview', () => {
     expect(storageCalls(GetObjectCommand)).toBe(0);
   });
 
+  it('refuses media from an oversized deck with 413 and never requests its body', async () => {
+    storageReports(MAX_TOTAL_DECOMPRESSED_BYTES + 1);
+
+    const res = await withServer((base) =>
+      fetch(`${base}/api/apkg/deck.apkg/media/picture.png`)
+    );
+
+    expect(res.status).toBe(413);
+    expect(storageCalls(GetObjectCommand)).toBe(0);
+  });
+
+  it.each(['meta', 'cards', 'media/picture.png'])(
+    'serves 404 for a deck deleted after it was cached (%s)',
+    async (route) => {
+      storageReports(4096);
+
+      const statuses = await withServer(async (base) => {
+        const first = await fetch(`${base}/api/apkg/deck.apkg/cards`);
+        getFile.mockResolvedValue(null);
+        const afterDelete = await fetch(`${base}/api/apkg/deck.apkg/${route}`);
+        return [first.status, afterDelete.status];
+      });
+
+      expect(statuses).toEqual([200, 404]);
+      expect(storageCalls(GetObjectCommand)).toBe(1);
+    }
+  );
+
   it('answers a cached deck without going back to storage', async () => {
     storageReports(4096);
 

@@ -57,21 +57,40 @@ class DownloadService {
     key: string,
     storage: StorageHandler
   ): Promise<Buffer | null | undefined> {
-    const fileEntry = await this.downloadRepository.getFile(owner, key);
-    if (!fileEntry) {
+    const storageKey = await this.findStoredKey(owner, key);
+    if (storageKey == null) {
       return null;
     }
-    return this.getStoredDeckBody(fileEntry.key, storage);
+    return this.getStoredDeckBody(storageKey, storage);
+  }
+
+  async findStoredKey(owner: string, key: string): Promise<string | null> {
+    const fileEntry = await this.downloadRepository.getFile(owner, key);
+    return fileEntry?.key ?? null;
   }
 
   async getStoredDeckBody(
     storageKey: string,
     storage: StorageHandler
   ): Promise<Buffer | undefined> {
+    await this.assertReadableSize(storageKey, storage);
+    return this.readStoredBody(storageKey, storage);
+  }
+
+  async assertReadableSize(
+    storageKey: string,
+    storage: StorageHandler
+  ): Promise<void> {
     if (await this.isTooLargeToRead(storageKey, storage)) {
       console.info('[apkg-preview] stored deck refused before read: too large');
       throw new ApkgTooLargeError();
     }
+  }
+
+  async readStoredBody(
+    storageKey: string,
+    storage: StorageHandler
+  ): Promise<Buffer | undefined> {
     const file = await storage.getFileContents(storageKey);
     return file?.Body;
   }

@@ -135,6 +135,59 @@ describe('ShareRouter shared deck preview, signed out', () => {
     expect(bodyRead).not.toHaveBeenCalled();
   });
 
+  it('refuses media from an oversized shared deck with 413 and never reads its body', async () => {
+    storageReports(MAX_TOTAL_DECOMPRESSED_BYTES + 1);
+    const shared = nextToken();
+
+    const res = await withServer((base) =>
+      fetch(`${base}/api/shares/${shared}/media/picture.png`)
+    );
+
+    expect(res.status).toBe(413);
+    expect(bodyRead).not.toHaveBeenCalled();
+  });
+
+  it.each(['meta', 'cards', 'media/picture.png'])(
+    'serves 404 for a shared deck deleted after it was cached (%s)',
+    async (route) => {
+      storageReports(4096);
+      const shared = nextToken();
+
+      const statuses = await withServer(async (base) => {
+        const first = await fetch(`${base}/api/shares/${shared}/cards`);
+        send.mockRejectedValue(
+          Object.assign(new Error('UnknownError'), {
+            name: 'NotFound',
+            $metadata: { httpStatusCode: 404 },
+          })
+        );
+        const afterDelete = await fetch(
+          `${base}/api/shares/${shared}/${route}`
+        );
+        return [first.status, afterDelete.status];
+      });
+
+      expect(statuses).toEqual([200, 404]);
+      expect(bodyRead).toHaveBeenCalledTimes(1);
+    }
+  );
+
+  it('checks the stored deck once per request and reads it only on the first', async () => {
+    storageReports(4096);
+    const shared = nextToken();
+
+    await withServer(async (base) => {
+      await fetch(`${base}/api/shares/${shared}/meta`);
+      await fetch(`${base}/api/shares/${shared}/cards`);
+    });
+
+    const heads = send.mock.calls.filter(
+      ([command]) => command instanceof HeadObjectCommand
+    ).length;
+    expect(heads).toBe(2);
+    expect(bodyRead).toHaveBeenCalledTimes(1);
+  });
+
   it('reads a shared deck once for concurrent viewers', async () => {
     storageReports(4096);
     const shared = nextToken();

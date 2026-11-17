@@ -152,8 +152,12 @@ class ShareController {
     }
 
     try {
+      await this.downloadService.assertReadableSize(
+        share.upload_key,
+        this.storage
+      );
       const parsed = await this.previewService.load(`share:${token}`, () =>
-        this.downloadService.getStoredDeckBody(share.upload_key, this.storage)
+        this.downloadService.readStoredBody(share.upload_key, this.storage)
       );
       if (parsed == null) {
         res.status(404).json({ message: 'This deck is no longer available.' });

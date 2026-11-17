@@ -39,7 +39,7 @@ const ONE_PIXEL_PNG_BASE64 =
 function makeService(overrides: {
   jobs?: JobWithDownloadKey[];
   uploadEntry?: UploadEntrypoint;
-  getFileBody?: DownloadService['getFileBody'];
+  storedDeck?: Buffer | null;
   preview?: Partial<ApkgPreviewService>;
   persist?: DeckPersistence['persist'];
   getPresignedUrl?: StorageHandler['getPresignedUrl'];
@@ -54,8 +54,11 @@ function makeService(overrides: {
     getJobsByOwner: vi.fn(async () => overrides.jobs ?? []),
   };
   const downloadService = {
-    getFileBody: overrides.getFileBody ?? vi.fn(async () => null),
-  } as unknown as DownloadService;
+    findStoredKey: vi.fn(async (_owner: string, key: string) =>
+      overrides.storedDeck === null ? null : `stored/${key}`
+    ),
+    getStoredDeckBody: vi.fn(async () => overrides.storedDeck ?? undefined),
+  };
   const previewService = {
     parse: vi.fn(async () => ({}) as never),
     getMeta: vi.fn(() => ({
@@ -99,7 +102,7 @@ function makeService(overrides: {
   } as unknown as UsersRepository;
   const service = new McpToolsService(
     jobLister,
-    downloadService,
+    downloadService as unknown as DownloadService,
     previewService,
     uploadEntry,
     storage,
@@ -267,7 +270,7 @@ describe('McpToolsService.getDeckPreview', () => {
     await expect(service.getDeckPreview('owner', 'nope')).rejects.toThrow(
       /Deck not found/
     );
-    expect(downloadService.getFileBody).not.toHaveBeenCalled();
+    expect(downloadService.findStoredKey).not.toHaveBeenCalled();
   });
 
   it('rejects a job with no .apkg without hitting storage', async () => {
@@ -277,20 +280,18 @@ describe('McpToolsService.getDeckPreview', () => {
     await expect(service.getDeckPreview('owner', 'job-1')).rejects.toThrow(
       /no .apkg/
     );
-    expect(downloadService.getFileBody).not.toHaveBeenCalled();
+    expect(downloadService.findStoredKey).not.toHaveBeenCalled();
   });
 
   it('resolves the jobId to its download_key and returns meta + sample cards', async () => {
-    const getFileBody = vi.fn(async () => Buffer.from('apkg'));
-    const { service } = makeService({
+    const { service, downloadService } = makeService({
       jobs: [jobFixture({ object_id: 'job-1', download_key: 'deck.apkg' })],
-      getFileBody,
+      storedDeck: Buffer.from('apkg'),
     });
     const preview = await service.getDeckPreview('owner', 'job-1');
-    expect(getFileBody).toHaveBeenCalledWith(
+    expect(downloadService.findStoredKey).toHaveBeenCalledWith(
       'owner',
-      'deck.apkg',
-      expect.anything()
+      'deck.apkg'
     );
     expect(preview.cardCount).toBe(3);
     expect(preview.decks).toEqual([{ name: 'Bio', cardCount: 3 }]);
@@ -298,16 +299,14 @@ describe('McpToolsService.getDeckPreview', () => {
   });
 
   it('resolves a raw .apkg key directly when no job matches, owner-scoped', async () => {
-    const getFileBody = vi.fn(async () => Buffer.from('apkg'));
-    const { service } = makeService({
+    const { service, downloadService } = makeService({
       jobs: [jobFixture({ object_id: 'job-1' })],
-      getFileBody,
+      storedDeck: Buffer.from('apkg'),
     });
     const preview = await service.getDeckPreview('owner', 'legacy-deck.apkg');
-    expect(getFileBody).toHaveBeenCalledWith(
+    expect(downloadService.findStoredKey).toHaveBeenCalledWith(
       'owner',
-      'legacy-deck.apkg',
-      expect.anything()
+      'legacy-deck.apkg'
     );
     expect(preview.cardCount).toBe(3);
   });
@@ -347,7 +346,7 @@ describe('McpToolsService.getDeckPreview', () => {
           type: 'mcp',
         } as Partial<JobWithDownloadKey>),
       ],
-      getFileBody: vi.fn(async () => Buffer.from('apkg')),
+      storedDeck: Buffer.from('apkg'),
       preview: {
         parse: vi.fn(async () => parsed as never),
         getMeta: vi.fn(() => ({
@@ -398,7 +397,7 @@ describe('McpToolsService.getDeckPreview', () => {
   it('links a web-converted deck through the signed-in download route', async () => {
     const { service } = makeService({
       jobs: [jobFixture({ object_id: 'job-2', type: 'upload' } as never)],
-      getFileBody: vi.fn(async () => Buffer.from('apkg')),
+      storedDeck: Buffer.from('apkg'),
     });
     const preview = await service.getDeckPreview('owner', 'job-2');
     expect(preview.downloadUrl).toBe(
@@ -413,13 +412,13 @@ describe('McpToolsService.getDeckPreview', () => {
     await expect(service.getDeckPreview('owner', 'not-a-key')).rejects.toThrow(
       /Deck not found/
     );
-    expect(downloadService.getFileBody).not.toHaveBeenCalled();
+    expect(downloadService.findStoredKey).not.toHaveBeenCalled();
   });
 
   it('reports when the resolved file is missing from storage', async () => {
     const { service } = makeService({
       jobs: [jobFixture({ object_id: 'job-1', download_key: 'deck.apkg' })],
-      getFileBody: vi.fn(async () => null),
+      storedDeck: null,
     });
     await expect(service.getDeckPreview('owner', 'job-1')).rejects.toThrow(
       /Upload not found/
