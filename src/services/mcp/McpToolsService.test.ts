@@ -433,9 +433,10 @@ describe('McpToolsService.getDeckPreview, size check against storage', () => {
       getFileContents: vi.fn(async () => ({ Body: buildTinyApkg() })),
       getPresignedUrl: vi.fn(),
     };
-    const downloadService = new DownloadService({
-      getFile: vi.fn(async () => ({ key: 'stored/owner/deck.apkg' })),
-    } as never);
+    const getFile = vi.fn(async (): Promise<{ key: string } | null> => ({
+      key: 'stored/owner/deck.apkg',
+    }));
+    const downloadService = new DownloadService({ getFile } as never);
     const service = new McpToolsService(
       { getJobsByOwner: vi.fn(async () => []) },
       downloadService,
@@ -450,8 +451,20 @@ describe('McpToolsService.getDeckPreview, size check against storage', () => {
       { holdForPlan: vi.fn(async () => null) },
       'https://mcp.test'
     );
-    return { service, storage };
+    return { service, storage, getFile };
   }
+
+  it('reports a deck deleted after it was cached as not found', async () => {
+    const { service, storage, getFile } = serviceOverStorage(4096);
+
+    await service.getDeckPreview('owner', 'deck.apkg');
+    getFile.mockResolvedValue(null);
+
+    await expect(service.getDeckPreview('owner', 'deck.apkg')).rejects.toThrow(
+      /Upload not found/
+    );
+    expect(storage.getFileContents).toHaveBeenCalledTimes(1);
+  });
 
   it('previews a stored deck under the size limit', async () => {
     const { service, storage } = serviceOverStorage(4096);

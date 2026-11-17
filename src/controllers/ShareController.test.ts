@@ -77,6 +77,7 @@ function makeDownloadService(overrides: Record<string, unknown> = {}) {
     getFilename: vi.fn().mockResolvedValue('My Deck'),
     isMissingDownloadError: vi.fn().mockReturnValue(false),
     isTooLargeToRead: vi.fn().mockResolvedValue(false),
+    assertReadableSize: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
 }
