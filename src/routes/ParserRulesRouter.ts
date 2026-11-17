@@ -32,35 +32,29 @@ const ParserRulesRouter = () => {
    *         description: Parser rule ID
    *     responses:
    *       200:
-   *         description: Parser rule retrieved successfully
+   *         description: The signed-in account's rules for the page, or an empty body when it has none
    *         content:
    *           application/json:
    *             schema:
    *               type: object
    *               properties:
-   *                 id:
+   *                 flashcard_is:
    *                   type: string
-   *                   description: Rule ID
-   *                 name:
+   *                   description: Comma-separated block types turned into flashcards
+   *                 deck_is:
    *                   type: string
-   *                   description: Rule name
-   *                 pattern:
+   *                   description: Comma-separated block types that start a deck
+   *                 sub_deck_is:
    *                   type: string
-   *                   description: Regular expression pattern
-   *                 replacement:
+   *                   description: Comma-separated block types that start a sub-deck
+   *                 tags_is:
    *                   type: string
-   *                   description: Replacement text
-   *                 enabled:
+   *                   description: Where tags come from
+   *                 email_notification:
    *                   type: boolean
-   *                   description: Whether rule is enabled
+   *                   description: Whether to email when the conversion finishes
    *       401:
    *         description: Authentication required
-   *         content:
-   *           application/json:
-   *             schema:
-   *               $ref: '#/components/schemas/Error'
-   *       404:
-   *         description: Rule not found
    *         content:
    *           application/json:
    *             schema:
@@ -129,7 +123,7 @@ const ParserRulesRouter = () => {
    *                   type: string
    *                   description: Success message
    *       400:
-   *         description: Invalid rule data or regex pattern
+   *         description: No flashcard types, or a flashcard type the Rules page does not offer
    *         content:
    *           application/json:
    *             schema:

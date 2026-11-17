@@ -80,9 +80,6 @@ const advancedDeckLabelKeys: Record<string, string> = {
 const allowedDeckTypes = new Set([...deckOptions, ...advancedDeckOptions]);
 
 const defaultRules: NewRule = {
-  id: 0,
-  owner: 0,
-  object_id: '',
   flashcard_is: ['toggle'],
   sub_deck_is: ['child_page'],
   tags_is: 'strikethrough',
@@ -98,6 +95,20 @@ function loadDeckSelection(raw: string | null | undefined): string[] {
   }
   const allowed = raw.split(',').filter((v) => allowedDeckTypes.has(v));
   return allowed.length > 0 ? allowed : [...deckOptions];
+}
+
+const LEGACY_HEADING_FLASHCARD_TYPE = 'heading';
+const listedHeadingFlashcardTypes = ['heading_1', 'heading_2', 'heading_3'];
+
+function loadFlashcardSelection(raw: string): string[] {
+  const types = raw
+    .split(',')
+    .map((v) => v.trim())
+    .flatMap((v) =>
+      v === LEGACY_HEADING_FLASHCARD_TYPE ? listedHeadingFlashcardTypes : [v]
+    )
+    .filter((v) => flashCardOptions.includes(v));
+  return [...new Set(types)];
 }
 
 function hasAdvancedDeckType(deckTypes: string[]): boolean {
@@ -184,7 +195,7 @@ export default function RulesPage({ setErrorMessage }: Readonly<Props>) {
         const loaded: NewRule = rule
           ? {
               ...rule,
-              flashcard_is: rule.flashcard_is.split(',').filter(Boolean),
+              flashcard_is: loadFlashcardSelection(rule.flashcard_is),
               sub_deck_is: rule.sub_deck_is
                 .split(',')
                 .filter((v: string) => subDeckOptions.includes(v)),

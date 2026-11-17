@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-17-rules-require-flashcard-type",
+  "date": "2026-11-17",
+  "type": "fix",
+  "title": "Rules page asks you to pick at least one flashcard type before it saves, and shows why a save did not go through"
+}

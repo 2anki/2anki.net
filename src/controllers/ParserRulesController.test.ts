@@ -13,13 +13,13 @@ describe('ParserRulesController', () => {
   beforeEach(() => {
     service = {
       createRule: vi.fn(),
-      getById: vi.fn(),
+      findForOwner: vi.fn(),
       deleteRule: vi.fn(),
     } as any;
     controller = new RulesController(service);
     req = {
       params: { id: '7ccef4f6-b50c-4599-878e-f6fb61415ce2' },
-      body: { payload: { FLASHCARD: 'a', DECK: 'b' } },
+      body: { payload: { FLASHCARD: 'toggle', DECK: 'page' } },
     };
     res = {
       send: vi.fn(),
@@ -85,7 +85,7 @@ describe('RulesController.deleteRule', () => {
   beforeEach(() => {
     service = {
       createRule: vi.fn(),
-      getById: vi.fn(),
+      findForOwner: vi.fn(),
       deleteRule: vi.fn(),
     } as any;
     controller = new RulesController(service);

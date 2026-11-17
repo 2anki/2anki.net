@@ -1,6 +1,19 @@
 import { Knex } from 'knex';
-import Jobs from './public/Jobs';
+import ParserRulesRow from './public/ParserRules';
 import ParserRules from '../lib/parser/ParserRules';
+
+export type StoredParserRules = Pick<
+  ParserRulesRow,
+  'flashcard_is' | 'deck_is' | 'sub_deck_is' | 'tags_is' | 'email_notification'
+>;
+
+const STORED_RULE_COLUMNS: (keyof StoredParserRules)[] = [
+  'flashcard_is',
+  'deck_is',
+  'sub_deck_is',
+  'tags_is',
+  'email_notification',
+];
 
 export interface IParserRulesRepository {
   load(owner: string, id: string): Promise<ParserRules>;
@@ -29,14 +42,17 @@ class ParserRulesRepository implements IParserRulesRepository {
         tags_is: input.TAGS,
         email_notification: input.EMAIL_NOTIFICATION,
       })
-      .onConflict('object_id')
-      .merge();
+      .onConflict(['owner', 'object_id'])
+      .merge(STORED_RULE_COLUMNS);
   }
 
-  getById(id: string): Promise<Jobs> {
+  findForOwner(
+    owner: string,
+    objectId: string
+  ): Promise<StoredParserRules | undefined> {
     return this.database(this.tableName)
-      .where({ object_id: id })
-      .returning('*')
+      .select(STORED_RULE_COLUMNS)
+      .where({ owner, object_id: objectId })
       .first();
   }
 

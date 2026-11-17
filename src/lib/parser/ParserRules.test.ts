@@ -1,4 +1,26 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import ParserRules from './ParserRules';
+
+function readRulesPageFlashcardOptions(): string[] {
+  const source = readFileSync(
+    join(__dirname, '../../../web/src/pages/RulesPage/RulesPage.tsx'),
+    'utf8'
+  );
+  const block = /const flashCardOptions = \[([^\]]*)\];/.exec(source);
+  if (block == null) {
+    throw new Error('flashCardOptions not found in RulesPage.tsx');
+  }
+  return Array.from(block[1].matchAll(/'([a-z0-9_]+)'/g), (m) => m[1]);
+}
+
+describe('ParserRules.FLASHCARD_TYPE_ALLOWLIST', () => {
+  it('matches the flashcard types the Rules page offers', () => {
+    expect([...ParserRules.FLASHCARD_TYPE_ALLOWLIST].sort()).toEqual(
+      readRulesPageFlashcardOptions().sort()
+    );
+  });
+});
 
 describe('ParserRules.setDeckTypes', () => {
   it('replaces DECK with the provided types', () => {

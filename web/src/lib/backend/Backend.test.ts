@@ -528,6 +528,103 @@ describe('Backend', () => {
     });
   });
 
+  describe('getRules', () => {
+    it('returns the saved rule for the page', async () => {
+      const rule = {
+        flashcard_is: 'toggle',
+        deck_is: 'page',
+        sub_deck_is: 'child_page',
+        tags_is: 'heading',
+        email_notification: false,
+      };
+      vi.mocked(api.get).mockResolvedValue(rule);
+
+      await expect(backend.getRules('page-xyz')).resolves.toEqual(rule);
+      expect(api.get).toHaveBeenCalledWith('/api/rules/find/page-xyz');
+    });
+
+    it('returns null without logging an error when the page has no saved rule', async () => {
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
+      vi.mocked(api.get).mockRejectedValue(
+        new SyntaxError('Unexpected end of JSON input')
+      );
+
+      await expect(backend.getRules('page-xyz')).resolves.toBeNull();
+      expect(consoleError).not.toHaveBeenCalled();
+      consoleError.mockRestore();
+    });
+
+    it('returns null and logs when the request fails', async () => {
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
+      vi.mocked(api.get).mockRejectedValue(new Error('Network error'));
+
+      await expect(backend.getRules('page-xyz')).resolves.toBeNull();
+      expect(consoleError).toHaveBeenCalledTimes(1);
+      consoleError.mockRestore();
+    });
+  });
+
+  describe('saveRules', () => {
+    it('posts the rules as comma-joined lists for the page', async () => {
+      vi.mocked(api.post).mockResolvedValue(createMockResponse(201, true));
+
+      await expect(
+        backend.saveRules(
+          'page-xyz',
+          ['toggle', 'callout'],
+          ['page'],
+          ['child_page'],
+          'heading',
+          true
+        )
+      ).resolves.toBeUndefined();
+      expect(api.post).toHaveBeenCalledWith('/api/rules/create/page-xyz', {
+        payload: {
+          FLASHCARD: 'toggle,callout',
+          DECK: 'page',
+          SUB_DECKS: 'child_page',
+          TAGS: 'heading',
+          EMAIL_NOTIFICATION: true,
+        },
+      });
+    });
+
+    it('throws the server message when the rules are rejected', async () => {
+      vi.mocked(api.post).mockResolvedValue(
+        createMockResponse(400, false, 'Bad Request', {
+          message: 'Choose at least one block type to turn into flashcards.',
+        })
+      );
+
+      await expect(
+        backend.saveRules('page-xyz', [], ['page'], [], 'heading', false)
+      ).rejects.toThrow(
+        'Choose at least one block type to turn into flashcards.'
+      );
+    });
+
+    it('throws a status error when the rejection has no message', async () => {
+      vi.mocked(api.post).mockResolvedValue(
+        createMockResponse(400, false, 'Bad Request')
+      );
+
+      await expect(
+        backend.saveRules(
+          'page-xyz',
+          ['toggle'],
+          ['page'],
+          [],
+          'heading',
+          false
+        )
+      ).rejects.toThrow('Failed to save rules: 400');
+    });
+  });
+
   describe('deleteRules', () => {
     it('calls DELETE on the rules endpoint with the page id', async () => {
       const mockResponse = createMockResponse(204, true);

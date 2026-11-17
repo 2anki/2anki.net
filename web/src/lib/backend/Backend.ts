@@ -229,14 +229,14 @@ export class Backend {
     return result.payload;
   }
 
-  saveRules(
+  async saveRules(
     id: string,
     flashcard: string[],
     deck: string[],
     subDecks: string[],
     tags: string,
     email: boolean
-  ) {
+  ): Promise<void> {
     const payload = {
       FLASHCARD: flashcard.join(','),
       DECK: deck.join(','),
@@ -244,7 +244,19 @@ export class Backend {
       TAGS: tags,
       EMAIL_NOTIFICATION: email,
     };
-    return post(`${this.baseURL}rules/create/${id}`, { payload });
+    const response = await post(`${this.baseURL}rules/create/${id}`, {
+      payload,
+    });
+    if (!response.ok) {
+      const body = (await response.json().catch(() => null)) as {
+        message?: unknown;
+      } | null;
+      throw new Error(
+        typeof body?.message === 'string'
+          ? body.message
+          : `Failed to save rules: ${response.status}`
+      );
+    }
   }
 
   async getRules(id: string): Promise<Rules | null> {
@@ -256,7 +268,9 @@ export class Backend {
       }
       return result;
     } catch (error) {
-      console.error('getRules failed, falling back to empty rule', error);
+      if (!(error instanceof SyntaxError)) {
+        console.error('getRules failed, falling back to empty rule', error);
+      }
       return null;
     }
   }

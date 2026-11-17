@@ -17,6 +17,22 @@ class ParserRules {
     'column_list',
   ];
 
+  static readonly FLASHCARD_TYPE_ALLOWLIST: readonly string[] = [
+    'paragraph',
+    'callout',
+    'quote',
+    'code',
+    'toggle',
+    'to_do',
+    'bulleted_list_item',
+    'numbered_list_item',
+    'column_list',
+    'table',
+    'heading_1',
+    'heading_2',
+    'heading_3',
+  ];
+
   private FLASHCARD = ['toggle'];
 
   DECK = ['page', 'database'];
