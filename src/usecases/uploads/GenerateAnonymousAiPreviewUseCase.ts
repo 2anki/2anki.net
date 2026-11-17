@@ -12,7 +12,6 @@ export interface AnonymousAiPreviewInput {
 }
 
 export interface AnonymousAiPreviewDeps {
-  isEnabled(): Promise<boolean>;
   allow(anonId: string, ipKey: string): boolean;
   preview(
     filename: string,
@@ -26,16 +25,16 @@ export interface AnonymousAiPreviewDeps {
 // `preview` — show the sample cards. `unavailable` — AI was asked for and the
 // file could be read, but no preview came back (daily limit, empty, or error),
 // so the caller ships the free deck AND tells the visitor the AI preview wasn't
-// available. `skip` — nothing was attempted (flag off, no visitor id, reserved
-// cookie, or an unreadable file type), so the caller just runs today's path
-// with no notice.
+// available. `skip` — nothing was attempted (no visitor id, reserved cookie, or
+// an unreadable file type), so the caller just runs today's path with no
+// notice.
 export type AnonymousAiPreviewOutcome =
   | { kind: 'preview'; cards: AiPreviewCard[] }
   | { kind: 'unavailable' }
   | { kind: 'skip' };
 
 // Decides whether a no-account AI upload gets the capped preview, and runs it.
-// The order matters: the flag, the visitor id, the cookie namespace, the file
+// The order matters: the visitor id, the cookie namespace, the file
 // type and the rate limits are all checked before the (billable) preview call,
 // so an over-limit or ineligible request never reaches the model. The source
 // file is stored only after cards exist, so a held file always has a preview
@@ -45,9 +44,6 @@ export async function generateAnonymousAiPreview(
   input: AnonymousAiPreviewInput,
   deps: AnonymousAiPreviewDeps
 ): Promise<AnonymousAiPreviewOutcome> {
-  if (!(await deps.isEnabled())) {
-    return { kind: 'skip' };
-  }
   if (input.anonId == null) {
     return { kind: 'skip' };
   }

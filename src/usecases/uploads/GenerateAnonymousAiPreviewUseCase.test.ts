@@ -10,7 +10,6 @@ function deps(
   overrides: Partial<AnonymousAiPreviewDeps> = {}
 ): AnonymousAiPreviewDeps {
   return {
-    isEnabled: vi.fn().mockResolvedValue(true),
     allow: vi.fn().mockReturnValue(true),
     preview: vi.fn().mockResolvedValue(CARDS),
     storeSource: vi.fn().mockResolvedValue(undefined),
@@ -28,15 +27,6 @@ const input = {
 };
 
 describe('generateAnonymousAiPreview', () => {
-  it('skips (today’s behaviour, no AI) when the flag is off', async () => {
-    const d = deps({ isEnabled: vi.fn().mockResolvedValue(false) });
-    const result = await generateAnonymousAiPreview(input, d);
-    expect(result).toEqual({ kind: 'skip' });
-    expect(d.preview).not.toHaveBeenCalled();
-    expect(d.storeSource).not.toHaveBeenCalled();
-    expect(d.onShown).not.toHaveBeenCalled();
-  });
-
   it('skips without a visitor id (nothing to key the resume on)', async () => {
     const d = deps();
     const result = await generateAnonymousAiPreview(

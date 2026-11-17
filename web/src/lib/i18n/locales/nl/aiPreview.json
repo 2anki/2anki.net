@@ -13,8 +13,6 @@
   "signupLeadIn": "Of maak een gratis account om je pakketten te bewaren en je gratis limiet te verhogen.",
   "resuming": "Day Pass actief. We maken nu je volledige AI-pakket.",
   "previewError": "Kon van dit bestand geen AI-voorbeeld maken. Maak het pakket zonder AI of probeer een ander bestand.",
-  "badgeIntro": "Zet AI aan om een gratis voorbeeld te zien van de kaarten die Claude uit je bestand schrijft, en ontgrendel daarna het volledige pakket met een Day Pass.",
-  "toggleLabel": "Flashcards genereren met Claude AI",
   "choiceLegend": "Hoe moeten we je kaarten maken?",
   "choiceStructure": "Kaarten uit de structuur van je bestand: gratis, zonder AI",
   "choiceClaude": "Claude schrijft de kaarten: eerst een gratis voorbeeld",

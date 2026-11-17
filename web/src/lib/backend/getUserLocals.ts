@@ -31,12 +31,9 @@ interface GetUserLocalsResponse {
   features?: {
     kiUI: boolean;
     ops?: boolean;
-    anonymousDayPassCard?: boolean;
     limitWallProPrice?: boolean;
     limitWallPassFirst?: boolean;
     thinDeckAiOffer?: boolean;
-    anonymousAiPreview?: boolean;
-    anonymousAiChoice?: boolean;
   };
   autoSyncActive?: boolean;
   freePrintAvailable?: boolean | null;

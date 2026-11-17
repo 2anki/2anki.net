@@ -13,8 +13,6 @@
   "signupLeadIn": "または無料アカウントを作成して、デッキを保存し、無料の上限を増やしましょう。",
   "resuming": "Day Passが有効です。完全なAIデッキを作成しています。",
   "previewError": "このファイルからAIプレビューを作成できませんでした。AIなしでデッキを作成するか、別のファイルをお試しください。",
-  "badgeIntro": "AIをオンにすると、Claudeがあなたのファイルから書くカードの無料サンプルを確認でき、その後 Day Pass で完全なデッキを入手できます。",
-  "toggleLabel": "Claude AI でフラッシュカードを生成",
   "choiceLegend": "カードをどのように作りますか？",
   "choiceStructure": "ファイルの構造からカードを作成：無料、AIなし",
   "choiceClaude": "Claudeがカードを作成：まず無料サンプル",

@@ -28,14 +28,6 @@ async function mockBackend(page: Page): Promise<void> {
       body: JSON.stringify({ user: {}, locals: {}, features: {} }),
     })
   );
-  await page.route('**/api/landing/config', async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, SLOW_API_MS));
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ showPassPrices: true }),
-    });
-  });
   await page.route('**/api/pricing', async (route) => {
     await new Promise((resolve) => setTimeout(resolve, SLOW_API_MS));
     await route.fulfill({

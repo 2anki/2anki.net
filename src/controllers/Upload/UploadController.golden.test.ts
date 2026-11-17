@@ -239,10 +239,8 @@ import {
   __resetFeatureFlagModuleForTests,
   __setFeatureFlagDependencies,
 } from '../../lib/featureFlags/getFeatureFlag';
-import { ANONYMOUS_DAY_PASS_CARD_FLAG } from '../../lib/upload/anonymousDayPassCard';
 import { LIMIT_WALL_PASS_FIRST_FLAG } from '../../lib/featureFlags/limitWallPassFirst';
 import { fakeUploadServiceDeps } from '../../test/fakes/uploadServiceDeps';
-import { ANONYMOUS_AI_PREVIEW_FLAG } from '../../lib/upload/anonymousAiPreview';
 import { PhotoToFlashcardsUseCase } from '../../usecases/imageOcclusion/PhotoToFlashcardsUseCase';
 import type { IEventsRepository } from '../../data_layer/EventsRepository';
 import { getDatabase } from '../../data_layer';
@@ -381,11 +379,6 @@ const cases: [string, keyof typeof UPLOADS, Population][] = [
   ['signed-out under the anonymous cap', 'small', signedOut],
   ['signed-out over the cap', 'large', signedOut],
   [
-    'signed-out over the cap, day pass card on',
-    'large',
-    { ...signedOut, flags: { [ANONYMOUS_DAY_PASS_CARD_FLAG]: true } },
-  ],
-  [
     'signed-out over the cap, pass-first wall on',
     'large',
     { ...signedOut, flags: { [LIMIT_WALL_PASS_FIRST_FLAG]: true } },
@@ -396,28 +389,9 @@ const cases: [string, keyof typeof UPLOADS, Population][] = [
     { ...signedOut, cookies: {} },
   ],
   [
-    'signed-out over the cap, no anon id, day pass card on',
-    'large',
-    {
-      ...signedOut,
-      cookies: {},
-      flags: { [ANONYMOUS_DAY_PASS_CARD_FLAG]: true },
-    },
-  ],
-  [
     'signed-out over the cap, anon id cookie minted on the upload itself',
     'large',
     { ...signedOut, cookies: {}, mintsAnonId: true },
-  ],
-  [
-    'signed-out over the cap, anon id cookie minted on the upload itself, day pass card on',
-    'large',
-    {
-      ...signedOut,
-      cookies: {},
-      mintsAnonId: true,
-      flags: { [ANONYMOUS_DAY_PASS_CARD_FLAG]: true },
-    },
   ],
   [
     'signed-out with an expired session cookie, under the cap',
@@ -441,15 +415,6 @@ const cases: [string, keyof typeof UPLOADS, Population][] = [
     {
       ...signedOut,
       cookies: { token: 'expired-session' },
-    },
-  ],
-  [
-    'signed-out with an expired session cookie, over the cap, day pass card on',
-    'large',
-    {
-      ...signedOut,
-      cookies: { token: 'expired-session', anon_id: 'golden-anon' },
-      flags: { [ANONYMOUS_DAY_PASS_CARD_FLAG]: true },
     },
   ],
   [
@@ -580,71 +545,42 @@ const aiCases: [string, keyof typeof UPLOADS, Population][] = [
     },
   ],
   ['signed-in free with AI on', 'small', { ...signedInFree, fields: AI_ON }],
+  ['signed-out with AI on', 'small', { ...signedOut, fields: AI_ON }],
   [
-    'signed-out with AI on, AI preview off',
+    'signed-out with AI on, no sample came back',
     'small',
-    { ...signedOut, fields: AI_ON },
+    { ...signedOut, fields: AI_ON, previewReply: '[]' },
   ],
   [
-    'signed-out with AI on, AI preview on',
-    'small',
-    {
-      ...signedOut,
-      fields: AI_ON,
-      flags: { [ANONYMOUS_AI_PREVIEW_FLAG]: true },
-    },
-  ],
-  [
-    'signed-out with AI on, AI preview on, no sample came back',
-    'small',
-    {
-      ...signedOut,
-      fields: AI_ON,
-      flags: { [ANONYMOUS_AI_PREVIEW_FLAG]: true },
-      previewReply: '[]',
-    },
-  ],
-  [
-    'signed-out with AI on, AI preview off, over the cap',
+    'signed-out with AI on, over the cap',
     'large',
     { ...signedOut, fields: AI_ON },
   ],
   [
-    'signed-out with AI on, AI preview on, no sample came back, over the cap',
+    'signed-out with AI on, no sample came back, over the cap',
     'large',
-    {
-      ...signedOut,
-      fields: AI_ON,
-      flags: { [ANONYMOUS_AI_PREVIEW_FLAG]: true },
-      previewReply: '[]',
-    },
+    { ...signedOut, fields: AI_ON, previewReply: '[]' },
   ],
   [
-    'signed-out with AI on, AI preview off, over the cap, anon id cookie minted on the upload itself',
+    'signed-out with AI on, over the cap, anon id cookie minted on the upload itself',
     'large',
     { ...signedOut, cookies: {}, mintsAnonId: true, fields: AI_ON },
   ],
   [
-    'signed-out with AI on, AI preview on, no sample came back, over the cap, anon id cookie minted on the upload itself',
+    'signed-out with AI on, no sample came back, over the cap, anon id cookie minted on the upload itself',
     'large',
     {
       ...signedOut,
       cookies: {},
       mintsAnonId: true,
       fields: AI_ON,
-      flags: { [ANONYMOUS_AI_PREVIEW_FLAG]: true },
       previewReply: '[]',
     },
   ],
   [
-    'signed-out with AI on, AI preview on, no anon id',
+    'signed-out with AI on, no anon id',
     'small',
-    {
-      ...signedOut,
-      cookies: {},
-      fields: AI_ON,
-      flags: { [ANONYMOUS_AI_PREVIEW_FLAG]: true },
-    },
+    { ...signedOut, cookies: {}, fields: AI_ON },
   ],
   [
     'signed-out pass holder with AI on',
@@ -1384,6 +1320,7 @@ describe('a held deck after the preview cards test ended', () => {
       totalCards: LARGE_DECK_CARDS,
       deckName: 'Golden Large',
       savedForHours: 24,
+      dayPassCard: true,
     });
     expect(result.storedObjects).toEqual(['held source file']);
   });
@@ -1886,7 +1823,6 @@ describe('what the real auth middleware resolves before the upload', () => {
 const AI_PREVIEW_VISITOR: Population = {
   ...signedOut,
   fields: AI_ON,
-  flags: { [ANONYMOUS_AI_PREVIEW_FLAG]: true },
 };
 
 const dayPassHolderOnThisBrowser: Population = {

@@ -176,6 +176,7 @@ exports[`what each population gets back from /api/upload/file > signed-out over 
   "body": {
     "cardCount": 21,
     "cardsHeldBack": 99,
+    "dayPassCard": true,
     "deckName": "Golden Large",
     "kind": "held",
     "savedForHours": 24,
@@ -197,48 +198,6 @@ exports[`what each population gets back from /api/upload/file > signed-out over 
     "cardCount": 21,
     "cardsHeldBack": 99,
     "cookieMinted": true,
-    "deckName": "Golden Large",
-    "kind": "held",
-    "savedForHours": 24,
-    "totalCards": 120,
-  },
-  "cardsCharged": [],
-  "contentType": "application/json",
-  "headers": {},
-  "status": 200,
-  "storedObjects": [
-    "held source file",
-  ],
-}
-`;
-
-exports[`what each population gets back from /api/upload/file > signed-out over the cap, anon id cookie minted on the upload itself, day pass card on 1`] = `
-{
-  "body": {
-    "cardCount": 21,
-    "cardsHeldBack": 99,
-    "cookieMinted": true,
-    "dayPassCard": true,
-    "deckName": "Golden Large",
-    "kind": "held",
-    "savedForHours": 24,
-    "totalCards": 120,
-  },
-  "cardsCharged": [],
-  "contentType": "application/json",
-  "headers": {},
-  "status": 200,
-  "storedObjects": [
-    "held source file",
-  ],
-}
-`;
-
-exports[`what each population gets back from /api/upload/file > signed-out over the cap, day pass card on 1`] = `
-{
-  "body": {
-    "cardCount": 21,
-    "cardsHeldBack": 99,
     "dayPassCard": true,
     "deckName": "Golden Large",
     "kind": "held",
@@ -258,21 +217,6 @@ exports[`what each population gets back from /api/upload/file > signed-out over 
 exports[`what each population gets back from /api/upload/file > signed-out over the cap, no anon id 1`] = `
 {
   "body": {
-    "text": "Found. Redirecting to /limit?kind=anonymous",
-  },
-  "cardsCharged": [],
-  "contentType": "text/plain",
-  "headers": {
-    "location": "/limit?kind=anonymous",
-  },
-  "status": 302,
-  "storedObjects": [],
-}
-`;
-
-exports[`what each population gets back from /api/upload/file > signed-out over the cap, no anon id, day pass card on 1`] = `
-{
-  "body": {
     "text": "Found. Redirecting to /limit?kind=anonymous&cards=120",
   },
   "cardsCharged": [],
@@ -290,6 +234,7 @@ exports[`what each population gets back from /api/upload/file > signed-out over 
   "body": {
     "cardCount": 21,
     "cardsHeldBack": 99,
+    "dayPassCard": true,
     "deckName": "Golden Large",
     "kind": "held",
     "savedForHours": 24,
@@ -392,26 +337,6 @@ exports[`what each population gets back from /api/upload/file > signed-out with 
   "body": {
     "cardCount": 21,
     "cardsHeldBack": 99,
-    "deckName": "Golden Large",
-    "kind": "held",
-    "savedForHours": 24,
-    "totalCards": 120,
-  },
-  "cardsCharged": [],
-  "contentType": "application/json",
-  "headers": {},
-  "status": 200,
-  "storedObjects": [
-    "held source file",
-  ],
-}
-`;
-
-exports[`what each population gets back from /api/upload/file > signed-out with an expired session cookie, over the cap, day pass card on 1`] = `
-{
-  "body": {
-    "cardCount": 21,
-    "cardsHeldBack": 99,
     "dayPassCard": true,
     "deckName": "Golden Large",
     "kind": "held",
@@ -431,12 +356,12 @@ exports[`what each population gets back from /api/upload/file > signed-out with 
 exports[`what each population gets back from /api/upload/file > signed-out with an expired session cookie, over the cap, no anon id 1`] = `
 {
   "body": {
-    "text": "Found. Redirecting to /limit?kind=anonymous",
+    "text": "Found. Redirecting to /limit?kind=anonymous&cards=120",
   },
   "cardsCharged": [],
   "contentType": "text/plain",
   "headers": {
-    "location": "/limit?kind=anonymous",
+    "location": "/limit?kind=anonymous&cards=120",
   },
   "status": 302,
   "storedObjects": [],
@@ -483,6 +408,7 @@ exports[`what each population gets back from a Google Drive import > signed-out 
   "body": {
     "cardCount": 21,
     "cardsHeldBack": 99,
+    "dayPassCard": true,
     "deckName": "Golden Large",
     "kind": "held",
     "savedForHours": 24,
@@ -504,6 +430,7 @@ exports[`what each population gets back from a Google Drive import > signed-out 
     "cardCount": 21,
     "cardsHeldBack": 99,
     "cookieMinted": true,
+    "dayPassCard": true,
     "deckName": "Golden Large",
     "kind": "held",
     "savedForHours": 24,
@@ -522,12 +449,12 @@ exports[`what each population gets back from a Google Drive import > signed-out 
 exports[`what each population gets back from a Google Drive import > signed-out Google Drive import over the cap, no anon id 1`] = `
 {
   "body": {
-    "text": "Found. Redirecting to /limit?kind=anonymous",
+    "text": "Found. Redirecting to /limit?kind=anonymous&cards=120",
   },
   "cardsCharged": [],
   "contentType": "text/plain",
   "headers": {
-    "location": "/limit?kind=anonymous",
+    "location": "/limit?kind=anonymous&cards=120",
   },
   "status": 302,
   "storedObjects": [],
@@ -757,68 +684,7 @@ exports[`what each population gets back from an AI upload > signed-out pass hold
 }
 `;
 
-exports[`what each population gets back from an AI upload > signed-out with AI on, AI preview off 1`] = `
-{
-  "body": {
-    "apkg": "golden-apkg cards=5",
-  },
-  "cardsCharged": [],
-  "contentType": "application/octet-stream",
-  "headers": {
-    "access-control-expose-headers": "File-Name, X-Card-Count, X-MCQ-Count, X-MCQ-Skipped-Count",
-    "content-disposition": "attachment; filename="Golden Small.apkg"",
-    "file-name": "Golden%20Small.apkg",
-    "x-card-count": "5",
-    "x-mcq-count": "0",
-    "x-mcq-skipped-count": "0",
-  },
-  "status": 200,
-  "storedObjects": [],
-}
-`;
-
-exports[`what each population gets back from an AI upload > signed-out with AI on, AI preview off, over the cap 1`] = `
-{
-  "body": {
-    "cardCount": 21,
-    "cardsHeldBack": 99,
-    "deckName": "Golden Large",
-    "kind": "held",
-    "savedForHours": 24,
-    "totalCards": 120,
-  },
-  "cardsCharged": [],
-  "contentType": "application/json",
-  "headers": {},
-  "status": 200,
-  "storedObjects": [
-    "held source file",
-  ],
-}
-`;
-
-exports[`what each population gets back from an AI upload > signed-out with AI on, AI preview off, over the cap, anon id cookie minted on the upload itself 1`] = `
-{
-  "body": {
-    "cardCount": 21,
-    "cardsHeldBack": 99,
-    "cookieMinted": true,
-    "deckName": "Golden Large",
-    "kind": "held",
-    "savedForHours": 24,
-    "totalCards": 120,
-  },
-  "cardsCharged": [],
-  "contentType": "application/json",
-  "headers": {},
-  "status": 200,
-  "storedObjects": [
-    "held source file",
-  ],
-}
-`;
-
-exports[`what each population gets back from an AI upload > signed-out with AI on, AI preview on 1`] = `
+exports[`what each population gets back from an AI upload > signed-out with AI on 1`] = `
 {
   "body": {
     "cardCount": 3,
@@ -848,7 +714,7 @@ exports[`what each population gets back from an AI upload > signed-out with AI o
 }
 `;
 
-exports[`what each population gets back from an AI upload > signed-out with AI on, AI preview on, no anon id 1`] = `
+exports[`what each population gets back from an AI upload > signed-out with AI on, no anon id 1`] = `
 {
   "body": {
     "apkg": "golden-apkg cards=5",
@@ -868,7 +734,7 @@ exports[`what each population gets back from an AI upload > signed-out with AI o
 }
 `;
 
-exports[`what each population gets back from an AI upload > signed-out with AI on, AI preview on, no sample came back 1`] = `
+exports[`what each population gets back from an AI upload > signed-out with AI on, no sample came back 1`] = `
 {
   "body": {
     "apkg": "golden-apkg cards=5",
@@ -889,11 +755,12 @@ exports[`what each population gets back from an AI upload > signed-out with AI o
 }
 `;
 
-exports[`what each population gets back from an AI upload > signed-out with AI on, AI preview on, no sample came back, over the cap 1`] = `
+exports[`what each population gets back from an AI upload > signed-out with AI on, no sample came back, over the cap 1`] = `
 {
   "body": {
     "cardCount": 21,
     "cardsHeldBack": 99,
+    "dayPassCard": true,
     "deckName": "Golden Large",
     "kind": "held",
     "savedForHours": 24,
@@ -909,12 +776,65 @@ exports[`what each population gets back from an AI upload > signed-out with AI o
 }
 `;
 
-exports[`what each population gets back from an AI upload > signed-out with AI on, AI preview on, no sample came back, over the cap, anon id cookie minted on the upload itself 1`] = `
+exports[`what each population gets back from an AI upload > signed-out with AI on, no sample came back, over the cap, anon id cookie minted on the upload itself 1`] = `
 {
   "body": {
     "cardCount": 21,
     "cardsHeldBack": 99,
     "cookieMinted": true,
+    "dayPassCard": true,
+    "deckName": "Golden Large",
+    "kind": "held",
+    "savedForHours": 24,
+    "totalCards": 120,
+  },
+  "cardsCharged": [],
+  "contentType": "application/json",
+  "headers": {},
+  "status": 200,
+  "storedObjects": [
+    "held source file",
+  ],
+}
+`;
+
+exports[`what each population gets back from an AI upload > signed-out with AI on, over the cap 1`] = `
+{
+  "body": {
+    "cardCount": 3,
+    "cards": [
+      {
+        "back": "A snapshot of what users get back",
+        "front": "What is a golden test?",
+      },
+      {
+        "back": "The upload response for each population",
+        "front": "What does it guard?",
+      },
+      {
+        "back": "Every PR that touches uploads",
+        "front": "Who reads it?",
+      },
+    ],
+    "kind": "ai_preview",
+  },
+  "cardsCharged": [],
+  "contentType": "application/json",
+  "headers": {},
+  "status": 200,
+  "storedObjects": [
+    "held source file",
+  ],
+}
+`;
+
+exports[`what each population gets back from an AI upload > signed-out with AI on, over the cap, anon id cookie minted on the upload itself 1`] = `
+{
+  "body": {
+    "cardCount": 21,
+    "cardsHeldBack": 99,
+    "cookieMinted": true,
+    "dayPassCard": true,
     "deckName": "Golden Large",
     "kind": "held",
     "savedForHours": 24,
@@ -1058,6 +978,7 @@ exports[`what the real auth middleware resolves before the upload > real pass to
   "body": {
     "cardCount": 21,
     "cardsHeldBack": 99,
+    "dayPassCard": true,
     "deckName": "Golden Large",
     "kind": "held",
     "savedForHours": 24,
@@ -1080,6 +1001,7 @@ exports[`what the real auth middleware resolves before the upload > real pass to
   "body": {
     "cardCount": 21,
     "cardsHeldBack": 99,
+    "dayPassCard": true,
     "deckName": "Golden Large",
     "kind": "held",
     "savedForHours": 24,
@@ -1174,6 +1096,7 @@ exports[`what the real auth middleware resolves before the upload > real session
   "body": {
     "cardCount": 21,
     "cardsHeldBack": 99,
+    "dayPassCard": true,
     "deckName": "Golden Large",
     "kind": "held",
     "savedForHours": 24,

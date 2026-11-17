@@ -8031,7 +8031,7 @@ describe('UploadForm deck result and resends of kept files', () => {
   const signedOutWithAiPreview = {
     user: null,
     locals: { owner: 0, patreon: false, subscriber: false },
-    features: { anonymousAiPreview: true },
+    features: {},
   } as unknown as ReturnType<typeof useUserLocals>['data'];
 
   const freeSignedIn = {

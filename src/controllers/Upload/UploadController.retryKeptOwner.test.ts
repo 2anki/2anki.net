@@ -28,7 +28,6 @@ import {
   __resetFeatureFlagModuleForTests,
   __setFeatureFlagDependencies,
 } from '../../lib/featureFlags/getFeatureFlag';
-import { ANONYMOUS_DAY_PASS_CARD_FLAG } from '../../lib/upload/anonymousDayPassCard';
 import { LIMIT_WALL_PASS_FIRST_FLAG } from '../../lib/featureFlags/limitWallPassFirst';
 
 const OWNER = 4242;
@@ -346,7 +345,7 @@ describe('the card limits on a password unlock', () => {
     expect(cardUsage.incrementCardUsage).toHaveBeenCalledWith(OWNER, 12);
   });
 
-  it.each([ANONYMOUS_DAY_PASS_CARD_FLAG, LIMIT_WALL_PASS_FIRST_FLAG])(
+  it.each([LIMIT_WALL_PASS_FIRST_FLAG])(
     'states the deck size on the anonymous wall when %s is on, as an upload does',
     async (flag) => {
       __setFeatureFlagDependencies({
@@ -370,14 +369,14 @@ describe('the card limits on a password unlock', () => {
     }
   );
 
-  it('sends a signed-out visitor past the anonymous cap to the limit page', async () => {
+  it('sends a signed-out visitor past the anonymous cap to the limit page with the deck size', async () => {
     deckOf(30);
 
     const response = await unlockWithoutFollowing(signedOut);
 
     expect(response).toEqual({
       status: 302,
-      location: '/limit?kind=anonymous',
+      location: '/limit?kind=anonymous&cards=30',
     });
   });
 

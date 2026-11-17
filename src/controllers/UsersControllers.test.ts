@@ -3117,8 +3117,8 @@ describe('UsersController cookie options — 30-day persistent session', () => {
 });
 
 describe('UsersController.getLocals', () => {
-  it('surfaces the anonymous Day Pass card flag to anonymous callers', async () => {
-    vi.mocked(getFeatureFlag).mockResolvedValueOnce(true);
+  it('tells a tab loaded before they were unconditional that the Day Pass card and the AI preview and choice are on', async () => {
+    vi.mocked(getFeatureFlag).mockResolvedValue(false);
     const userService = {
       getSubscriptionLinkedEmail: vi.fn().mockResolvedValue(null),
     } as unknown as UsersService;
@@ -3138,12 +3138,16 @@ describe('UsersController.getLocals', () => {
 
     await controller.getLocals(req, res);
 
-    const payload = res.json.mock.calls[0][0];
-    expect(payload.features.anonymousDayPassCard).toBe(true);
-    expect(getFeatureFlag).toHaveBeenCalledWith(
-      'anonymous_day_pass_card',
-      false
-    );
+    const { features } = res.json.mock.calls[0][0];
+    expect(features).toMatchObject({
+      anonymousDayPassCard: true,
+      anonymousAiPreview: true,
+      anonymousAiChoice: true,
+    });
+    const flagsRead = vi.mocked(getFeatureFlag).mock.calls.map(([key]) => key);
+    expect(flagsRead).not.toContain('anonymous_day_pass_card');
+    expect(flagsRead).not.toContain('anonymous_ai_preview');
+    expect(flagsRead).not.toContain('anonymous_ai_choice');
   });
 
   it('reads the limit wall Pro price flag, off by default', async () => {
@@ -3172,7 +3176,6 @@ describe('UsersController.getLocals', () => {
     const { features } = res.json.mock.calls[0][0];
     expect(features.limitWallProPrice).toBe(true);
     expect(features.thinDeckAiOffer).toBe(false);
-    expect(features.anonymousDayPassCard).toBe(false);
     expect(getFeatureFlag).toHaveBeenCalledWith('limit_wall_pro_price', false);
     vi.mocked(getFeatureFlag).mockReset().mockResolvedValue(false);
   });
@@ -3205,61 +3208,6 @@ describe('UsersController.getLocals', () => {
     expect(features.limitWallProPrice).toBe(false);
     expect(getFeatureFlag).toHaveBeenCalledWith('limit_wall_pass_first', false);
     vi.mocked(getFeatureFlag).mockReset().mockResolvedValue(false);
-  });
-
-  it('reads the anonymous AI choice flag, off by default', async () => {
-    vi.mocked(getFeatureFlag).mockImplementation(async (key: string) =>
-      key === 'anonymous_ai_choice' ? true : false
-    );
-    const userService = {
-      getSubscriptionLinkedEmail: vi.fn().mockResolvedValue(null),
-    } as unknown as UsersService;
-    const authService = {
-      getUserFrom: vi.fn().mockResolvedValue(null),
-    } as unknown as AuthenticationService;
-    const controller = new UsersController(
-      userService,
-      authService,
-      {} as ReturnType<typeof import('../data_layer').getDatabase>
-    );
-    const req = { cookies: {} } as unknown as express.Request;
-    const res = {
-      locals: {},
-      json: vi.fn(),
-    } as unknown as express.Response & { json: Mock };
-
-    await controller.getLocals(req, res);
-
-    const { features } = res.json.mock.calls[0][0];
-    expect(features.anonymousAiChoice).toBe(true);
-    expect(features.anonymousAiPreview).toBe(false);
-    expect(getFeatureFlag).toHaveBeenCalledWith('anonymous_ai_choice', false);
-    vi.mocked(getFeatureFlag).mockReset().mockResolvedValue(false);
-  });
-
-  it('answers with the Day Pass card off when the flag read fails', async () => {
-    vi.mocked(getFeatureFlag).mockRejectedValueOnce(new Error('db down'));
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-    const userService = {
-      getSubscriptionLinkedEmail: vi.fn().mockResolvedValue(null),
-    } as unknown as UsersService;
-    const authService = {
-      getUserFrom: vi.fn().mockResolvedValue(null),
-    } as unknown as AuthenticationService;
-    const controller = new UsersController(
-      userService,
-      authService,
-      {} as ReturnType<typeof import('../data_layer').getDatabase>
-    );
-    const req = { cookies: {} } as unknown as express.Request;
-    const res = {
-      locals: {},
-      json: vi.fn(),
-    } as unknown as express.Response & { json: Mock };
-
-    await controller.getLocals(req, res);
-
-    expect(res.json.mock.calls[0][0].features.anonymousDayPassCard).toBe(false);
   });
 
   it('includes email_verified in the user object', async () => {

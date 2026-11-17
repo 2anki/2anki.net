@@ -62,11 +62,9 @@ interface HeroActionProps {
   registerHref: string;
   dayPassPrice: string;
   sample: boolean;
-  showAiToggle: boolean;
   showAiChoice: boolean;
   aiOn: boolean;
   uploadAiOn: boolean;
-  onToggleAi: () => void;
   onChooseAi: (next: boolean) => void;
   t: TFunction<'landing'>;
 }
@@ -79,11 +77,9 @@ function renderHeroAction({
   registerHref,
   dayPassPrice,
   sample,
-  showAiToggle,
   showAiChoice,
   aiOn,
   uploadAiOn,
-  onToggleAi,
   onChooseAi,
   t,
 }: Readonly<HeroActionProps>) {
@@ -107,12 +103,6 @@ function renderHeroAction({
   return (
     <>
       {showAiChoice && <AiChoice aiOn={aiOn} onChange={onChooseAi} />}
-      {showAiToggle && !showAiChoice && (
-        <label className={styles.aiToggle}>
-          <input type="checkbox" checked={aiOn} onChange={onToggleAi} />
-          <span>{t('aiPreview:toggleLabel')}</span>
-        </label>
-      )}
       <div className={styles.uploadWrapper}>
         <UploadForm
           setErrorMessage={setErrorMessage}
@@ -146,22 +136,15 @@ function LandingPage({
   const passPrices = usePassPrices();
   const { data: userLocals, isLoading: userLocalsLoading } = useUserLocals();
   const isSignedIn = userLocals?.user?.id != null;
-  // Only the AI landing page offers the preview toggle: that is where a visitor
-  // arrives wanting AI cards, and where the free-text/PDF upload the preview can
-  // read is the point. Other landing pages keep their structure-first flow.
-  const previewOn =
-    !isSignedIn && userLocals?.features?.anonymousAiPreview === true;
   // Shown before locals load for a visitor with no session, so the choice is
   // in place on first paint instead of pushing the drop zone down on arrival.
   const showAiChoice = userLocalsLoading
     ? !hasSessionHint()
-    : previewOn && userLocals?.features?.anonymousAiChoice === true;
-  const showAiToggle = previewOn && copy.pathname === '/ai-flashcard-generator';
+    : !isSignedIn && userLocals != null;
   const [aiOn, setAiOn] = useState(
     () => globalThis.localStorage?.getItem('claude-ai-flashcards') === 'true'
   );
-  const uploadAiOn =
-    !userLocalsLoading && (showAiToggle || showAiChoice) && aiOn;
+  const uploadAiOn = !userLocalsLoading && showAiChoice && aiOn;
   const chooseAi = (next: boolean) => {
     if (next === aiOn) return;
     saveValueInLocalStorage('claude-ai-flashcards', String(next), null);
@@ -170,7 +153,6 @@ function LandingPage({
       surface: copy.pathname,
     });
   };
-  const toggleAi = () => chooseAi(!aiOn);
   const landingViewedRef = useRef(false);
   useEffect(() => {
     persistSignupOrigin(copy.pathname, globalThis.sessionStorage ?? null);
@@ -246,11 +228,9 @@ function LandingPage({
             registerHref,
             dayPassPrice: passPrices['24h'],
             sample: copy.homeHero === true,
-            showAiToggle,
             showAiChoice,
             aiOn,
             uploadAiOn,
-            onToggleAi: toggleAi,
             onChooseAi: chooseAi,
             t,
           })}

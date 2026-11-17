@@ -13,8 +13,6 @@
   "signupLeadIn": "Albo załóż darmowe konto, aby zapisywać talie i zwiększyć darmowy limit.",
   "resuming": "Day Pass aktywny. Tworzymy teraz Twoją pełną talię z AI.",
   "previewError": "Nie udało się utworzyć podglądu z AI dla tego pliku. Utwórz talię bez AI albo spróbuj innego pliku.",
-  "badgeIntro": "Włącz AI, aby zobaczyć darmową próbkę fiszek, które Claude pisze z Twojego pliku, a potem odblokuj pełną talię za pomocą Day Pass.",
-  "toggleLabel": "Generuj fiszki za pomocą Claude AI",
   "choiceLegend": "Jak mamy zrobić Twoje fiszki?",
   "choiceStructure": "Fiszki ze struktury pliku: za darmo, bez AI",
   "choiceClaude": "Claude pisze fiszki: najpierw darmowa próbka",

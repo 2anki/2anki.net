@@ -13,8 +13,6 @@
   "signupLeadIn": "Ou crée un compte gratuit pour enregistrer tes paquets et augmenter ta limite gratuite.",
   "resuming": "Day Pass actif. Nous créons ton paquet IA complet.",
   "previewError": "Impossible de créer un aperçu IA à partir de ce fichier. Crée le paquet sans IA ou essaie un autre fichier.",
-  "badgeIntro": "Active l'IA pour voir un échantillon gratuit des cartes que Claude rédige à partir de ton fichier, puis débloque le paquet complet avec un Day Pass.",
-  "toggleLabel": "Générer des cartes avec Claude AI",
   "choiceLegend": "Comment faire vos cartes ?",
   "choiceStructure": "Cartes à partir de la structure de votre fichier : gratuit, sans IA",
   "choiceClaude": "Claude écrit les cartes : un échantillon gratuit d'abord",

@@ -119,7 +119,6 @@ import {
   AnonymousCardCapError,
 } from '../usecases/users/CheckMonthlyCardLimitUseCase';
 import { ANONYMOUS_CARD_CAP, MONTHLY_CARD_LIMIT } from '../lib/limits';
-import { getFeatureFlag } from '../lib/featureFlags/getFeatureFlag';
 import { isSlowUpload } from '../lib/upload/asyncSlowUploads';
 import { isPartialDeliveryEligible } from '../usecases/uploads/isPartialDeliveryEligible';
 import {
@@ -127,8 +126,6 @@ import {
   MAX_PLAN_HOLDS,
   planHoldKey,
 } from '../usecases/uploads/ClaimHeldDeckUseCase';
-import { ANONYMOUS_DAY_PASS_CARD_FLAG } from '../lib/upload/anonymousDayPassCard';
-import { LIMIT_WALL_PASS_FIRST_FLAG } from '../lib/featureFlags/limitWallPassFirst';
 import {
   anonRecoveryKey,
   readRecoveryToken,
@@ -192,7 +189,6 @@ import { analyticsAnonId } from '../lib/http/consentRegion';
 import { generateAiPreview, type AiPreviewCard } from '../lib/claude/aiPreview';
 import { extractPreviewText } from '../lib/upload/extractPreviewText';
 import {
-  anonymousAiPreviewEnabled,
   isPreviewHoldKey,
   previewHoldKey,
 } from '../lib/upload/anonymousAiPreview';
@@ -1477,18 +1473,7 @@ class UploadService {
           anonymousId,
           props: { source, kind: 'anonymous' },
         });
-        // Both the Day Pass card and the pass-first wall state the deck size.
-        // A failed flag read drops the count, never the redirect.
-        const flagOn = (key: string) =>
-          getFeatureFlag(key, false).catch(() => false);
-        const showsCardCount =
-          (await flagOn(ANONYMOUS_DAY_PASS_CARD_FLAG)) ||
-          (await flagOn(LIMIT_WALL_PASS_FIRST_FLAG));
-        return res.redirect(
-          showsCardCount
-            ? `/limit?kind=anonymous&cards=${err.cardsFound}`
-            : '/limit?kind=anonymous'
-        );
+        return res.redirect(`/limit?kind=anonymous&cards=${err.cardsFound}`);
       } else if (isLimitError(err as Error)) {
         handleUploadLimitError(req, res);
       } else if (err instanceof EmptyDeckError) {
@@ -2646,17 +2631,13 @@ class UploadService {
   // A visitor without an account who turned AI on: run the capped preview and,
   // when it produces cards, answer with them so the client can show the sample
   // and the Day Pass offer. Returns null to mean "nothing new" — the caller then
-  // runs today's free conversion. The feature flag is read here first so a
-  // flag-off upload never reads the file bytes for a preview it won't run.
+  // runs today's free conversion.
   private async runAnonymousAiPreview(
     req: express.Request,
     res: express.Response,
     files: UploadedFile[]
   ): Promise<AiPreviewUploadResponse | null> {
     if (files.length !== 1 || isImageOnlyUpload(files)) {
-      return null;
-    }
-    if (!(await anonymousAiPreviewEnabled())) {
       return null;
     }
     const file = files[0];
@@ -2674,7 +2655,6 @@ class UploadService {
         requestId,
       },
       {
-        isEnabled: anonymousAiPreviewEnabled,
         allow: (anonId, ipKey) =>
           this.aiPreviewRateLimiter.allow(anonId, ipKey),
         preview: async (filename, fileBytes, rid) => {
@@ -2987,9 +2967,7 @@ class UploadService {
       },
     });
     const totalCards = cardCount + cardsHeldBack;
-    const dayPassCard =
-      totalCards > MONTHLY_CARD_LIMIT &&
-      (await getFeatureFlag(ANONYMOUS_DAY_PASS_CARD_FLAG, false));
+    const dayPassCard = totalCards > MONTHLY_CARD_LIMIT;
     const cookieMinted = this.resolveAnonId(req) == null;
     if (cookieMinted) {
       console.info('[UploadService] held deck under a just-minted anon id', {

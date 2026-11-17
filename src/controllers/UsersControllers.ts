@@ -60,11 +60,6 @@ import { getFeatureFlag } from '../lib/featureFlags/getFeatureFlag';
 import { THIN_DECK_AI_OFFER_FLAG } from '../lib/featureFlags/thinDeckAiOffer';
 import { LIMIT_WALL_PRO_PRICE_FLAG } from '../lib/featureFlags/limitWallProPrice';
 import { LIMIT_WALL_PASS_FIRST_FLAG } from '../lib/featureFlags/limitWallPassFirst';
-import { ANONYMOUS_DAY_PASS_CARD_FLAG } from '../lib/upload/anonymousDayPassCard';
-import {
-  ANONYMOUS_AI_CHOICE_FLAG,
-  ANONYMOUS_AI_PREVIEW_FLAG,
-} from '../lib/upload/anonymousAiPreview';
 import {
   GetAiCreditsUseCase,
   createAiCreditReaders,
@@ -96,6 +91,14 @@ function readAnalyticsAnonId(req: express.Request): string | null {
   const anonId = cookies?.anon_id;
   return analyticsAnonId(req, typeof anonId === 'string' ? anonId : null);
 }
+
+// A tab loaded before these features stopped being flagged hides each one
+// unless its boolean is true. The current web app no longer reads them.
+const KEPT_FEATURES_FOR_OLDER_TABS = {
+  anonymousDayPassCard: true,
+  anonymousAiPreview: true,
+  anonymousAiChoice: true,
+} as const;
 
 class UsersController {
   constructor(
@@ -397,13 +400,7 @@ class UsersController {
     const featureFlags = {
       kiUI: false,
       ops: user?.email?.toLowerCase() === OPS_OWNER_EMAIL,
-      anonymousDayPassCard: await getFeatureFlag(
-        ANONYMOUS_DAY_PASS_CARD_FLAG,
-        false
-      ).catch((error: unknown) => {
-        console.error('[locals] feature flag read failed', error);
-        return false;
-      }),
+      ...KEPT_FEATURES_FOR_OLDER_TABS,
       limitWallProPrice: await getFeatureFlag(
         LIMIT_WALL_PRO_PRICE_FLAG,
         false
@@ -420,20 +417,6 @@ class UsersController {
       }),
       thinDeckAiOffer: await getFeatureFlag(
         THIN_DECK_AI_OFFER_FLAG,
-        false
-      ).catch((error: unknown) => {
-        console.error('[locals] feature flag read failed', error);
-        return false;
-      }),
-      anonymousAiPreview: await getFeatureFlag(
-        ANONYMOUS_AI_PREVIEW_FLAG,
-        false
-      ).catch((error: unknown) => {
-        console.error('[locals] feature flag read failed', error);
-        return false;
-      }),
-      anonymousAiChoice: await getFeatureFlag(
-        ANONYMOUS_AI_CHOICE_FLAG,
         false
       ).catch((error: unknown) => {
         console.error('[locals] feature flag read failed', error);
