@@ -602,6 +602,53 @@ describe('BlockHandler child page walk', () => {
     });
   });
 
+  describe('a paid conversion of a page with no child pages', () => {
+    it('delivers its toggles once with full backs', async () => {
+      const tree: Record<string, FakeBlock[]> = {};
+      tree[PARENT_PAGE] = [
+        toggleWithBullets(tree, 't-Q1', 'Q1'),
+        toggleWithBullets(tree, 't-Q2', 'Q2'),
+      ];
+      const sdk = makeSdk(tree, {
+        [PARENT_PAGE]: page(PARENT_PAGE, 'Parent'),
+      });
+      const handler = makeHandler(sdk, true);
+      const decks = await convert(handler);
+
+      expect(delivered(decks)).toEqual([
+        { name: 'Parent', cards: [toggleCard('Q1'), toggleCard('Q2')] },
+      ]);
+      expect(handler.blocksSeen).toBe(2);
+    });
+  });
+
+  describe('the avocado skip option in a child page on a paid conversion', () => {
+    it('skips a toggle whose only avocado sits in a list in its answer', async () => {
+      const tree: Record<string, FakeBlock[]> = {};
+      tree[PARENT_PAGE] = [childPage(CHILD_PAGE, 'Child')];
+      tree[CHILD_PAGE] = [
+        toggle('t-Q', 'Q'),
+        toggleWithBullets(tree, 't-Q2', 'Q2'),
+      ];
+      tree['t-Q'] = [
+        paragraph('p-q', 'The answer starts here.'),
+        bullet('t-Q-b1', 'plain item'),
+        bullet('t-Q-b2', 'skip me 🥑'),
+      ];
+      const sdk = makeSdk(tree, {
+        [PARENT_PAGE]: page(PARENT_PAGE, 'Parent'),
+        [CHILD_PAGE]: page(CHILD_PAGE, 'Child'),
+      });
+      const decks = await convert(
+        makeHandler(sdk, true, new CardOption({ avocado: 'true' }))
+      );
+
+      expect(delivered(decks)).toEqual([
+        { name: 'Parent::Child', cards: [toggleCard('Q2')] },
+      ]);
+    });
+  });
+
   describe('a prose-only child page on a paid conversion', () => {
     it('offers each paragraph card once in the empty-deck offer', async () => {
       const tree: Record<string, FakeBlock[]> = {};

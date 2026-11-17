@@ -148,7 +148,8 @@ const PAGE_LIKE_DECK_TYPES = new Set([
 // nested in a column keeps its existing behaviour instead of becoming a sub-deck.
 const NON_CARD_DECK_TYPES = new Set(['child_page', 'child_database']);
 
-// The strict-order loop walks these on every plan, but its cards match the SUB_DECKS walk only when the deck rules include `page` and no block deck type.
+// The strict-order loop walks these on every plan, but its cards match the
+// SUB_DECKS walk only when the deck rules include `page` and no block deck type.
 const CHILD_PAGES_WALKED_IN_ORDER = 'child_page';
 
 // How many database row pages the one-shot row-page walk considers, by plan.
