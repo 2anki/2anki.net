@@ -6,7 +6,6 @@ import { getDatabase } from '../../data_layer';
 import { configureUserLocal } from './configureUserLocal';
 import { prefersHtml } from '../../lib/http/prefersHtml';
 import { sanitizeRelativeRedirect } from '../../controllers/helpers/sanitizeRelativeRedirect';
-import { refuseUnreadBody } from './refuseUnreadBody';
 
 const buildLoginRedirect = (req: express.Request): string => {
   const target = sanitizeRelativeRedirect(req.originalUrl);
@@ -38,8 +37,7 @@ const RequireAuthentication = async (
 ) => {
   await attachUserLocals(req, res);
   if (!res.locals.owner) {
-    refuseUnreadBody(req, res, 401, { message: 'Authentication required' });
-    return;
+    return res.status(401).json({ message: 'Authentication required' });
   }
   return next();
 };
