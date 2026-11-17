@@ -1456,6 +1456,57 @@ describe('performConversion — workspace cleanup', () => {
     );
   });
 
+  it('records the cards the decks deliver, not the cards the walk built', async () => {
+    mockRecordOutputStats.mockClear();
+    (CreateJobWorkSpaceUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          ws: {},
+          exporter: {},
+          settings: {},
+          bl: { cardCount: 7, emptyBackCount: 3, unsupportedBlockTypes: [] },
+          rules: {},
+        }),
+      };
+    });
+    (CreateFlashcardsForJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi
+          .fn()
+          .mockResolvedValue([{ cards: [1] }, { cards: [2, 3, 4] }]),
+      };
+    });
+    (CheckMonthlyCardLimitUseCase as Mock).mockImplementation(function () {
+      return { execute: vi.fn().mockResolvedValue(undefined) };
+    });
+    (BuildDeckForJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi
+          .fn()
+          .mockResolvedValue({ size: 1, key: 'k', apkg: Buffer.from('') }),
+      };
+    });
+    (NotifyUserUseCase as Mock).mockImplementation(function () {
+      return { execute: vi.fn().mockResolvedValue(undefined) };
+    });
+    (CompleteJobUseCase as Mock).mockImplementation(function () {
+      return { execute: vi.fn().mockResolvedValue(undefined) };
+    });
+
+    await performConversion(mockDatabase, {
+      ...baseRequest,
+      isPaying: true,
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(mockRecordOutputStats).toHaveBeenCalledWith('convert:page', {
+      decks: 2,
+      cards: 4,
+      emptyBack: 3,
+    });
+  });
+
   it.each([
     ['page', false, 'convert:page'],
     ['database', false, 'convert:database'],

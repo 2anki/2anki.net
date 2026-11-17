@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-17-notion-subpage-cards-once",
+  "date": "2026-11-17",
+  "type": "fix",
+  "title": "Each card from a Notion subpage arrives once, without repeated table rows, heading cards or blank reversed cards"
+}

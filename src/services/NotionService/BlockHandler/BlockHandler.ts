@@ -148,6 +148,8 @@ const PAGE_LIKE_DECK_TYPES = new Set([
 // nested in a column keeps its existing behaviour instead of becoming a sub-deck.
 const NON_CARD_DECK_TYPES = new Set(['child_page', 'child_database']);
 
+const CHILD_PAGES_WALKED_IN_ORDER = 'child_page';
+
 // How many database row pages the one-shot row-page walk considers, by plan.
 // The free slice mirrors the spirit of the Ankify database walk's flat
 // MAX_DATABASE_PAGES ceiling (250) while keeping free conversions cheap; it is
@@ -1876,7 +1878,7 @@ class BlockHandler implements IBlockRenderer {
       if (this.rowWalkBudgetSpent()) {
         break;
       }
-      if (isFullBlock(block) && block.type === 'child_page') {
+      if (isFullBlock(block) && block.type === CHILD_PAGES_WALKED_IN_ORDER) {
         const subPage = await this.api.getPage(block.id);
         if (subPage) {
           decks = await this.findFlashcardsFromPage(
@@ -1896,7 +1898,10 @@ class BlockHandler implements IBlockRenderer {
     if (this.useAll) {
       const subDecks = blocks.filter((b) => {
         if ('type' in b) {
-          return rules.SUB_DECKS.includes(b.type);
+          return (
+            b.type !== CHILD_PAGES_WALKED_IN_ORDER &&
+            rules.SUB_DECKS.includes(b.type)
+          );
         }
       });
       for (const sd of subDecks) {
