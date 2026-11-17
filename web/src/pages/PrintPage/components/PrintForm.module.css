@@ -231,6 +231,33 @@
   color: var(--color-text-secondary);
 }
 
+.signInTitle {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-primary);
+  text-align: center;
+}
+
+.signInTitle:focus {
+  outline: none;
+}
+
+.signInFile {
+  margin: 0;
+  font-weight: var(--font-medium);
+  color: var(--color-text-primary);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.signInAction {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 320px;
+  text-decoration: none;
+}
+
 .previewAnotherLink {
   background: none;
   border: none;

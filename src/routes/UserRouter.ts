@@ -24,6 +24,9 @@ import {
   NOTION_STATE_COOKIE,
 } from '../lib/auth/oauthState';
 
+const isRegisterPagePath = (path: string) =>
+  path === '/register' || path === '/register/';
+
 const UserRouter = () => {
   const router = express.Router();
   const database = getDatabase();
@@ -808,6 +811,35 @@ const UserRouter = () => {
    *                       example: false
    */
   router.get('/login', (req, res) => controller.checkUser(req, res));
+
+  /**
+   * @swagger
+   * /register:
+   *   get:
+   *     summary: Sign-up page
+   *     description: Serve the sign-up page and remember an allowlisted redirect for the next sign-in
+   *     tags: [Authentication]
+   *     parameters:
+   *       - in: query
+   *         name: redirect
+   *         schema:
+   *           type: string
+   *         description: Same-site page to return to after signing up
+   *     responses:
+   *       200:
+   *         description: Sign-up page HTML
+   *         content:
+   *           text/html:
+   *             schema:
+   *               type: string
+   */
+  router.get('/register', (req, res, next) => {
+    if (isRegisterPagePath(req.path)) {
+      controller.showRegister(req, res);
+    } else {
+      next();
+    }
+  });
 
   /**
    * @swagger

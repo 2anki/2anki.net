@@ -110,3 +110,55 @@ test('a collection file from an unpacked deck folder previews on Print', async (
     errors.filter((text) => !/status of (400|401|404)/.test(text))
   ).toEqual([]);
 });
+
+test('a signed-out visitor on Print is asked to sign in and nothing is uploaded', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text());
+  });
+  await mockBackend(page);
+  await page.route('**/api/users/debug/locals**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        user: {},
+        locals: {},
+        linked_email: '',
+        freePrintAvailable: null,
+      }),
+    })
+  );
+  let uploads = 0;
+  await page.route('**/api/apkg/pdf**', (route) => {
+    uploads += 1;
+    return route.fulfill({ status: 401, body: '{}' });
+  });
+
+  await page.goto('/print');
+  await page
+    .locator('input[type="file"]')
+    .first()
+    .setInputFiles({
+      name: 'Biology.apkg',
+      mimeType: 'application/octet-stream',
+      buffer: Buffer.from('PK'),
+    });
+
+  const prompt = page.getByRole('region', {
+    name: 'Log in to preview and print this deck',
+  });
+  await expect(prompt).toBeVisible();
+  await expect(prompt.getByRole('link', { name: 'Log in' })).toHaveAttribute(
+    'href',
+    '/login?redirect=/print'
+  );
+  expect(uploads).toBe(0);
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > window.innerWidth
+  );
+  expect(overflow).toBe(false);
+  expect(errors).toEqual([]);
+});
