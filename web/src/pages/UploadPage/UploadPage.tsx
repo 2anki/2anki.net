@@ -55,10 +55,10 @@ function deriveAiBadgeState(
   isSignedIn: boolean,
   isPaying: boolean,
   isAiOn: boolean,
-  previewEnabled: boolean,
+  localsLoaded: boolean,
   claudeOnForPdfs: boolean
 ): AiBadgeState {
-  if (!isSignedIn) return previewEnabled ? 'anonPreview' : 'anon';
+  if (!isSignedIn) return localsLoaded ? 'anonPreview' : 'anon';
   if (!isPaying) return 'free';
   if (isAiOn) return 'on';
   if (claudeOnForPdfs) return 'onForPdfs';
@@ -115,8 +115,8 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
     setAiChoiceRecorded(hasRecordedAiChoice());
   }, [isSignedIn]);
 
-  const previewEnabled = userLocals?.features?.anonymousAiPreview === true;
-  const isAiOn = isSignedIn ? isPaying && aiFlag : previewEnabled && aiFlag;
+  const localsLoaded = userLocals != null;
+  const isAiOn = isSignedIn ? isPaying && aiFlag : localsLoaded && aiFlag;
   const sessionHint = hasSessionHint();
   const claudeOnForPdfs =
     !aiChoiceRecorded &&
@@ -128,7 +128,7 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
         isSignedIn,
         isPaying,
         isAiOn,
-        previewEnabled,
+        localsLoaded,
         claudeOnForPdfs
       );
   const aiCredits = useAiCredits(
@@ -147,11 +147,6 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
   const outOfCredits =
     aiCredits != null && aiCredits.allowance !== 0 && aiCredits.credits <= 0;
 
-  const showAiChoice = userLocalsLoading
-    ? !sessionHint
-    : !isSignedIn &&
-      previewEnabled &&
-      userLocals?.features?.anonymousAiChoice === true;
   const aiChoiceOn = userLocalsLoading ? aiFlag : isAiOn;
 
   const setAi = (next: boolean) => {
@@ -240,7 +235,7 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
     // Owner decision: anonymous passes live in the browser (localStorage is sanctioned for this use case)
     storePassToken(passSession);
     if (userLocalsLoading) return;
-    if (userLocals?.features?.anonymousDayPassCard === true) {
+    if (userLocals != null) {
       setPassConfirmation(tPass('passActive'));
     }
     const next = new URLSearchParams(searchParams);
@@ -463,19 +458,8 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
             <span>{sentenceEnd}</span>
           </span>
         )}
-        {aiBadgeState === 'anonPreview' && showAiChoice && (
+        {aiBadgeState === 'anonPreview' && (
           <AiChoice aiOn={aiChoiceOn} onChange={setAi} />
-        )}
-        {aiBadgeState === 'anonPreview' && !showAiChoice && (
-          <>
-            <label className={pageStyles.aiPreviewToggle}>
-              <input type="checkbox" checked={isAiOn} onChange={toggleAi} />
-              <span>{t('aiPreview:toggleLabel')}</span>
-            </label>
-            <span className={styles.aiOffBadgeBody}>
-              <span> {t('aiPreview:badgeIntro')}</span>
-            </span>
-          </>
         )}
       </div>
       <UploadForm

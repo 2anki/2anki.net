@@ -212,16 +212,16 @@ function AnonymousPassFirst({
 }
 
 function AnonymousLimit({
-  dayPassCardEnabled,
+  localsLoaded,
   passFirst,
 }: {
-  dayPassCardEnabled: boolean;
+  localsLoaded: boolean;
   passFirst: boolean;
 }) {
   const { t } = useTranslation('accountx');
   const [searchParams] = useSearchParams();
   const afterCardCap = searchParams.get('kind') === 'anonymous';
-  const readsCardCount = dayPassCardEnabled || passFirst;
+  const readsCardCount = localsLoaded || passFirst;
   const totalCards = readsCardCount
     ? parseTotalCards(searchParams.get('cards'))
     : null;
@@ -241,7 +241,7 @@ function AnonymousLimit({
     plans = (
       <AnonymousPassFirst totalCards={totalCards} afterCardCap={afterCardCap} />
     );
-  } else if (dayPassCardEnabled) {
+  } else if (localsLoaded) {
     plans = (
       <AnonymousLimitCards
         totalCards={totalCards}
@@ -348,10 +348,7 @@ export function LimitPage() {
 
   if (showAnonymous) {
     return (
-      <AnonymousLimit
-        dayPassCardEnabled={userLocals?.features?.anonymousDayPassCard === true}
-        passFirst={passFirst}
-      />
+      <AnonymousLimit localsLoaded={userLocals != null} passFirst={passFirst} />
     );
   }
 

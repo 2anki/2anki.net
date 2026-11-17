@@ -4,10 +4,6 @@ import {
   useLivePassPrices,
   useLivePassPricesPending,
 } from '../../lib/hooks/usePassPrices';
-import {
-  useLandingPassPricesEnabled,
-  useLandingPassPricesPending,
-} from '../../lib/hooks/useLandingPassPrices';
 import styles from './LandingPassPrices.module.css';
 
 const HEADING_ID = 'landing-pass-prices-heading';
@@ -18,8 +14,6 @@ interface Props {
 
 export function LandingPassPrices({ centered = false }: Readonly<Props>) {
   const { t } = useTranslation('landing');
-  const enabled = useLandingPassPricesEnabled();
-  const flagPending = useLandingPassPricesPending();
   const prices = useLivePassPrices();
   const pricesPending = useLivePassPricesPending();
   const dayPrice = prices['24h'];
@@ -29,7 +23,7 @@ export function LandingPassPrices({ centered = false }: Readonly<Props>) {
     ? `${styles.passPrices} ${styles.centered}`
     : styles.passPrices;
 
-  if (flagPending || (enabled && pricesPending)) {
+  if (pricesPending) {
     return (
       <div
         className={`${className} ${styles.reserved}`}
@@ -39,8 +33,7 @@ export function LandingPassPrices({ centered = false }: Readonly<Props>) {
     );
   }
 
-  const canShow = enabled && dayPrice != null && semesterPrice != null;
-  if (!canShow) {
+  if (dayPrice == null || semesterPrice == null) {
     return null;
   }
 

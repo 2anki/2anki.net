@@ -13,8 +13,6 @@
   "signupLeadIn": "Ou crie uma conta gratuita para salvar seus baralhos e aumentar seu limite gratuito.",
   "resuming": "Day Pass ativo. Estamos criando seu baralho completo com IA.",
   "previewError": "Não foi possível criar uma prévia com IA deste arquivo. Crie o baralho sem IA ou tente outro arquivo.",
-  "badgeIntro": "Ative a IA para ver uma amostra gratuita das cartas que o Claude escreve a partir do seu arquivo e depois libere o baralho completo com um Day Pass.",
-  "toggleLabel": "Gerar flashcards com o Claude AI",
   "choiceLegend": "Como devemos criar seus cartões?",
   "choiceStructure": "Cartões a partir da estrutura do arquivo: grátis, sem IA",
   "choiceClaude": "O Claude escreve os cartões: amostra grátis primeiro",

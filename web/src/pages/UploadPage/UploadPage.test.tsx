@@ -53,13 +53,7 @@ let fakeLocals:
       subscriptionInfo?: { email?: string };
     }
   | undefined;
-let fakeFeatures:
-  | {
-      anonymousDayPassCard?: boolean;
-      anonymousAiPreview?: boolean;
-      anonymousAiChoice?: boolean;
-    }
-  | undefined;
+let fakeFeatures: Record<string, boolean> | undefined;
 let fakeLocalsLoading = false;
 let fakeClaudeCardsByDefault: boolean | undefined;
 const reportPurchaseConversion = vi.fn();
@@ -281,18 +275,9 @@ describe('UploadPage AI toggle', () => {
     globalThis.localStorage.clear();
   });
 
-  it('shows the anonymous AI preview toggle with the agreed Claude AI label', () => {
+  it('shows the two-option AI choice with consent text instead of the checkbox to a signed-out visitor', () => {
     fakeUser = null;
-    fakeFeatures = { anonymousAiPreview: true };
-    renderPage();
-    expect(
-      screen.getByText('Generate flashcards with Claude AI')
-    ).toBeInTheDocument();
-  });
-
-  it('shows the two-option AI choice with consent text instead of the checkbox when the choice flag is on', () => {
-    fakeUser = null;
-    fakeFeatures = { anonymousAiPreview: true, anonymousAiChoice: true };
+    fakeFeatures = {};
     renderPage();
     expect(
       screen.getByLabelText('Claude writes the cards: free sample first')
@@ -310,7 +295,7 @@ describe('UploadPage AI toggle', () => {
 
   it('records the upload page as the surface when the visitor picks Claude', () => {
     fakeUser = null;
-    fakeFeatures = { anonymousAiPreview: true, anonymousAiChoice: true };
+    fakeFeatures = {};
     trackMock.mockClear();
     renderPage();
     fireEvent.click(
@@ -319,15 +304,6 @@ describe('UploadPage AI toggle', () => {
     expect(trackMock).toHaveBeenCalledWith('upload_ai_turned_on', {
       surface: 'upload',
     });
-  });
-
-  it('hides the anonymous AI preview toggle when the flag is off', () => {
-    fakeUser = null;
-    fakeFeatures = { anonymousAiPreview: false };
-    renderPage();
-    expect(
-      screen.queryByText('Generate flashcards with Claude AI')
-    ).not.toBeInTheDocument();
   });
 
   it('syncs the AI preference to the server so it follows the user across devices', async () => {
@@ -515,7 +491,7 @@ describe('UploadPage Claude cards on by default for PDFs and PowerPoint', () => 
   it('does not record a choice for a signed-out visitor picking in the free preview', () => {
     fakeUser = null;
     fakeLocals = undefined;
-    fakeFeatures = { anonymousAiPreview: true, anonymousAiChoice: true };
+    fakeFeatures = {};
     renderPage();
     fireEvent.click(
       screen.getByLabelText("Cards from your file's structure: free, no AI")
@@ -856,20 +832,10 @@ describe('UploadPage AI off badge for a paying account', () => {
       badge: () => screen.getByRole('link', { name: /sign in to turn on AI/i }),
     },
     {
-      population: 'a signed-out visitor with the AI preview toggle',
-      user: null,
-      locals: undefined,
-      features: { anonymousAiPreview: true },
-      badge: () =>
-        screen.getByRole('checkbox', {
-          name: 'Generate flashcards with Claude AI',
-        }),
-    },
-    {
       population: 'a signed-out visitor with the AI choice',
       user: null,
       locals: undefined,
-      features: { anonymousAiPreview: true, anonymousAiChoice: true },
+      features: {},
       badge: () =>
         screen.getByLabelText('Claude writes the cards: free sample first'),
     },
@@ -1153,8 +1119,8 @@ describe('UploadPage checkout return', () => {
     expect(storePassToken).toHaveBeenCalledWith('cs_test_anon456');
   });
 
-  it('confirms the active Day Pass and the next step when the flag is on', async () => {
-    fakeFeatures = { anonymousDayPassCard: true };
+  it('confirms the active Day Pass and the next step', async () => {
+    fakeFeatures = {};
 
     renderPage('/upload?pass_session=cs_test_flag_on');
 
@@ -1169,7 +1135,7 @@ describe('UploadPage checkout return', () => {
   });
 
   it('drops the drop-again confirmation once the page starts delivering the deck with the pass', async () => {
-    fakeFeatures = { anonymousDayPassCard: true };
+    fakeFeatures = {};
     const confirmation =
       'Once the payment goes through, drop your file again to start your Day Pass and get every card.';
 
@@ -1180,19 +1146,6 @@ describe('UploadPage checkout return', () => {
     act(() => startPassDeck?.());
 
     expect(screen.queryByText(confirmation)).toBeNull();
-  });
-
-  it('shows no Day Pass confirmation when the flag is off', async () => {
-    renderPage('/upload?pass_session=cs_test_flag_off');
-
-    await waitFor(() =>
-      expect(storePassToken).toHaveBeenCalledWith('cs_test_flag_off')
-    );
-    expect(
-      screen.queryByText(
-        'Once the payment goes through, drop your file again to start your Day Pass and get every card.'
-      )
-    ).toBeNull();
   });
 
   it('stores an anonymous pass before user locals resolve, and strips it after', async () => {
@@ -1304,7 +1257,7 @@ describe('UploadPage Day Pass credit offer', () => {
   it('does not ask for the offer from a signed-out visitor returning with an anonymous Day Pass', () => {
     fakeUser = null;
     fakeLocals = undefined;
-    fakeFeatures = { anonymousDayPassCard: true };
+    fakeFeatures = {};
 
     renderPage('/upload?pass_session=cs_test_anon_day');
 

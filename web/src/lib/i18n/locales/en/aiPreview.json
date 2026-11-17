@@ -13,8 +13,6 @@
   "signupLeadIn": "Or create a free account to save your decks and raise your free limit.",
   "resuming": "Day Pass active. Building your full AI deck now.",
   "previewError": "Couldn't make an AI preview from this file. Make your deck without AI, or try a different file.",
-  "badgeIntro": "Turn on AI to see a free sample of the cards Claude writes from your file, then unlock the full deck with a Day Pass.",
-  "toggleLabel": "Generate flashcards with Claude AI",
   "choiceLegend": "How should we make your cards?",
   "choiceStructure": "Cards from your file's structure: free, no AI",
   "choiceClaude": "Claude writes the cards: free sample first",

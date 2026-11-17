@@ -13,8 +13,6 @@
   "signupLeadIn": "Oppure crea un account gratuito per salvare i tuoi mazzi e aumentare il tuo limite gratuito.",
   "resuming": "Day Pass attivo. Stiamo creando il tuo mazzo IA completo.",
   "previewError": "Impossibile creare un'anteprima IA da questo file. Crea il mazzo senza IA o prova un altro file.",
-  "badgeIntro": "Attiva l'IA per vedere un campione gratuito delle carte che Claude scrive dal tuo file, poi sblocca il mazzo completo con un Day Pass.",
-  "toggleLabel": "Genera flashcard con Claude AI",
   "choiceLegend": "Come vuoi creare le tue carte?",
   "choiceStructure": "Carte dalla struttura del tuo file: gratis, senza IA",
   "choiceClaude": "Claude scrive le carte: prima un campione gratuito",

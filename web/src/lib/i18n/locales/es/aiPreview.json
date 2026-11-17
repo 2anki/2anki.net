@@ -13,8 +13,6 @@
   "signupLeadIn": "O crea una cuenta gratuita para guardar tus mazos y ampliar tu límite gratuito.",
   "resuming": "Day Pass activo. Estamos creando tu mazo completo con IA.",
   "previewError": "No se pudo crear una vista previa con IA de este archivo. Crea el mazo sin IA o prueba con otro archivo.",
-  "badgeIntro": "Activa la IA para ver una muestra gratuita de las tarjetas que Claude escribe a partir de tu archivo y luego desbloquea el mazo completo con un Day Pass.",
-  "toggleLabel": "Generar tarjetas con Claude AI",
   "choiceLegend": "¿Cómo quieres que hagamos tus tarjetas?",
   "choiceStructure": "Tarjetas a partir de la estructura de tu archivo: gratis, sin IA",
   "choiceClaude": "Claude escribe las tarjetas: primero una muestra gratis",

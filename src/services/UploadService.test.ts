@@ -126,10 +126,7 @@ import UploadService, {
 } from './UploadService';
 import { anonRecoveryKey } from '../lib/upload/anonymousRecovery';
 import { LIMIT_WALL_PASS_FIRST_FLAG } from '../lib/featureFlags/limitWallPassFirst';
-import {
-  ANONYMOUS_AI_PREVIEW_FLAG,
-  previewHoldKey,
-} from '../lib/upload/anonymousAiPreview';
+import { previewHoldKey } from '../lib/upload/anonymousAiPreview';
 import { AiPreviewRateLimiter } from '../lib/upload/aiPreviewRateLimiter';
 import { ASYNC_PDF_MIN_BYTES } from '../lib/upload/asyncSlowUploads';
 import {
@@ -340,7 +337,7 @@ describe('UploadService.handleUpload — error paths', () => {
     } as unknown as Partial<express.Request>);
   }
 
-  it('does not run the AI preview for an anonymous AI upload when the flag is off', async () => {
+  it('returns an AI preview for an anonymous AI upload with every flag row off', async () => {
     const executeMock = vi.fn().mockResolvedValue({ packages: [] });
     MockGeneratePackagesUseCase.mockImplementation(function () {
       return { execute: executeMock } as unknown as InstanceType<
@@ -348,31 +345,6 @@ describe('UploadService.handleUpload — error paths', () => {
       >;
     });
     mockGetFeatureFlag.mockResolvedValue(false);
-
-    const service = new UploadService(
-      buildRepository(),
-      {} as JobRepository,
-      buildUsersRepo(),
-      ...fakeUploadServiceDeps()
-    );
-    const { res, capturedJson } = buildResponse();
-
-    await service.handleUpload(anonAiMarkdownRequest('visitor-off'), res);
-
-    // Today's behaviour: the standard sync path runs, no AI preview is made.
-    expect(executeMock).toHaveBeenCalledTimes(1);
-    expect(mockGenerateAiPreview).not.toHaveBeenCalled();
-    expect(capturedJson()).not.toMatchObject({ kind: 'ai_preview' });
-  });
-
-  it('returns an AI preview for an anonymous AI upload when the flag is on', async () => {
-    const executeMock = vi.fn().mockResolvedValue({ packages: [] });
-    MockGeneratePackagesUseCase.mockImplementation(function () {
-      return { execute: executeMock } as unknown as InstanceType<
-        typeof GeneratePackagesUseCase
-      >;
-    });
-    mockGetFeatureFlag.mockResolvedValue(true);
     mockGenerateAiPreview.mockResolvedValue([{ front: 'q', back: 'a' }]);
 
     const service = new UploadService(
@@ -1519,10 +1491,10 @@ describe('UploadService.handleUpload — error paths', () => {
       [],
     ],
     [
-      'a signed-out AI upload with the preview flag off',
+      'a signed-out AI upload',
       {},
       { files: [ankiPackageZip], body: { 'claude-ai-flashcards': 'true' } },
-      [ANONYMOUS_AI_PREVIEW_FLAG],
+      [],
     ],
     [
       'a signed-out AI upload carrying a pass token that did not validate',
@@ -2537,7 +2509,7 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     expect(incrementSpy).toHaveBeenCalledWith(42, 30);
   });
 
-  it('redirects an anonymous conversion over 21 cards to /limit?kind=anonymous and does not send the deck', async () => {
+  it('redirects an anonymous conversion over 21 cards to /limit?kind=anonymous with the card count and does not send the deck', async () => {
     mockPackages([{ name: 'deck', cardCount: 22 }]);
     const usersRepo = buildUsersRepo();
     const incrementSpy = usersRepo.incrementCardUsage as Mock;
@@ -2553,7 +2525,7 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
 
     await service.handleUpload(req, res);
 
-    expect(redirectedTo()).toBe('/limit?kind=anonymous');
+    expect(redirectedTo()).toBe('/limit?kind=anonymous&cards=22');
     expect(capturedSend()).toBeNull();
     expect(incrementSpy).not.toHaveBeenCalled();
     expect(trackMock).toHaveBeenCalledWith(
@@ -2584,7 +2556,11 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
       22,
       { cookies: { anon_id: 'anon-wall', cookie_consent: 'denied' } },
       null,
-      { reason: 'monthly_limit', kind: 'card_count' },
+      {
+        reason: 'monthly_limit',
+        kind: 'card_count',
+        wall: '/limit?kind=card_count',
+      },
     ],
     [
       'a signed-in free user over the month who granted consent',
@@ -2592,7 +2568,11 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
       22,
       { cookies: { anon_id: 'anon-wall', cookie_consent: 'granted' } },
       'anon-wall',
-      { reason: 'monthly_limit', kind: 'card_count' },
+      {
+        reason: 'monthly_limit',
+        kind: 'card_count',
+        wall: '/limit?kind=card_count',
+      },
     ],
     [
       'a signed-out visitor over the cap who declined',
@@ -2603,7 +2583,11 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
         ip: '8.8.8.8',
       },
       null,
-      { reason: 'anonymous_cap', kind: 'anonymous' },
+      {
+        reason: 'anonymous_cap',
+        kind: 'anonymous',
+        wall: '/limit?kind=anonymous&cards=22',
+      },
     ],
     [
       'a signed-out EEA visitor over the cap with no choice stored',
@@ -2611,7 +2595,11 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
       22,
       { cookies: { anon_id: 'anon-wall' }, ip: '193.99.144.80' },
       null,
-      { reason: 'anonymous_cap', kind: 'anonymous' },
+      {
+        reason: 'anonymous_cap',
+        kind: 'anonymous',
+        wall: '/limit?kind=anonymous&cards=22',
+      },
     ],
     [
       'a signed-out visitor over the cap outside the EEA with no choice stored',
@@ -2619,7 +2607,11 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
       22,
       { cookies: { anon_id: 'anon-wall' }, ip: '8.8.8.8' },
       'anon-wall',
-      { reason: 'anonymous_cap', kind: 'anonymous' },
+      {
+        reason: 'anonymous_cap',
+        kind: 'anonymous',
+        wall: '/limit?kind=anonymous&cards=22',
+      },
     ],
     [
       'a signed-out visitor over the cap who granted consent',
@@ -2627,7 +2619,11 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
       22,
       { cookies: { anon_id: 'anon-wall', cookie_consent: 'granted' } },
       'anon-wall',
-      { reason: 'anonymous_cap', kind: 'anonymous' },
+      {
+        reason: 'anonymous_cap',
+        kind: 'anonymous',
+        wall: '/limit?kind=anonymous&cards=22',
+      },
     ],
   ])(
     'walls %s, recording conversion_failed and paywall_shown with the analytics id',
@@ -2637,7 +2633,7 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
       cardCount,
       overrides,
       expectedAnonymousId,
-      { reason, kind }
+      { reason, kind, wall }
     ) => {
       mockPackages([{ name: 'deck', cardCount }]);
       const usersRepo = buildUsersRepo({
@@ -2659,7 +2655,7 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
 
       await service.handleUpload(req, res);
 
-      expect(redirectedTo()).toBe(`/limit?kind=${kind}`);
+      expect(redirectedTo()).toBe(wall);
       expect(trackMock).toHaveBeenCalledWith(
         'conversion_failed',
         expect.objectContaining({
@@ -2696,7 +2692,7 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
 
     await service.handleUpload(req, res);
 
-    expect(redirectedTo()).toBe('/limit?kind=anonymous');
+    expect(redirectedTo()).toBe('/limit?kind=anonymous&cards=22');
     expect(capturedSend()).toBeNull();
     expect(trackMock).toHaveBeenCalledWith(
       'paywall_shown',
@@ -6228,10 +6224,6 @@ describe('UploadService.handleUpload — a PDF from a pass holder without an acc
     expect(settings.claudeAIFlashcards).toBe(true);
     expect(settings.pdfFallback).toBe('ask');
     expect(create).not.toHaveBeenCalled();
-    expect(mockGetFeatureFlag).not.toHaveBeenCalledWith(
-      ANONYMOUS_AI_PREVIEW_FLAG,
-      expect.anything()
-    );
     expect(mockGenerateAiPreview).not.toHaveBeenCalled();
   });
 
@@ -8557,8 +8549,8 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     });
   });
 
-  it('marks an over-a-month held deck for the Day Pass card when the flag is on', async () => {
-    mockGetFeatureFlag.mockResolvedValue(true);
+  it('marks an over-a-month held deck for the Day Pass card', async () => {
+    mockGetFeatureFlag.mockResolvedValue(false);
     mockPartial([{ name: 'deck', cardCount: 21 }], 120);
     const heldDeck = new InMemoryHeldDeckRepository();
     const req = buildEligibleRequest(TREATMENT_ID);
@@ -8578,31 +8570,7 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     });
   });
 
-  it('leaves an over-a-month held deck unmarked when the Day Pass card flag is off', async () => {
-    mockGetFeatureFlag.mockResolvedValue(false);
-    mockPartial([{ name: 'deck', cardCount: 21 }], 120);
-    const heldDeck = new InMemoryHeldDeckRepository();
-    const req = buildEligibleRequest(TREATMENT_ID);
-    const { res, capturedStatus, capturedJson } = buildResponse();
-
-    await serviceUnderTest(heldDeck).handleUpload(req, res);
-
-    expect(capturedStatus()).toBe(200);
-    expect(capturedJson()).toEqual({
-      kind: 'held',
-      cardCount: 21,
-      cardsHeldBack: 120,
-      totalCards: 141,
-      deckName: 'deck',
-      savedForHours: 24,
-    });
-    expect(mockGetFeatureFlag).toHaveBeenCalledWith(
-      'anonymous_day_pass_card',
-      false
-    );
-  });
-
-  it('does not append the card count to the wall when the card-count flags are off', async () => {
+  it('appends the card count to the wall with every flag row off', async () => {
     mockGetFeatureFlag.mockResolvedValue(false);
     mockPartial([{ name: 'deck', cardCount: 130 }]);
     const req = buildEligibleRequest();
@@ -8610,26 +8578,18 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
 
     await serviceUnderTest().handleUpload(req, res);
 
-    expect(redirectedTo()).toBe('/limit?kind=anonymous');
-    expect(mockGetFeatureFlag).toHaveBeenCalledWith(
-      'anonymous_day_pass_card',
-      false
-    );
+    expect(redirectedTo()).toBe('/limit?kind=anonymous&cards=130');
   });
 
-  it('still redirects to the wall when the card-count flag reads fail', async () => {
-    mockGetFeatureFlag.mockImplementation((key: unknown) =>
-      key === 'limit_wall_pass_first' || key === 'anonymous_day_pass_card'
-        ? Promise.reject(new Error('db down'))
-        : Promise.resolve(false)
-    );
+  it('appends the card count to the wall even when flag reads fail', async () => {
+    mockGetFeatureFlag.mockRejectedValue(new Error('db down'));
     mockPartial([{ name: 'deck', cardCount: 130 }]);
     const req = buildEligibleRequest();
     const { res, redirectedTo } = responseWithRedirect();
 
     await serviceUnderTest().handleUpload(req, res);
 
-    expect(redirectedTo()).toBe('/limit?kind=anonymous');
+    expect(redirectedTo()).toBe('/limit?kind=anonymous&cards=130');
   });
 
   it('appends the card count to the wall when the pass-first flag is on', async () => {

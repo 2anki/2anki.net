@@ -13,8 +13,6 @@
   "signupLeadIn": "Oder leg ein kostenloses Konto an, um deine Stapel zu speichern und dein Gratislimit zu erhöhen.",
   "resuming": "Day Pass aktiv. Dein vollständiger KI-Stapel wird jetzt erstellt.",
   "previewError": "Für diese Datei ließ sich keine KI-Vorschau erstellen. Erstell den Stapel ohne KI oder probier eine andere Datei.",
-  "badgeIntro": "Schalte die KI ein, um eine kostenlose Probe der Karten zu sehen, die Claude aus deiner Datei schreibt, und schalte dann mit einem Day Pass den vollständigen Stapel frei.",
-  "toggleLabel": "Karteikarten mit Claude AI erstellen",
   "choiceLegend": "Wie sollen wir deine Karten erstellen?",
   "choiceStructure": "Karten aus der Struktur deiner Datei: kostenlos, ohne KI",
   "choiceClaude": "Claude schreibt die Karten: zuerst eine kostenlose Probe",

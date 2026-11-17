@@ -80,9 +80,9 @@ function asAnonymous() {
   } as ReturnType<typeof useUserLocals>);
 }
 
-function asAnonymousWithCardFlag() {
+function asAnonymousWithLocals() {
   mockedUseUserLocals.mockReturnValue({
-    data: { features: { anonymousDayPassCard: true } },
+    data: { features: {} },
     isLoading: false,
   } as ReturnType<typeof useUserLocals>);
 }
@@ -467,17 +467,7 @@ describe('LimitPage — anonymous variant', () => {
 describe('LimitPage — anonymous Day Pass card variant', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    asAnonymousWithCardFlag();
-  });
-
-  it('keeps today single-card layout when the flag is off, even with a card count', () => {
-    asAnonymous();
-    renderPage(['/limit?cards=340']);
-    expect(screen.queryByRole('button', { name: /Get all/ })).toBeNull();
-    expect(mockTrack).toHaveBeenCalledWith('paywall_shown', {
-      surface: 'limit-wall',
-      variant: 'anonymous',
-    });
+    asAnonymousWithLocals();
   });
 
   it('says the file was not kept on the free account card after the card cap', () => {
@@ -721,10 +711,10 @@ describe('LimitPage — pass-first wall', () => {
     ).toBeTruthy();
   });
 
-  it('leads with the passes over the Day Pass card when both anonymous flags are on', () => {
+  it('leads with the passes over the Day Pass card when the pass-first wall is on', () => {
     mockedUseUserLocals.mockReturnValue({
       data: {
-        features: { limitWallPassFirst: true, anonymousDayPassCard: true },
+        features: { limitWallPassFirst: true },
       },
       isLoading: false,
     } as ReturnType<typeof useUserLocals>);
