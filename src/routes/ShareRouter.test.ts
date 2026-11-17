@@ -154,7 +154,7 @@ describe('ShareRouter shared deck preview, signed out', () => {
       const shared = nextToken();
 
       const statuses = await withServer(async (base) => {
-        const first = await fetch(`${base}/api/shares/${shared}/cards`);
+        const first = await fetch(`${base}/api/shares/${shared}/${route}`);
         send.mockRejectedValue(
           Object.assign(new Error('UnknownError'), {
             name: 'NotFound',

@@ -19,7 +19,8 @@ export function buildTinyApkg(front = 'What is 2 + 2?', back = '4'): Buffer {
   return Buffer.from(
     zipSync({
       'collection.anki21': new Uint8Array(collection),
-      media: strToU8('{}'),
+      media: strToU8('{"0": "picture.png"}'),
+      '0': strToU8('png bytes'),
     })
   );
 }

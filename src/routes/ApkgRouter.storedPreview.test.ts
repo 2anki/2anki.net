@@ -151,7 +151,7 @@ describe('ApkgRouter stored deck preview', () => {
       storageReports(4096);
 
       const statuses = await withServer(async (base) => {
-        const first = await fetch(`${base}/api/apkg/deck.apkg/cards`);
+        const first = await fetch(`${base}/api/apkg/deck.apkg/${route}`);
         getFile.mockResolvedValue(null);
         const afterDelete = await fetch(`${base}/api/apkg/deck.apkg/${route}`);
         return [first.status, afterDelete.status];
