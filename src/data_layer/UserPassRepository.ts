@@ -1,5 +1,6 @@
 import type { Knex } from 'knex';
 import { ActivePassRow } from '../lib/claude/aiCredits/allowance';
+import { ADVISORY_LOCK_NAMESPACES } from './JobLockRepository';
 import { refundAwareExpiry } from './RefundedPaymentIntentsRepository';
 
 export type PassKind = '24h' | '7d' | '120d' | 'unlimited';
@@ -150,14 +151,50 @@ export class UserPassRepository implements IUserPassRepository {
     stripePaymentIntentId: string,
     now: Date
   ): Promise<UserPass> {
-    const existing = await this.database<UserPassRow>(this.table)
+    try {
+      return await this.database.transaction((trx) =>
+        this.extendLatestPassWhileLocked(
+          trx,
+          userId,
+          kind,
+          durationMs,
+          stripePaymentIntentId,
+          now
+        )
+      );
+    } catch (err: unknown) {
+      const pgErr = err as { code?: string };
+      if (pgErr.code === '23505') {
+        const idempotent = await this.findByPaymentIntentId(
+          stripePaymentIntentId
+        );
+        if (idempotent) return idempotent;
+      }
+      throw err;
+    }
+  }
+
+  private async extendLatestPassWhileLocked(
+    trx: Knex.Transaction,
+    userId: number,
+    kind: PassKind,
+    durationMs: number,
+    stripePaymentIntentId: string,
+    now: Date
+  ): Promise<UserPass> {
+    await trx.raw('select pg_advisory_xact_lock(?, ?)', [
+      ADVISORY_LOCK_NAMESPACES.userPassGrants,
+      userId,
+    ]);
+
+    const existing = await trx<UserPassRow>(this.table)
       .where('stripe_payment_intent_id', stripePaymentIntentId)
       .first();
     if (existing) {
       return toUserPass(existing);
     }
 
-    const currentActive = await this.database<UserPassRow>(this.table)
+    const currentActive = await trx<UserPassRow>(this.table)
       .where('user_id', userId)
       .where('expires_at', '>', now)
       .orderBy('expires_at', 'desc')
@@ -168,30 +205,19 @@ export class UserPassRepository implements IUserPassRepository {
       base instanceof Date ? base.getTime() : new Date(base).getTime();
     const expiresAt = new Date(baseMs + durationMs);
 
-    try {
-      const [row] = await this.database<UserPassRow>(this.table)
-        .insert({
-          user_id: userId,
-          kind,
-          expires_at: refundAwareExpiry(
-            this.database,
-            stripePaymentIntentId,
-            expiresAt
-          ) as unknown as Date,
-          stripe_payment_intent_id: stripePaymentIntentId,
-        })
-        .returning('*');
-      return toUserPass(row);
-    } catch (err: unknown) {
-      const pgErr = err as { code?: string };
-      if (pgErr.code === '23505') {
-        const idempotent = await this.database<UserPassRow>(this.table)
-          .where('stripe_payment_intent_id', stripePaymentIntentId)
-          .first();
-        if (idempotent) return toUserPass(idempotent);
-      }
-      throw err;
-    }
+    const [row] = await trx<UserPassRow>(this.table)
+      .insert({
+        user_id: userId,
+        kind,
+        expires_at: refundAwareExpiry(
+          trx,
+          stripePaymentIntentId,
+          expiresAt
+        ) as unknown as Date,
+        stripe_payment_intent_id: stripePaymentIntentId,
+      })
+      .returning('*');
+    return toUserPass(row);
   }
 
   async upsertWithAbsoluteExpiry(

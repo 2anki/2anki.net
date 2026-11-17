@@ -14,6 +14,16 @@ export const JOB_LOCK_KEYS = {
   confirmEmailNotices: 21007,
 } as const;
 
+/**
+ * Namespaces for the two-key form, pg_advisory_xact_lock(namespace, id),
+ * which locks one row-like id (a user) inside a namespace. Postgres keeps the
+ * two-key and single-key spaces apart, and allocating namespaces from the same
+ * numbering as JOB_LOCK_KEYS keeps people from reusing a number by accident.
+ */
+export const ADVISORY_LOCK_NAMESPACES = {
+  userPassGrants: 21008,
+} as const;
+
 export interface IJobLockRepository {
   runExclusively(lockKey: number, fn: () => Promise<void>): Promise<boolean>;
 }
