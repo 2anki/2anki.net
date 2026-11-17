@@ -27,6 +27,11 @@
       "detail": "Uploaded decks are removed after a while. Convert or upload it again to preview it.",
       "action": "Back to My decks"
     },
+    "apkgTooLargeToPreview": {
+      "title": "This deck is too large to preview.",
+      "detail": "Download it and open it in Anki to see its cards.",
+      "action": "Back to My decks"
+    },
     "notionPageNotFound": {
       "title": "We couldn't open that Notion page.",
       "detail": "It may have been deleted, or it's no longer shared with 2anki. Share it again in Notion, or pick a different page.",

@@ -32,6 +32,7 @@ const KEYS: [namespace: string, key: string, plural: boolean][] = [
   ['previews', 'page.alreadyConverting', false],
   ['previews', 'apkg.backToDownloads', false],
   ['errors', 'messages.apkgGone.action', false],
+  ['errors', 'messages.apkgTooLargeToPreview.action', false],
   ['account', 'createAccount.body', false],
   ['account', 'createAccount.bodyNoName', false],
   ['common', 'upload.form.downloadRecoveredNote', false],

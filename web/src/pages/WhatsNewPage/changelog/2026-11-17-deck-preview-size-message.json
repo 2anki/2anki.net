@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-17-deck-preview-size-message",
+  "date": "2026-11-17",
+  "type": "fix",
+  "title": "Deck preview says right away when a deck is too large to preview, and links back to My decks"
+}

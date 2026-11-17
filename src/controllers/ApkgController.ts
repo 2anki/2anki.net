@@ -233,14 +233,19 @@ class ApkgController {
       return null;
     }
     const { owner } = res.locals;
-    const storage = new StorageHandler();
-    const body = await this.downloadService.getFileBody(owner, key, storage);
-    if (!body) {
+    const storageKey = await this.downloadService.findStoredKey(owner, key);
+    if (storageKey == null) {
       res.status(404).json({ message: 'Upload not found.' });
       return null;
     }
-    const cacheKey = `${owner}:${key}`;
-    return this.previewService.parse(cacheKey, body as Buffer);
+    const parsed = await this.previewService.load(`${owner}:${key}`, () =>
+      this.downloadService.getStoredDeckBody(storageKey, new StorageHandler())
+    );
+    if (parsed == null) {
+      res.status(404).json({ message: 'Upload not found.' });
+      return null;
+    }
+    return parsed;
   }
 
   async getMeta(req: Request, res: Response) {

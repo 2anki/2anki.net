@@ -27,6 +27,11 @@
       "detail": "Geüploade decks worden na een tijdje verwijderd. Converteer of upload het opnieuw om het te bekijken.",
       "action": "Terug naar Mijn decks"
     },
+    "apkgTooLargeToPreview": {
+      "title": "Dit deck is te groot om te bekijken.",
+      "detail": "Download het en open het in Anki om de kaarten te zien.",
+      "action": "Terug naar Mijn decks"
+    },
     "notionPageNotFound": {
       "title": "We konden die Notion-pagina niet openen.",
       "detail": "Hij is mogelijk verwijderd, of niet meer gedeeld met 2anki. Deel hem opnieuw in Notion, of kies een andere pagina.",

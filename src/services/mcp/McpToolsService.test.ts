@@ -20,6 +20,11 @@ import { makeFreeQuotaReachedError } from '../../usecases/imageOcclusion/PhotoTo
 import { DeckPersistence } from './McpDeckPersistence';
 import { JobWithDownloadKey } from '../../data_layer/JobRepository';
 import ApkgPreviewService from '../ApkgPreviewService/ApkgPreviewService';
+import {
+  ApkgTooLargeError,
+  MAX_TOTAL_DECOMPRESSED_BYTES,
+} from '../ApkgPreviewService/extractApkg';
+import { buildTinyApkg } from '../../test/fixtures/apkg/buildTinyApkg';
 import DownloadService from '../DownloadService';
 import type StorageHandler from '../../lib/storage/StorageHandler';
 import {
@@ -34,7 +39,7 @@ const ONE_PIXEL_PNG_BASE64 =
 function makeService(overrides: {
   jobs?: JobWithDownloadKey[];
   uploadEntry?: UploadEntrypoint;
-  getFileBody?: DownloadService['getFileBody'];
+  storedDeck?: Buffer | null;
   preview?: Partial<ApkgPreviewService>;
   persist?: DeckPersistence['persist'];
   getPresignedUrl?: StorageHandler['getPresignedUrl'];
@@ -49,8 +54,11 @@ function makeService(overrides: {
     getJobsByOwner: vi.fn(async () => overrides.jobs ?? []),
   };
   const downloadService = {
-    getFileBody: overrides.getFileBody ?? vi.fn(async () => null),
-  } as unknown as DownloadService;
+    findStoredKey: vi.fn(async (_owner: string, key: string) =>
+      overrides.storedDeck === null ? null : `stored/${key}`
+    ),
+    getStoredDeckBody: vi.fn(async () => overrides.storedDeck ?? undefined),
+  };
   const previewService = {
     parse: vi.fn(async () => ({}) as never),
     getMeta: vi.fn(() => ({
@@ -64,6 +72,10 @@ function makeService(overrides: {
     })),
     ...overrides.preview,
   } as unknown as ApkgPreviewService;
+  previewService.load = vi.fn(async (cacheKey, readBytes) => {
+    const bytes = await readBytes();
+    return bytes == null ? null : previewService.parse(cacheKey, bytes);
+  });
   const uploadEntry =
     overrides.uploadEntry ??
     ((_req: express.Request, res: express.Response) => {
@@ -90,7 +102,7 @@ function makeService(overrides: {
   } as unknown as UsersRepository;
   const service = new McpToolsService(
     jobLister,
-    downloadService,
+    downloadService as unknown as DownloadService,
     previewService,
     uploadEntry,
     storage,
@@ -258,7 +270,7 @@ describe('McpToolsService.getDeckPreview', () => {
     await expect(service.getDeckPreview('owner', 'nope')).rejects.toThrow(
       /Deck not found/
     );
-    expect(downloadService.getFileBody).not.toHaveBeenCalled();
+    expect(downloadService.findStoredKey).not.toHaveBeenCalled();
   });
 
   it('rejects a job with no .apkg without hitting storage', async () => {
@@ -268,20 +280,18 @@ describe('McpToolsService.getDeckPreview', () => {
     await expect(service.getDeckPreview('owner', 'job-1')).rejects.toThrow(
       /no .apkg/
     );
-    expect(downloadService.getFileBody).not.toHaveBeenCalled();
+    expect(downloadService.findStoredKey).not.toHaveBeenCalled();
   });
 
   it('resolves the jobId to its download_key and returns meta + sample cards', async () => {
-    const getFileBody = vi.fn(async () => Buffer.from('apkg'));
-    const { service } = makeService({
+    const { service, downloadService } = makeService({
       jobs: [jobFixture({ object_id: 'job-1', download_key: 'deck.apkg' })],
-      getFileBody,
+      storedDeck: Buffer.from('apkg'),
     });
     const preview = await service.getDeckPreview('owner', 'job-1');
-    expect(getFileBody).toHaveBeenCalledWith(
+    expect(downloadService.findStoredKey).toHaveBeenCalledWith(
       'owner',
-      'deck.apkg',
-      expect.anything()
+      'deck.apkg'
     );
     expect(preview.cardCount).toBe(3);
     expect(preview.decks).toEqual([{ name: 'Bio', cardCount: 3 }]);
@@ -289,16 +299,14 @@ describe('McpToolsService.getDeckPreview', () => {
   });
 
   it('resolves a raw .apkg key directly when no job matches, owner-scoped', async () => {
-    const getFileBody = vi.fn(async () => Buffer.from('apkg'));
-    const { service } = makeService({
+    const { service, downloadService } = makeService({
       jobs: [jobFixture({ object_id: 'job-1' })],
-      getFileBody,
+      storedDeck: Buffer.from('apkg'),
     });
     const preview = await service.getDeckPreview('owner', 'legacy-deck.apkg');
-    expect(getFileBody).toHaveBeenCalledWith(
+    expect(downloadService.findStoredKey).toHaveBeenCalledWith(
       'owner',
-      'legacy-deck.apkg',
-      expect.anything()
+      'legacy-deck.apkg'
     );
     expect(preview.cardCount).toBe(3);
   });
@@ -338,7 +346,7 @@ describe('McpToolsService.getDeckPreview', () => {
           type: 'mcp',
         } as Partial<JobWithDownloadKey>),
       ],
-      getFileBody: vi.fn(async () => Buffer.from('apkg')),
+      storedDeck: Buffer.from('apkg'),
       preview: {
         parse: vi.fn(async () => parsed as never),
         getMeta: vi.fn(() => ({
@@ -389,7 +397,7 @@ describe('McpToolsService.getDeckPreview', () => {
   it('links a web-converted deck through the signed-in download route', async () => {
     const { service } = makeService({
       jobs: [jobFixture({ object_id: 'job-2', type: 'upload' } as never)],
-      getFileBody: vi.fn(async () => Buffer.from('apkg')),
+      storedDeck: Buffer.from('apkg'),
     });
     const preview = await service.getDeckPreview('owner', 'job-2');
     expect(preview.downloadUrl).toBe(
@@ -404,17 +412,90 @@ describe('McpToolsService.getDeckPreview', () => {
     await expect(service.getDeckPreview('owner', 'not-a-key')).rejects.toThrow(
       /Deck not found/
     );
-    expect(downloadService.getFileBody).not.toHaveBeenCalled();
+    expect(downloadService.findStoredKey).not.toHaveBeenCalled();
   });
 
   it('reports when the resolved file is missing from storage', async () => {
     const { service } = makeService({
       jobs: [jobFixture({ object_id: 'job-1', download_key: 'deck.apkg' })],
-      getFileBody: vi.fn(async () => null),
+      storedDeck: null,
     });
     await expect(service.getDeckPreview('owner', 'job-1')).rejects.toThrow(
       /Upload not found/
     );
+  });
+});
+
+describe('McpToolsService.getDeckPreview, size check against storage', () => {
+  function serviceOverStorage(storedSize: number) {
+    const storage = {
+      getObjectSize: vi.fn(async () => storedSize),
+      getFileContents: vi.fn(async () => ({ Body: buildTinyApkg() })),
+      getPresignedUrl: vi.fn(),
+    };
+    const getFile = vi.fn(async (): Promise<{ key: string } | null> => ({
+      key: 'stored/owner/deck.apkg',
+    }));
+    const downloadService = new DownloadService({ getFile } as never);
+    const service = new McpToolsService(
+      { getJobsByOwner: vi.fn(async () => []) },
+      downloadService,
+      new ApkgPreviewService(),
+      (_req, res) => {
+        res.status(200);
+      },
+      storage as unknown as StorageHandler,
+      { persist: vi.fn() } as unknown as DeckPersistence,
+      { generateCards: vi.fn() } as unknown as PhotoToFlashcardsUseCase,
+      {} as UsersRepository,
+      { holdForPlan: vi.fn(async () => null) },
+      'https://mcp.test'
+    );
+    return { service, storage, getFile };
+  }
+
+  it('reports a deck deleted after it was cached as not found', async () => {
+    const { service, storage, getFile } = serviceOverStorage(4096);
+
+    await service.getDeckPreview('owner', 'deck.apkg');
+    getFile.mockResolvedValue(null);
+
+    await expect(service.getDeckPreview('owner', 'deck.apkg')).rejects.toThrow(
+      /Upload not found/
+    );
+    expect(storage.getFileContents).toHaveBeenCalledTimes(1);
+  });
+
+  it('previews a stored deck under the size limit', async () => {
+    const { service, storage } = serviceOverStorage(4096);
+
+    const preview = await service.getDeckPreview('owner', 'deck.apkg');
+
+    expect(preview.cardCount).toBe(1);
+    expect(storage.getFileContents).toHaveBeenCalledTimes(1);
+  });
+
+  it('refuses an oversized stored deck without reading its body', async () => {
+    const { service, storage } = serviceOverStorage(
+      MAX_TOTAL_DECOMPRESSED_BYTES + 1
+    );
+
+    await expect(
+      service.getDeckPreview('owner', 'deck.apkg')
+    ).rejects.toBeInstanceOf(ApkgTooLargeError);
+    expect(storage.getFileContents).not.toHaveBeenCalled();
+  });
+
+  it('reads the deck once for concurrent previews of it', async () => {
+    const { service, storage } = serviceOverStorage(4096);
+
+    await Promise.all(
+      Array.from({ length: 4 }, () =>
+        service.getDeckPreview('owner', 'deck.apkg')
+      )
+    );
+
+    expect(storage.getFileContents).toHaveBeenCalledTimes(1);
   });
 });
 

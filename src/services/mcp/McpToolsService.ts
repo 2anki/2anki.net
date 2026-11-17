@@ -655,18 +655,16 @@ export class McpToolsService {
     pageSize = PREVIEW_CARD_LIMIT
   ): Promise<DeckPreview> {
     const { key, job } = await this.resolveDeckKey(owner, identifier);
-    const body = await this.downloadService.getFileBody(
-      owner,
-      key,
-      this.storage
-    );
-    if (!body) {
+    const storageKey = await this.downloadService.findStoredKey(owner, key);
+    if (storageKey == null) {
       throw new Error('Upload not found.');
     }
-    const parsed = await this.previewService.parse(
-      `${owner}:${key}`,
-      body as Buffer
+    const parsed = await this.previewService.load(`${owner}:${key}`, () =>
+      this.downloadService.getStoredDeckBody(storageKey, this.storage)
     );
+    if (parsed == null) {
+      throw new Error('Upload not found.');
+    }
     const meta = this.previewService.getMeta(parsed);
     const mediaBaseUrl = `/api/apkg/${encodeURIComponent(key)}/media/`;
     const cappedPageSize = Math.min(Math.max(pageSize, 1), 50);

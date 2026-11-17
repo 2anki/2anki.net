@@ -27,6 +27,11 @@
       "detail": "Les paquets téléversés sont supprimés au bout d'un moment. Convertis-le ou téléverse-le à nouveau pour l'afficher.",
       "action": "Retour à Mes paquets"
     },
+    "apkgTooLargeToPreview": {
+      "title": "Ce paquet est trop volumineux pour être affiché.",
+      "detail": "Télécharge-le et ouvre-le dans Anki pour voir ses cartes.",
+      "action": "Retour à Mes paquets"
+    },
     "notionPageNotFound": {
       "title": "Nous n'avons pas pu ouvrir cette page Notion.",
       "detail": "Elle a peut-être été supprimée, ou elle n'est plus partagée avec 2anki. Partage-la à nouveau dans Notion, ou choisis une autre page.",

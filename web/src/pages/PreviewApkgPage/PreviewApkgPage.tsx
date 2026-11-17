@@ -15,6 +15,7 @@ import { CardFrame } from './CardFrame';
 import { SharePopover } from './SharePopover';
 import { CardEditState, EditPayload } from './cardEditTypes';
 import { downloadEditedApkg } from './downloadEditedApkg';
+import { isFinalRefusal } from '../../lib/shouldRetryQuery';
 
 function indent(depth: number): string {
   if (depth <= 0) return '';
@@ -38,10 +39,15 @@ export default function PreviewApkgPage({
   const meta = useApkgPreviewMeta(key);
   const stream = useApkgPreviewStream(key, deckId);
 
+  const fatal = stream.error != null && !stream.data;
+
+  const hasCards = stream.data != null;
+
   useEffect(() => {
+    if (!hasCards) return;
     const firstError = stream.error ?? meta.error;
     if (firstError) setError(firstError);
-  }, [stream.error, meta.error, setError]);
+  }, [hasCards, stream.error, meta.error, setError]);
 
   useEffect(() => {
     if (!sentinelRef.current) return;
@@ -130,7 +136,6 @@ export default function PreviewApkgPage({
     );
   }
 
-  const fatal = stream.error && !stream.data;
   if (fatal) {
     return (
       <div className={sharedStyles.page}>
@@ -141,8 +146,10 @@ export default function PreviewApkgPage({
           <h1 className={sharedStyles.title}>{t('apkg.previewTitle')}</h1>
         </header>
         <ErrorPresenter
-          error={stream.error as Error}
-          onRetry={() => stream.refetch()}
+          error={stream.error}
+          onRetry={
+            isFinalRefusal(stream.error) ? undefined : () => stream.refetch()
+          }
         />
       </div>
     );

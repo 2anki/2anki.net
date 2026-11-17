@@ -27,6 +27,11 @@
       "detail": "I mazzi caricati vengono rimossi dopo un po'. Convertilo o caricalo di nuovo per vederne l'anteprima.",
       "action": "Torna a I miei mazzi"
     },
+    "apkgTooLargeToPreview": {
+      "title": "Questo mazzo è troppo grande per l'anteprima.",
+      "detail": "Scaricalo e aprilo in Anki per vederne le carte.",
+      "action": "Torna a I miei mazzi"
+    },
     "notionPageNotFound": {
       "title": "Non siamo riusciti ad aprire quella pagina di Notion.",
       "detail": "Potrebbe essere stata eliminata, oppure non è più condivisa con 2anki. Condividila di nuovo in Notion, oppure scegli un'altra pagina.",

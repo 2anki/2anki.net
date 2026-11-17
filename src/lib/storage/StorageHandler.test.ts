@@ -1,5 +1,5 @@
 import { vi, type MockedFunction } from 'vitest';
-import { GetObjectCommand } from '@aws-sdk/client-s3';
+import { GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Readable } from 'node:stream';
 
@@ -95,6 +95,38 @@ describe('StorageHandler.getFileStream', () => {
     const result = await handler.getFileStream('some/key.apkg');
 
     expect(result).toBeUndefined();
+  });
+});
+
+describe('StorageHandler.getObjectSize', () => {
+  beforeEach(() => {
+    mockSend.mockReset();
+    process.env.SPACES_DEFAULT_BUCKET_NAME = 'test-bucket';
+    process.env.SPACES_ENDPOINT = 'https://test.spaces.example.com';
+  });
+
+  it('reads the stored size from a HEAD request, never a GET', async () => {
+    mockSend.mockResolvedValueOnce({ ContentLength: 4096 });
+
+    const handler = new StorageHandler();
+    const size = await handler.getObjectSize('some/key.apkg');
+
+    expect(size).toBe(4096);
+    expect(mockSend).toHaveBeenCalledTimes(1);
+    const command = mockSend.mock.calls[0][0];
+    expect(command).toBeInstanceOf(HeadObjectCommand);
+    expect(command.input).toEqual({
+      Bucket: 'test-bucket',
+      Key: 'some/key.apkg',
+    });
+  });
+
+  it('returns undefined when the storage layer reports no size', async () => {
+    mockSend.mockResolvedValueOnce({});
+
+    const handler = new StorageHandler();
+
+    expect(await handler.getObjectSize('some/key.apkg')).toBeUndefined();
   });
 });
 

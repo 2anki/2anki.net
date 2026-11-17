@@ -1,6 +1,8 @@
 import { vi } from 'vitest';
 import { buildModernCollection } from '../../test/fixtures/apkg/buildModernCollection';
+import { buildTinyApkg } from '../../test/fixtures/apkg/buildTinyApkg';
 import ApkgPreviewService from './ApkgPreviewService';
+import { ApkgTooLargeError } from './extractApkg';
 import { parseCollection } from './parseCollection';
 import { NormalizedCollection } from './types';
 
@@ -454,5 +456,102 @@ describe('ApkgPreviewService — modern-schema cloze export', () => {
     );
     debugSpy.mockRestore();
     expect(fallbacks).toHaveLength(0);
+  });
+});
+
+describe('ApkgPreviewService.load', () => {
+  it('parses the bytes the reader returns', async () => {
+    const service = new ApkgPreviewService();
+
+    const parsed = await service.load('owner-1:deck.apkg', async () =>
+      buildTinyApkg()
+    );
+
+    expect(parsed?.collection.cards).toHaveLength(1);
+  });
+
+  it('answers a cached deck without calling the reader again', async () => {
+    const service = new ApkgPreviewService();
+    const readBytes = vi.fn().mockResolvedValue(buildTinyApkg());
+
+    await service.load('owner-1:deck.apkg', readBytes);
+    await service.load('owner-1:deck.apkg', readBytes);
+
+    expect(readBytes).toHaveBeenCalledTimes(1);
+  });
+
+  it('shares one read and one parse between concurrent loads of one key', async () => {
+    const service = new ApkgPreviewService();
+    let release: (bytes: Buffer) => void = () => {};
+    const readBytes = vi.fn(
+      () =>
+        new Promise<Buffer>((resolve) => {
+          release = resolve;
+        })
+    );
+
+    const loads = Array.from({ length: 8 }, () =>
+      service.load('owner-1:deck.apkg', readBytes)
+    );
+    release(buildTinyApkg());
+    const results = await Promise.all(loads);
+
+    expect(readBytes).toHaveBeenCalledTimes(1);
+    expect(new Set(results).size).toBe(1);
+    expect(results[0]?.collection.cards).toHaveLength(1);
+  });
+
+  it('passes a refusal to every waiting load and lets the next load read again', async () => {
+    const service = new ApkgPreviewService();
+    const readBytes = vi
+      .fn()
+      .mockRejectedValueOnce(new ApkgTooLargeError())
+      .mockResolvedValueOnce(buildTinyApkg());
+
+    const first = service.load('owner-1:deck.apkg', readBytes);
+    const second = service.load('owner-1:deck.apkg', readBytes);
+
+    await expect(first).rejects.toBeInstanceOf(ApkgTooLargeError);
+    await expect(second).rejects.toBeInstanceOf(ApkgTooLargeError);
+    expect(readBytes).toHaveBeenCalledTimes(1);
+
+    const retried = await service.load('owner-1:deck.apkg', readBytes);
+    expect(retried?.collection.cards).toHaveLength(1);
+  });
+
+  it('returns null and caches nothing when the reader finds no deck', async () => {
+    const service = new ApkgPreviewService();
+    const readBytes = vi.fn().mockResolvedValue(null);
+
+    expect(await service.load('owner-1:gone.apkg', readBytes)).toBeNull();
+    expect(await service.load('owner-1:gone.apkg', readBytes)).toBeNull();
+    expect(readBytes).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps loads of different keys apart', async () => {
+    const service = new ApkgPreviewService();
+    const readA = vi.fn().mockResolvedValue(buildTinyApkg('A front', 'A'));
+    const readB = vi.fn().mockResolvedValue(buildTinyApkg('B front', 'B'));
+
+    const [a, b] = await Promise.all([
+      service.load('owner-1:a.apkg', readA),
+      service.load('owner-1:b.apkg', readB),
+    ]);
+
+    expect(readA).toHaveBeenCalledTimes(1);
+    expect(readB).toHaveBeenCalledTimes(1);
+    expect(a).not.toBe(b);
+  });
+
+  it('shares one parse between concurrent parses of bytes already in memory', async () => {
+    const service = new ApkgPreviewService();
+    const bytes = buildTinyApkg();
+
+    const [a, b] = await Promise.all([
+      service.parse('mcp:deck', bytes),
+      service.parse('mcp:deck', bytes),
+    ]);
+
+    expect(a).toBe(b);
   });
 });

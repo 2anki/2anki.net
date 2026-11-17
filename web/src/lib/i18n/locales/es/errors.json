@@ -27,6 +27,11 @@
       "detail": "Los mazos subidos se eliminan al cabo de un tiempo. Conviértelo o súbelo de nuevo para previsualizarlo.",
       "action": "Volver a Mis mazos"
     },
+    "apkgTooLargeToPreview": {
+      "title": "Este mazo es demasiado grande para previsualizarlo.",
+      "detail": "Descárgalo y ábrelo en Anki para ver sus tarjetas.",
+      "action": "Volver a Mis mazos"
+    },
     "notionPageNotFound": {
       "title": "No pudimos abrir esa página de Notion.",
       "detail": "Puede que se haya eliminado o que ya no esté compartida con 2anki. Compártela de nuevo en Notion o elige otra página.",

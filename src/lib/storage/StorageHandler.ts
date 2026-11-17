@@ -174,6 +174,16 @@ class StorageHandler {
     return getSignedUrl(this.s3, command, { expiresIn: expiresSeconds });
   }
 
+  async getObjectSize(key: string): Promise<number | undefined> {
+    const response = await this.s3.send(
+      new HeadObjectCommand({
+        Bucket: StorageHandler.DefaultBucketName(),
+        Key: key,
+      })
+    );
+    return response.ContentLength;
+  }
+
   async objectExists(key: string): Promise<boolean> {
     try {
       await this.s3.send(
