@@ -107,12 +107,37 @@ export const de: DeepPartial<EmailStrings> = {
       'Eine Umwandlung sieht nicht richtig aus? Antworte auf diese E-Mail. Alexander liest jede einzelne.',
     signoff: 'Das 2anki-Team',
   },
+  semesterPassEnding: {
+    subject: 'Verlängere deinen Semester Pass, bevor er am {{endDate}} endet',
+    title: 'Verlängere deinen Semester Pass, bevor er am {{endDate}} endet',
+    intro:
+      'Dein Semester Pass endet am {{endDate}}. Hier ist, was als Nächstes mit deinem Konto passiert, in zwei Varianten.',
+    withoutPlanHeading: 'Ohne Verlängerung',
+    withoutPlan1:
+      'Nach dem Ende: Das kostenlose Limit ist zurück. 100 Karten pro Monat.',
+    withoutPlan2:
+      'Nächste Woche: Eine Vorlesung, die 140 Karten ergibt, wird nicht umgewandelt. Sie wartet auf den nächsten Monat.',
+    withoutPlan3: 'Prüfungswoche: ein neuer Pass, am Abend zuvor gekauft.',
+    withPlanHeading: 'Mit Verlängerung',
+    withPlan1:
+      'Nach dem Ende: Die nächsten 120 Tage beginnen. Gleicher Login, gleiche Stapel, keine Lücke.',
+    withPlan2: 'Nächste Woche: Jede Umwandlung kommt vollständig heraus.',
+    withPlan3: 'Prüfungswoche: nichts zu kaufen.',
+    ctaIntro:
+      'Verlängere, bevor dein Pass endet. Der Button öffnet deine Kontoseite. Dort startest du die Verlängerung. Eine Verlängerung ist eine einmalige Zahlung. Nichts verlängert sich von selbst.',
+    cta: 'Semester Pass verlängern',
+    otherPasses:
+      'Lieber ein Plan ohne Enddatum? Pro hat kein Kartenlimit und ist jederzeit kündbar. Du startest es auf der Preisseite.',
+    replyLine:
+      'Eine Umwandlung sieht nicht richtig aus? Antworte auf diese E-Mail. Alexander liest jede einzelne.',
+    signoff: 'Das 2anki-Team',
+  },
   semesterRenewal: {
     subject: 'Dein Semester Pass endet am {{endDate}}',
     title: 'Dein Semester Pass endet am {{endDate}}',
     intro: 'Dein Semester Pass endet am {{endDate}}.',
     renewBody:
-      'Verlängere ihn jetzt, und die nächsten 120 Tage beginnen am {{endDate}}, dem Tag, an dem dein aktueller Pass endet. Du verlierst keinen Tag. Login und Stapel bleiben, wie sie sind.',
+      'Verlängere ihn jetzt, und die nächsten 120 Tage beginnen, sobald dein aktueller Pass endet. Du verlierst keinen Tag. Login und Stapel bleiben, wie sie sind.',
     oneTime:
       'Eine Verlängerung ist eine einmalige Zahlung. Nichts verlängert sich von selbst.',
     cta: 'Semester Pass verlängern',

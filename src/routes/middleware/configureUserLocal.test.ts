@@ -105,7 +105,11 @@ describe('configureUserLocal — planSource', () => {
   const now = new Date('2026-06-01T12:00:00Z');
   const futureExpiry = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
-  function makeAuthService(opts: { patreon: boolean; isSubscriber: boolean }) {
+  function makeAuthService(opts: {
+    patreon: boolean;
+    isSubscriber: boolean;
+    holdsUnprovenPlan?: boolean;
+  }) {
     return {
       getUserFrom: async () => ({
         owner: 1,
@@ -115,6 +119,7 @@ describe('configureUserLocal — planSource', () => {
       }),
       getIsSubscriber: async () => opts.isSubscriber,
       getSubscriptionInfo: async () => null,
+      holdsUnprovenPlan: async () => opts.holdsUnprovenPlan === true,
     } as never;
   }
 
@@ -148,12 +153,19 @@ describe('configureUserLocal — planSource', () => {
 
   const DAY_MS = 24 * 60 * 60 * 1000;
 
-  const localsFor = async (userPassRepo: InMemoryUserPassRepository) => {
+  const localsFor = async (
+    userPassRepo: InMemoryUserPassRepository,
+    holdsUnprovenPlan = false
+  ) => {
     const res = makeRes();
     await configureUserLocal(
       makeReq({}, { token: 't' }),
       res,
-      makeAuthService({ patreon: false, isSubscriber: false }),
+      makeAuthService({
+        patreon: false,
+        isSubscriber: false,
+        holdsUnprovenPlan,
+      }),
       noDatabase,
       new InMemoryAnonymousPassRepository(),
       now,
@@ -175,6 +187,98 @@ describe('configureUserLocal — planSource', () => {
     const locals = await localsFor(userPassRepo);
 
     expect(locals.semesterRenewalOpen).toBe(true);
+    expect(locals.semesterRenewalNeedsConfirmedEmail).toBe(false);
+  });
+
+  it('says the renewal needs a confirmed email when a plan the account has not proven is billed to the address', async () => {
+    const userPassRepo = new InMemoryUserPassRepository();
+    userPassRepo.seed({
+      user_id: 1,
+      kind: '120d',
+      expires_at: new Date(now.getTime() + 4 * DAY_MS),
+      stripe_payment_intent_id: 'pi_semester',
+    });
+
+    const locals = await localsFor(userPassRepo, true);
+
+    expect(locals.semesterRenewalOpen).toBe(true);
+    expect(locals.semesterRenewalNeedsConfirmedEmail).toBe(true);
+  });
+
+  const localsWithProofSpy = async (
+    userPassRepo: InMemoryUserPassRepository,
+    isSubscriber: boolean
+  ) => {
+    const holdsUnprovenPlan = vi.fn().mockResolvedValue(true);
+    const authService = {
+      getUserFrom: async () => ({
+        owner: 1,
+        email: 'learner@example.com',
+        patreon: false,
+        chat_consent_at: null,
+      }),
+      getIsSubscriber: async () => isSubscriber,
+      getSubscriptionInfo: async () => null,
+      holdsUnprovenPlan,
+    } as never;
+    const res = makeRes();
+    await configureUserLocal(
+      makeReq({}, { token: 't' }),
+      res,
+      authService,
+      noDatabase,
+      new InMemoryAnonymousPassRepository(),
+      now,
+      undefined,
+      userPassRepo
+    );
+    return { locals: res.locals, holdsUnprovenPlan };
+  };
+
+  it('does not read the address proof outside the renewal window', async () => {
+    const userPassRepo = new InMemoryUserPassRepository();
+    userPassRepo.seed({
+      user_id: 1,
+      kind: '120d',
+      expires_at: new Date(now.getTime() + 30 * DAY_MS),
+      stripe_payment_intent_id: 'pi_semester',
+    });
+
+    const { locals, holdsUnprovenPlan } = await localsWithProofSpy(
+      userPassRepo,
+      false
+    );
+
+    expect(holdsUnprovenPlan).not.toHaveBeenCalled();
+    expect(locals.semesterRenewalNeedsConfirmedEmail).toBe(false);
+  });
+
+  it('does not read the address proof for a subscriber', async () => {
+    const { locals, holdsUnprovenPlan } = await localsWithProofSpy(
+      new InMemoryUserPassRepository(),
+      true
+    );
+
+    expect(holdsUnprovenPlan).not.toHaveBeenCalled();
+    expect(locals.semesterRenewalNeedsConfirmedEmail).toBeUndefined();
+  });
+
+  it('reads the address proof once for a Semester Pass holder in the final week', async () => {
+    const userPassRepo = new InMemoryUserPassRepository();
+    userPassRepo.seed({
+      user_id: 1,
+      kind: '120d',
+      expires_at: new Date(now.getTime() + 4 * DAY_MS),
+      stripe_payment_intent_id: 'pi_semester',
+    });
+
+    const { holdsUnprovenPlan } = await localsWithProofSpy(userPassRepo, false);
+
+    expect(holdsUnprovenPlan).toHaveBeenCalledTimes(1);
+    expect(holdsUnprovenPlan).toHaveBeenCalledWith(
+      noDatabase,
+      'learner@example.com'
+    );
   });
 
   it('keeps the renewal closed with more than a week left', async () => {

@@ -102,12 +102,36 @@ export const en: EmailStrings = {
       'A conversion not coming out right? Reply to this email. Alexander reads every one.',
     signoff: 'The 2anki Team',
   },
+  semesterPassEnding: {
+    subject: 'Renew your Semester Pass before it ends on {{endDate}}',
+    title: 'Renew your Semester Pass before it ends on {{endDate}}',
+    intro:
+      'Your Semester Pass ends on {{endDate}}. Here is what happens to your account next, in two versions.',
+    withoutPlanHeading: 'Without a renewal',
+    withoutPlan1: 'After it ends: the free limit is back. 100 cards a month.',
+    withoutPlan2:
+      'Next week: a lecture that comes out at 140 cards does not convert. It waits for next month.',
+    withoutPlan3: 'Exam week: a new pass, bought the night before.',
+    withPlanHeading: 'With a renewal',
+    withPlan1:
+      'After it ends: the next 120 days start. Same login, same decks, no gap.',
+    withPlan2: 'Next week: every conversion comes out whole.',
+    withPlan3: 'Exam week: nothing to buy.',
+    ctaIntro:
+      'Renew before your pass ends. The button opens your account page, where you start the renewal. A renewal is a one-time payment. Nothing renews by itself.',
+    cta: 'Renew Semester Pass',
+    otherPasses:
+      'Prefer a plan with no end date? Pro has no card limit, and you can cancel any time. Start it from the pricing page.',
+    replyLine:
+      'A conversion not coming out right? Reply to this email. Alexander reads every one.',
+    signoff: 'The 2anki Team',
+  },
   semesterRenewal: {
     subject: 'Your Semester Pass ends on {{endDate}}',
     title: 'Your Semester Pass ends on {{endDate}}',
     intro: 'Your Semester Pass ends on {{endDate}}.',
     renewBody:
-      'Renew it now and the next 120 days start on {{endDate}}, the day this one ends. You lose no days, and your login and decks stay as they are.',
+      'Renew it now and the next 120 days start the moment this one ends. You lose no days, and your login and decks stay as they are.',
     oneTime: 'A renewal is a one-time payment. Nothing renews by itself.',
     cta: 'Renew Semester Pass',
     ctaNote:

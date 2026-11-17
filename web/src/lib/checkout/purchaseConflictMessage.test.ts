@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import type { TFunction } from 'i18next';
 import { purchaseConflictMessage } from './purchaseConflictMessage';
 
@@ -17,6 +17,49 @@ describe('purchaseConflictMessage', () => {
       /^common:checkout\.conflict\.pass_still_active_until::/
     );
     expect(result).toContain('2026');
+  });
+
+  describe.each([
+    [
+      'Europe/Berlin',
+      '2027-01-10T23:30:00.000Z',
+      'January 11, 2027 at 12:30 AM',
+    ],
+    [
+      'Europe/Berlin',
+      '2027-01-11T00:30:00.000Z',
+      'January 11, 2027 at 1:30 AM',
+    ],
+    [
+      'America/New_York',
+      '2027-01-10T23:30:00.000Z',
+      'January 10, 2027 at 6:30 PM',
+    ],
+    [
+      'America/New_York',
+      '2027-01-11T00:30:00.000Z',
+      'January 10, 2027 at 7:30 PM',
+    ],
+  ])('for a reader in %s', (zone, expiresAt, expected) => {
+    const originalZone = process.env.TZ;
+
+    afterEach(() => {
+      process.env.TZ = originalZone;
+    });
+
+    it(`writes a pass ending at ${expiresAt} as ${expected}, the date and time the account page shows`, () => {
+      process.env.TZ = zone;
+
+      const result = purchaseConflictMessage(
+        echoT,
+        { code: 'pass_still_active', expiresAt },
+        'en'
+      );
+
+      expect(result).toBe(
+        `common:checkout.conflict.pass_still_active_until::${expected}`
+      );
+    });
   });
 
   it('uses the dated key for an active unlimited pass', () => {

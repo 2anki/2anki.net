@@ -292,7 +292,9 @@ describe('EmailService renders copy in the recipient language', () => {
       );
 
       const msg = lastMessage();
-      expect(msg.subject).toBe('Dein Semester Pass endet am 24. Januar 2027');
+      expect(msg.subject).toBe(
+        'Dein Semester Pass endet am 24. Januar 2027 um 15:00 UTC'
+      );
       expect(msg.html).toContain('Semester Pass verlängern');
       expect(msg.html).toContain('Das 2anki-Team');
       expect(msg.html).toContain('Keine E-Mails wie diese? Abmelden');

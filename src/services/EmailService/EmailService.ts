@@ -39,7 +39,11 @@ import { sendWithRetry } from './sendWithRetry';
 import { sendMail } from './sendMail';
 import SuppressionEventsRepository from '../../data_layer/SuppressionEventsRepository';
 import UsersRepository from '../../data_layer/UsersRepository';
-import { DeckReadyStrings, getEmailStrings } from './i18n';
+import {
+  DeckReadyStrings,
+  getEmailStrings,
+  type PassEndingStrings,
+} from './i18n';
 
 type EmailResponse = { didSend: boolean; error?: Error };
 
@@ -120,6 +124,11 @@ export interface IEmailService {
     to: string,
     token: string,
     passLabel: string
+  ): Promise<void>;
+  sendSemesterPassEndingEmail(
+    to: string,
+    token: string,
+    expiresAt: Date
   ): Promise<void>;
   sendSemesterRenewalEmail(
     to: string,
@@ -237,13 +246,19 @@ function deckReadyText(
   return `${strings.textReadyPrefix}${deckName}${deckReadySuffix(cardCount, strings)}`;
 }
 
-function formatRenewalDate(date: Date, language: string | null): string {
-  return new Intl.DateTimeFormat(language === 'de' ? 'de-DE' : 'en-GB', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC',
-  }).format(date);
+function formatPassEndInUtc(date: Date, language: string | null): string {
+  const dateAndTime = new Intl.DateTimeFormat(
+    language === 'de' ? 'de-DE' : 'en-GB',
+    {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'UTC',
+    }
+  ).format(date);
+  return `${dateAndTime} UTC`;
 }
 
 function firstRecipient(to: SgMessage['to']): string | null {
@@ -620,11 +635,47 @@ export class EmailService implements IEmailService {
     token: string,
     passLabel: string
   ): Promise<void> {
-    const domain = process.env.DOMAIN ?? 'https://2anki.net';
-    const ctaUrl = `${domain}/r/email?t=${encodeURIComponent(token)}&c=pass_ending&to=/pricing`;
-    const unsubscribeUrl = `${domain}/unsubscribe?uid=${token}`;
     const strings = getEmailStrings(await this.resolveLanguage(to));
-    const copy = strings.passEnding;
+    await this.sendPassEndingMessage(to, token, {
+      copy: strings.passEnding,
+      unsubscribe: strings.commercialShared.unsubscribe,
+      destination: '/pricing',
+      placeholder: '{{passLabel}}',
+      value: passLabel,
+    });
+  }
+
+  async sendSemesterPassEndingEmail(
+    to: string,
+    token: string,
+    expiresAt: Date
+  ): Promise<void> {
+    const language = await this.resolveLanguage(to);
+    const strings = getEmailStrings(language);
+    await this.sendPassEndingMessage(to, token, {
+      copy: strings.semesterPassEnding,
+      unsubscribe: strings.commercialShared.unsubscribe,
+      destination: '/account',
+      placeholder: '{{endDate}}',
+      value: formatPassEndInUtc(expiresAt, language),
+    });
+  }
+
+  private async sendPassEndingMessage(
+    to: string,
+    token: string,
+    content: {
+      copy: PassEndingStrings;
+      unsubscribe: string;
+      destination: '/pricing' | '/account';
+      placeholder: '{{passLabel}}' | '{{endDate}}';
+      value: string;
+    }
+  ): Promise<void> {
+    const { copy, placeholder, value } = content;
+    const domain = process.env.DOMAIN ?? 'https://2anki.net';
+    const ctaUrl = `${domain}/r/email?t=${encodeURIComponent(token)}&c=pass_ending&to=${content.destination}`;
+    const unsubscribeUrl = `${domain}/unsubscribe?uid=${token}`;
     const markup = PASS_ENDING_TEMPLATE.replace('{{title}}', copy.title)
       .replace('{{intro}}', copy.intro)
       .replace('{{withoutPlanHeading}}', copy.withoutPlanHeading)
@@ -640,16 +691,16 @@ export class EmailService implements IEmailService {
       .replace('{{otherPasses}}', copy.otherPasses)
       .replace('{{replyLine}}', copy.replyLine)
       .replace('{{signoff}}', copy.signoff)
-      .replace('{{unsubscribe}}', strings.commercialShared.unsubscribe)
+      .replace('{{unsubscribe}}', content.unsubscribe)
       .replace('{{ctaUrl}}', ctaUrl)
       .replace('{{unsubscribeUrl}}', unsubscribeUrl)
-      .replaceAll('{{passLabel}}', escapeHtml(passLabel));
+      .replaceAll(placeholder, escapeHtml(value));
     const $ = cheerio.load(markup);
     const text = $('body').text().replace(/\s+/g, ' ').trim();
     const msg = {
       to,
       from: this.defaultSender,
-      subject: copy.subject.replaceAll('{{passLabel}}', passLabel),
+      subject: copy.subject.replaceAll(placeholder, value),
       text,
       html: markup,
       replyTo: 'support@2anki.net',
@@ -677,7 +728,7 @@ export class EmailService implements IEmailService {
     const language = await this.resolveLanguage(to);
     const strings = getEmailStrings(language);
     const copy = strings.semesterRenewal;
-    const endDate = formatRenewalDate(expiresAt, language);
+    const endDate = formatPassEndInUtc(expiresAt, language);
     const markup = SEMESTER_RENEWAL_TEMPLATE.replace('{{title}}', copy.title)
       .replace('{{intro}}', copy.intro)
       .replace('{{renewBody}}', copy.renewBody)
@@ -1424,6 +1475,19 @@ export class UnimplementedEmailService implements IEmailService {
     passLabel: string
   ): Promise<void> {
     console.info('sendPassEndingEmail not handled', to, token, passLabel);
+  }
+
+  async sendSemesterPassEndingEmail(
+    to: string,
+    token: string,
+    expiresAt: Date
+  ): Promise<void> {
+    console.info(
+      'sendSemesterPassEndingEmail not handled',
+      to,
+      token,
+      expiresAt.toISOString()
+    );
   }
 
   async sendSemesterRenewalEmail(

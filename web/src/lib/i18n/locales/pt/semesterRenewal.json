@@ -1,7 +1,9 @@
 {
   "aria": "Renovação do Semester Pass",
-  "title": "Seu Semester Pass termina em {{date}}",
-  "body": "Renove agora e os próximos 120 dias começam em {{date}}, então você não perde nenhum dia. Um único pagamento, nada é renovado sozinho.",
+  "title": "Renove seu Semester Pass",
+  "body": "Renove agora e os próximos 120 dias começam assim que este terminar, então você não perde nenhum dia. Um único pagamento, nada é renovado sozinho.",
+  "confirmEmailFirst": "Já existe um plano cobrado neste e-mail, então para renovar você precisa primeiro de um e-mail confirmado. Saia da conta, escolha “Enviar um link de acesso por e-mail” na página de login e abra o link que enviamos. Depois, renove aqui.",
+  "confirmEmailEffects": "Ao confirmar, você sai da conta nos seus outros dispositivos e nos apps conectados, como o Claude, e sua senha deixa de funcionar. Escolha “Esqueceu sua senha?” na página de login para criar uma nova.",
   "renew": "Renovar Semester Pass",
   "renewWithPrice": "Renovar Semester Pass · {{price}}",
   "opening": "Abrindo o pagamento",

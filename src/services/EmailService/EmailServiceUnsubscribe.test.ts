@@ -81,9 +81,11 @@ describe('commercial email unsubscribe links', () => {
     );
 
     const { html, subject, text } = lastMessage();
-    expect(subject).toBe('Your Semester Pass ends on 24 January 2027');
+    expect(subject).toBe(
+      'Your Semester Pass ends on 24 January 2027 at 15:00 UTC'
+    );
     expect(text).toContain(
-      'Renew it now and the next 120 days start on 24 January 2027'
+      'Renew it now and the next 120 days start the moment this one ends.'
     );
     expect(html).toContain(
       'href="https://2anki.net/r/email?t=tok-renewal&c=pass_renewal&to=/account"'
