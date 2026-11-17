@@ -213,6 +213,30 @@ const EXPECTED_ONE_CHILD = [
   },
 ];
 
+const toggleCard = (front: string) => ({
+  name: front,
+  back: backOf(front),
+  notionId: `t-${front}`,
+});
+
+const DECK_TYPE_TOGGLE_OUTPUT = [
+  { name: 'Parent::Child', cards: [toggleCard('Q1'), toggleCard('Q2')] },
+];
+
+const DECK_TYPE_HEADING_OUTPUT = [
+  { name: 'Parent::Child', cards: [toggleCard('Q1')] },
+  {
+    name: 'Parent::Child',
+    cards: [
+      {
+        name: 'Unit',
+        back: '<p class="" id="p-unit">Unit summary</p>',
+        notionId: 'h-Unit',
+      },
+    ],
+  },
+];
+
 describe('BlockHandler child page walk', () => {
   describe.each([
     ['paid', true],
@@ -530,6 +554,115 @@ describe('BlockHandler child page walk', () => {
       });
     }
   );
+
+  describe('deck rules with page plus a block deck type on a paid conversion', () => {
+    const toggleHeading1 = (id: string, text: string) =>
+      block(
+        id,
+        'heading_1',
+        { rich_text: richText(text), color: 'default', is_toggleable: true },
+        true
+      );
+
+    it('delivers the child page toggles when toggle is also a deck type', async () => {
+      const tree: Record<string, FakeBlock[]> = {};
+      tree[PARENT_PAGE] = [childPage(CHILD_PAGE, 'Child')];
+      tree[CHILD_PAGE] = [
+        toggleWithBullets(tree, 't-Q1', 'Q1'),
+        toggleWithBullets(tree, 't-Q2', 'Q2'),
+      ];
+      const sdk = makeSdk(tree, {
+        [PARENT_PAGE]: page(PARENT_PAGE, 'Parent'),
+        [CHILD_PAGE]: page(CHILD_PAGE, 'Child'),
+      });
+      const rules = new ParserRules();
+      rules.setDeckTypes(['page', 'database', 'toggle']);
+      const decks = await convert(makeHandler(sdk, true), rules);
+
+      expect(delivered(decks)).toEqual(DECK_TYPE_TOGGLE_OUTPUT);
+    });
+
+    it('delivers the child page toggle heading when heading_1 is also a deck type', async () => {
+      const tree: Record<string, FakeBlock[]> = {};
+      tree[PARENT_PAGE] = [childPage(CHILD_PAGE, 'Child')];
+      tree[CHILD_PAGE] = [
+        toggleHeading1('h-Unit', 'Unit'),
+        toggleWithBullets(tree, 't-Q1', 'Q1'),
+      ];
+      tree['h-Unit'] = [paragraph('p-unit', 'Unit summary')];
+      const sdk = makeSdk(tree, {
+        [PARENT_PAGE]: page(PARENT_PAGE, 'Parent'),
+        [CHILD_PAGE]: page(CHILD_PAGE, 'Child'),
+      });
+      const rules = new ParserRules();
+      rules.setDeckTypes(['page', 'heading_1']);
+      const decks = await convert(makeHandler(sdk, true), rules);
+
+      expect(delivered(decks)).toEqual(DECK_TYPE_HEADING_OUTPUT);
+    });
+  });
+
+  describe('a prose-only child page on a paid conversion', () => {
+    it('offers each paragraph card once in the empty-deck offer', async () => {
+      const tree: Record<string, FakeBlock[]> = {};
+      tree[PARENT_PAGE] = [childPage(CHILD_PAGE, 'Child')];
+      tree[CHILD_PAGE] = ['first', 'second', 'third'].map((word, index) =>
+        paragraph(
+          `p-${index}`,
+          `The ${word} paragraph explains one idea in a full sentence. It goes on.`
+        )
+      );
+      const sdk = makeSdk(tree, {
+        [PARENT_PAGE]: page(PARENT_PAGE, 'Parent'),
+        [CHILD_PAGE]: page(CHILD_PAGE, 'Child'),
+      });
+      const handler = makeHandler(sdk, true);
+      await convert(handler);
+
+      expect(
+        handler.rescueCandidates.map(({ rule, cards }) => ({ rule, cards }))
+      ).toEqual([{ rule: 'paragraphs', cards: 3 }]);
+    });
+  });
+
+  describe('a toggle-heading section in a child page on a paid conversion', () => {
+    it('delivers the section toggles once and no card for the section heading', async () => {
+      const tree: Record<string, FakeBlock[]> = {};
+      tree[PARENT_PAGE] = [childPage(CHILD_PAGE, 'Child')];
+      tree[CHILD_PAGE] = [
+        block(
+          'h-Chapter',
+          'heading_1',
+          {
+            rich_text: richText('Chapter'),
+            color: 'default',
+            is_toggleable: true,
+          },
+          true
+        ),
+      ];
+      tree['h-Chapter'] = [
+        toggleWithBullets(tree, 't-Q1', 'Q1'),
+        toggleWithBullets(tree, 't-Q2', 'Q2'),
+      ];
+      const sdk = makeSdk(tree, {
+        [PARENT_PAGE]: page(PARENT_PAGE, 'Parent'),
+        [CHILD_PAGE]: page(CHILD_PAGE, 'Child'),
+      });
+      const decks = await convert(makeHandler(sdk, true));
+
+      expect(delivered(decks)).toEqual([
+        {
+          name: 'Parent::Child',
+          cards: ['Q1', 'Q2'].map((front) => ({
+            name: front,
+            back: backOf(front),
+            notionId: `t-${front}`,
+          })),
+        },
+      ]);
+    });
+  });
 
   describe('custom sub-deck rules', () => {
     function pageWithToggleSubDeck() {
