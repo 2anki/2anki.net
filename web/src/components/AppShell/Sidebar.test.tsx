@@ -449,7 +449,7 @@ describe('Sidebar collapse toggle', () => {
   });
 });
 
-describe('Sidebar auto-minimize', () => {
+describe('Sidebar stays put while the reader is idle', () => {
   beforeEach(() => {
     localStorage.clear();
     vi.mocked(track).mockClear();
@@ -466,75 +466,33 @@ describe('Sidebar auto-minimize', () => {
     });
   }
 
-  it('auto-minimizes on /upload after 20 seconds of sidebar inactivity', () => {
+  it.each(['/upload', '/notion', '/downloads', '/mindmaps/abc123'])(
+    'keeps the sidebar expanded on %s after minutes without input',
+    (pathname) => {
+      renderSidebar({ pathname });
+      const aside = screen.getByRole('complementary', {
+        name: 'Main navigation',
+      });
+      advance(5 * 60_000);
+      expect(aside).toHaveAttribute('data-collapsed', 'false');
+      expect(localStorage.getItem('sidebar.collapsed')).toBeNull();
+    }
+  );
+
+  it('keeps a manual collapse after minutes without input', () => {
     renderSidebar({ pathname: '/upload' });
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse sidebar' }));
+    advance(5 * 60_000);
     const aside = screen.getByRole('complementary', {
       name: 'Main navigation',
     });
-    expect(aside).toHaveAttribute('data-collapsed', 'false');
-    advance(20_000);
     expect(aside).toHaveAttribute('data-collapsed', 'true');
-    expect(track).toHaveBeenCalledWith('sidebar_auto_minimize_fired');
+    expect(localStorage.getItem('sidebar.collapsed')).toBe('true');
   });
 
-  it('does not auto-minimize on a non-workflow route', () => {
-    renderSidebar({ pathname: '/account' });
-    const aside = screen.getByRole('complementary', {
-      name: 'Main navigation',
-    });
-    advance(60_000);
-    expect(aside).toHaveAttribute('data-collapsed', 'false');
-    expect(track).not.toHaveBeenCalled();
-  });
-
-  it('does not touch localStorage when auto-minimizing', () => {
+  it('records no sidebar event while the reader is idle', () => {
     renderSidebar({ pathname: '/upload' });
-    advance(20_000);
-    expect(localStorage.getItem('sidebar.collapsed')).toBeNull();
-  });
-
-  it('resets the timer when the user hovers the sidebar', () => {
-    renderSidebar({ pathname: '/upload' });
-    const aside = screen.getByRole('complementary', {
-      name: 'Main navigation',
-    });
-    advance(15_000);
-    fireEvent.mouseEnter(aside);
-    advance(15_000);
-    expect(aside).toHaveAttribute('data-collapsed', 'false');
-    advance(10_000);
-    expect(aside).toHaveAttribute('data-collapsed', 'true');
-  });
-
-  it('pins the sidebar when the user manually expands after auto-minimize', () => {
-    renderSidebar({ pathname: '/upload' });
-    const aside = screen.getByRole('complementary', {
-      name: 'Main navigation',
-    });
-    advance(20_000);
-    expect(aside).toHaveAttribute('data-collapsed', 'true');
-
-    fireEvent.click(screen.getByRole('button', { name: 'Expand sidebar' }));
-    expect(aside).toHaveAttribute('data-collapsed', 'false');
-    expect(localStorage.getItem('sidebar.collapsed')).toBeNull();
-
-    advance(60_000);
-    expect(aside).toHaveAttribute('data-collapsed', 'false');
-  });
-
-  it('fires the reverted event when the user expands within 60s of auto-collapse', () => {
-    renderSidebar({ pathname: '/upload' });
-    advance(20_000);
-    vi.mocked(track).mockClear();
-    advance(5_000);
-    fireEvent.click(screen.getByRole('button', { name: 'Expand sidebar' }));
-    expect(track).toHaveBeenCalledWith('sidebar_auto_minimize_reverted');
-  });
-
-  it('does not auto-minimize when the user already has a persisted collapsed preference', () => {
-    localStorage.setItem('sidebar.collapsed', 'true');
-    renderSidebar({ pathname: '/upload' });
-    advance(20_000);
+    advance(5 * 60_000);
     expect(track).not.toHaveBeenCalled();
   });
 });

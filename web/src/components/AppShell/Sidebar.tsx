@@ -182,8 +182,7 @@ export function Sidebar({
   const { pathname } = useLocation();
   const { t } = useTranslation();
   const theme = useTheme();
-  const { collapsed, onToggleClick, onSidebarInteraction } =
-    useSidebarCollapseState(pathname);
+  const { collapsed, onToggleClick } = useSidebarCollapseState();
   const logoSrc = getLogoSrc(collapsed, theme);
   const showAnkify =
     locals?.patreon === true || locals?.autoSyncActive === true;
@@ -206,8 +205,6 @@ export function Sidebar({
         aria-label={t('chrome:nav.sidebarLabel')}
         data-testid="app-sidebar"
         data-collapsed={collapsed ? 'true' : 'false'}
-        onMouseEnter={onSidebarInteraction}
-        onFocus={onSidebarInteraction}
       >
         <div className={styles.sidebarHeader}>
           <Link
