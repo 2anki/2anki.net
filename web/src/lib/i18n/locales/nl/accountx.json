@@ -2,7 +2,7 @@
   "magicLink": {
     "verifying": "Je link wordt gecontroleerd",
     "expiredTitle": "Link verlopen of ongeldig",
-    "invalidOrExpired": "Deze link is ongeldig of verlopen. Vraag een nieuwe aan.",
+    "invalidOrExpired": "Deze link is al gebruikt of verlopen. Vraag hieronder een nieuwe aan.",
     "somethingWrong": "Er is iets misgegaan. Probeer het opnieuw.",
     "couldNotSend": "Kon geen nieuwe link versturen. Probeer het opnieuw.",
     "newLinkSent": "Er is een nieuwe link verstuurd naar {{email}}.",
@@ -10,7 +10,17 @@
     "emailPlaceholder": "E-mailadres",
     "sending": "Versturen",
     "sendNewLink": "Een nieuwe link versturen",
-    "backToLogin": "Terug naar aanmelden"
+    "backToLogin": "Terug naar aanmelden",
+    "confirmLoginTitle": "Inloggen bij 2anki als {{email}}?",
+    "confirmResetTitle": "Wachtwoord van {{email}} opnieuw instellen?",
+    "confirmLoginHint": "Bevestig dat jij het bent om het inloggen af te ronden.",
+    "confirmResetHint": "Bevestig dat jij het bent om een nieuw wachtwoord te kiezen.",
+    "confirmLoginButton": "Inloggen",
+    "confirmResetButton": "Wachtwoord opnieuw instellen",
+    "confirming": "Link wordt gecontroleerd",
+    "confirmRetry": "Dat is niet gelukt. Probeer het over een paar minuten opnieuw.",
+    "unavailableTitle": "Je link kon niet worden gecontroleerd",
+    "tryAgain": "Opnieuw proberen"
   },
   "claim": {
     "goToAccount": "Naar account",

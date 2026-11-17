@@ -19,6 +19,7 @@ export interface RateLimiterOptions {
 export class InMemoryRateLimiter implements RateLimiter {
   private readonly buckets = new Map<string, RateBucket>();
   private globalBucket: RateBucket;
+  private nextSweepAt: number;
   private readonly windowMs: number;
   private readonly perKeyMax: number;
   private readonly globalMax: number;
@@ -30,6 +31,26 @@ export class InMemoryRateLimiter implements RateLimiter {
     this.globalMax = options.globalMax;
     this.now = options.now ?? (() => Date.now());
     this.globalBucket = { count: 0, resetAt: this.now() + this.windowMs };
+    this.nextSweepAt = this.now() + this.windowMs;
+  }
+
+  trackedKeys(): number {
+    return this.buckets.size;
+  }
+
+  // An expired bucket is replaced on its next use anyway, so dropping it
+  // changes no count; sweeping at most once per window keeps the map to the
+  // keys seen in roughly the last two windows.
+  private sweepExpired(now: number): void {
+    if (now < this.nextSweepAt) {
+      return;
+    }
+    for (const [key, bucket] of this.buckets) {
+      if (now >= bucket.resetAt) {
+        this.buckets.delete(key);
+      }
+    }
+    this.nextSweepAt = now + this.windowMs;
   }
 
   check(key: string): boolean {
@@ -41,6 +62,7 @@ export class InMemoryRateLimiter implements RateLimiter {
   // the other call sites rely on.
   evaluate(key: string): RateLimitDecision {
     const now = this.now();
+    this.sweepExpired(now);
 
     if (now >= this.globalBucket.resetAt) {
       this.globalBucket = { count: 0, resetAt: now + this.windowMs };

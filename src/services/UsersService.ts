@@ -11,7 +11,10 @@ import StorageHandler from '../lib/storage/StorageHandler';
 import { UserDeletionService } from './UserDeletionService';
 import AuthenticationService from './AuthenticationService';
 import { IEmailService } from './EmailService/EmailService';
-import type { IMagicTokenRepository } from '../data_layer/MagicTokenRepository';
+import type {
+  IMagicTokenRepository,
+  MagicTokenRecord,
+} from '../data_layer/MagicTokenRepository';
 import hashToken from '../lib/misc/hashToken';
 import { isResetTokenLive } from '../lib/User/isResetTokenLive';
 import { accountHasClaudeCardsByDefault } from '../lib/upload/claudeCardsDefault';
@@ -286,9 +289,9 @@ class UsersService {
     signupOrigin?: string | null,
     redirect?: string,
     telemetry?: Omit<RegisterTelemetry, 'method'>
-  ): Promise<void> {
+  ): Promise<string | undefined> {
     if (this.magicTokenRepository == null) {
-      return;
+      return undefined;
     }
     let user = await this.repository.getByEmail(email);
     if (user?.id == null) {
@@ -302,7 +305,7 @@ class UsersService {
           outcome: 'unknown_email',
           purpose,
         });
-        return;
+        return undefined;
       }
       const placeholderPassword = bcrypt.hashSync(crypto.randomUUID(), 12);
       await this.registerVerifiedIdentity(
@@ -318,7 +321,7 @@ class UsersService {
           outcome: 'signup_failed',
           purpose,
         });
-        return;
+        return undefined;
       }
       console.info('password_reset.magic_link', {
         outcome: 'account_created',
@@ -373,6 +376,7 @@ class UsersService {
       purpose,
       user_id_hash: userIdHash,
     });
+    return token;
   }
 
   async verifyMagicToken(
@@ -388,6 +392,30 @@ class UsersService {
     await this.magicTokenRepository.markUsed(token);
     return { userId: record.owner, purpose: record.purpose };
   }
+
+  async peekMagicToken(token: string): Promise<MagicTokenClaim | null> {
+    const record = await this.magicTokenRepository?.findValidToken(token);
+    return record == null ? null : toClaim(record);
+  }
+
+  async consumeMagicToken(token: string): Promise<MagicTokenClaim | null> {
+    const record = await this.magicTokenRepository?.consumeValidToken(token);
+    return record == null ? null : toClaim(record);
+  }
+
+  async findSpentMagicTokenOwner(token: string): Promise<number | null> {
+    const record = await this.magicTokenRepository?.findByToken(token);
+    return record?.used_at == null ? null : record.owner;
+  }
+}
+
+export interface MagicTokenClaim {
+  userId: number;
+  purpose: string;
+}
+
+function toClaim(record: MagicTokenRecord): MagicTokenClaim {
+  return { userId: record.owner, purpose: record.purpose };
 }
 
 function isEmailTakenError(error: unknown): boolean {

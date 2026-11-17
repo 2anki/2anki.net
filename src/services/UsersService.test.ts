@@ -342,7 +342,7 @@ describe('UsersService.requestMagicLink', () => {
     const magicTokenRepo = new InMemoryMagicTokenRepository();
     const service = new UsersService(repository, emailService, magicTokenRepo);
 
-    await service.requestMagicLink('al@example.com', 'login');
+    const issued = await service.requestMagicLink('al@example.com', 'login');
 
     expect(emailService.sendMagicLinkEmail).toHaveBeenCalledTimes(1);
     expect(emailService.sendMagicLinkEmail).toHaveBeenCalledWith(
@@ -354,6 +354,7 @@ describe('UsersService.requestMagicLink', () => {
     const sentToken = (emailService.sendMagicLinkEmail as Mock).mock
       .calls[0][1];
     expect(sentToken).toHaveLength(128);
+    expect(issued).toBe(sentToken);
   });
 
   it('creates an account and sends the link when the email is new (login)', async () => {
@@ -433,8 +434,12 @@ describe('UsersService.requestMagicLink', () => {
     const magicTokenRepo = new InMemoryMagicTokenRepository();
     const service = new UsersService(repository, emailService, magicTokenRepo);
 
-    await service.requestMagicLink('nobody@example.com', 'password_reset');
+    const issued = await service.requestMagicLink(
+      'nobody@example.com',
+      'password_reset'
+    );
 
+    expect(issued).toBeUndefined();
     expect(createUserAndSeedFromTombstone).not.toHaveBeenCalled();
     expect(emailService.sendMagicLinkEmail).not.toHaveBeenCalled();
   });

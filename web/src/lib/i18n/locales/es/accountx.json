@@ -2,7 +2,7 @@
   "magicLink": {
     "verifying": "Verificando tu enlace",
     "expiredTitle": "Enlace caducado o no válido",
-    "invalidOrExpired": "Este enlace no es válido o ha caducado. Solicita uno nuevo.",
+    "invalidOrExpired": "Este enlace ya se usó o ha caducado. Pide uno nuevo abajo.",
     "somethingWrong": "Algo salió mal. Inténtalo de nuevo.",
     "couldNotSend": "No se pudo enviar un enlace nuevo. Inténtalo de nuevo.",
     "newLinkSent": "Se ha enviado un enlace nuevo a {{email}}.",
@@ -10,7 +10,17 @@
     "emailPlaceholder": "Dirección de correo electrónico",
     "sending": "Enviando",
     "sendNewLink": "Enviar un enlace nuevo",
-    "backToLogin": "Volver al inicio de sesión"
+    "backToLogin": "Volver al inicio de sesión",
+    "confirmLoginTitle": "¿Iniciar sesión en 2anki como {{email}}?",
+    "confirmResetTitle": "¿Restablecer la contraseña de {{email}}?",
+    "confirmLoginHint": "Confirma que eres tú para terminar de iniciar sesión.",
+    "confirmResetHint": "Confirma que eres tú para elegir una contraseña nueva.",
+    "confirmLoginButton": "Iniciar sesión",
+    "confirmResetButton": "Restablecer contraseña",
+    "confirming": "Comprobando tu enlace",
+    "confirmRetry": "No se pudo completar. Inténtalo de nuevo en unos minutos.",
+    "unavailableTitle": "No se pudo comprobar tu enlace",
+    "tryAgain": "Intentar de nuevo"
   },
   "claim": {
     "goToAccount": "Ir a la cuenta",

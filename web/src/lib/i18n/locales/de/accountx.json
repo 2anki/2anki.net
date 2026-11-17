@@ -2,7 +2,7 @@
   "magicLink": {
     "verifying": "Link wird überprüft",
     "expiredTitle": "Link abgelaufen oder ungültig",
-    "invalidOrExpired": "Dieser Link ist ungültig oder abgelaufen. Fordere einen neuen an.",
+    "invalidOrExpired": "Dieser Link wurde schon verwendet oder ist abgelaufen. Lass dir unten einen neuen schicken.",
     "somethingWrong": "Etwas ist schiefgelaufen. Versuch es erneut.",
     "couldNotSend": "Neuer Link konnte nicht gesendet werden. Versuch es erneut.",
     "newLinkSent": "Ein neuer Link wurde an {{email}} gesendet.",
@@ -10,7 +10,17 @@
     "emailPlaceholder": "E-Mail-Adresse",
     "sending": "Wird gesendet",
     "sendNewLink": "Neuen Link senden",
-    "backToLogin": "Zurück zur Anmeldung"
+    "backToLogin": "Zurück zur Anmeldung",
+    "confirmLoginTitle": "Als {{email}} bei 2anki anmelden?",
+    "confirmResetTitle": "Passwort für {{email}} zurücksetzen?",
+    "confirmLoginHint": "Bestätige, dass du es bist, um die Anmeldung abzuschließen.",
+    "confirmResetHint": "Bestätige, dass du es bist, um ein neues Passwort festzulegen.",
+    "confirmLoginButton": "Anmelden",
+    "confirmResetButton": "Passwort zurücksetzen",
+    "confirming": "Dein Link wird geprüft",
+    "confirmRetry": "Das hat nicht geklappt. Versuch es in ein paar Minuten noch einmal.",
+    "unavailableTitle": "Dein Link konnte nicht geprüft werden",
+    "tryAgain": "Erneut versuchen"
   },
   "claim": {
     "goToAccount": "Zum Konto",

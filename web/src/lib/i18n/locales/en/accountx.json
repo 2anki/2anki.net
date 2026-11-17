@@ -2,7 +2,7 @@
   "magicLink": {
     "verifying": "Verifying your link",
     "expiredTitle": "Link expired or invalid",
-    "invalidOrExpired": "This link is invalid or has expired. Request a new one.",
+    "invalidOrExpired": "This link was already used or has expired. Send yourself a new one below.",
     "somethingWrong": "Something went wrong. Try again.",
     "couldNotSend": "Could not send a new link. Try again.",
     "newLinkSent": "A new link has been sent to {{email}}.",
@@ -10,7 +10,17 @@
     "emailPlaceholder": "Email address",
     "sending": "Sending",
     "sendNewLink": "Send a new link",
-    "backToLogin": "Back to login"
+    "backToLogin": "Back to login",
+    "confirmLoginTitle": "Sign in to 2anki as {{email}}?",
+    "confirmResetTitle": "Reset the password for {{email}}?",
+    "confirmLoginHint": "Confirm it's you to finish signing in.",
+    "confirmResetHint": "Confirm it's you to choose a new password.",
+    "confirmLoginButton": "Sign in",
+    "confirmResetButton": "Reset password",
+    "confirming": "Checking your link",
+    "confirmRetry": "That didn't go through. Try again in a few minutes.",
+    "unavailableTitle": "Couldn't check your link",
+    "tryAgain": "Try again"
   },
   "claim": {
     "goToAccount": "Go to account",

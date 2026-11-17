@@ -189,8 +189,8 @@ const UserRouter = () => {
    * @swagger
    * /api/users/magic/{token}:
    *   get:
-   *     summary: Verify a magic link token
-   *     description: Validates a magic link token and creates a session for login, or returns token info for password reset.
+   *     summary: Open a magic link
+   *     description: Spends the token only when the magic-link binding cookie (__Host-magic_link_binding in production) shows this is the browser that requested the link, then creates a session (login) or returns reset info (password_reset). Any other browser, a HEAD request, or a prefetch gets 428 with confirm data and the token stays unspent. A spent token opened by a browser already signed in as its owner gets 409 without a new session.
    *     tags: [Authentication]
    *     parameters:
    *       - in: path
@@ -200,9 +200,13 @@ const UserRouter = () => {
    *           type: string
    *     responses:
    *       200:
-   *         description: Token valid — session created (login) or reset info returned (password_reset)
+   *         description: "Session created ({ token, redirect? }) or reset info ({ purpose: password_reset, reset_token })"
    *       400:
-   *         description: Token invalid or expired
+   *         description: "Token invalid, expired, already used, or not a sign-in token ({ message, code: expired })"
+   *       409:
+   *         description: "Already used, and this browser is signed in as its owner ({ message, signedIn: true, redirect? })"
+   *       428:
+   *         description: "Confirmation needed ({ message, confirm: true, purpose, email } with the email masked)"
    *         content:
    *           application/json:
    *             schema:
@@ -210,6 +214,41 @@ const UserRouter = () => {
    */
   router.get('/api/users/magic/:token', (req, res, next) =>
     controller.verifyMagicLink(req, res, next)
+  );
+
+  /**
+   * @swagger
+   * /api/users/magic/confirm:
+   *   post:
+   *     summary: Confirm a magic link opened in another browser
+   *     description: Spends the token from the JSON body and signs in (login) or returns reset info (password_reset). Accepts only a same-origin JSON request, rate-limited to 10 per network (IPv4 address or IPv6 /64) per 15 minutes.
+   *     tags: [Authentication]
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required: [token]
+   *             properties:
+   *               token:
+   *                 type: string
+   *               redirect:
+   *                 type: string
+   *     responses:
+   *       200:
+   *         description: Session created or reset info returned
+   *       400:
+   *         description: Token missing, invalid, expired, already used, or not a sign-in token
+   *       409:
+   *         description: Already used, and this browser is signed in as its owner
+   *       403:
+   *         description: Not a same-origin JSON request
+   *       429:
+   *         description: Too many attempts
+   */
+  router.post('/api/users/magic/confirm', (req, res, next) =>
+    controller.confirmMagicLink(req, res, next)
   );
 
   /**

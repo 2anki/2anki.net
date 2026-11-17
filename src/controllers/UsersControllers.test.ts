@@ -91,8 +91,26 @@ import NotionRepository from '../data_layer/NotionRespository';
 import { SESSION_MAX_AGE_MS } from '../shared/session';
 import { track } from '../services/events/track';
 import { getFeatureFlag } from '../lib/featureFlags/getFeatureFlag';
+import {
+  magicLinkBindingCookieName,
+  magicLinkBindingFor,
+} from '../lib/auth/magicLinkBinding';
 
 const trackMock = track as Mock;
+
+const magicTokenLookups = (claim: Mock) => ({
+  peekMagicToken: claim,
+  consumeMagicToken: claim,
+  findSpentMagicTokenOwner: vi.fn().mockResolvedValue(null),
+});
+
+const boundTo = (token: string) => ({
+  [magicLinkBindingCookieName()]: magicLinkBindingFor(token),
+});
+
+beforeEach(() => {
+  vi.stubEnv('THE_HASHING_SECRET', 'controller-test-secret');
+});
 
 const SAMPLE_PW = '12345678';
 
@@ -844,9 +862,9 @@ describe('UsersController.verifyMagicLink — session order', () => {
   it('confirms the address before it creates the new session', async () => {
     const order: string[] = [];
     const userService = {
-      verifyMagicToken: vi
-        .fn()
-        .mockResolvedValue({ userId: 5, purpose: 'login' }),
+      ...magicTokenLookups(
+        vi.fn().mockResolvedValue({ userId: 5, purpose: 'login' })
+      ),
       getUserById: vi
         .fn()
         .mockResolvedValue({ id: 5, email: 'al@example.com' }),
@@ -872,10 +890,14 @@ describe('UsersController.verifyMagicLink — session order', () => {
       json,
       status: vi.fn().mockReturnValue({ json }),
       cookie: vi.fn(),
+      clearCookie: vi.fn(),
     } as unknown as express.Response;
 
     await controller.verifyMagicLink(
-      { params: { token: 'valid-tok' } } as unknown as express.Request,
+      {
+        params: { token: 'valid-tok' },
+        cookies: boundTo('valid-tok'),
+      } as unknown as express.Request,
       res,
       vi.fn()
     );
@@ -894,8 +916,9 @@ describe('UsersController.verifyMagicLink', () => {
     markEmailVerified?: Mock;
   }) => {
     const userService = {
-      verifyMagicToken:
-        overrides?.verifyMagicToken ?? vi.fn().mockResolvedValue(null),
+      ...magicTokenLookups(
+        overrides?.verifyMagicToken ?? vi.fn().mockResolvedValue(null)
+      ),
       getUserById:
         overrides?.getUserById ??
         vi.fn().mockResolvedValue({ id: 1, email: 'al@example.com' }),
@@ -922,7 +945,13 @@ describe('UsersController.verifyMagicLink', () => {
     const json = vi.fn();
     const status = vi.fn().mockReturnValue({ json });
     const cookie = vi.fn();
-    return { json, status, cookie } as unknown as express.Response & {
+    const clearCookie = vi.fn();
+    return {
+      json,
+      status,
+      cookie,
+      clearCookie,
+    } as unknown as express.Response & {
       json: Mock;
       status: Mock;
       cookie: Mock;
@@ -933,6 +962,7 @@ describe('UsersController.verifyMagicLink', () => {
     const { controller } = buildVerifyController();
     const req = {
       params: { token: 'bad-token' },
+      cookies: boundTo('bad-token'),
     } as unknown as express.Request;
     const res = buildVerifyRes();
     const next = vi.fn();
@@ -942,6 +972,7 @@ describe('UsersController.verifyMagicLink', () => {
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({
       message: 'This link is invalid or has expired.',
+      code: 'expired',
     });
   });
 
@@ -964,6 +995,7 @@ describe('UsersController.verifyMagicLink', () => {
     });
     const req = {
       params: { token: 'valid-tok' },
+      cookies: boundTo('valid-tok'),
     } as unknown as express.Request;
     const res = buildVerifyRes();
     const next = vi.fn();
@@ -994,7 +1026,7 @@ describe('UsersController.verifyMagicLink', () => {
       .mockResolvedValue({ id: 8, email: 'reset@example.com' });
     const updateResetToken = vi.fn().mockResolvedValue(undefined);
     const userService = {
-      verifyMagicToken,
+      ...magicTokenLookups(verifyMagicToken),
       getUserById,
       updateResetToken,
       updateLastLoginAt: vi.fn().mockResolvedValue(undefined),
@@ -1011,6 +1043,7 @@ describe('UsersController.verifyMagicLink', () => {
     );
     const req = {
       params: { token: 'reset-tok' },
+      cookies: boundTo('reset-tok'),
     } as unknown as express.Request;
     const res = buildVerifyRes();
     const next = vi.fn();
@@ -1040,6 +1073,7 @@ describe('UsersController.verifyMagicLink', () => {
     });
     const req = {
       params: { token: 'valid-tok' },
+      cookies: boundTo('valid-tok'),
     } as unknown as express.Request;
     const res = buildVerifyRes();
     const next = vi.fn();
@@ -1068,7 +1102,7 @@ describe('UsersController.verifyMagicLink', () => {
     });
     const req = {
       params: { token: 'valid-tok' },
-      cookies: { token: 'stale-session-tok' },
+      cookies: { ...boundTo('valid-tok'), token: 'stale-session-tok' },
     } as unknown as express.Request;
     const res = buildVerifyRes();
     const next = vi.fn();
@@ -1098,7 +1132,7 @@ describe('UsersController.verifyMagicLink', () => {
     const markEmailVerified = vi.fn().mockResolvedValue(1);
     const updateResetToken = vi.fn().mockResolvedValue(undefined);
     const userService = {
-      verifyMagicToken,
+      ...magicTokenLookups(verifyMagicToken),
       getUserById,
       updateResetToken,
       updateLastLoginAt: vi.fn().mockResolvedValue(undefined),
@@ -1115,6 +1149,7 @@ describe('UsersController.verifyMagicLink', () => {
     );
     const req = {
       params: { token: 'reset-tok' },
+      cookies: boundTo('reset-tok'),
     } as unknown as express.Request;
     const res = buildVerifyRes();
     const next = vi.fn();
@@ -1138,6 +1173,7 @@ describe('UsersController.verifyMagicLink', () => {
     });
     const req = {
       params: { token: 'valid-tok' },
+      cookies: boundTo('valid-tok'),
       query: { redirect: '/upload' },
     } as unknown as express.Request;
     const res = buildVerifyRes();
@@ -1167,6 +1203,7 @@ describe('UsersController.verifyMagicLink', () => {
       });
       const req = {
         params: { token: 'valid-tok' },
+        cookies: boundTo('valid-tok'),
         query: { redirect: unsafe },
       } as unknown as express.Request;
       const res = buildVerifyRes();
@@ -2850,7 +2887,7 @@ describe('UsersController cookie options — 30-day persistent session', () => {
       .mockResolvedValue({ id: 5, email: 'al@example.com' });
     const markEmailVerified = vi.fn().mockResolvedValue(1);
     const userService = {
-      verifyMagicToken,
+      ...magicTokenLookups(verifyMagicToken),
       getUserById,
       updateLastLoginAt,
       markEmailVerified,
@@ -2866,11 +2903,13 @@ describe('UsersController cookie options — 30-day persistent session', () => {
     );
     const req = {
       params: { token: 'magic-tok' },
+      cookies: boundTo('magic-tok'),
     } as unknown as express.Request;
     const res = {
       json: vi.fn(),
       status: vi.fn().mockReturnThis(),
       cookie: vi.fn(),
+      clearCookie: vi.fn(),
     } as unknown as express.Response & { cookie: Mock };
     const next = vi.fn();
 
@@ -4250,9 +4289,9 @@ describe('UsersController — sign-in returns a connector to the authorize scree
     const userService = {
       getUserFrom: vi.fn().mockResolvedValue(existingUser),
       getUserById: vi.fn().mockResolvedValue(existingUser),
-      verifyMagicToken: vi
-        .fn()
-        .mockResolvedValue({ userId: 5, purpose: 'login' }),
+      ...magicTokenLookups(
+        vi.fn().mockResolvedValue({ userId: 5, purpose: 'login' })
+      ),
       markEmailVerified: vi.fn().mockResolvedValue(1),
       updateLastLoginAt: vi.fn().mockResolvedValue(undefined),
     } as unknown as UsersService;
@@ -4466,7 +4505,7 @@ describe('UsersController — sign-in returns a connector to the authorize scree
       {
         params: { token: 'valid-tok' },
         query: {},
-        cookies: { [RETURN_COOKIE]: AUTHORIZE_URL },
+        cookies: { ...boundTo('valid-tok'), [RETURN_COOKIE]: AUTHORIZE_URL },
       } as unknown as express.Request,
       res,
       vi.fn()
@@ -4551,7 +4590,7 @@ describe('UsersController — sign-in returns a connector to the authorize scree
       {
         params: { token: 'valid-tok' },
         query: { redirect: '/pricing?ref=mcp' },
-        cookies: {},
+        cookies: boundTo('valid-tok'),
       } as unknown as express.Request,
       res,
       vi.fn()
@@ -5008,7 +5047,7 @@ describe('UsersController — sign-in returns a connector to the authorize scree
         {
           params: { token: 'valid-tok' },
           query: {},
-          cookies: { [LOGIN_RETURN]: PRICING },
+          cookies: { ...boundTo('valid-tok'), [LOGIN_RETURN]: PRICING },
         } as unknown as express.Request,
         res,
         vi.fn()

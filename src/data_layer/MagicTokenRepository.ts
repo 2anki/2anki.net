@@ -4,6 +4,8 @@ import type MagicTokens from './public/MagicTokens';
 
 export type MagicTokenPurpose = 'login' | 'password_reset' | 'verify_email';
 
+const SIGN_IN_PURPOSES: MagicTokenPurpose[] = ['login', 'password_reset'];
+
 export interface MagicTokenRecord {
   token: string;
   owner: number;
@@ -21,9 +23,27 @@ export interface IMagicTokenRepository {
     expiresAt: Date
   ): Promise<void>;
   findValidToken(token: string): Promise<MagicTokenRecord | null>;
+  findByToken(token: string): Promise<MagicTokenRecord | null>;
+  consumeValidToken(token: string): Promise<MagicTokenRecord | null>;
   markUsed(token: string): Promise<void>;
   countRecentByOwner(owner: number, since: Date): Promise<number>;
   deleteExpired(): Promise<number>;
+}
+
+const now = () => new Date();
+
+function toRecord(row: MagicTokens | undefined): MagicTokenRecord | null {
+  if (row == null) {
+    return null;
+  }
+  return {
+    token: row.token,
+    owner: row.owner,
+    purpose: row.purpose as MagicTokenPurpose,
+    created_at: row.created_at,
+    expires_at: row.expires_at,
+    used_at: row.used_at,
+  };
 }
 
 export class MagicTokenRepository implements IMagicTokenRepository {
@@ -49,19 +69,33 @@ export class MagicTokenRepository implements IMagicTokenRepository {
     const row: MagicTokens | undefined = await this.database(this.table)
       .where({ token })
       .whereNull('used_at')
-      .where('expires_at', '>', this.database.fn.now())
+      .where('expires_at', '>', now())
       .first();
-    if (row == null) {
+    return toRecord(row);
+  }
+
+  async findByToken(token: string): Promise<MagicTokenRecord | null> {
+    const row: MagicTokens | undefined = await this.database(this.table)
+      .where({ token })
+      .first();
+    return toRecord(row);
+  }
+
+  consumeQuery(token: string, at: Date = now()) {
+    return this.database(this.table)
+      .where({ token })
+      .whereNull('used_at')
+      .where('expires_at', '>', at)
+      .whereIn('purpose', SIGN_IN_PURPOSES)
+      .update({ used_at: at });
+  }
+
+  async consumeValidToken(token: string): Promise<MagicTokenRecord | null> {
+    const spent = await this.consumeQuery(token);
+    if (spent !== 1) {
       return null;
     }
-    return {
-      token: row.token,
-      owner: row.owner,
-      purpose: row.purpose as MagicTokenPurpose,
-      created_at: row.created_at,
-      expires_at: row.expires_at,
-      used_at: row.used_at,
-    };
+    return this.findByToken(token);
   }
 
   async markUsed(token: string): Promise<void> {
@@ -125,6 +159,26 @@ export class InMemoryMagicTokenRepository implements IMagicTokenRepository {
     if (row == null) {
       return null;
     }
+    return { ...row };
+  }
+
+  async findByToken(token: string): Promise<MagicTokenRecord | null> {
+    const row = this.rows.find((r) => r.token === token);
+    return row == null ? null : { ...row };
+  }
+
+  async consumeValidToken(token: string): Promise<MagicTokenRecord | null> {
+    const row = this.rows.find(
+      (r) =>
+        r.token === token &&
+        r.used_at == null &&
+        r.expires_at > this.now &&
+        SIGN_IN_PURPOSES.includes(r.purpose)
+    );
+    if (row == null) {
+      return null;
+    }
+    row.used_at = new Date(this.now);
     return { ...row };
   }
 

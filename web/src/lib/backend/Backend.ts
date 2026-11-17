@@ -814,6 +814,14 @@ export class Backend {
     return response;
   }
 
+  async confirmMagicLink(token: string, redirect?: string): Promise<Response> {
+    const body: Record<string, string> = { token };
+    if (redirect != null && redirect.length > 0) {
+      body.redirect = redirect;
+    }
+    return post(`${this.baseURL}users/magic/confirm`, body);
+  }
+
   async forgotPassword(email: string): Promise<void> {
     const endpoint = `${this.baseURL}users/forgot-password`;
     await post(endpoint, { email });
