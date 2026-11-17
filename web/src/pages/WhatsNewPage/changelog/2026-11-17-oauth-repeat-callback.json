@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-17-oauth-repeat-callback",
+  "date": "2026-11-17",
+  "type": "fix",
+  "title": "Google, Microsoft, and Notion sign-in keep you in the app when you press back or refresh right after signing in"
+}

@@ -556,7 +556,10 @@
       "signInFallback": "Não conseguimos fazer seu login. Tente de novo, ou use seu e-mail abaixo.",
       "googleFailed": "Não conseguimos fazer seu login com o Google. Tente de novo, ou use seu e-mail abaixo.",
       "microsoftFailed": "Não conseguimos fazer seu login com a Microsoft. Tente de novo, ou use seu e-mail abaixo.",
-      "notionCancelled": "Não conseguimos fazer seu login com o Notion. Tente de novo, ou use seu e-mail abaixo."
+      "notionCancelled": "Não conseguimos fazer seu login com o Notion. Tente de novo, ou use seu e-mail abaixo.",
+      "googleExpired": "Esse login com o Google expirou ou já foi usado. Tente de novo abaixo.",
+      "microsoftExpired": "Esse login com a Microsoft expirou ou já foi usado. Tente de novo abaixo.",
+      "notionExpired": "Esse login com o Notion expirou ou já foi usado. Tente de novo abaixo."
     }
   },
   "pricing": {

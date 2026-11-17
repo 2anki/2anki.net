@@ -71,6 +71,7 @@ import { isPaying } from '../lib/isPaying';
 import NotionRepository from '../data_layer/NotionRespository';
 import hashToken from '../lib/misc/hashToken';
 import { extractCountryFromRequest } from '../lib/http/extractCountryFromRequest';
+import { isBotUserAgent } from '../lib/http/isBotUserAgent';
 import { analyticsAnonId } from '../lib/http/consentRegion';
 import { RecordUserVisibleErrorUseCase } from '../usecases/observability/RecordUserVisibleErrorUseCase';
 import { mapEntitlement } from './helpers/mapEntitlement';
@@ -90,6 +91,12 @@ function readAnalyticsAnonId(req: express.Request): string | null {
   const cookies = req.cookies as Record<string, unknown> | undefined;
   const anonId = cookies?.anon_id;
   return analyticsAnonId(req, typeof anonId === 'string' ? anonId : null);
+}
+
+interface UnboundCallbackRefusal {
+  surface: 'oauth_google' | 'oauth_microsoft' | 'oauth_notion';
+  stateCookie: string;
+  signInAgain: string;
 }
 
 // A tab loaded before these features stopped being flagged hides each one
@@ -790,29 +797,56 @@ class UsersController {
     return res.redirect(url ?? '/login?error=microsoft_signin_failed');
   }
 
-  async #recordStateMismatch(
+  async #sessionUser(token: unknown): Promise<UserWithOwner | null> {
+    if (typeof token !== 'string' || token === '') {
+      return null;
+    }
+    return this.authService.getUserFrom(token);
+  }
+
+  async #refuseUnboundCallback(
     req: express.Request,
-    surface: 'oauth_google' | 'oauth_microsoft' | 'oauth_notion',
-    stateCookie: string
+    res: express.Response,
+    refusal: UnboundCallbackRefusal
   ) {
     const cookies = req.cookies as Record<string, unknown> | undefined;
-    await this.recordError?.execute({
-      userId: null,
-      surface,
-      code: 'oauth_state_mismatch',
-      context: {
-        hadStateCookie: cookies?.[stateCookie] != null,
-        hadStateParam: req.query?.state != null,
-        userAgent: req.headers?.['user-agent'] ?? null,
-      },
-    });
+    const hadStateCookie = cookies?.[refusal.stateCookie] != null;
+    const userAgent = req.headers?.['user-agent'] ?? null;
+    const signedIn = await this.#sessionUser(cookies?.token);
+    const context = {
+      alreadySignedIn: signedIn != null,
+      hadStateCookie,
+      hadStateParam: req.query?.state != null,
+      userAgent,
+    };
+    if (signedIn != null) {
+      await this.recordError?.execute({
+        userId: signedIn.id,
+        surface: refusal.surface,
+        code: hadStateCookie ? 'oauth_state_mismatch' : 'oauth_repeat_callback',
+        context,
+      });
+      return res.redirect(await this.#signedInLanding(signedIn.id));
+    }
+    if (!isBotUserAgent(userAgent)) {
+      await this.recordError?.execute({
+        userId: null,
+        surface: refusal.surface,
+        code: 'oauth_state_mismatch',
+        context,
+      });
+    }
+    return res.redirect(refusal.signInAgain);
   }
 
   async loginWithGoogle(req: express.Request, res: express.Response) {
     console.debug('Login with google');
     if (!takeOAuthState(req, res, GOOGLE_STATE_COOKIE, req.query.state)) {
-      await this.#recordStateMismatch(req, 'oauth_google', GOOGLE_STATE_COOKIE);
-      return res.redirect('/login?error=google_signin_failed');
+      return this.#refuseUnboundCallback(req, res, {
+        surface: 'oauth_google',
+        stateCookie: GOOGLE_STATE_COOKIE,
+        signInAgain: '/login?error=google_signin_expired',
+      });
     }
     const { code } = req.query;
     if (!code) {
@@ -920,12 +954,11 @@ class UsersController {
   async loginWithMicrosoft(req: express.Request, res: express.Response) {
     console.debug('Login with microsoft');
     if (!takeOAuthState(req, res, MICROSOFT_STATE_COOKIE, req.query.state)) {
-      await this.#recordStateMismatch(
-        req,
-        'oauth_microsoft',
-        MICROSOFT_STATE_COOKIE
-      );
-      return res.redirect('/login?error=microsoft_signin_failed');
+      return this.#refuseUnboundCallback(req, res, {
+        surface: 'oauth_microsoft',
+        stateCookie: MICROSOFT_STATE_COOKIE,
+        signInAgain: '/login?error=microsoft_signin_expired',
+      });
     }
     const { code } = req.query;
     if (!code) {
@@ -1351,8 +1384,11 @@ class UsersController {
         notionLoginNonce(req.query.state)
       )
     ) {
-      await this.#recordStateMismatch(req, 'oauth_notion', NOTION_STATE_COOKIE);
-      return res.redirect('/login?error=notion_cancelled');
+      return this.#refuseUnboundCallback(req, res, {
+        surface: 'oauth_notion',
+        stateCookie: NOTION_STATE_COOKIE,
+        signInAgain: '/login?error=notion_signin_expired',
+      });
     }
     const { code } = req.query;
     if (!code) {
@@ -1632,6 +1668,10 @@ class UsersController {
       logLoginReturnUsed(loginReturn, via);
       return loginReturn;
     }
+    return this.#signedInLanding(userId);
+  }
+
+  async #signedInLanding(userId: number): Promise<string> {
     const notionData = await new NotionRepository(this.db).getNotionData(
       userId
     );

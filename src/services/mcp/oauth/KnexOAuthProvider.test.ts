@@ -853,7 +853,7 @@ describe('signed-out connect: authorize -> sign in -> back to authorize', () => 
 
       expect(google.status).toBe(302);
       expect(google.headers.get('location')).toBe(
-        '/login?error=google_signin_failed'
+        '/login?error=google_signin_expired'
       );
       expect(
         google.headers.getSetCookie().some((c) => c.startsWith('token='))

@@ -852,7 +852,7 @@ const UserRouter = () => {
    *     tags: [Authentication]
    *     responses:
    *       302:
-   *         description: Redirect to the post-login destination, or /login?error=google_signin_failed
+   *         description: Redirect to the post-login destination, or /login?error=google_signin_failed. A state that does not match the cookie exchanges nothing and redirects to the signed-in landing when the browser already has a session, else to /login?error=google_signin_expired
    */
   router.get('/api/users/auth/google', (req, res) =>
     controller.loginWithGoogle(req, res)
@@ -1045,7 +1045,7 @@ const UserRouter = () => {
    *         description: The login:<nonce> state forwarded by /api/notion/connect; the nonce must match the notion_login_state cookie
    *     responses:
    *       302:
-   *         description: Redirect to home on success, or /login?error=notion_cancelled on failure
+   *         description: Redirect to home on success, or /login?error=notion_cancelled on failure. A state that does not match the cookie exchanges nothing and redirects to the signed-in landing when the browser already has a session, else to /login?error=notion_signin_expired
    */
   router.get('/api/users/auth/notion', (req, res) =>
     controller.loginWithNotion(req, res)

@@ -1,0 +1,423 @@
+import { vi, type Mock } from 'vitest';
+import type { Knex } from 'knex';
+
+const holder = vi.hoisted(() => ({ db: null as Knex | null }));
+
+vi.mock('../data_layer', () => ({
+  getDatabase: vi.fn(() => holder.db),
+}));
+
+vi.mock('../services/EmailService/EmailService', () => ({
+  getDefaultEmailService: vi.fn(() => ({})),
+}));
+
+vi.mock('../services/events/track', () => ({ track: vi.fn() }));
+
+vi.mock('../services/observability/instrumentedAxios', () => ({
+  default: { post: vi.fn(), get: vi.fn() },
+}));
+
+import crypto from 'node:crypto';
+import http from 'node:http';
+import type { AddressInfo } from 'node:net';
+import express from 'express';
+import cookieParser from 'cookie-parser';
+import jwt from 'jsonwebtoken';
+import knex from 'knex';
+
+import UserRouter from './UserRouter';
+import instrumentedAxios from '../services/observability/instrumentedAxios';
+import { __resetGoogleJwksCacheForTests } from '../services/AuthenticationService';
+
+const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
+const NOTION_TOKEN_URL = 'https://api.notion.com/v1/oauth/token';
+const GOOGLE_CLIENT_ID = 'google-client';
+const KID = 'google-test-key';
+const EMAIL = 'learner@example.com';
+const LINK_PREVIEW_AGENT =
+  'Slackbot-LinkExpanding 1.0 (+https://api.slack.com/robots)';
+
+const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', {
+  modulusLength: 2048,
+});
+const publicJwk = publicKey.export({ format: 'jwk' });
+
+const googleIdToken = () =>
+  jwt.sign(
+    {
+      iss: 'https://accounts.google.com',
+      aud: GOOGLE_CLIENT_ID,
+      sub: 'google-sub-1',
+      email: EMAIL,
+      email_verified: true,
+      name: 'Learner',
+    },
+    privateKey.export({ type: 'pkcs8', format: 'pem' }),
+    { algorithm: 'RS256', header: { alg: 'RS256', kid: KID } }
+  );
+
+async function makeDatabase(): Promise<Knex> {
+  const db = knex({
+    client: 'better-sqlite3',
+    connection: { filename: ':memory:' },
+    useNullAsDefault: true,
+  });
+  await db.schema.createTable('users', (t) => {
+    t.increments('id');
+    t.string('name');
+    t.string('email');
+    t.string('password');
+    t.boolean('email_verified');
+    t.timestamp('created_at').defaultTo(db.fn.now());
+    t.timestamp('last_login_at');
+  });
+  await db.schema.createTable('access_tokens', (t) => {
+    t.increments('id');
+    t.string('token', 1024);
+    t.integer('owner');
+    t.timestamp('created_at').defaultTo(db.fn.now());
+  });
+  await db.schema.createTable('notion_tokens', (t) => {
+    t.increments('id');
+    t.integer('owner').unique();
+    t.string('token');
+    t.string('token_type');
+    t.string('bot_id');
+    t.string('workspace_name');
+    t.string('workspace_icon');
+    t.string('workspace_id');
+    t.text('notion_owner');
+    t.timestamp('invalidated_at');
+    t.timestamp('reconnect_email_sent_at');
+  });
+  await db.schema.createTable('user_visible_errors', (t) => {
+    t.increments('id');
+    t.integer('user_id');
+    t.string('surface');
+    t.string('code');
+    t.text('context');
+    t.timestamp('occurred_at').defaultTo(db.fn.now());
+  });
+  return db;
+}
+
+interface ErrorRow {
+  user_id: number | null;
+  surface: string;
+  code: string;
+  context: Record<string, unknown>;
+}
+
+async function errorRows(): Promise<ErrorRow[]> {
+  const rows = await holder.db!('user_visible_errors')
+    .select('user_id', 'surface', 'code', 'context')
+    .orderBy('id');
+  return rows.map((row) => ({
+    ...row,
+    context: JSON.parse(row.context ?? 'null'),
+  }));
+}
+
+const exchangesWith = (url: string) =>
+  (instrumentedAxios.post as Mock).mock.calls.filter(([, u]) => u === url);
+
+const cookiePair = (setCookies: string[], name: string) =>
+  (setCookies.find((c) => c.startsWith(`${name}=`)) ?? '').split(';')[0];
+
+const setsSession = (res: Response) =>
+  res.headers.getSetCookie().some((c) => /^token=[^;]+/.test(c));
+
+let server: http.Server;
+let base: string;
+let userId: number;
+
+beforeEach(async () => {
+  vi.stubEnv('SECRET', 'route-test-secret');
+  vi.stubEnv('THE_HASHING_SECRET', 'route-test-hashing-secret');
+  vi.stubEnv('GOOGLE_CLIENT_ID', GOOGLE_CLIENT_ID);
+  vi.stubEnv('GOOGLE_CLIENT_SECRET', 'google-secret');
+  vi.stubEnv('GOOGLE_REDIRECT_URI', 'https://2anki.net/api/users/auth/google');
+  vi.stubEnv('NOTION_CLIENT_ID', 'notion-client');
+  vi.stubEnv('NOTION_CLIENT_SECRET', 'notion-secret');
+  vi.stubEnv('NOTION_REDIRECT_URI', 'https://2anki.net/api/notion/connect');
+  __resetGoogleJwksCacheForTests();
+  (instrumentedAxios.post as Mock).mockReset();
+  (instrumentedAxios.get as Mock).mockReset();
+  (instrumentedAxios.get as Mock).mockResolvedValue({
+    data: {
+      keys: [{ kid: KID, kty: publicJwk.kty, n: publicJwk.n, e: publicJwk.e }],
+    },
+  });
+  (instrumentedAxios.post as Mock).mockImplementation(async (_l, url) => {
+    if (url === GOOGLE_TOKEN_URL) {
+      return { data: { id_token: googleIdToken() } };
+    }
+    if (url === NOTION_TOKEN_URL) {
+      return {
+        data: {
+          access_token: 'notion-access',
+          token_type: 'bearer',
+          bot_id: 'bot-1',
+          workspace_name: 'Workspace',
+          workspace_id: 'ws-1',
+          owner: { user: { name: 'Learner', person: { email: EMAIL } } },
+        },
+      };
+    }
+    throw new Error(`unexpected POST ${url}`);
+  });
+
+  holder.db = await makeDatabase();
+  [userId] = await holder.db('users').insert({
+    name: 'Learner',
+    email: EMAIL,
+    password: 'hash',
+    email_verified: true,
+  });
+
+  const app = express();
+  app.use(cookieParser());
+  app.use(UserRouter());
+  server = http.createServer(app);
+  await new Promise<void>((resolve) => server.listen(0, resolve));
+  base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+});
+
+afterEach(async () => {
+  await new Promise<void>((resolve) => server.close(() => resolve()));
+  await holder.db?.destroy();
+  vi.unstubAllEnvs();
+});
+
+const get = (path: string, cookie: string, userAgent = 'Mozilla/5.0') =>
+  fetch(`${base}${path}`, {
+    headers: { cookie, 'user-agent': userAgent },
+    redirect: 'manual',
+  });
+
+const providers = [
+  {
+    provider: 'Google',
+    init: '/api/users/auth/google/init',
+    callback: '/api/users/auth/google',
+    stateCookie: 'google_login_state',
+    tokenUrl: GOOGLE_TOKEN_URL,
+    surface: 'oauth_google',
+    expired: '/login?error=google_signin_expired',
+    landing: '/upload',
+  },
+  {
+    provider: 'Notion',
+    init: '/api/users/auth/notion/init',
+    callback: '/api/users/auth/notion',
+    stateCookie: 'notion_login_state',
+    tokenUrl: NOTION_TOKEN_URL,
+    surface: 'oauth_notion',
+    expired: '/login?error=notion_signin_expired',
+    landing: '/notion',
+  },
+];
+
+describe.each(providers)(
+  'the $provider sign-in callback',
+  ({ init, callback, stateCookie, tokenUrl, surface, expired, landing }) => {
+    async function startSignIn() {
+      const res = await get(init, '');
+      const state =
+        new URL(res.headers.get('location') ?? '').searchParams.get('state') ??
+        '';
+      const cookie = cookiePair(res.headers.getSetCookie(), stateCookie);
+      return { state, cookie };
+    }
+
+    const callbackUrl = (state: string, extra = '') =>
+      `${callback}?code=provider-code&state=${encodeURIComponent(state)}${extra}`;
+
+    async function signIn() {
+      const { state, cookie } = await startSignIn();
+      const first = await get(callbackUrl(state), cookie);
+      const session = cookiePair(first.headers.getSetCookie(), 'token');
+      return { state, cookie, first, session };
+    }
+
+    it('signs in on the first callback with the state it was handed', async () => {
+      const { first } = await signIn();
+
+      expect(first.status).toBe(302);
+      expect(first.headers.get('location')).toBe(landing);
+      expect(setsSession(first)).toBe(true);
+      expect(
+        first.headers
+          .getSetCookie()
+          .some((c) => c.startsWith(`${stateCookie}=;`))
+      ).toBe(true);
+      expect(exchangesWith(tokenUrl)).toHaveLength(1);
+      expect(await errorRows()).toEqual([]);
+    });
+
+    it('sends a repeated callback from a signed-in browser to the signed-in landing without exchanging the code again', async () => {
+      const { state, session } = await signIn();
+
+      const repeat = await get(callbackUrl(state), session);
+
+      expect(repeat.status).toBe(302);
+      expect(repeat.headers.get('location')).toBe(landing);
+      expect(setsSession(repeat)).toBe(false);
+      expect(exchangesWith(tokenUrl)).toHaveLength(1);
+      expect(await holder.db!('access_tokens').count('* as n')).toEqual([
+        { n: 1 },
+      ]);
+      expect(await errorRows()).toEqual([
+        {
+          user_id: userId,
+          surface,
+          code: 'oauth_repeat_callback',
+          context: {
+            alreadySignedIn: true,
+            hadStateCookie: false,
+            hadStateParam: true,
+            userAgent: 'Mozilla/5.0',
+          },
+        },
+      ]);
+    });
+
+    it('keeps a repeated callback on the signed-in landing even when it names a redirect', async () => {
+      const { state, session } = await signIn();
+
+      const repeat = await get(
+        callbackUrl(state, '&redirect=%2Fpricing'),
+        session
+      );
+
+      expect(repeat.headers.get('location')).toBe(landing);
+    });
+
+    it('refuses a callback with no state cookie and no session, and points to a fresh sign-in', async () => {
+      const { state } = await startSignIn();
+
+      const res = await get(callbackUrl(state), '');
+
+      expect(res.status).toBe(302);
+      expect(res.headers.get('location')).toBe(expired);
+      expect(setsSession(res)).toBe(false);
+      expect(exchangesWith(tokenUrl)).toHaveLength(0);
+      expect(await holder.db!('access_tokens').count('* as n')).toEqual([
+        { n: 0 },
+      ]);
+      expect(await errorRows()).toEqual([
+        {
+          user_id: null,
+          surface,
+          code: 'oauth_state_mismatch',
+          context: {
+            alreadySignedIn: false,
+            hadStateCookie: false,
+            hadStateParam: true,
+            userAgent: 'Mozilla/5.0',
+          },
+        },
+      ]);
+    });
+
+    it('treats a session cookie that does not verify as signed out', async () => {
+      const { state } = await startSignIn();
+
+      const res = await get(callbackUrl(state), 'token=not-a-session');
+
+      expect(res.headers.get('location')).toBe(expired);
+      expect(exchangesWith(tokenUrl)).toHaveLength(0);
+      expect(await errorRows()).toMatchObject([
+        { code: 'oauth_state_mismatch', context: { alreadySignedIn: false } },
+      ]);
+    });
+
+    it('refuses a link-preview fetch of the callback without writing a visible-error row', async () => {
+      const { state } = await startSignIn();
+
+      const res = await get(callbackUrl(state), '', LINK_PREVIEW_AGENT);
+
+      expect(res.headers.get('location')).toBe(expired);
+      expect(exchangesWith(tokenUrl)).toHaveLength(0);
+      expect(await errorRows()).toEqual([]);
+    });
+
+    it('refuses a state that differs from the cookie for a signed-out browser', async () => {
+      const { cookie } = await startSignIn();
+      const { state: otherState } = await startSignIn();
+
+      const res = await get(callbackUrl(otherState), cookie);
+
+      expect(res.headers.get('location')).toBe(expired);
+      expect(setsSession(res)).toBe(false);
+      expect(exchangesWith(tokenUrl)).toHaveLength(0);
+      expect(await errorRows()).toMatchObject([
+        {
+          user_id: null,
+          code: 'oauth_state_mismatch',
+          context: { alreadySignedIn: false, hadStateCookie: true },
+        },
+      ]);
+    });
+
+    it('sends a signed-in browser with a state that differs from the cookie to the signed-in landing, exchanges nothing and records a mismatch', async () => {
+      const { session } = await signIn();
+      const { cookie } = await startSignIn();
+      const { state: otherState } = await startSignIn();
+
+      const res = await get(callbackUrl(otherState), `${session}; ${cookie}`);
+
+      expect(res.headers.get('location')).toBe(landing);
+      expect(setsSession(res)).toBe(false);
+      expect(exchangesWith(tokenUrl)).toHaveLength(1);
+      expect(await errorRows()).toEqual([
+        {
+          user_id: userId,
+          surface,
+          code: 'oauth_state_mismatch',
+          context: {
+            alreadySignedIn: true,
+            hadStateCookie: true,
+            hadStateParam: true,
+            userAgent: 'Mozilla/5.0',
+          },
+        },
+      ]);
+    });
+
+    it('never stores the state or the code in the visible-error row', async () => {
+      const { state, session } = await signIn();
+
+      await get(callbackUrl(state), session);
+      await get(callbackUrl(state), '');
+
+      const stored = JSON.stringify(await errorRows());
+      expect(stored).not.toContain(state.replace(/^login:/, ''));
+      expect(stored).not.toContain('provider-code');
+      expect(stored).not.toContain(session.split('=')[1]);
+    });
+  }
+);
+
+describe('the Notion sign-in callback on a repeat', () => {
+  it('saves the workspace once and leaves it alone on the repeated callback', async () => {
+    const init = await get('/api/users/auth/notion/init', '');
+    const state =
+      new URL(init.headers.get('location') ?? '').searchParams.get('state') ??
+      '';
+    const stateCookie = cookiePair(
+      init.headers.getSetCookie(),
+      'notion_login_state'
+    );
+    const url = `/api/users/auth/notion?code=provider-code&state=${encodeURIComponent(state)}`;
+    const first = await get(url, stateCookie);
+    const session = cookiePair(first.headers.getSetCookie(), 'token');
+    const saved = await holder.db!('notion_tokens').select('*');
+
+    await get(url, session);
+
+    expect(saved).toHaveLength(1);
+    expect(await holder.db!('notion_tokens').select('*')).toEqual(saved);
+    expect(exchangesWith(NOTION_TOKEN_URL)).toHaveLength(1);
+  });
+});

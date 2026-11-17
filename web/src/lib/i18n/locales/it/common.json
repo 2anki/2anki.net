@@ -556,7 +556,10 @@
       "signInFallback": "Non siamo riusciti a farti accedere. Riprova, oppure usa la tua email qui sotto.",
       "googleFailed": "Non siamo riusciti a farti accedere con Google. Riprova, oppure usa la tua email qui sotto.",
       "microsoftFailed": "Non siamo riusciti a farti accedere con Microsoft. Riprova, oppure usa la tua email qui sotto.",
-      "notionCancelled": "Non siamo riusciti a farti accedere con Notion. Riprova, oppure usa la tua email qui sotto."
+      "notionCancelled": "Non siamo riusciti a farti accedere con Notion. Riprova, oppure usa la tua email qui sotto.",
+      "googleExpired": "Questo accesso con Google è scaduto o è già stato usato. Riprova qui sotto.",
+      "microsoftExpired": "Questo accesso con Microsoft è scaduto o è già stato usato. Riprova qui sotto.",
+      "notionExpired": "Questo accesso con Notion è scaduto o è già stato usato. Riprova qui sotto."
     }
   },
   "pricing": {
