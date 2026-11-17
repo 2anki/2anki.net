@@ -1,7 +1,11 @@
+import zlib from 'node:zlib';
 import JSZip from 'jszip';
 import Database from 'better-sqlite3';
 import PackEditedApkgUseCase from './PackEditedApkgUseCase';
-import { extractApkg } from '../../services/ApkgPreviewService/extractApkg';
+import {
+  extractApkg,
+  parseMediaManifest,
+} from '../../services/ApkgPreviewService/extractApkg';
 import { parseCollection } from '../../services/ApkgPreviewService/parseCollection';
 
 function buildCollectionBuffer(
@@ -168,4 +172,210 @@ describe('PackEditedApkgUseCase', () => {
     });
     expect(result.filename).toBe('my-deck-edited.apkg');
   });
+});
+
+const ZSTD_MAGIC = Buffer.from([0x28, 0xb5, 0x2f, 0xfd]);
+const SQLITE_HEADER = Buffer.from('SQLite format 3\0', 'latin1');
+const LATEST_PACKAGE_META = Buffer.from([0x08, 0x03]);
+const LEGACY_2_PACKAGE_META = Buffer.from([0x08, 0x02]);
+const MEDIA_FILE_BYTES = Buffer.from('synthetic image bytes');
+const PLACEHOLDER_CARD = {
+  front: 'Please update to the latest Anki version',
+  back: '',
+};
+
+function encodeMediaEntries(names: string[]): Buffer {
+  const entries = names.map((name) => {
+    const nameBytes = Buffer.from(name, 'utf8');
+    const entry = Buffer.concat([
+      Buffer.from([0x0a, nameBytes.length]),
+      nameBytes,
+    ]);
+    return Buffer.concat([Buffer.from([0x0a, entry.length]), entry]);
+  });
+  return Buffer.concat(entries);
+}
+
+async function buildNewFormatApkg(
+  cards: Array<{ front: string; back: string }>
+) {
+  const meta = LATEST_PACKAGE_META;
+  const placeholder = buildCollectionBuffer([PLACEHOLDER_CARD]);
+  const mediaList = zlib.zstdCompressSync(encodeMediaEntries(['picture.png']));
+  const mediaFile = zlib.zstdCompressSync(MEDIA_FILE_BYTES);
+  const zip = new JSZip();
+  zip.file('meta', meta);
+  zip.file(
+    'collection.anki21b',
+    zlib.zstdCompressSync(buildCollectionBuffer(cards))
+  );
+  zip.file('collection.anki2', placeholder);
+  zip.file('0', mediaFile);
+  zip.file('media', mediaList);
+  const apkg = await zip.generateAsync({ type: 'nodebuffer' });
+  return { apkg, meta, placeholder, mediaList, mediaFile };
+}
+
+async function readEntries(apkg: Buffer): Promise<Map<string, Buffer>> {
+  const zip = await JSZip.loadAsync(apkg);
+  const entries = new Map<string, Buffer>();
+  for (const name of Object.keys(zip.files)) {
+    entries.set(name, await zip.files[name].async('nodebuffer'));
+  }
+  return entries;
+}
+
+function readFirstNoteFields(sqlite: Buffer): string[] {
+  const db = new Database(sqlite);
+  try {
+    const row = db.prepare('SELECT flds FROM notes ORDER BY id').get() as {
+      flds: string;
+    };
+    return row.flds.split('\x1f');
+  } finally {
+    db.close();
+  }
+}
+
+describe('PackEditedApkgUseCase with a new-format deck', () => {
+  async function packEditedNewFormat() {
+    const input = await buildNewFormatApkg([
+      { front: 'original', back: 'A1' },
+      { front: 'Q2', back: 'A2' },
+    ]);
+    const result = await useCase.execute({
+      sourceBytes: input.apkg,
+      filename: 'deck.apkg',
+      edits: [{ cardIndex: 0, front: 'edited front' }],
+    });
+    return { input, output: await readEntries(result.buffer), result };
+  }
+
+  it('writes collection.anki21b as a zstd frame of the edited SQLite collection', async () => {
+    const { output } = await packEditedNewFormat();
+    const collection = output.get('collection.anki21b') as Buffer;
+
+    expect(collection.subarray(0, 4)).toEqual(ZSTD_MAGIC);
+    const sqlite = zlib.zstdDecompressSync(collection);
+    expect(sqlite.subarray(0, SQLITE_HEADER.length)).toEqual(SQLITE_HEADER);
+    expect(readFirstNoteFields(sqlite)).toEqual(['edited front', 'A1']);
+  });
+
+  it('keeps the meta file byte for byte', async () => {
+    const { input, output } = await packEditedNewFormat();
+
+    expect(output.get('meta')).toEqual(input.meta);
+  });
+
+  it('keeps the collection.anki2 placeholder byte for byte', async () => {
+    const { input, output } = await packEditedNewFormat();
+
+    expect(output.get('collection.anki2')).toEqual(input.placeholder);
+  });
+
+  it('keeps the zstd media list and zstd media files byte for byte', async () => {
+    const { input, output } = await packEditedNewFormat();
+
+    expect(output.get('media')).toEqual(input.mediaList);
+    expect(output.get('0')).toEqual(input.mediaFile);
+    expect(zlib.zstdDecompressSync(output.get('0') as Buffer)).toEqual(
+      MEDIA_FILE_BYTES
+    );
+  });
+
+  it('reports the collection format it packed', async () => {
+    const { result } = await packEditedNewFormat();
+
+    expect(result.collectionName).toBe('collection.anki21b');
+  });
+
+  it('writes exactly the entries the input had', async () => {
+    const { output } = await packEditedNewFormat();
+
+    expect([...output.keys()].sort()).toEqual(
+      ['0', 'collection.anki2', 'collection.anki21b', 'media', 'meta'].sort()
+    );
+  });
+
+  it('reads back through extractApkg as the edited deck with its media', async () => {
+    const { result } = await packEditedNewFormat();
+    const archive = await extractApkg(result.buffer);
+
+    expect(archive.collectionName).toBe('collection.anki21b');
+    expect(
+      parseCollection(archive.collectionBuffer).notes.get(10)?.fields
+    ).toEqual(['edited front', 'A1']);
+    expect(parseMediaManifest(archive.mediaManifestRaw)).toEqual(
+      new Map([['picture.png', '0']])
+    );
+  });
+
+  it('writes an empty zstd media list when the input had none', async () => {
+    const zip = new JSZip();
+    zip.file('meta', LATEST_PACKAGE_META);
+    zip.file(
+      'collection.anki21b',
+      zlib.zstdCompressSync(buildCollectionBuffer([{ front: 'Q', back: 'A' }]))
+    );
+    const apkg = await zip.generateAsync({ type: 'nodebuffer' });
+
+    const result = await useCase.execute({
+      sourceBytes: apkg,
+      filename: 'deck.apkg',
+      edits: [],
+    });
+    const media = (await readEntries(result.buffer)).get('media') as Buffer;
+
+    expect(media.subarray(0, 4)).toEqual(ZSTD_MAGIC);
+    expect(zlib.zstdDecompressSync(media)).toEqual(Buffer.alloc(0));
+  });
+});
+
+describe('PackEditedApkgUseCase with a legacy-format deck', () => {
+  it.each([
+    {
+      layout: 'collection.anki2 only, as 2anki generates',
+      collectionName: 'collection.anki2',
+      extraEntries: new Map<string, Buffer>(),
+      expectedNames: ['collection.anki2', 'media'],
+    },
+    {
+      layout: 'collection.anki21 with meta and a placeholder',
+      collectionName: 'collection.anki21',
+      extraEntries: new Map<string, Buffer>([
+        ['meta', LEGACY_2_PACKAGE_META],
+        ['collection.anki2', buildCollectionBuffer([PLACEHOLDER_CARD])],
+      ]),
+      expectedNames: ['collection.anki21', 'media'],
+    },
+  ])(
+    'writes plain SQLite under the same name for $layout',
+    async ({ collectionName, extraEntries, expectedNames }) => {
+      const zip = new JSZip();
+      for (const [name, content] of extraEntries) {
+        zip.file(name, content);
+      }
+      zip.file(
+        collectionName,
+        buildCollectionBuffer([{ front: 'original', back: 'A1' }])
+      );
+      zip.file('media', '{}');
+      const apkg = await zip.generateAsync({ type: 'nodebuffer' });
+
+      const result = await useCase.execute({
+        sourceBytes: apkg,
+        filename: 'deck.apkg',
+        edits: [{ cardIndex: 0, front: 'edited front' }],
+      });
+      const output = await readEntries(result.buffer);
+      const collection = output.get(collectionName) as Buffer;
+
+      expect([...output.keys()].sort()).toEqual([...expectedNames].sort());
+      expect(collection.subarray(0, SQLITE_HEADER.length)).toEqual(
+        SQLITE_HEADER
+      );
+      expect(readFirstNoteFields(collection)).toEqual(['edited front', 'A1']);
+      expect(output.get('media')?.toString('utf8')).toBe('{}');
+    }
+  );
 });

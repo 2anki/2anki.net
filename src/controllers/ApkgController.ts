@@ -581,6 +581,7 @@ class ApkgController {
         res.status(404).json({ message: 'Upload not found.' });
         return;
       }
+      console.info(`APKG edited download packed: ${result.collectionName}`);
       res.setHeader('Content-Type', 'application/octet-stream');
       res.setHeader(
         'Content-Disposition',
