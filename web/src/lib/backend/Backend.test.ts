@@ -528,6 +528,63 @@ describe('Backend', () => {
     });
   });
 
+  describe('saveRules', () => {
+    it('posts the rules as comma-joined lists for the page', async () => {
+      vi.mocked(api.post).mockResolvedValue(createMockResponse(201, true));
+
+      await expect(
+        backend.saveRules(
+          'page-xyz',
+          ['toggle', 'callout'],
+          ['page'],
+          ['child_page'],
+          'heading',
+          true
+        )
+      ).resolves.toBeUndefined();
+      expect(api.post).toHaveBeenCalledWith('/api/rules/create/page-xyz', {
+        payload: {
+          FLASHCARD: 'toggle,callout',
+          DECK: 'page',
+          SUB_DECKS: 'child_page',
+          TAGS: 'heading',
+          EMAIL_NOTIFICATION: true,
+        },
+      });
+    });
+
+    it('throws the server message when the rules are rejected', async () => {
+      vi.mocked(api.post).mockResolvedValue(
+        createMockResponse(400, false, 'Bad Request', {
+          message: 'Choose at least one block type to turn into flashcards.',
+        })
+      );
+
+      await expect(
+        backend.saveRules('page-xyz', [], ['page'], [], 'heading', false)
+      ).rejects.toThrow(
+        'Choose at least one block type to turn into flashcards.'
+      );
+    });
+
+    it('throws a status error when the rejection has no message', async () => {
+      vi.mocked(api.post).mockResolvedValue(
+        createMockResponse(400, false, 'Bad Request')
+      );
+
+      await expect(
+        backend.saveRules(
+          'page-xyz',
+          ['toggle'],
+          ['page'],
+          [],
+          'heading',
+          false
+        )
+      ).rejects.toThrow('Failed to save rules: 400');
+    });
+  });
+
   describe('deleteRules', () => {
     it('calls DELETE on the rules endpoint with the page id', async () => {
       const mockResponse = createMockResponse(204, true);

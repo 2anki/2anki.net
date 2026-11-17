@@ -7,8 +7,8 @@ class ParserRulesService {
     return this.repository.create(id, owner, payload);
   }
 
-  getById(id: string) {
-    return this.repository.getById(id);
+  findForOwner(owner: string, id: string) {
+    return this.repository.findForOwner(owner, id);
   }
 
   deleteRule(id: string, owner: string): Promise<number> {

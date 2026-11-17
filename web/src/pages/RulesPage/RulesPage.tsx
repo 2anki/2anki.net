@@ -80,9 +80,6 @@ const advancedDeckLabelKeys: Record<string, string> = {
 const allowedDeckTypes = new Set([...deckOptions, ...advancedDeckOptions]);
 
 const defaultRules: NewRule = {
-  id: 0,
-  owner: 0,
-  object_id: '',
   flashcard_is: ['toggle'],
   sub_deck_is: ['child_page'],
   tags_is: 'strikethrough',
@@ -184,7 +181,9 @@ export default function RulesPage({ setErrorMessage }: Readonly<Props>) {
         const loaded: NewRule = rule
           ? {
               ...rule,
-              flashcard_is: rule.flashcard_is.split(',').filter(Boolean),
+              flashcard_is: rule.flashcard_is
+                .split(',')
+                .filter((v: string) => flashCardOptions.includes(v)),
               sub_deck_is: rule.sub_deck_is
                 .split(',')
                 .filter((v: string) => subDeckOptions.includes(v)),

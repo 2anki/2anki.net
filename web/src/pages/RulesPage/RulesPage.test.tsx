@@ -214,6 +214,26 @@ describe('RulesPage deck boundaries', () => {
     const call = mockApi.saveRules.mock.calls[0];
     expect(call[2]).toEqual(['database']);
   });
+
+  it('saves only the flashcard types the page offers from a stored rule', async () => {
+    mockApi.getRules.mockResolvedValue({
+      flashcard_is: 'heading,toggle,Toggles',
+      sub_deck_is: 'child_page',
+      tags_is: 'strikethrough',
+      deck_is: 'page',
+      email_notification: false,
+    });
+    renderPage('page-legacy');
+    await waitFor(() => {
+      expect(screen.getByText('Deck boundaries')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => {
+      expect(mockApi.saveRules).toHaveBeenCalled();
+    });
+    const call = mockApi.saveRules.mock.calls[0];
+    expect(call[1]).toEqual(['toggle']);
+  });
 });
 
 describe('RulesPage advanced deck types', () => {
