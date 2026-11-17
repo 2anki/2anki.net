@@ -18,7 +18,6 @@ import type NotionAPIWrapper from '../NotionAPIWrapper';
 export interface IBlockRenderer {
   api: NotionAPIWrapper;
   settings: CardOption;
-  skip: string[];
   useAll: boolean;
   tagRegistry: TagRegistry;
   readonly unsupportedBlockTypes: string[];

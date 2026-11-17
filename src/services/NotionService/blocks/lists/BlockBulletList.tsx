@@ -11,14 +11,16 @@ import { styleWithColors } from '../../NotionColors';
 export const BlockBulletList = async (
   block: BulletedListItemBlockObjectResponse,
   response: ListBlockChildrenResponse | undefined,
-  handler: IBlockRenderer
+  handler: IBlockRenderer,
+  groupedListItems: Set<string>
 ) => {
   const list = block.bulleted_list_item;
   const items = await getListItems(
     response,
     handler,
     'bulleted_list_item',
-    block
+    block,
+    groupedListItems
   );
   const listItems = items.filter(Boolean);
   const markup = ReactDOMServer.renderToStaticMarkup(

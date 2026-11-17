@@ -38,9 +38,15 @@ const renderBackChild = async (
   handler: IBlockRenderer,
   block: BlockObjectResponse,
   response: ListBlockChildrenResponse,
-  handleChildren: boolean | undefined
+  handleChildren: boolean | undefined,
+  groupedListItems: Set<string>
 ): Promise<string> => {
-  let markup = await blockToStaticMarkup(handler, block, response);
+  let markup = await blockToStaticMarkup(
+    handler,
+    block,
+    response,
+    groupedListItems
+  );
   if (shouldRecurseIntoChildren(block, handleChildren)) {
     markup += await handler.getBackSide(block);
   }
@@ -54,11 +60,18 @@ export const renderBack = async (
   handleChildren: boolean | undefined
 ) => {
   let back = '';
+  const groupedListItems = new Set<string>();
   for (const c of requestChildren) {
-    if (handler.skip.includes(c.id) || !isFullBlock(c)) {
+    if (groupedListItems.has(c.id) || !isFullBlock(c)) {
       continue;
     }
-    back += await renderBackChild(handler, c, response, handleChildren);
+    back += await renderBackChild(
+      handler,
+      c,
+      response,
+      handleChildren,
+      groupedListItems
+    );
   }
   return back;
 };
@@ -70,12 +83,19 @@ export const renderBackResilient = async (
   handleChildren: boolean | undefined
 ) => {
   let back = '';
+  const groupedListItems = new Set<string>();
   for (const c of requestChildren) {
-    if (handler.skip.includes(c.id) || !isFullBlock(c)) {
+    if (groupedListItems.has(c.id) || !isFullBlock(c)) {
       continue;
     }
     try {
-      back += await renderBackChild(handler, c, response, handleChildren);
+      back += await renderBackChild(
+        handler,
+        c,
+        response,
+        handleChildren,
+        groupedListItems
+      );
     } catch (error) {
       console.warn(
         `Skipping unrenderable Notion block ${c.id} on the card back`,

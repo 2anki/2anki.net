@@ -270,7 +270,8 @@ describe('BlockCallout plain-text back', () => {
       listResponse([bulletA, bulletB]),
       handler,
       'bulleted_list_item',
-      bulletA
+      bulletA,
+      new Set()
     );
     const html = items
       .filter(Boolean)
