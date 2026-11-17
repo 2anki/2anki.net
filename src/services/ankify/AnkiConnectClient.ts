@@ -287,7 +287,19 @@ export class AnkiConnectClient {
   ): Promise<T> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      return await this.request<T>(action, params, timeoutMs, controller);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
 
+  private async request<T>(
+    action: string,
+    params: Record<string, unknown> | undefined,
+    timeoutMs: number,
+    controller: AbortController
+  ): Promise<T> {
     let response: Response;
     try {
       response = await this.fetchImpl(this.baseUrl, {
@@ -313,8 +325,6 @@ export class AnkiConnectClient {
         );
       }
       throw new AnkiConnectUnreachableError(this.baseUrl, error);
-    } finally {
-      clearTimeout(timer);
     }
 
     if (!response.ok) {

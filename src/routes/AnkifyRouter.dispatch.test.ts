@@ -101,6 +101,8 @@ vi.mock('../services/ankify/buildAnkiConnectClient', () => ({
 }));
 
 import AnkifyRouter from './AnkifyRouter';
+import { AnkiConnectTimeoutError } from '../services/ankify/AnkiConnectClient';
+import { SendDeadlineExceededError } from '../usecases/ankify/SendUploadToRacUseCase';
 import {
   COLD_LOAD_BUDGET_BYTES,
   PREVIEW_MAX_STORED_BYTES,
@@ -290,4 +292,30 @@ describe('AnkifyRouter sending an upload to Ankify', () => {
     expect(statuses).toEqual([200, 200]);
     expect(sharedPreviewLimits().coldLoads.inUse).toBe(0);
   });
+
+  it.each([
+    [
+      'a call timed out',
+      new AnkiConnectTimeoutError('http://anki', 'addNote', 10_000, null),
+    ],
+    ['the send passed its deadline', new SendDeadlineExceededError(1)],
+  ])(
+    'answers 503 with the unreachable message when %s, then takes the next send',
+    async (_case, error) => {
+      storageReports(4096);
+      addNote.mockRejectedValueOnce(error);
+
+      const [stopped, next] = await withServer(async (base) => [
+        await postDispatch(base),
+        await postDispatch(base),
+      ]);
+
+      expect(stopped.status).toBe(503);
+      expect(await stopped.json()).toEqual({
+        message:
+          'AnkiConnect is unreachable. Make sure the hosted Anki container is healthy.',
+      });
+      expect(next.status).toBe(200);
+    }
+  );
 });

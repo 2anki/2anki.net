@@ -50,6 +50,25 @@ export class SendAlreadyRunningError extends Error {
   }
 }
 
+// The proxy in front of this server gives up on a response at 900s. Stop
+// pushing at 780s so the one call in flight (10s) and the final AnkiWeb sync
+// (60s) still finish before it, and the user sees why the send ended.
+export const SEND_DEADLINE_MS = 13 * 60_000;
+
+export class SendDeadlineExceededError extends AnkiConnectUnreachableError {
+  constructor(readonly deadlineMs: number) {
+    super('the Anki container', null);
+    this.name = 'SendDeadlineExceededError';
+    this.message = `Send to Anki stopped after ${deadlineMs}ms`;
+  }
+}
+
+const stopAtDeadline = (deadline: number): void => {
+  if (Date.now() > deadline) {
+    throw new SendDeadlineExceededError(SEND_DEADLINE_MS);
+  }
+};
+
 export type { AnkiWebSyncStatus };
 
 export interface SendUploadToRacResult {
@@ -179,6 +198,7 @@ export class SendUploadToRacUseCase {
   private async send(
     input: SendUploadToRacInput
   ): Promise<SendUploadToRacResult> {
+    const deadline = Date.now() + SEND_DEADLINE_MS;
     const upload = await this.uploads.findByIdAndOwner(
       input.uploadId,
       input.owner
@@ -219,9 +239,10 @@ export class SendUploadToRacUseCase {
     const overrides =
       (await this.templateOverridesProvider?.(input.owner)) ?? null;
     await ensureAnkifyModels(ac, this.modelCache(client.id), overrides);
-    await this.uploadAllMedia(ac, parsed, result);
+    await this.uploadAllMedia(ac, parsed, result, deadline);
 
     for (const [noteId, note] of collection.notes) {
+      stopAtDeadline(deadline);
       await this.processNote({
         noteId,
         note,
@@ -332,33 +353,34 @@ export class SendUploadToRacUseCase {
         }
       }
     } catch (error) {
-      if (
-        error instanceof AnkiConnectUnreachableError ||
-        error instanceof AnkiConnectError
-      ) {
-        result.errors.push(`Note ${noteId}: ${error.message}`);
-      } else {
-        result.errors.push(`Note ${noteId}: ${(error as Error).message}`);
+      if (error instanceof AnkiConnectUnreachableError) {
+        throw error;
       }
+      result.errors.push(`Note ${noteId}: ${(error as Error).message}`);
     }
   }
 
   private async uploadAllMedia(
     ac: AnkiConnectClient,
     parsed: ParsedApkgForSend,
-    result: SendUploadToRacResult
+    result: SendUploadToRacResult,
+    deadline: number
   ): Promise<void> {
     for (const [originalName, archiveName] of parsed.mediaMap) {
       const bytes = parsed.mediaEntries.get(archiveName);
       if (bytes == null) {
         continue;
       }
+      stopAtDeadline(deadline);
       try {
         await ac.storeMediaFile({
           filename: originalName,
           data: bytes.toString('base64'),
         });
       } catch (error) {
+        if (error instanceof AnkiConnectUnreachableError) {
+          throw error;
+        }
         result.errors.push(
           `Media ${originalName}: ${(error as Error).message}`
         );

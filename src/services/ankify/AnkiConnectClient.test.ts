@@ -523,6 +523,35 @@ describe('AnkiConnectClient', () => {
     expect(err.message).toContain('timed out');
   });
 
+  test('counts reading the response body against the per-call timeout', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchImpl = vi.fn(
+        async (_url: string, init: { signal: AbortSignal }) => ({
+          ok: true,
+          status: 200,
+          statusText: 'OK',
+          json: () =>
+            new Promise((_resolve, reject) => {
+              init.signal.addEventListener('abort', () =>
+                reject(new Error('aborted'))
+              );
+            }),
+        })
+      ) as unknown as typeof fetch;
+      const client = new AnkiConnectClient('http://x', fetchImpl, 5_000);
+
+      const pending = client.deckNames().catch((e) => e);
+      await vi.advanceTimersByTimeAsync(5_000);
+      const err = await pending;
+
+      expect(err).toBeInstanceOf(AnkiConnectTimeoutError);
+      expect(err.action).toBe('deckNames');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   test('sync aborts on the longer sync timeout, not the per-call default', async () => {
     vi.useFakeTimers();
     try {

@@ -758,6 +758,7 @@ class AnkifyController {
         return;
       }
       if (error instanceof AnkiConnectUnreachableError) {
+        console.info(`[ankify] send stopped: ${error.name}`);
         res.status(503).json({
           message:
             'AnkiConnect is unreachable. Make sure the hosted Anki container is healthy.',
