@@ -78,7 +78,10 @@ describe('HomePage feature grid', () => {
   it.each([
     [375, 1],
     [768, 2],
-    [1024, 4],
+    [1000, 2],
+    [1024, 2],
+    [1079, 2],
+    [1080, 4],
     [1440, 4],
   ])(
     'fills every row at %spx, with %s columns and no orphan tile',

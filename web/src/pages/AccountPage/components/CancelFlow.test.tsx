@@ -124,6 +124,18 @@ describe('CancelFlow opening step', () => {
       Node.DOCUMENT_POSITION_FOLLOWING
     );
   });
+
+  it('shows the cancel button as disabled while the request runs', () => {
+    renderFlow({ isCancelling: true });
+
+    const processing = screen.getByRole('button', { name: 'Processing…' });
+    expect(processing).toBeDisabled();
+    expect(processing).toHaveClass(/cancelConfirm/);
+    expect(getComputedStyle(processing).opacity).toBe('0.5');
+    expect(
+      screen.getByRole('button', { name: 'Keep subscription' })
+    ).toBeDisabled();
+  });
 });
 
 describe('CancelFlow says when access ends before the confirm', () => {

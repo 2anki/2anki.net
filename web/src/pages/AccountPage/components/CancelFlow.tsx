@@ -110,7 +110,7 @@ export function CancelFlow({
         </button>
         <button
           type="button"
-          className={sharedStyles.btnDanger}
+          className={styles.cancelConfirm}
           onClick={() => onCancel(reason, comment.trim())}
           disabled={isCancelling}
           aria-describedby={accessNotice == null ? undefined : accessNoticeId}

@@ -225,6 +225,7 @@
   font-size: var(--text-base);
   font-weight: var(--font-semibold);
   color: var(--color-text-primary);
+  overflow-wrap: anywhere;
 }
 
 .featureBody {
@@ -233,7 +234,7 @@
   line-height: var(--leading-relaxed);
 }
 
-@media (max-width: 959px) {
+@media (max-width: 1079px) {
   .featuresGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

@@ -452,6 +452,50 @@ describe('SubscriptionManagement', () => {
       );
     });
 
+    it('tells a yearly subscriber the end of the paid year', () => {
+      stubStripeActive(
+        { amount: 6400, currency: 'usd', interval: 'year' },
+        Date.parse('2027-03-15T09:00:00.000Z') / 1000
+      );
+      renderStripeManagement();
+
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Cancel subscription' })
+      );
+
+      expect(
+        screen.getByText(
+          "You keep access until March 15, 2027 at 9:00 AM, the end of the period you paid for. Your card won't be charged again."
+        )
+      ).toBeInTheDocument();
+    });
+
+    it('offers someone already set to cancel no cancel flow', () => {
+      stubStripeView('scheduled');
+      renderStripeManagement();
+
+      expect(screen.getByText(/Access continues until then/)).toBeTruthy();
+      expect(
+        screen.queryByRole('button', { name: 'Cancel subscription' })
+      ).toBeNull();
+      expect(screen.queryByText(/You keep access/)).toBeNull();
+    });
+
+    it('offers a lifetime member with no subscription no cancel flow', () => {
+      const { container } = render(
+        withQueryClient(
+          <SubscriptionManagement
+            user={user}
+            locals={{ subscriber: false, planSource: 'lifetime' }}
+            hasActivePlan
+            onRefetch={vi.fn().mockResolvedValue(undefined)}
+          />
+        )
+      );
+
+      expect(container).toBeEmptyDOMElement();
+    });
+
     it('tells a subscriber with no period end in the data, without a date', () => {
       stubStripeActive(undefined, null);
       renderStripeManagement();

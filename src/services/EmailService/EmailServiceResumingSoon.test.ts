@@ -61,6 +61,7 @@ describe('pause resume warning email', () => {
         "To cancel instead, go to your account page before December 1, 2026. Cancelling during the pause ends your subscription right away, and you won't be charged again."
       );
       expect(msg.html).toContain('href="https://2anki.net/account"');
+      expect(msg.html).not.toContain('{{');
       expect(msg.text).not.toMatch(/extend/i);
       expect(msg.categories).toEqual([
         EMAIL_CATEGORIES.subscriptionResumingSoon,
@@ -77,6 +78,7 @@ describe('pause resume warning email', () => {
       expect(lastMessage().text).toContain(
         'Billing resumes automatically at your regular price from that date.'
       );
+      expect(lastMessage().html).not.toContain('{{');
     });
 
     it.each(['fr', 'ja', 'pt'])(
@@ -117,6 +119,7 @@ describe('pause resume warning email', () => {
         'Wenn du stattdessen kündigen willst, geh vor dem 1. Dezember 2026 auf deine Kontoseite. Eine Kündigung während der Pause beendet dein Abo sofort, und dir wird nichts mehr berechnet.'
       );
       expect(msg.html).toContain('href="https://2anki.net/account"');
+      expect(msg.html).not.toContain('{{');
       expect(msg.text).not.toMatch(/verlänger/i);
       expect(msg.text).not.toMatch(/Billing|cancel/);
     });
