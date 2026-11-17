@@ -24,6 +24,9 @@ import {
   NOTION_STATE_COOKIE,
 } from '../lib/auth/oauthState';
 
+const isRegisterPagePath = (path: string) =>
+  path === '/register' || path === '/register/';
+
 const UserRouter = () => {
   const router = express.Router();
   const database = getDatabase();
@@ -830,7 +833,13 @@ const UserRouter = () => {
    *             schema:
    *               type: string
    */
-  router.get('/register', (req, res) => controller.showRegister(req, res));
+  router.get('/register', (req, res, next) => {
+    if (isRegisterPagePath(req.path)) {
+      controller.showRegister(req, res);
+    } else {
+      next();
+    }
+  });
 
   /**
    * @swagger

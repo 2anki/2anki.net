@@ -212,6 +212,26 @@ describe('GET /register', () => {
     expect(callback.headers.get('location')).toBe('/print');
   });
 
+  it.each(['/Register', '/REGISTER'])(
+    'leaves %s to the app route: same status, no return cookie',
+    async (path) => {
+      const before = await listen(appWith(DefaultRouter()));
+      try {
+        const expected = await get(`${path}?redirect=/print`, '', before.base);
+        const actual = await get(`${path}?redirect=/print`);
+
+        expect(actual.status).toBe(expected.status);
+        expect(actual.status).toBe(404);
+        expect(actual.headers.get('set-cookie')).toBeNull();
+        expect(await actual.text()).toBe(await expected.text());
+      } finally {
+        await new Promise<void>((resolve) =>
+          before.server.close(() => resolve())
+        );
+      }
+    }
+  );
+
   it.each([
     ['a signed-out visitor', ''],
     ['a visitor with a session cookie', 'token=session-cookie'],
