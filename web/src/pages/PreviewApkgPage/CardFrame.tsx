@@ -239,7 +239,6 @@ export function CardFrame({
   const deckSegments = useMemo(() => resolveDeckSegments(card), [card]);
 
   const isDeleted = editState?.deleted ?? false;
-  const isSuspended = editState?.suspended ?? false;
   const editableSides = (['front', 'back'] as const).flatMap((side) => {
     const field = card.editable?.[side];
     return field ? [{ side, field }] : [];
@@ -294,10 +293,6 @@ export function CardFrame({
     onEdit?.(card.id, { ...editState, deleted: !isDeleted });
   }
 
-  function toggleSuspend() {
-    onEdit?.(card.id, { ...editState, suspended: !isSuspended });
-  }
-
   return (
     <section
       className={`${styles.card}${isDeleted ? ` ${styles.cardDeleted}` : ''}`}
@@ -321,26 +316,15 @@ export function CardFrame({
         </div>
         <div className={styles.cardControls}>
           {isEditable && (
-            <>
-              <button
-                type="button"
-                className={`${styles.iconButton}${isSuspended ? ` ${styles.iconButtonActive}` : ''}`}
-                onClick={toggleSuspend}
-                aria-pressed={isSuspended}
-                title={t('card.suspendOnImport')}
-              >
-                {t('card.suspend')}
-              </button>
-              <button
-                type="button"
-                className={`${styles.iconButton}${isDeleted ? ` ${styles.iconButtonActive}` : ''}`}
-                onClick={toggleDelete}
-                aria-pressed={isDeleted}
-                title={isDeleted ? t('card.restoreCard') : t('card.deleteCard')}
-              >
-                {isDeleted ? t('card.restore') : t('card.delete')}
-              </button>
-            </>
+            <button
+              type="button"
+              className={`${styles.iconButton}${isDeleted ? ` ${styles.iconButtonActive}` : ''}`}
+              onClick={toggleDelete}
+              aria-pressed={isDeleted}
+              title={isDeleted ? t('card.restoreCard') : t('card.deleteCard')}
+            >
+              {isDeleted ? t('card.restore') : t('card.delete')}
+            </button>
           )}
           <button
             type="button"

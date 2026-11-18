@@ -353,23 +353,22 @@ const editableCard = (overrides: Partial<ApkgPreviewCard> = {}) =>
   });
 
 describe('CardFrame edit controls', () => {
-  it('shows Delete and Suspend buttons when isEditable is true', () => {
+  it('offers Edit, Delete and Show back, and no Suspend, when isEditable is true', () => {
     render(<CardFrame card={editableCard()} onEdit={noop} isEditable={true} />);
-    expect(screen.getByRole('button', { name: /delete/i })).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: /suspend/i })
-    ).toBeInTheDocument();
+      screen.getAllByRole('button').map((button) => button.textContent)
+    ).toEqual(['Delete', 'Show back', 'Edit front', 'Edit back']);
+    expect(
+      screen.queryByRole('button', { name: /suspend/i })
+    ).not.toBeInTheDocument();
   });
 
-  it('does not show Delete or Suspend when isEditable is false', () => {
+  it('does not show Delete when isEditable is false', () => {
     render(
       <CardFrame card={editableCard()} onEdit={noop} isEditable={false} />
     );
     expect(
       screen.queryByRole('button', { name: /delete/i })
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: /suspend/i })
     ).not.toBeInTheDocument();
   });
 
@@ -380,15 +379,6 @@ describe('CardFrame edit controls', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: /delete/i }));
     expect(onEdit).toHaveBeenCalledWith(42, { deleted: true });
-  });
-
-  it('calls onEdit with the card id and suspended=true when Suspend is clicked', () => {
-    const onEdit = vi.fn();
-    render(
-      <CardFrame card={editableCard()} onEdit={onEdit} isEditable={true} />
-    );
-    fireEvent.click(screen.getByRole('button', { name: /suspend/i }));
-    expect(onEdit).toHaveBeenCalledWith(42, { suspended: true });
   });
 
   it('shows Restore button when card is marked deleted', () => {
@@ -512,7 +502,7 @@ describe('CardFrame edit controls', () => {
     render(
       <CardFrame
         card={editableCard()}
-        editState={{ fields: { 1: 'new back' }, suspended: true }}
+        editState={{ fields: { 1: 'new back' }, deleted: true }}
         onEdit={onEdit}
         isEditable={true}
       />
@@ -522,7 +512,7 @@ describe('CardFrame edit controls', () => {
     expect(textarea).toHaveValue('new back');
     fireEvent.change(textarea, { target: { value: 'raw back' } });
     fireEvent.blur(textarea);
-    expect(onEdit).toHaveBeenCalledWith(42, { fields: {}, suspended: true });
+    expect(onEdit).toHaveBeenCalledWith(42, { fields: {}, deleted: true });
   });
 
   it('strips a pasted field separator from the draft before recording it', () => {

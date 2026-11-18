@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-18-preview-suspend-removed",
+  "date": "2026-11-18",
+  "type": "style",
+  "title": "The deck preview no longer offers Suspend, which Anki rarely kept on import; suspend cards in Anki instead"
+}

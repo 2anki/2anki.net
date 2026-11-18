@@ -579,7 +579,7 @@ class ApkgController {
         return;
       }
       console.info(
-        `APKG edited download packed: ${result.collectionName}, notes updated: ${result.notesUpdated}, cards suspended: ${result.cardsSuspended}, cards deleted: ${result.cardsDeleted}, edits refused: ${result.editsRefused}`
+        `APKG edited download packed: ${result.collectionName}, notes updated: ${result.notesUpdated}, cards deleted: ${result.cardsDeleted}, edits refused: ${result.editsRefused}`
       );
       res.setHeader('Content-Type', 'application/octet-stream');
       res.setHeader(

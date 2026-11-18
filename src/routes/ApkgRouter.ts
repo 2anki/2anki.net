@@ -170,7 +170,7 @@ const ApkgRouter = () => {
    * /api/apkg/{key}/download-edited:
    *   post:
    *     summary: Download an .apkg with user edits applied
-   *     description: Re-packs the source .apkg with the provided edit set — text edits, card deletions, and suspend flags — and returns the modified file for download.
+   *     description: Re-packs the source .apkg with the provided edit set — text edits and card deletions — and returns the modified file for download.
    *     tags: [Apkg Preview]
    *     security:
    *       - bearerAuth: []
@@ -211,8 +211,6 @@ const ApkgRouter = () => {
    *                           value:
    *                             type: string
    *                     deleted:
-   *                       type: boolean
-   *                     suspended:
    *                       type: boolean
    *     responses:
    *       200:

@@ -27,7 +27,6 @@ describe('withEditMapEntry', () => {
 
     const after = withEditMapEntry(before, 7, {
       deleted: false,
-      suspended: false,
       fields: {},
     });
 
@@ -49,17 +48,12 @@ describe('withEditMapEntry', () => {
     ]);
   });
 
-  it('keeps a card in place when only its suspend or delete flag changes', () => {
+  it('keeps a card in place when only its delete flag changes', () => {
     let editMap = new Map<number, CardEditState>();
     editMap = withEditMapEntry(editMap, 200, { fields: { 0: 'from card 1' } });
     editMap = withEditMapEntry(editMap, 201, { fields: { 0: 'from card 2' } });
     editMap = withEditMapEntry(editMap, 200, {
       fields: { 0: 'from card 1' },
-      suspended: true,
-    });
-    editMap = withEditMapEntry(editMap, 200, {
-      fields: { 0: 'from card 1' },
-      suspended: true,
       deleted: true,
     });
 
@@ -67,7 +61,6 @@ describe('withEditMapEntry', () => {
       {
         cardId: 200,
         fields: [{ index: 0, value: 'from card 1' }],
-        suspended: true,
         deleted: true,
       },
       { cardId: 201, fields: [{ index: 0, value: 'from card 2' }] },
@@ -77,11 +70,11 @@ describe('withEditMapEntry', () => {
   it('keeps other cards when one changes', () => {
     const before = new Map<number, CardEditState>([[7, { deleted: true }]]);
 
-    const after = withEditMapEntry(before, 9, { suspended: true });
+    const after = withEditMapEntry(before, 9, { fields: { 0: 'edited' } });
 
     expect([...after.entries()]).toEqual([
       [7, { deleted: true }],
-      [9, { suspended: true }],
+      [9, { fields: { 0: 'edited' } }],
     ]);
   });
 });
@@ -100,14 +93,12 @@ describe('toEditPayloads', () => {
   it('sends card ids with field indices and only the flags that are set', () => {
     const editMap = new Map<number, CardEditState>([
       [1700000000123, { fields: { 1: 'new back' }, deleted: false }],
-      [1700000000124, { deleted: true }],
-      [1700000000125, { suspended: true, fields: {} }],
+      [1700000000124, { deleted: true, fields: {} }],
     ]);
 
     expect(toEditPayloads(editMap)).toEqual([
       { cardId: 1700000000123, fields: [{ index: 1, value: 'new back' }] },
       { cardId: 1700000000124, deleted: true },
-      { cardId: 1700000000125, suspended: true },
     ]);
   });
 });

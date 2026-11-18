@@ -89,15 +89,10 @@ export default function PreviewApkgPage({
     [stream.data]
   );
 
-  const { deletedCount, suspendedCount } = useMemo(() => {
-    let deleted = 0;
-    let suspended = 0;
-    Array.from(editMap.values()).forEach((state) => {
-      if (state.deleted) deleted++;
-      if (state.suspended && !state.deleted) suspended++;
-    });
-    return { deletedCount: deleted, suspendedCount: suspended };
-  }, [editMap]);
+  const deletedCount = useMemo(
+    () => Array.from(editMap.values()).filter((state) => state.deleted).length,
+    [editMap]
+  );
 
   const handleEdit = useCallback((cardId: number, state: CardEditState) => {
     setEditMap((prev) => withEditMapEntry(prev, cardId, state));
@@ -232,15 +227,6 @@ export default function PreviewApkgPage({
                     {deletedCount}
                   </span>{' '}
                   {t('apkg.deleted')}
-                </>
-              )}
-              {suspendedCount > 0 && (
-                <>
-                  {' · '}
-                  <span className={styles.editStripCount}>
-                    {suspendedCount}
-                  </span>{' '}
-                  {t('apkg.suspended')}
                 </>
               )}
             </span>

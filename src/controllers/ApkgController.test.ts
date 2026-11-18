@@ -269,6 +269,31 @@ describe('ApkgController.downloadEdited', () => {
     expect(executeMock).not.toHaveBeenCalled();
   });
 
+  it('downloads without the suspend flag a page loaded before its removal still sends', async () => {
+    const stored = Buffer.from('stored-apkg');
+    const { controller } = makeEditedDownloadController(stored);
+    const res = makeSendableRes();
+    const req = makeReq({
+      params: { key: 'deck.apkg' },
+      body: {
+        edits: [
+          { cardId: 100, suspended: true },
+          { cardId: 101, deleted: true, suspended: true },
+        ],
+      },
+    }) as Request;
+    await controller.downloadEdited(req, res);
+    expect(res.status).not.toHaveBeenCalledWith(400);
+    expect(executeMock).toHaveBeenCalledWith({
+      sourceBytes: stored,
+      filename: 'deck.apkg',
+      edits: [{ cardId: 100 }, { cardId: 101, deleted: true }],
+    });
+    expect((res as unknown as Record<string, Mock>).send).toHaveBeenCalledWith(
+      Buffer.from('fake-apkg')
+    );
+  });
+
   it('refuses an edit with a field value that is not text', async () => {
     const { controller } = makeEditedDownloadController(Buffer.from('x'));
     const req = makeReq({
@@ -287,7 +312,6 @@ describe('ApkgController.downloadEdited', () => {
       filename: 'deck-edited.apkg',
       collectionName: 'collection.anki2',
       notesUpdated: 2,
-      cardsSuspended: 1,
       cardsDeleted: 3,
       editsRefused: 1,
     });
@@ -301,7 +325,7 @@ describe('ApkgController.downloadEdited', () => {
     const logged = infoSpy.mock.calls.map((call) => call[0]);
     infoSpy.mockRestore();
     expect(logged).toContain(
-      'APKG edited download packed: collection.anki2, notes updated: 2, cards suspended: 1, cards deleted: 3, edits refused: 1'
+      'APKG edited download packed: collection.anki2, notes updated: 2, cards deleted: 3, edits refused: 1'
     );
   });
 
