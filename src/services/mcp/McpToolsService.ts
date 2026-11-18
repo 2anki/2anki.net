@@ -50,6 +50,10 @@ import {
   type PhotoMode,
 } from '../../usecases/imageOcclusion/PhotoToFlashcardsUseCase';
 import { hasVisibleContent } from '../../lib/parser/hasVisibleContent';
+import {
+  connectorArmFor,
+  type ConnectorLimitKind,
+} from '../../lib/mcp/connectorLink';
 
 const APKG_KEY_PATTERN = /\.apkg$/i;
 const MAX_TEXT_BYTES = 5 * 1024 * 1024;
@@ -72,6 +76,16 @@ const CARD_LIMIT_REDIRECT_PREFIX = '/limit?kind=card_count';
 // its own; the ref tags arrivals from a connector.
 const PLANS_URL = 'https://2anki.net/pricing/?ref=mcp';
 
+function connectorPlansUrl(
+  owner: string,
+  kind: ConnectorLimitKind,
+  heldUntil: Date | null
+): string {
+  const arm = connectorArmFor(ownerToUserId(owner));
+  const held = heldUntil == null ? '' : `&held_until=${isoDate(heldUntil)}`;
+  return `${PLANS_URL}&k=${kind}&a=${arm}${held}`;
+}
+
 // The free card counter resets on the first day of each calendar month (UTC).
 function nextMonthlyReset(now: Date = new Date()): string {
   return startOfNextMonthUtc(now).toLocaleDateString('en-US', {
@@ -84,8 +98,8 @@ function nextMonthlyReset(now: Date = new Date()): string {
 // A deck is refused when it would take the month past the limit, which can
 // happen with free cards still left, so the message never claims they are all
 // used up.
-function monthlyLimitMessage(heldBack: string): string {
-  return `This deck would go over the free plan's ${MONTHLY_CARD_LIMIT} cards for this month, so it wasn't created.${heldBack} The count resets on ${nextMonthlyReset()}. Plan details: ${PLANS_URL}`;
+function monthlyLimitMessage(heldBack: string, plansUrl: string): string {
+  return `This deck would go over the free plan's ${MONTHLY_CARD_LIMIT} cards for this month, so it wasn't created.${heldBack} The count resets on ${nextMonthlyReset()}. Plan details: ${plansUrl}`;
 }
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -121,10 +135,15 @@ function isFreePhotoQuotaError(
   );
 }
 
-function freePhotoQuotaError(used: number, limit: number): Error {
+function freePhotoQuotaError(
+  owner: string,
+  used: number,
+  limit: number
+): Error {
+  const plansUrl = connectorPlansUrl(owner, 'photo', null);
   return Object.assign(
     new Error(
-      `You've used all ${limit} free photos for this month. The count resets on ${nextMonthlyReset()}. Plan details: ${PLANS_URL}`
+      `You've used all ${limit} free photos for this month. The count resets on ${nextMonthlyReset()}. Plan details: ${plansUrl}`
     ),
     { status: 429, used, limit }
   );
@@ -167,14 +186,11 @@ function plansLines(plansUrl: string): string[] {
 }
 
 function heldPlanStep(
+  plansUrl: string,
   cardsHeldBack: number,
   cardsDelivered: number,
   heldUntil: Date | null
 ): McpNextStep {
-  const plansUrl =
-    heldUntil == null
-      ? PLANS_URL
-      : `${PLANS_URL}&held_until=${isoDate(heldUntil)}`;
   return {
     plans_url: plansUrl,
     upgrade_url: plansUrl,
@@ -241,10 +257,22 @@ function heldForPlanLines(cardCount: number, heldUntil: Date): string[] {
   ];
 }
 
-function trackPlanPaywall(owner: string, props: Record<string, unknown>) {
+function trackPlanPaywall(
+  owner: string,
+  limitKind: ConnectorLimitKind,
+  props: Record<string, unknown>
+) {
+  const userId = ownerToUserId(owner);
   track('paywall_shown', {
-    userId: ownerToUserId(owner),
-    props: { source: 'mcp', surface: 'mcp', kind: 'card_count', ...props },
+    userId,
+    props: {
+      source: 'mcp',
+      surface: 'mcp',
+      kind: 'card_count',
+      limit_kind: limitKind,
+      arm: connectorArmFor(userId),
+      ...props,
+    },
   });
 }
 
@@ -254,12 +282,17 @@ function heldForPlanResult(
   cardCount: number,
   heldUntil: Date
 ): ConvertResult {
-  trackPlanPaywall(owner, {
+  trackPlanPaywall(owner, 'held', {
     cards_held_back: cardCount,
     held_for_plan: true,
     cards_delivered: 0,
   });
-  const next_step = heldPlanStep(cardCount, 0, heldUntil);
+  const next_step = heldPlanStep(
+    connectorPlansUrl(owner, 'held', heldUntil),
+    cardCount,
+    0,
+    heldUntil
+  );
   return {
     kind: 'held',
     code: HELD_FOR_PLAN_CODE,
@@ -280,21 +313,22 @@ function monthlyLimitResult(
   owner: string,
   cardsHeldBack?: number
 ): ConvertResult {
-  trackPlanPaywall(owner, {
+  trackPlanPaywall(owner, 'limit', {
     cards_held_back: cardsHeldBack ?? 0,
     held_for_plan: false,
     cards_delivered: 0,
   });
+  const plansUrl = connectorPlansUrl(owner, 'limit', null);
   const next_step: McpNextStep = {
-    plans_url: PLANS_URL,
-    upgrade_url: PLANS_URL,
+    plans_url: plansUrl,
+    upgrade_url: plansUrl,
   };
   let heldBack = '';
   if (cardsHeldBack != null && cardsHeldBack > 0) {
     next_step.cards_held_back = cardsHeldBack;
     heldBack = heldBackSentence(cardsHeldBack);
   }
-  const message = monthlyLimitMessage(heldBack);
+  const message = monthlyLimitMessage(heldBack, plansUrl);
   return { kind: 'error', code: MONTHLY_LIMIT_CODE, message, next_step };
 }
 const OVER_SIZE_MESSAGE =
@@ -619,7 +653,7 @@ export class McpToolsService {
       return await this.photoToFlashcards.generateCards(input);
     } catch (error) {
       if (isFreePhotoQuotaError(error)) {
-        throw freePhotoQuotaError(error.used, error.limit);
+        throw freePhotoQuotaError(input.owner, error.used, error.limit);
       }
       throw error;
     }
@@ -1254,13 +1288,18 @@ export class McpToolsService {
     heldBack: number
   ) {
     const heldUntil = heldUntilFromHeaders(res);
-    trackPlanPaywall(owner, {
+    trackPlanPaywall(owner, 'partial', {
       partial: true,
       cards_held_back: heldBack,
       held_for_plan: heldUntil != null,
       cards_delivered: delivered,
     });
-    const next_step = heldPlanStep(heldBack, delivered, heldUntil);
+    const next_step = heldPlanStep(
+      connectorPlansUrl(owner, 'partial', heldUntil),
+      heldBack,
+      delivered,
+      heldUntil
+    );
     return {
       summary: `Deck ready: ${noticeDeckName(title)}. ${delivered} of ${delivered + heldBack} cards.`,
       cards_held_back: heldBack,

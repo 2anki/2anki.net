@@ -523,3 +523,98 @@ describe('PricingPage for a connector visitor whose deck is saved', () => {
     await waitFor(() => expect(mockStartPassCheckout).toHaveBeenCalled());
   });
 });
+
+describe('PricingPage for a connector link that names its limit and arm', () => {
+  const LINK = '/pricing/?ref=mcp&k=partial&a=b&held_until=2026-11-09';
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-02T12:00:00Z'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const landingProps = () =>
+    vi
+      .mocked(track)
+      .mock.calls.filter(([name]) => name === 'landing_page_viewed')
+      .map(([, props]) => props);
+
+  it('records the limit kind and arm on landing_page_viewed', () => {
+    renderAt(LINK);
+    expect(landingProps()).toEqual([
+      expect.objectContaining({
+        path: '/pricing',
+        limit_kind: 'partial',
+        arm: 'b',
+      }),
+    ]);
+  });
+
+  it.each([
+    ['an old link without them', '/pricing/?ref=mcp&held_until=2026-11-09'],
+    ['values outside the fixed sets', '/pricing/?ref=mcp&k=upgrade&a=c'],
+    ['a link without the connector ref', '/pricing/?k=partial&a=b'],
+  ])('leaves them off landing_page_viewed for %s', (_label, path) => {
+    renderAt(path);
+    const [props] = landingProps();
+    expect(props).not.toHaveProperty('limit_kind');
+    expect(props).not.toHaveProperty('arm');
+  });
+
+  it('keeps them through the sign-in redirect for a signed-out Pro click', () => {
+    renderAt(LINK);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Get Pro — billed monthly' })
+    );
+
+    expect(globalThis.location.href).toBe(
+      `/login?redirect=${encodeURIComponent('/pricing?ref=mcp&k=partial&a=b&held_until=2026-11-09')}`
+    );
+  });
+
+  it('keeps them through the sign-in redirect for a signed-out pass click', () => {
+    renderAt('/pricing/?ref=mcp&k=held&a=a&held_until=2026-11-09');
+
+    fireEvent.click(screen.getByRole('button', { name: /^Get Day Pass · / }));
+
+    expect(globalThis.location.href).toBe(
+      `/login?redirect=${encodeURIComponent('/pricing?ref=mcp&k=held&a=a&held_until=2026-11-09')}`
+    );
+  });
+
+  it('records a photo-limit link under its own kind', () => {
+    renderAt('/pricing/?ref=mcp&k=photo&a=a');
+    expect(landingProps()).toEqual([
+      expect.objectContaining({ limit_kind: 'photo', arm: 'a' }),
+    ]);
+  });
+
+  it('leaves the return marker to the server on a fresh sign-in redirect', () => {
+    renderAt('/pricing/?ref=mcp&k=partial&a=b&r=1');
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Get Pro — billed monthly' })
+    );
+
+    expect(globalThis.location.href).toBe(
+      `/login?redirect=${encodeURIComponent('/pricing?ref=mcp&k=partial&a=b')}`
+    );
+    expect(landingProps()[0]).not.toHaveProperty('r');
+  });
+
+  it('drops values outside the fixed sets from the sign-in redirect', () => {
+    renderAt('/pricing/?ref=mcp&k=partial%26next%3D%2F%2Fevil.com&a=z');
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Get Pro — billed monthly' })
+    );
+
+    expect(globalThis.location.href).toBe(
+      `/login?redirect=${encodeURIComponent('/pricing?ref=mcp')}`
+    );
+  });
+});

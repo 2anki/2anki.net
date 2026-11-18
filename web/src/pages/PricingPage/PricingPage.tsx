@@ -40,6 +40,7 @@ import {
   type PricingEntitlement,
 } from './components/OwnedPlanNotice';
 import { connectorHeldUntil, formatHeldUntil } from './connectorHeldUntil';
+import { connectorLinkLabels } from './connectorLinkLabels';
 
 interface PricingPageProps {
   isLoggedIn: boolean;
@@ -118,11 +119,22 @@ export default function PricingPage({
     };
   }, []);
 
+  const connectorLabels =
+    pricingOrder === 'mcp-day-first'
+      ? connectorLinkLabels(searchParams)
+      : { kind: null, arm: null };
+
   useEffect(() => {
     if (landingViewedRef.current) return;
     landingViewedRef.current = true;
-    track('landing_page_viewed', landingViewProps('/pricing'));
-  }, []);
+    track('landing_page_viewed', {
+      ...landingViewProps('/pricing'),
+      ...(connectorLabels.kind == null
+        ? {}
+        : { limit_kind: connectorLabels.kind }),
+      ...(connectorLabels.arm == null ? {} : { arm: connectorLabels.arm }),
+    });
+  }, [connectorLabels.kind, connectorLabels.arm]);
 
   // The interval lives in the URL as well as in state. Component state alone
   // was lost on any remount and discarded entirely by the sign-in redirect,
@@ -192,6 +204,12 @@ export default function PricingPage({
     const params = new URLSearchParams();
     if (connectorFirst) {
       params.set('ref', 'mcp');
+    }
+    if (connectorLabels.kind != null) {
+      params.set('k', connectorLabels.kind);
+    }
+    if (connectorLabels.arm != null) {
+      params.set('a', connectorLabels.arm);
     }
     if (heldUntil != null) {
       params.set('held_until', heldUntil);

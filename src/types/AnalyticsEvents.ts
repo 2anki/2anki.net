@@ -98,6 +98,7 @@ export const KNOWN_EVENTS = new Set([
   'account_offer_clicked',
   'signup_completed',
   'landing_page_viewed',
+  'connector_link_arrived',
   'signup_started',
   'signup_failed',
   'upload_page_viewed',

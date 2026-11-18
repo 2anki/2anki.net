@@ -5,6 +5,12 @@ import IndexController from '../controllers/IndexController/IndexController';
 import { ensureIsLoggedIn } from './middleware/ensureIsLoggedIn';
 import { isKnownAppRoute } from './knownRoutes';
 import { normalizeUploadFilenames } from './middleware/normalizeUploadFilenames';
+import { sessionAuthService } from './middleware/optionalAuthMiddleware';
+import { ConnectorArrivalController } from '../controllers/ConnectorArrivalController';
+import {
+  RecordConnectorArrivalUseCase,
+  type SessionResolver,
+} from '../usecases/mcp/RecordConnectorArrivalUseCase';
 
 const upload = multer({
   limits: { fileSize: 25 * 1024 * 1024 },
@@ -16,8 +22,13 @@ const contactUpload = multer({
   limits: { fileSize: 10 * 1024 * 1024 },
 });
 
-const DefaultRouter = () => {
+const DefaultRouter = (
+  sessions: () => SessionResolver = sessionAuthService
+) => {
   const controller = new IndexController();
+  const connectorArrival = new ConnectorArrivalController(
+    () => new RecordConnectorArrivalUseCase(sessions())
+  );
   const router = express.Router();
 
   /**
@@ -69,6 +80,54 @@ const DefaultRouter = () => {
       return;
     }
     controller.getIndex(req, res);
+  });
+
+  /**
+   * @swagger
+   * /pricing:
+   *   get:
+   *     summary: Plans page
+   *     description: Serves the plans page. A visit through the connector's plans link (ref=mcp) is counted once the response is sent; the response itself is the plain page.
+   *     tags: [Frontend]
+   *     parameters:
+   *       - in: query
+   *         name: ref
+   *         required: false
+   *         schema:
+   *           type: string
+   *         description: mcp for the connector's plans link
+   *       - in: query
+   *         name: k
+   *         required: false
+   *         schema:
+   *           type: string
+   *           enum: [partial, held, limit]
+   *         description: The limit result that showed the link
+   *       - in: query
+   *         name: a
+   *         required: false
+   *         schema:
+   *           type: string
+   *           enum: [a, b]
+   *         description: The copy arm of the limit message
+   *       - in: query
+   *         name: held_until
+   *         required: false
+   *         schema:
+   *           type: string
+   *           format: date
+   *         description: The day a deck saved for a plan expires
+   *     responses:
+   *       200:
+   *         description: Plans page rendered
+   *         content:
+   *           text/html:
+   *             schema:
+   *               type: string
+   */
+  router.get('/pricing', (req, res, next) => {
+    connectorArrival.recordAfterResponse(req, res);
+    next();
   });
 
   router.get('/documentation/api/docs', (_req, res) => {

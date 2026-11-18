@@ -17,6 +17,7 @@ import { WithAppleLink } from './WithAppleLink';
 import { WithMicrosoftLink } from './WithMicrosoftLink';
 import { getVisibleText } from '../../lib/text/getVisibleText';
 import { sanitizeRelativeRedirect } from '../../lib/auth/sanitizeRelativeRedirect';
+import { markConnectorReturn } from '../../lib/auth/markConnectorReturn';
 import { readSignupOrigin } from '../../lib/signupOrigin';
 import { fireSignupConversion } from '../../lib/analytics/googleAds';
 import { track } from '../../lib/analytics/track';
@@ -170,7 +171,7 @@ function RegisterForm({ setErrorMessage, redirect, variant = 'page' }: Props) {
         fireSignupConversion();
         globalThis.sessionStorage?.setItem(SIGNUP_FLAG_KEY, '1');
         globalThis.location.href =
-          sanitizeRelativeRedirect(redirect) ?? '/upload';
+          markConnectorReturn(sanitizeRelativeRedirect(redirect)) ?? '/upload';
       } else {
         const body = await res.json().catch(() => null);
         const backendMessage =

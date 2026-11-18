@@ -2073,7 +2073,7 @@ describe('the connector at the monthly card limit', () => {
       cards_delivered: 10,
       summary: 'Deck ready: Golden Connector Deck. 10 of 15 cards.',
       next_step: {
-        plans_url: `https://2anki.net/pricing/?ref=mcp&held_until=${heldUntil}`,
+        plans_url: `https://2anki.net/pricing/?ref=mcp&k=partial&a=b&held_until=${heldUntil}`,
         held_until: heldUntil,
       },
     });

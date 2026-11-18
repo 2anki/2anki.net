@@ -36,6 +36,7 @@ class UnlimitedCheckoutController {
     const { gaClientId, gaSessionId } = readGaMeasurement(req);
     const adClick = readCheckoutAttribution(req);
     const surface = parseCheckoutSurface(req.body?.surface);
+    const variant = parsePricingVariant(req.body?.variant);
 
     let result;
     try {
@@ -44,7 +45,7 @@ class UnlimitedCheckoutController {
         userEmail,
         stripeCustomerId,
         interval: interval as UnlimitedInterval,
-        variant: parsePricingVariant(req.body?.variant),
+        variant,
         anonId,
         anonIdTrackingAllowed: trackingAllowedFor(req),
         surface,
@@ -98,6 +99,7 @@ class UnlimitedCheckoutController {
         interval,
         cohort: result.cohort,
         ...(surface == null ? {} : { surface }),
+        ...(variant == null ? {} : { variant }),
         ...checkoutRequestProps(req),
       },
     });

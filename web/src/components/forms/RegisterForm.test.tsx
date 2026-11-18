@@ -110,6 +110,19 @@ describe('RegisterForm', () => {
       await waitFor(() => expect(hrefValue).toBe('/pricing'));
     });
 
+    it('returns a new signup to the connector plans page marked as a return', async () => {
+      registerMock.mockResolvedValue({ status: 200 });
+
+      renderForm('/pricing?ref=mcp&k=partial&a=b&held_until=2026-11-25');
+      fillAndSubmit();
+
+      await waitFor(() =>
+        expect(hrefValue).toBe(
+          '/pricing?ref=mcp&k=partial&a=b&held_until=2026-11-25&r=1'
+        )
+      );
+    });
+
     it('returns a new signup to the connector authorize URL, query intact', async () => {
       registerMock.mockResolvedValue({ status: 200 });
       const authorizeUrl =

@@ -707,10 +707,10 @@ describe('McpToolsService.convertToDeck', () => {
       kind: 'error',
       code: 'monthly_limit',
       message:
-        "This deck would go over the free plan's 100 cards for this month, so it wasn't created. The count resets on November 1. Plan details: https://2anki.net/pricing/?ref=mcp",
+        "This deck would go over the free plan's 100 cards for this month, so it wasn't created. The count resets on November 1. Plan details: https://2anki.net/pricing/?ref=mcp&k=limit&a=a",
       next_step: {
-        plans_url: 'https://2anki.net/pricing/?ref=mcp',
-        upgrade_url: 'https://2anki.net/pricing/?ref=mcp',
+        plans_url: 'https://2anki.net/pricing/?ref=mcp&k=limit&a=a',
+        upgrade_url: 'https://2anki.net/pricing/?ref=mcp&k=limit&a=a',
       },
     });
     expect(trackMock).toHaveBeenCalledTimes(1);
@@ -721,6 +721,8 @@ describe('McpToolsService.convertToDeck', () => {
           source: 'mcp',
           surface: 'mcp',
           kind: 'card_count',
+          limit_kind: 'limit',
+          arm: 'a',
           cards_held_back: 0,
           held_for_plan: false,
           cards_delivered: 0,
@@ -729,7 +731,7 @@ describe('McpToolsService.convertToDeck', () => {
     );
     // The wording stays neutral; only the plans link itself names /pricing.
     const prose = (result as { message: string }).message.replace(
-      'https://2anki.net/pricing/?ref=mcp',
+      'https://2anki.net/pricing/?ref=mcp&k=limit&a=a',
       ''
     );
     expect(prose).not.toMatch(/upgrade|pricing|checkout/i);
@@ -756,7 +758,7 @@ describe('McpToolsService.convertToDeck', () => {
       kind: 'error',
       code: 'monthly_limit',
       next_step: {
-        plans_url: 'https://2anki.net/pricing/?ref=mcp',
+        plans_url: 'https://2anki.net/pricing/?ref=mcp&k=limit&a=a',
         cards_held_back: 2,
       },
     });
@@ -1583,10 +1585,38 @@ describe('McpToolsService.photoToDeck', () => {
 
     expect(error).toBeInstanceOf(Error);
     expect((error as Error).message).toBe(
-      "You've used all 5 free photos for this month. The count resets on January 1. Plan details: https://2anki.net/pricing/?ref=mcp"
+      "You've used all 5 free photos for this month. The count resets on January 1. Plan details: https://2anki.net/pricing/?ref=mcp&k=photo&a=a"
     );
     expect(error).toMatchObject({ status: 429, used: 5, limit: 5 });
   });
+
+  it.each([
+    ['42', 'b'],
+    ['41', 'a'],
+  ])(
+    'links the photo limit for user %s to arm %s without firing a paywall event',
+    async (owner, arm) => {
+      const generateCards = vi.fn(async () => {
+        throw makeFreeQuotaReachedError(5, 5);
+      });
+      const { service } = makeService({ generateCards });
+      trackMock.mockClear();
+
+      const error = await service
+        .photoToDeck({ image: ONE_PIXEL_PNG_BASE64 }, owner, {})
+        .catch((e: unknown) => e);
+
+      expect((error as Error).message).toMatch(
+        new RegExp(
+          `Plan details: https://2anki\\.net/pricing/\\?ref=mcp&k=photo&a=${arm}$`
+        )
+      );
+      expect(trackMock).not.toHaveBeenCalledWith(
+        'paywall_shown',
+        expect.anything()
+      );
+    }
+  );
 
   it('passes other vision errors through unchanged', async () => {
     const otherError = Object.assign(new Error('Too many requests'), {
@@ -1770,12 +1800,12 @@ describe('McpToolsService.createDeck with subdecks', () => {
       kind: 'error',
       code: 'monthly_limit',
       next_step: {
-        plans_url: 'https://2anki.net/pricing/?ref=mcp',
+        plans_url: 'https://2anki.net/pricing/?ref=mcp&k=limit&a=a',
         cards_held_back: expect.any(Number),
       },
     });
     const message = (result as { message: string }).message;
-    expect(message).toContain('https://2anki.net/pricing/?ref=mcp');
+    expect(message).toContain('https://2anki.net/pricing/?ref=mcp&k=limit&a=a');
     expect(message).toMatch(/\d+ cards were held back\. The count resets on /);
     expect(trackMock).toHaveBeenCalledWith(
       'paywall_shown',
@@ -1785,6 +1815,8 @@ describe('McpToolsService.createDeck with subdecks', () => {
           source: 'mcp',
           surface: 'mcp',
           kind: 'card_count',
+          limit_kind: 'limit',
+          arm: 'a',
           cards_held_back: (
             result as { next_step: { cards_held_back: number } }
           ).next_step.cards_held_back,
@@ -1994,7 +2026,7 @@ describe('McpToolsService at the monthly card limit', () => {
 
     const result = await service.convertToDeck({ text: 'x' }, 'owner-9', {});
 
-    const plansUrl = `${PLANS}&held_until=2026-11-09`;
+    const plansUrl = `${PLANS}&k=partial&a=a&held_until=2026-11-09`;
     expect(result).toMatchObject({
       kind: 'deck',
       cardCount: 10,
@@ -2026,6 +2058,8 @@ describe('McpToolsService at the monthly card limit', () => {
         source: 'mcp',
         surface: 'mcp',
         kind: 'card_count',
+        limit_kind: 'partial',
+        arm: 'a',
         partial: true,
         cards_held_back: 5,
         held_for_plan: true,
@@ -2059,8 +2093,8 @@ describe('McpToolsService at the monthly card limit', () => {
 
     expect(result).toMatchObject({
       next_step: {
-        plans_url: PLANS,
-        upgrade_url: PLANS,
+        plans_url: `${PLANS}&k=partial&a=a`,
+        upgrade_url: `${PLANS}&k=partial&a=a`,
         cards_held_back: 5,
         cards_delivered: 10,
       },
@@ -2097,7 +2131,7 @@ describe('McpToolsService at the monthly card limit', () => {
       {}
     );
 
-    const plansUrl = `${PLANS}&held_until=2026-11-09`;
+    const plansUrl = `${PLANS}&k=held&a=a&held_until=2026-11-09`;
     expect(result).toEqual({
       kind: 'held',
       code: 'held_for_plan',
@@ -2140,6 +2174,8 @@ describe('McpToolsService at the monthly card limit', () => {
         source: 'mcp',
         surface: 'mcp',
         kind: 'card_count',
+        limit_kind: 'held',
+        arm: 'a',
         cards_held_back: 15,
         held_for_plan: true,
         cards_delivered: 0,
@@ -2201,8 +2237,82 @@ describe('McpToolsService at the monthly card limit', () => {
       kind: 'error',
       code: 'monthly_limit',
       message:
-        "This deck would go over the free plan's 100 cards for this month, so it wasn't created. The count resets on December 1. Plan details: https://2anki.net/pricing/?ref=mcp",
-      next_step: { plans_url: PLANS, upgrade_url: PLANS },
+        "This deck would go over the free plan's 100 cards for this month, so it wasn't created. The count resets on December 1. Plan details: https://2anki.net/pricing/?ref=mcp&k=limit&a=a",
+      next_step: {
+        plans_url: `${PLANS}&k=limit&a=a`,
+        upgrade_url: `${PLANS}&k=limit&a=a`,
+      },
+    });
+  });
+
+  describe('links each limit result to the plans page by kind and arm', () => {
+    const cases = [
+      ['partial', partialUpload(10, 5, '2026-11-09'), '&held_until=2026-11-09'],
+      ['partial', partialUpload(10, 5, null), ''],
+      ['held', overLimitRedirect(15), '&held_until=2026-11-09'],
+      ['limit', overLimitRedirect(null), ''],
+    ] as const;
+
+    it.each(
+      cases.flatMap(([kind, uploadEntry, held]) => [
+        [kind, '42', 'b', uploadEntry, held],
+        [kind, '41', 'a', uploadEntry, held],
+      ])
+    )(
+      'links a %s result for user %s to arm %s',
+      async (kind, owner, arm, uploadEntry, held) => {
+        const { service } = makeService({
+          uploadEntry,
+          holdForPlan: vi.fn(async () => new Date('2026-11-09T12:00:00Z')),
+        });
+
+        const result = (await service.convertToDeck(
+          { text: 'x' },
+          owner,
+          {}
+        )) as { next_step: McpNextStep };
+
+        const url = `https://2anki.net/pricing/?ref=mcp&k=${kind}&a=${arm}${held}`;
+        expect(result.next_step.plans_url).toBe(url);
+        expect(result.next_step.upgrade_url).toBe(url);
+        expect(trackMock).toHaveBeenCalledWith('paywall_shown', {
+          userId: Number(owner),
+          props: expect.objectContaining({
+            kind: 'card_count',
+            limit_kind: kind,
+            arm,
+          }),
+        });
+      }
+    );
+
+    it('gives both arms the same plan notice apart from the link', async () => {
+      const notices = await Promise.all(
+        ['42', '41'].map(async (owner) => {
+          const { service } = makeService({
+            uploadEntry: partialUpload(10, 5, '2026-11-09'),
+          });
+          const result = await service.convertToDeck({ text: 'x' }, owner, {});
+          return (result as { plan_notice: string }).plan_notice;
+        })
+      );
+
+      expect(notices[0].replace('&a=b&', '&a=a&')).toBe(notices[1]);
+    });
+
+    it('puts no user id or deck reference in the link', async () => {
+      const { service } = makeService({
+        uploadEntry: overLimitRedirect(15),
+        holdForPlan: vi.fn(async () => new Date('2026-11-09T12:00:00Z')),
+      });
+
+      const result = (await service.convertToDeck({ text: 'x' }, '424242', {
+        requestId: 'req-42',
+      })) as { next_step: McpNextStep };
+
+      const params = new URL(result.next_step.plans_url as string).searchParams;
+      expect([...params.keys()]).toEqual(['ref', 'k', 'a', 'held_until']);
+      expect(result.next_step.plans_url).not.toContain('424242');
     });
   });
 

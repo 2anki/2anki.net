@@ -1,6 +1,12 @@
 import { Request } from 'express';
 import { ALLOWED_ORIGINS } from '../../lib/constants';
 import { asMcpAuthorizeReturn } from '../../lib/mcp/loginReturn';
+import {
+  CONNECTOR_REF,
+  CONNECTOR_RETURN_MARKER,
+  CONNECTOR_RETURN_VALUE,
+  readConnectorLinkParams,
+} from '../../lib/mcp/connectorLink';
 
 const DEFAULT_REDIRECT = '/upload';
 
@@ -45,7 +51,7 @@ const resolveInternalPath = (candidate: string): string | null => {
 
 const PRICING_PATHS = new Set(['/pricing', '/pricing/']);
 const PRICING_RETURN_PARAMS = new Map([
-  ['ref', 'mcp'],
+  ['ref', CONNECTOR_REF],
   ['interval', 'year'],
 ]);
 const PRICING_RETURN_HASHES = new Set(['#auto-sync']);
@@ -69,6 +75,19 @@ const resolvePricingReturn = (candidate: string): string | null => {
     if (parsed.searchParams.get(key) === value) {
       kept.set(key, value);
     }
+  }
+  const connector = readConnectorLinkParams(parsed.searchParams);
+  if (connector.kind != null) {
+    kept.set('k', connector.kind);
+  }
+  if (connector.arm != null) {
+    kept.set('a', connector.arm);
+  }
+  if (connector.heldUntil != null) {
+    kept.set('held_until', connector.heldUntil);
+  }
+  if (kept.get('ref') === CONNECTOR_REF) {
+    kept.set(CONNECTOR_RETURN_MARKER, CONNECTOR_RETURN_VALUE);
   }
   const query = kept.toString();
   const hash = PRICING_RETURN_HASHES.has(parsed.hash) ? parsed.hash : '';
@@ -119,6 +138,22 @@ const resolveAllowedOrigin = (candidate: string): string | null => {
   return (
     ALLOWED_REDIRECT_ORIGINS.find((origin) => origin === parsed.origin) ?? null
   );
+};
+
+export const markConnectorReturn = (
+  path: string | undefined
+): string | undefined => {
+  if (path == null) {
+    return path;
+  }
+  const pricing = resolvePricingReturn(path);
+  if (pricing == null) {
+    return path;
+  }
+  const marked = new URL(pricing, SAME_SITE_BASE).searchParams;
+  return marked.get(CONNECTOR_RETURN_MARKER) === CONNECTOR_RETURN_VALUE
+    ? pricing
+    : path;
 };
 
 // A connector authorize request needs its whole query (client_id,

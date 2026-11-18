@@ -33,9 +33,14 @@ afterEach(() => {
 
 describe('asLoginReturn', () => {
   it.each([
-    ['/pricing?ref=mcp', '/pricing?ref=mcp'],
-    ['/pricing/?ref=mcp#auto-sync', '/pricing?ref=mcp#auto-sync'],
-    ['/pricing?ref=mcp&utm=x', '/pricing?ref=mcp'],
+    ['/pricing?ref=mcp', '/pricing?ref=mcp&r=1'],
+    ['/pricing/?ref=mcp#auto-sync', '/pricing?ref=mcp&r=1#auto-sync'],
+    ['/pricing?ref=mcp&utm=x', '/pricing?ref=mcp&r=1'],
+    ['/pricing?ref=mcp&r=1', '/pricing?ref=mcp&r=1'],
+    [
+      '/pricing?ref=mcp&k=partial&a=b&held_until=2026-11-25&user=42',
+      '/pricing?ref=mcp&k=partial&a=b&held_until=2026-11-25&r=1',
+    ],
     ['/upload', '/upload'],
     ['/notion/some-page', '/notion'],
     ['/api/download/u/abc123', '/api/download/u/abc123'],
@@ -85,7 +90,7 @@ describe('rememberLoginReturn', () => {
 
     expect(res.cookie).toHaveBeenCalledWith(
       LOGIN_RETURN_COOKIE,
-      '/pricing?ref=mcp',
+      '/pricing?ref=mcp&r=1',
       {
         httpOnly: true,
         secure: true,
@@ -164,7 +169,7 @@ describe('takeLoginReturn', () => {
         loginRequest(undefined, { [LOGIN_RETURN_COOKIE]: '/pricing?ref=mcp' }),
         res
       )
-    ).toBe('/pricing?ref=mcp');
+    ).toBe('/pricing?ref=mcp&r=1');
     expect(res.clearCookie).toHaveBeenCalledWith(
       LOGIN_RETURN_COOKIE,
       expect.objectContaining({ path: '/' })
