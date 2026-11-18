@@ -64,6 +64,7 @@ import {
   __setFeatureFlagDependencies,
 } from '../../lib/featureFlags/getFeatureFlag';
 import { fakeUploadServiceDeps } from '../../test/fakes/uploadServiceDeps';
+import { FREE_USER_MAX_UPLOAD_SIZE } from '../../lib/misc/getUploadLimits';
 
 const NOTES = `<html><head><title>Field notes</title></head><body><article class="page sans"><header><h1 class="page-title">Field notes</h1></header><div class="page-body">${[
   1, 2, 3,
@@ -217,6 +218,24 @@ async function postFiles(
   return { status: response.status, body };
 }
 
+async function postFile(
+  fieldName: string,
+  bytes: Uint8Array<ArrayBuffer>
+): Promise<{ status: number; body: unknown }> {
+  const form = new FormData();
+  form.append(
+    fieldName,
+    new Blob([bytes], { type: 'text/html' }),
+    'Field notes.html'
+  );
+  const response = await fetch(`${baseUrl}/api/upload/file`, {
+    method: 'POST',
+    body: form,
+    redirect: 'manual',
+  });
+  return { status: response.status, body: await response.json() };
+}
+
 function postTruncatedBody(): Promise<{ status: number; body: unknown }> {
   const boundary = 'field-name-boundary';
   const partial = [
@@ -287,6 +306,35 @@ describe('the multipart field a file arrives under on /api/upload/file', () => {
       });
     }
   );
+
+  it.each(['pakker', 'file'])(
+    'refuses a file over the plan size under %s and stores nothing',
+    async (fieldName) => {
+      const result = await postFile(
+        fieldName,
+        new Uint8Array(FREE_USER_MAX_UPLOAD_SIZE + 1)
+      );
+
+      expect(result).toMatchObject({
+        status: 413,
+        body: { code: 'too_large' },
+      });
+      expect(s3Puts).toEqual([]);
+      expect(tempFilesLeft()).toEqual([]);
+    },
+    60_000
+  );
+
+  it('removes a stored file when a later one arrives under another field', async () => {
+    const result = await postFiles(['pakker', 'document']);
+
+    expect(result).toMatchObject({
+      status: 400,
+      body: { code: 'wrong_upload_field' },
+    });
+    expect(s3Puts).toEqual([]);
+    expect(tempFilesLeft()).toEqual([]);
+  });
 
   it('names the field to use when the file arrives under another one', async () => {
     const result = await postFiles(['document']);
