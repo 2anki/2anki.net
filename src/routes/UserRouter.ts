@@ -23,6 +23,7 @@ import {
   NOTION_LOGIN_STATE_PREFIX,
   NOTION_STATE_COOKIE,
 } from '../lib/auth/oauthState';
+import { rememberLoginReturn } from '../lib/auth/loginReturn';
 
 const isRegisterPagePath = (path: string) =>
   path === '/register' || path === '/register/';
@@ -906,6 +907,12 @@ const UserRouter = () => {
    *     summary: Initiate Google OAuth login
    *     description: Sets a short-lived httpOnly state cookie (SameSite=Lax) and redirects to Google's authorization page with the same state.
    *     tags: [Authentication]
+   *     parameters:
+   *       - in: query
+   *         name: redirect
+   *         schema:
+   *           type: string
+   *         description: Optional in-app page to return to after sign-in. Remembered like /login?redirect= when it passes the return allowlist; otherwise ignored, and an earlier remembered return is kept.
    *     responses:
    *       302:
    *         description: Redirect to Google OAuth
@@ -936,6 +943,12 @@ const UserRouter = () => {
    *     summary: Initiate Microsoft OAuth login
    *     description: Sets a short-lived httpOnly state cookie (SameSite=Lax) and redirects to Microsoft's authorization page with the same state and response_mode=query.
    *     tags: [Authentication]
+   *     parameters:
+   *       - in: query
+   *         name: redirect
+   *         schema:
+   *           type: string
+   *         description: Optional in-app page to return to after sign-in. Remembered like /login?redirect= when it passes the return allowlist; otherwise ignored, and an earlier remembered return is kept.
    *     responses:
    *       302:
    *         description: Redirect to Microsoft OAuth
@@ -966,11 +979,18 @@ const UserRouter = () => {
    *     summary: Initiate Apple OAuth login
    *     description: Sets a CSRF state cookie (sameSite=none; Secure) and redirects to Apple's authorization page.
    *     tags: [Authentication]
+   *     parameters:
+   *       - in: query
+   *         name: redirect
+   *         schema:
+   *           type: string
+   *         description: Optional in-app page to return to after sign-in. Remembered like /login?redirect= when it passes the return allowlist; otherwise ignored, and an earlier remembered return is kept.
    *     responses:
    *       302:
    *         description: Redirect to Apple OAuth
    */
   router.get('/api/users/auth/apple/init', (req, res) => {
+    rememberLoginReturn(req, res);
     const clientId = process.env.APPLE_CLIENT_ID;
     const redirectUri = `${process.env.DOMAIN ?? 'https://2anki.net'}/auth/apple/callback`;
     if (!clientId) {
@@ -1071,11 +1091,18 @@ const UserRouter = () => {
    *     summary: Initiate Notion OAuth login
    *     description: Redirects to Notion OAuth authorization page. Sets a short-lived nonce cookie to prevent account fixation.
    *     tags: [Authentication]
+   *     parameters:
+   *       - in: query
+   *         name: redirect
+   *         schema:
+   *           type: string
+   *         description: Optional in-app page to return to after sign-in. Remembered like /login?redirect= when it passes the return allowlist; otherwise ignored, and an earlier remembered return is kept.
    *     responses:
    *       302:
    *         description: Redirect to Notion OAuth
    */
   router.get('/api/users/auth/notion/init', (req, res) => {
+    rememberLoginReturn(req, res);
     const clientId = process.env.NOTION_CLIENT_ID;
     const redirectUri = process.env.NOTION_REDIRECT_URI;
     if (!clientId || !redirectUri) {

@@ -172,6 +172,12 @@ describe('HomePage (anonymous)', () => {
     expect(link).toHaveAttribute('href', '/register?redirect=/card-options');
   });
 
+  it('routes to /register in the app from the hero badge', () => {
+    renderHome();
+    const link = screen.getByRole('link', { name: /create an account/i });
+    expect(fireEvent.click(link)).toBe(false);
+  });
+
   it('links to card options above the upload form so anon visitors can configure first', () => {
     renderHome();
     const link = screen.getByRole('link', { name: 'Card options' });

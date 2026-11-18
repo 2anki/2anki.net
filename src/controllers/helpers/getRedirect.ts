@@ -19,6 +19,7 @@ const ALLOWED_REDIRECT_PATHS = [
   '/anki',
   '/card-options',
   '/print',
+  '/photo-to-deck',
 ];
 
 const ALLOWED_REDIRECT_ORIGINS = ALLOWED_ORIGINS.map((origin) => {

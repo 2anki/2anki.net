@@ -844,12 +844,14 @@ class UsersController {
     return true;
   }
 
-  startGoogleSignIn(_req: express.Request, res: express.Response) {
+  startGoogleSignIn(req: express.Request, res: express.Response) {
+    rememberLoginReturn(req, res);
     const url = startOAuthSignIn(res, GOOGLE_STATE_COOKIE, googleSignInUrl);
     return res.redirect(url ?? '/login?error=google_signin_failed');
   }
 
-  startMicrosoftSignIn(_req: express.Request, res: express.Response) {
+  startMicrosoftSignIn(req: express.Request, res: express.Response) {
+    rememberLoginReturn(req, res);
     const url = startOAuthSignIn(
       res,
       MICROSOFT_STATE_COOKIE,

@@ -42,6 +42,7 @@ describe('asLoginReturn', () => {
     ['/limit', '/limit'],
     ['/limit?kind=card_count&next=//evil.com', '/limit?kind=card_count'],
     ['/print', '/print'],
+    ['/photo-to-deck', '/photo-to-deck'],
   ])('keeps %s as a same-origin path (%s)', (input, expected) => {
     expect(asLoginReturn(input)).toBe(expected);
   });
@@ -54,6 +55,7 @@ describe('asLoginReturn', () => {
     'javascript:alert(1)',
     'https://2anki.net/pricing',
     '/not-a-section',
+    '/photo-to-deck-copy',
     '//evil.com/limit',
     'https://evil.com/limit',
     '/limit?kind=anonymous&cards=240',

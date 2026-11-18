@@ -1,20 +1,23 @@
+import { withSignInReturn } from '../../lib/auth/withSignInReturn';
 import styles from '../../styles/auth.module.css';
 
 interface WithMicrosoftLinkProps {
   text: string;
   variant?: 'row' | 'card';
   onSelect?: () => void;
+  redirect?: string | null;
 }
 
 export function WithMicrosoftLink({
   text,
   variant = 'row',
   onSelect,
+  redirect,
 }: Readonly<WithMicrosoftLinkProps>) {
   const isCard = variant === 'card';
   return (
     <a
-      href="/api/users/auth/microsoft/init"
+      href={withSignInReturn('/api/users/auth/microsoft/init', redirect)}
       className={isCard ? styles.oauthCard : styles.microsoftButton}
       aria-label={isCard ? text : undefined}
       onClick={onSelect}

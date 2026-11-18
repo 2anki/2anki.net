@@ -33,6 +33,7 @@ import NotionRouter from './NotionRouter';
 import ErrorHandler from './middleware/ErrorHandler';
 import instrumentedAxios from '../services/observability/instrumentedAxios';
 import {
+  __resetAppleJwksCacheForTests,
   __resetGoogleJwksCacheForTests,
   __resetMicrosoftJwksCacheForTests,
 } from '../services/AuthenticationService';
@@ -609,5 +610,234 @@ describe('a Notion sign-in returning through /api/notion/connect', () => {
     expect(await holder.db!('notion_tokens').count('* as n')).toEqual([
       { n: 0 },
     ]);
+  });
+});
+
+const LOGIN_RETURN = 'login_return';
+const MCP_RETURN_PATH = '/mcp/authorize?client_id=c1&state=s1';
+const returnCookie = (path: string) =>
+  `${LOGIN_RETURN}=${encodeURIComponent(path)}`;
+const mcpCookie = `mcp_login_return=${encodeURIComponent(MCP_RETURN_PATH)}`;
+const joinCookies = (...pairs: string[]) =>
+  pairs.filter((pair) => pair !== '').join('; ');
+const clearsReturnCookie = (res: Response) =>
+  res.headers
+    .getSetCookie()
+    .some((c) => /^login_return=;.*Expires=Thu, 01 Jan 1970/.test(c));
+
+interface StartedSignIn {
+  res: Response;
+  state: string;
+  stateCookie: string;
+  returnCookie: string;
+}
+
+async function startSignInAt(
+  initPath: string,
+  stateCookieName: string,
+  cookie: string
+): Promise<StartedSignIn> {
+  const res = await get(initPath, cookie);
+  const setCookies = res.headers.getSetCookie();
+  return {
+    res,
+    state:
+      new URL(res.headers.get('location') ?? '').searchParams.get('state') ??
+      '',
+    stateCookie: cookiePair(setCookies, stateCookieName),
+    returnCookie: cookiePair(setCookies, LOGIN_RETURN),
+  };
+}
+
+describe.each(providers)(
+  'a $provider sign-in started with a return target',
+  ({ init, callback, stateCookie, landing }) => {
+    const startSignIn = (query: string, cookie = '') =>
+      startSignInAt(`${init}${query}`, stateCookie, cookie);
+
+    const finish = (state: string, cookie: string) =>
+      get(
+        `${callback}?code=provider-code&state=${encodeURIComponent(state)}`,
+        cookie
+      );
+
+    it('lands on an allowlisted target and clears the return cookie', async () => {
+      const started = await startSignIn('?redirect=/card-options');
+
+      const done = await finish(
+        started.state,
+        joinCookies(started.stateCookie, started.returnCookie)
+      );
+
+      expect(started.res.status).toBe(302);
+      expect(started.returnCookie).toBe(returnCookie('/card-options'));
+      expect(done.headers.get('location')).toBe('/card-options');
+      expect(clearsReturnCookie(done)).toBe(true);
+    });
+
+    it('sets no return cookie for a target outside the allowlist and lands on the default', async () => {
+      const started = await startSignIn(
+        `?redirect=${encodeURIComponent('https://evil.com/print')}`
+      );
+
+      const done = await finish(started.state, started.stateCookie);
+
+      expect(cookieNames(started.res)).not.toContain(LOGIN_RETURN);
+      expect(done.headers.get('location')).toBe(landing);
+    });
+
+    it('leaves a return cookie from the login page alone when the button carries no target', async () => {
+      const started = await startSignIn('', returnCookie('/print'));
+
+      const done = await finish(
+        started.state,
+        joinCookies(started.stateCookie, returnCookie('/print'))
+      );
+
+      expect(cookieNames(started.res)).not.toContain(LOGIN_RETURN);
+      expect(done.headers.get('location')).toBe('/print');
+    });
+
+    it('replaces an older return cookie with the target the button carries', async () => {
+      const started = await startSignIn(
+        '?redirect=/card-options',
+        returnCookie('/print')
+      );
+
+      const done = await finish(
+        started.state,
+        joinCookies(started.stateCookie, started.returnCookie)
+      );
+
+      expect(started.returnCookie).toBe(returnCookie('/card-options'));
+      expect(done.headers.get('location')).toBe('/card-options');
+    });
+
+    it('keeps the connector return ahead of the target the button carries', async () => {
+      const started = await startSignIn('?redirect=/card-options', mcpCookie);
+
+      const done = await finish(
+        started.state,
+        joinCookies(started.stateCookie, started.returnCookie, mcpCookie)
+      );
+
+      expect(done.headers.get('location')).toBe(MCP_RETURN_PATH);
+    });
+  }
+);
+
+describe('an Apple sign-in started with a return target', () => {
+  const APPLE_CLIENT_ID = 'com.2anki.web';
+  const APPLE_TOKEN_URL = 'https://appleid.apple.com/auth/token';
+  const appleClientKey = crypto.generateKeyPairSync('ec', {
+    namedCurve: 'P-256',
+  });
+
+  beforeEach(() => {
+    vi.stubEnv('APPLE_CLIENT_ID', APPLE_CLIENT_ID);
+    vi.stubEnv('APPLE_TEAM_ID', 'team-1');
+    vi.stubEnv('APPLE_KEY_ID', 'key-1');
+    vi.stubEnv(
+      'APPLE_PRIVATE_KEY_B64',
+      Buffer.from(
+        appleClientKey.privateKey.export({ type: 'pkcs8', format: 'pem' })
+      ).toString('base64')
+    );
+    __resetAppleJwksCacheForTests();
+    (instrumentedAxios.post as Mock).mockImplementation(async (_l, url) => {
+      if (url === APPLE_TOKEN_URL) {
+        return {
+          data: {
+            id_token: signIdToken({
+              iss: 'https://appleid.apple.com',
+              aud: APPLE_CLIENT_ID,
+              sub: 'apple-sub-1',
+              email: EMAIL,
+              email_verified: true,
+            }),
+          },
+        };
+      }
+      throw new Error(`unexpected POST ${url}`);
+    });
+  });
+
+  const startSignIn = (query: string, cookie = '') =>
+    startSignInAt(
+      `/api/users/auth/apple/init${query}`,
+      'apple_login_state',
+      cookie
+    );
+
+  const finish = (state: string, cookie: string) =>
+    fetch(`${base}/auth/apple/callback`, {
+      method: 'POST',
+      headers: {
+        cookie,
+        'content-type': 'application/x-www-form-urlencoded',
+        'user-agent': 'Mozilla/5.0',
+      },
+      body: new URLSearchParams({ code: 'provider-code', state }).toString(),
+      redirect: 'manual',
+    });
+
+  it('lands on an allowlisted target and clears the return cookie', async () => {
+    const started = await startSignIn('?redirect=/photo-to-deck');
+
+    const done = await finish(
+      started.state,
+      joinCookies(started.stateCookie, started.returnCookie)
+    );
+
+    expect(started.returnCookie).toBe(returnCookie('/photo-to-deck'));
+    expect(done.headers.get('location')).toBe('/photo-to-deck');
+    expect(clearsReturnCookie(done)).toBe(true);
+  });
+
+  it('sets no return cookie for a target outside the allowlist and lands on the default', async () => {
+    const started = await startSignIn('?redirect=//evil.com');
+
+    const done = await finish(started.state, started.stateCookie);
+
+    expect(cookieNames(started.res)).not.toContain(LOGIN_RETURN);
+    expect(done.headers.get('location')).toBe('/upload');
+  });
+
+  it('leaves a return cookie from the login page alone when the button carries no target', async () => {
+    const started = await startSignIn('', returnCookie('/print'));
+
+    const done = await finish(
+      started.state,
+      joinCookies(started.stateCookie, returnCookie('/print'))
+    );
+
+    expect(cookieNames(started.res)).not.toContain(LOGIN_RETURN);
+    expect(done.headers.get('location')).toBe('/print');
+  });
+
+  it('replaces an older return cookie with the target the button carries', async () => {
+    const started = await startSignIn(
+      '?redirect=/card-options',
+      returnCookie('/print')
+    );
+
+    const done = await finish(
+      started.state,
+      joinCookies(started.stateCookie, started.returnCookie)
+    );
+
+    expect(started.returnCookie).toBe(returnCookie('/card-options'));
+    expect(done.headers.get('location')).toBe('/card-options');
+  });
+
+  it('keeps the connector return ahead of the target the button carries', async () => {
+    const started = await startSignIn('?redirect=/card-options', mcpCookie);
+
+    const done = await finish(
+      started.state,
+      joinCookies(started.stateCookie, started.returnCookie, mcpCookie)
+    );
+
+    expect(done.headers.get('location')).toBe(MCP_RETURN_PATH);
   });
 });

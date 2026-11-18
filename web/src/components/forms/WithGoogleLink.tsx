@@ -1,20 +1,23 @@
+import { withSignInReturn } from '../../lib/auth/withSignInReturn';
 import styles from '../../styles/auth.module.css';
 
 interface WithGoogleLinkProps {
   text: string;
   variant?: 'row' | 'card';
   onSelect?: () => void;
+  redirect?: string | null;
 }
 
 export function WithGoogleLink({
   text,
   variant = 'row',
   onSelect,
+  redirect,
 }: Readonly<WithGoogleLinkProps>) {
   const isCard = variant === 'card';
   return (
     <a
-      href="/api/users/auth/google/init"
+      href={withSignInReturn('/api/users/auth/google/init', redirect)}
       className={isCard ? styles.oauthCard : styles.googleButton}
       aria-label={isCard ? text : undefined}
       onClick={onSelect}
