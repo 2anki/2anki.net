@@ -54,6 +54,7 @@ export interface PackEditedApkgOutput extends EditCounts {
 
 const FIELD_SEPARATOR = '\x1f';
 const NUL = '\0';
+const CHANGED_LOCALLY_USN = -1;
 
 export function hasFieldBreakingCharacter(value: string): boolean {
   return value.includes(FIELD_SEPARATOR) || value.includes(NUL);
@@ -81,7 +82,8 @@ function editableFieldIndices(
 function applyEdits(
   db: Database.Database,
   collection: NormalizedCollection,
-  edits: CardEdit[]
+  edits: CardEdit[],
+  editedAtSecs: number
 ): EditCounts {
   const cardsById = new Map(collection.cards.map((card) => [card.id, card]));
   const counts: EditCounts = {
@@ -95,9 +97,9 @@ function applyEdits(
       .filter((edit) => edit.deleted && cardsById.has(edit.cardId))
       .map((edit) => edit.cardId)
   );
-  const updatedNoteIds = new Set<number>();
+  const storedFields = new Map<number, string>();
+  const editedFields = new Map<number, string>();
   const readFields = db.prepare('SELECT flds FROM notes WHERE id = ?');
-  const writeFields = db.prepare('UPDATE notes SET flds = ? WHERE id = ?');
 
   for (const edit of edits) {
     const card = cardsById.get(edit.cardId);
@@ -106,13 +108,18 @@ function applyEdits(
     } else if (!deletedIds.has(card.id)) {
       if (edit.suspended) {
         counts.cardsSuspended += db
-          .prepare('UPDATE cards SET queue = -1 WHERE id = ?')
-          .run(card.id).changes;
+          .prepare(
+            'UPDATE cards SET queue = -1, mod = ?, usn = ? WHERE id = ? AND queue != -1'
+          )
+          .run(editedAtSecs, CHANGED_LOCALLY_USN, card.id).changes;
       }
       const allowed = editableFieldIndices(collection, card);
-      const row = readFields.get(card.nid) as { flds: string } | undefined;
-      if (row != null && edit.fields != null) {
-        const fields = row.flds.split(FIELD_SEPARATOR);
+      const current =
+        editedFields.get(card.nid) ??
+        (readFields.get(card.nid) as { flds: string } | undefined)?.flds;
+      if (current != null && edit.fields != null) {
+        if (!storedFields.has(card.nid)) storedFields.set(card.nid, current);
+        const fields = current.split(FIELD_SEPARATOR);
         for (const field of edit.fields) {
           if (
             allowed.has(field.index) &&
@@ -124,26 +131,31 @@ function applyEdits(
             counts.editsRefused += 1;
           }
         }
-        const edited = fields.join(FIELD_SEPARATOR);
-        if (edited !== row.flds) {
-          writeFields.run(edited, card.nid);
-          updatedNoteIds.add(card.nid);
-        }
+        editedFields.set(card.nid, fields.join(FIELD_SEPARATOR));
       }
     }
   }
 
+  const writeNote = db.prepare(
+    'UPDATE notes SET flds = ?, mod = ?, usn = ? WHERE id = ?'
+  );
+  for (const [noteId, flds] of editedFields) {
+    if (flds !== storedFields.get(noteId)) {
+      writeNote.run(flds, editedAtSecs, CHANGED_LOCALLY_USN, noteId);
+      counts.notesUpdated += 1;
+    }
+  }
   const remove = db.prepare('DELETE FROM cards WHERE id = ?');
   for (const cardId of deletedIds) {
     counts.cardsDeleted += remove.run(cardId).changes;
   }
-  counts.notesUpdated = updatedNoteIds.size;
   return counts;
 }
 
 function buildEditedSqlite(
   collectionBuffer: Buffer,
-  edits: CardEdit[]
+  edits: CardEdit[],
+  editedAtSecs: number
 ): { sqlite: Buffer; counts: EditCounts } {
   const collection = parseCollection(collectionBuffer);
   const tempPath = writeTempFile(collectionBuffer, '.sqlite');
@@ -151,7 +163,9 @@ function buildEditedSqlite(
     const db = new Database(tempPath);
     let counts: EditCounts;
     try {
-      counts = db.transaction(() => applyEdits(db, collection, edits))();
+      counts = db.transaction(() =>
+        applyEdits(db, collection, edits, editedAtSecs)
+      )();
     } finally {
       db.close();
     }
@@ -206,11 +220,17 @@ async function packApkg(entries: Map<string, Buffer>): Promise<Buffer> {
 }
 
 export default class PackEditedApkgUseCase {
+  constructor(private readonly nowMs: () => number = Date.now) {}
+
   async execute(input: PackEditedApkgInput): Promise<PackEditedApkgOutput> {
     const { sourceBytes, filename, edits } = input;
     const archive = await extractApkg(sourceBytes);
 
-    const edited = buildEditedSqlite(archive.collectionBuffer, edits);
+    const edited = buildEditedSqlite(
+      archive.collectionBuffer,
+      edits,
+      Math.floor(this.nowMs() / 1000)
+    );
 
     const apkgBuffer = await packApkg(
       await buildEntries(archive, edited.sqlite)
