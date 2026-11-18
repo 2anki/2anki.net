@@ -2,5 +2,5 @@
   "id": "2026-11-18-edited-download-empty-notes",
   "date": "2026-11-18",
   "type": "fix",
-  "title": "Deck preview downloads leave out a note once you delete all its cards, and edited text replaces the old text on re-import even when the deck's dates run ahead"
+  "title": "Deleting every card of a note in the deck preview now leaves that note out of the download"
 }
