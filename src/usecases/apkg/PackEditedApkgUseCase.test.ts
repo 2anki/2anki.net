@@ -9,6 +9,7 @@ import {
   parseMediaManifest,
 } from '../../services/ApkgPreviewService/extractApkg';
 import { parseCollection } from '../../services/ApkgPreviewService/parseCollection';
+import { buildModernCollection } from '../../test/fixtures/apkg/buildModernCollection';
 
 function buildCollectionBuffer(
   cards: Array<{ front: string; back: string }>
@@ -788,3 +789,372 @@ describe('PackEditedApkgUseCase applies edits by card id to stored fields', () =
     expect(result.cardsSuspended).toBe(1);
   });
 });
+
+const EXPORTED_AT_SECS = 1_700_000_000;
+const EXPORTED_USN = 7;
+const EXPORTED_CSUM = 424242;
+const EDITED_AT_MS = 1_800_000_000_999;
+const EDITED_AT_SECS = 1_800_000_000;
+
+const SCRIPTED_QFMT = '{{Question}}<script>var c = "{{Choices}}";</script>';
+const SCRIPTED_AFMT = '{{FrontSide}}<hr id=answer>{{Extra}}';
+
+function stampExportedRows(db: Database.Database): void {
+  db.prepare('UPDATE notes SET mod = ? + id, usn = ?, csum = ?').run(
+    EXPORTED_AT_SECS,
+    EXPORTED_USN,
+    EXPORTED_CSUM
+  );
+  db.prepare('UPDATE cards SET mod = ? + id, usn = ?').run(
+    EXPORTED_AT_SECS,
+    EXPORTED_USN
+  );
+  db.prepare('UPDATE cards SET queue = -1 WHERE id = 101').run();
+}
+
+function addSecondCardAndScriptedNote(
+  db: Database.Database,
+  insertScriptedNote: () => void
+): void {
+  db.prepare(
+    'INSERT INTO cards (id, nid, did, ord) VALUES (104, 10, 2, 1)'
+  ).run();
+  insertScriptedNote();
+  db.prepare(
+    'INSERT INTO cards (id, nid, did, ord) VALUES (103, 13, 2, 0)'
+  ).run();
+}
+
+function buildLegacyExportedCollection(): Buffer {
+  const db = new Database(
+    buildCollectionBuffer([
+      { front: 'Q1', back: 'A1' },
+      { front: 'Q2', back: 'A2' },
+      { front: 'Q3', back: 'A3' },
+    ])
+  );
+  const { models } = db.prepare('SELECT models FROM col').get() as {
+    models: string;
+  };
+  const scripted = {
+    id: 2,
+    name: 'Scripted',
+    type: 0,
+    css: '',
+    flds: ['Question', 'Choices', 'Extra'].map((name, ord) => ({ name, ord })),
+    tmpls: [
+      { name: 'Card 1', ord: 0, qfmt: SCRIPTED_QFMT, afmt: SCRIPTED_AFMT },
+    ],
+  };
+  db.prepare('UPDATE col SET models = ?').run(
+    JSON.stringify({ ...JSON.parse(models), '2': scripted })
+  );
+  addSecondCardAndScriptedNote(db, () =>
+    db
+      .prepare(
+        "INSERT INTO notes (id, guid, mid, tags, flds, sfld) VALUES (13, 'guid3', 2, ' ', ?, 'Q4')"
+      )
+      .run(['Q4', 'choice a', 'extra'].join(SEP))
+  );
+  stampExportedRows(db);
+  const buf = Buffer.from(db.serialize());
+  db.close();
+  return buf;
+}
+
+const SCHEMA_18_INTEGER_CARD_COLUMNS = [
+  'mod',
+  'usn',
+  'type',
+  'queue',
+  'due',
+  'ivl',
+  'factor',
+  'reps',
+  'lapses',
+  'left',
+  'odue',
+  'odid',
+  'flags',
+];
+
+function copyRows(
+  from: Database.Database,
+  to: Database.Database,
+  table: string
+): void {
+  for (const row of from.prepare(`SELECT * FROM ${table}`).all() as Row[]) {
+    const columns = Object.keys(row);
+    to.prepare(
+      `INSERT INTO ${table} (${columns.join(', ')}) VALUES (${columns.map(() => '?').join(', ')})`
+    ).run(...columns.map((column) => row[column]));
+  }
+}
+
+function buildSchema18ExportedCollection(): Buffer {
+  const db = new Database(
+    buildModernCollection({
+      noteType: {
+        id: 1,
+        name: 'Basic',
+        kind: 0,
+        css: '',
+        fields: ['Front', 'Back'],
+        templates: [{ name: 'Card 1', qfmt: '{{Front}}', afmt: '{{Back}}' }],
+      },
+      deck: { id: 2, name: 'Test' },
+      note: { id: 10, fields: ['Q1', 'A1'] },
+      cards: [{ id: 100, ord: 0 }],
+    })
+  );
+  for (const column of SCHEMA_18_INTEGER_CARD_COLUMNS) {
+    db.exec(
+      `ALTER TABLE cards ADD COLUMN ${column} INTEGER NOT NULL DEFAULT 0`
+    );
+  }
+  db.exec("ALTER TABLE cards ADD COLUMN data TEXT NOT NULL DEFAULT ''");
+  for (const [id, front, back] of [
+    [11, 'Q2', 'A2'],
+    [12, 'Q3', 'A3'],
+  ] as const) {
+    db.prepare(
+      "INSERT INTO notes (id, guid, mid, tags, flds, sfld) VALUES (?, ?, 1, '', ?, ?)"
+    ).run(id, `g${id}`, [front, back].join(SEP), front);
+    db.prepare('INSERT INTO cards (id, nid, did, ord) VALUES (?, ?, 2, 0)').run(
+      id + 90,
+      id
+    );
+  }
+  const scripted = new Database(
+    buildModernCollection({
+      noteType: {
+        id: 2,
+        name: 'Scripted',
+        kind: 0,
+        css: '',
+        fields: ['Question', 'Choices', 'Extra'],
+        templates: [
+          { name: 'Card 1', qfmt: SCRIPTED_QFMT, afmt: SCRIPTED_AFMT },
+        ],
+      },
+      deck: { id: 2, name: 'Test' },
+      note: { id: 13, fields: ['Q4', 'choice a', 'extra'] },
+      cards: [],
+    })
+  );
+  addSecondCardAndScriptedNote(db, () => {
+    for (const table of ['notetypes', 'fields', 'templates', 'notes']) {
+      copyRows(scripted, db, table);
+    }
+  });
+  scripted.close();
+  stampExportedRows(db);
+  const buf = Buffer.from(db.serialize());
+  db.close();
+  return buf;
+}
+
+async function packageCollection(
+  collectionName: string,
+  sqlite: Buffer
+): Promise<Buffer> {
+  const zip = new JSZip();
+  if (collectionName === 'collection.anki21b') {
+    zip.file('meta', LATEST_PACKAGE_META);
+    zip.file('collection.anki21b', zlib.zstdCompressSync(sqlite));
+    zip.file('collection.anki2', buildCollectionBuffer([PLACEHOLDER_CARD]));
+    zip.file('media', zlib.zstdCompressSync(Buffer.alloc(0)));
+  } else {
+    zip.file(collectionName, sqlite);
+    zip.file('media', '{}');
+  }
+  return zip.generateAsync({ type: 'nodebuffer' });
+}
+
+function rowOf(rows: Row[], id: number): Row | undefined {
+  return rows.find((row) => row.id === id);
+}
+
+function withoutId(rows: Row[], id: number): Row[] {
+  return rows.filter((row) => row.id !== id);
+}
+
+describe.each([
+  {
+    format: 'a legacy collection.anki2',
+    collectionName: 'collection.anki2',
+    build: buildLegacyExportedCollection,
+  },
+  {
+    format: 'a schema-18 collection.anki21b',
+    collectionName: 'collection.anki21b',
+    build: buildSchema18ExportedCollection,
+  },
+])(
+  'PackEditedApkgUseCase re-import markers for $format',
+  ({ collectionName, build }) => {
+    const clockedUseCase = new PackEditedApkgUseCase(() => EDITED_AT_MS);
+
+    async function packWith(edits: CardEdit[]) {
+      const input = build();
+      const result = await clockedUseCase.execute({
+        sourceBytes: await packageCollection(collectionName, input),
+        filename: 'deck.apkg',
+        edits,
+      });
+      const archive = await extractApkg(result.buffer);
+      return {
+        before: readRows(input),
+        after: readRows(archive.collectionBuffer),
+        archive,
+        result,
+      };
+    }
+
+    it('stamps an edited note with the edit time in seconds and a local-change usn', async () => {
+      const { before, after } = await packWith([
+        { cardId: 101, fields: [{ index: 0, value: 'edited front' }] },
+      ]);
+
+      expect(rowOf(after.notes, 11)).toEqual({
+        ...rowOf(before.notes, 11),
+        flds: ['edited front', 'A2'].join(SEP),
+        mod: EDITED_AT_SECS,
+        usn: -1,
+      });
+    });
+
+    it('keeps every other note and every card row as it was', async () => {
+      const { before, after } = await packWith([
+        { cardId: 101, fields: [{ index: 0, value: 'edited front' }] },
+      ]);
+
+      expect(withoutId(after.notes, 11)).toEqual(withoutId(before.notes, 11));
+      expect(after.cards).toEqual(before.cards);
+    });
+
+    it('suspends a card with the edit time and a local-change usn, leaving the rest', async () => {
+      const { before, after } = await packWith([
+        { cardId: 102, suspended: true },
+      ]);
+
+      expect(rowOf(after.cards, 102)).toEqual({
+        ...rowOf(before.cards, 102),
+        queue: -1,
+        mod: EDITED_AT_SECS,
+        usn: -1,
+      });
+      expect(withoutId(after.cards, 102)).toEqual(withoutId(before.cards, 102));
+      expect(after.notes).toEqual(before.notes);
+    });
+
+    it('stamps nothing when the card is already suspended', async () => {
+      const { before, after, result } = await packWith([
+        { cardId: 101, suspended: true },
+      ]);
+
+      expect(after).toEqual(before);
+      expect(result.cardsSuspended).toBe(0);
+    });
+
+    it('stamps nothing when an edit leaves the text as it was', async () => {
+      const { before, after } = await packWith([
+        {
+          cardId: 101,
+          fields: [
+            { index: 0, value: 'Q2' },
+            { index: 1, value: 'A2' },
+          ],
+        },
+      ]);
+
+      expect(after).toEqual(before);
+    });
+
+    it.each([
+      [
+        'a value holding the field separator',
+        { cardId: 100, fields: [{ index: 0, value: `a${SEP}b` }] },
+      ],
+      [
+        'a field referenced only inside a script',
+        { cardId: 103, fields: [{ index: 1, value: 'choice b' }] },
+      ],
+      [
+        'an unknown card id',
+        { cardId: 999, fields: [{ index: 0, value: 'nowhere' }] },
+      ],
+    ])('stamps nothing for an edit refused for %s', async (_label, edit) => {
+      const { before, after, result } = await packWith([edit]);
+
+      expect(after).toEqual(before);
+      expect(result).toMatchObject({ notesUpdated: 0, editsRefused: 1 });
+    });
+
+    it('stamps a note once when two of its cards change the same field', async () => {
+      const { before, after, result } = await packWith([
+        { cardId: 100, fields: [{ index: 0, value: 'from card 100' }] },
+        { cardId: 104, fields: [{ index: 0, value: 'from card 104' }] },
+      ]);
+
+      expect(rowOf(after.notes, 10)).toEqual({
+        ...rowOf(before.notes, 10),
+        flds: ['from card 104', 'A1'].join(SEP),
+        mod: EDITED_AT_SECS,
+        usn: -1,
+      });
+      expect(result.notesUpdated).toBe(1);
+    });
+
+    it('stamps nothing when a later edit puts the text back', async () => {
+      const { before, after, result } = await packWith([
+        { cardId: 100, fields: [{ index: 0, value: 'changed' }] },
+        { cardId: 104, fields: [{ index: 0, value: 'Q1' }] },
+      ]);
+
+      expect(after).toEqual(before);
+      expect(result.notesUpdated).toBe(0);
+    });
+
+    it('leaves the note of a deleted card unstamped', async () => {
+      const { before, after } = await packWith([
+        {
+          cardId: 102,
+          fields: [{ index: 0, value: 'edited' }],
+          deleted: true,
+        },
+      ]);
+
+      expect(after.notes).toEqual(before.notes);
+      expect(after.cards).toEqual(withoutId(before.cards, 102));
+    });
+
+    it('stamps every note edited in one download', async () => {
+      const { after } = await packWith([
+        { cardId: 100, fields: [{ index: 0, value: 'first edit' }] },
+        { cardId: 102, fields: [{ index: 1, value: 'second edit' }] },
+        { cardId: 103, fields: [{ index: 2, value: 'third edit' }] },
+      ]);
+
+      expect(after.notes.map(({ id, mod, usn }) => ({ id, mod, usn }))).toEqual(
+        [
+          { id: 10, mod: EDITED_AT_SECS, usn: -1 },
+          { id: 11, mod: EXPORTED_AT_SECS + 11, usn: EXPORTED_USN },
+          { id: 12, mod: EDITED_AT_SECS, usn: -1 },
+          { id: 13, mod: EDITED_AT_SECS, usn: -1 },
+        ]
+      );
+    });
+
+    it('reads back through extractApkg and parseCollection with the edit', async () => {
+      const { archive } = await packWith([
+        { cardId: 101, fields: [{ index: 0, value: 'edited front' }] },
+      ]);
+
+      expect(archive.collectionName).toBe(collectionName);
+      expect(
+        parseCollection(archive.collectionBuffer).notes.get(11)?.fields
+      ).toEqual(['edited front', 'A2']);
+    });
+  }
+);

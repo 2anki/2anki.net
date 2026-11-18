@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-18-edited-notes-reimport",
+  "date": "2026-11-18",
+  "type": "fix",
+  "title": "Text edits from the deck preview replace the old text when you import the deck into Anki again"
+}
