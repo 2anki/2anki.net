@@ -2,5 +2,5 @@
   "id": "2026-11-18-sign-up-returns-you",
   "date": "2026-11-18",
   "type": "fix",
-  "title": "Signing up or in with Google, Microsoft, Apple or Notion returns you to the page that sent you, like card options"
+  "title": "Signing up or in with Google, Microsoft, Apple or Notion returns you to card options, uploads or Photo to deck when you came from there"
 }
