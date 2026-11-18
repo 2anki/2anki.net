@@ -205,9 +205,10 @@ interface PdfJsPageProxy {
 // pdf.js keeps every font it parses, and the glyph outlines it builds from
 // it, until the document closes. A PDF that embeds fresh font subsets on every
 // page (merged decks, OCR'd scans) grows the heap with each page until the
-// conversion runs out of memory. Once this many fonts the document had not
-// used before have loaded, its font cache is dropped. A font used again is
-// parsed again but keeps its name, so it never counts toward the next drop.
+// conversion runs out of memory. Once this many fonts loaded since the last
+// drop go unused on the current page, the font cache is dropped; a font used
+// again is parsed again. Fonts every page uses are never idle, so they are
+// not dropped and parsed over and over.
 export const MAX_RETAINED_PDF_FONTS = 100;
 
 // Dropping the cache waits on every font pdf.js has in flight. Past this the
@@ -344,16 +345,20 @@ const RASTER_IMAGE_OPCODES = resolveRasterImageOpcodes();
 const COLOR_TEXT_OPCODES = resolveColorTextOpcodes();
 const SET_FONT_OPCODE = resolveSetFontOpcode();
 
-function fontNamesSetOn(operatorList: PdfOperatorList | null): string[] {
+// pdf.js inlines a page's form XObjects into its operator list, so a font set
+// inside a form shows here too. A font set only inside a Type3 glyph does not:
+// it is never counted, and a release that drops it runs after the page's text
+// is read, so the next page that needs it parses it again.
+function fontNamesSetOn(operatorList: PdfOperatorList | null): Set<string> {
   const names = new Set<string>();
-  if (operatorList == null || SET_FONT_OPCODE == null) return [];
+  if (operatorList == null || SET_FONT_OPCODE == null) return names;
   for (let i = 0; i < operatorList.fnArray.length; i++) {
     if (operatorList.fnArray[i] !== SET_FONT_OPCODE) continue;
     const args = operatorList.argsArray[i];
     const name = Array.isArray(args) ? args[0] : undefined;
     if (typeof name === 'string') names.add(name);
   }
-  return [...names];
+  return names;
 }
 
 export function isChromaticRgb(args: unknown): boolean {
@@ -482,9 +487,7 @@ export async function extractPdfText(
   const imageCounts: number[] = [];
   const coloredTextFlags: boolean[] = [];
   const landscapeFlags: boolean[] = [];
-  const fontsSeen = new Set<string>();
   const fontsLoadedSinceRelease = new Set<string>();
-  let unseenFontsSinceRelease = 0;
   let fontCacheReleases = 0;
   let fontReleaseFailed = false;
 
@@ -499,23 +502,15 @@ export async function extractPdfText(
     landscapeFlags.push(isLandscapePage(pageData.view, pageData.rotate));
     const pageFonts = fontNamesSetOn(operatorList);
     pageData.cleanup();
-    const reloaded = pageFonts.filter((n) => !fontsLoadedSinceRelease.has(n));
-    for (const name of reloaded) fontsLoadedSinceRelease.add(name);
-    for (const name of pageFonts) {
-      if (fontsSeen.has(name)) continue;
-      fontsSeen.add(name);
-      unseenFontsSinceRelease += 1;
-    }
-    if (reloaded.length > 0) {
+    const loadedBefore = fontsLoadedSinceRelease.size;
+    for (const name of pageFonts) fontsLoadedSinceRelease.add(name);
+    if (fontsLoadedSinceRelease.size > loadedBefore) {
       await letFontLoaderTimersRun();
     }
-    if (
-      !fontReleaseFailed &&
-      unseenFontsSinceRelease >= MAX_RETAINED_PDF_FONTS
-    ) {
+    const unusedOnThisPage = fontsLoadedSinceRelease.size - pageFonts.size;
+    if (!fontReleaseFailed && unusedOnThisPage >= MAX_RETAINED_PDF_FONTS) {
       if (await releaseDocumentFonts(pageData.transport)) {
         fontsLoadedSinceRelease.clear();
-        unseenFontsSinceRelease = 0;
         fontCacheReleases += 1;
       } else {
         fontReleaseFailed = true;

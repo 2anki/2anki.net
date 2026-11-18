@@ -24,8 +24,8 @@ import { IAiRequestCostReader } from '../data_layer/AiUsageMetricsRepository';
 import { CREDIT_UNIT_USD } from '../lib/claude/aiCredits/balance';
 import { getConversionResultCache } from '../data_layer/ConversionResultCacheRepository';
 import ErrorHandler, {
-  reportUnexpectedError,
   sendErrorResponse,
+  shareErrorForDebugging,
 } from '../routes/middleware/ErrorHandler';
 import CardOption from '../lib/parser/Settings';
 import Workspace from '../lib/parser/WorkSpace';
@@ -1543,7 +1543,7 @@ class UploadService {
           }
         );
         this.trackUploadFailed(req, res, uploadFailureReason(err));
-        await reportUnexpectedError(req, err);
+        await shareErrorForDebugging(req, err);
         if (outOfMemory) {
           return res.status(400).json({
             code: 'too_large',

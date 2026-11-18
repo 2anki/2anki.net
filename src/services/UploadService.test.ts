@@ -1937,15 +1937,22 @@ describe('UploadService.handleUpload — error paths', () => {
       );
     });
 
-    it('logs the crash with its signal', async () => {
+    it('logs the crash once, with its signal, exit code and memory', async () => {
       crashWith('SIGABRT', null);
 
       await upload();
 
-      expect(errorSpy).toHaveBeenCalledWith(
-        '[UploadService] sync upload conversion process crashed',
-        expect.objectContaining({ signal: 'SIGABRT', outOfMemory: true })
-      );
+      expect(errorSpy.mock.calls).toEqual([
+        [
+          '[UploadService] sync upload conversion process crashed',
+          {
+            exitCode: null,
+            signal: 'SIGABRT',
+            lastRssBytes: 1_100_000_000,
+            outOfMemory: true,
+          },
+        ],
+      ]);
     });
 
     describe('when the uploader shares files for debugging', () => {

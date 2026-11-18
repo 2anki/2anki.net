@@ -101,16 +101,14 @@ function isQuietError(err: Error): boolean {
   );
 }
 
-// Logs the error and, when the uploader opted in to share files for
-// debugging, keeps their upload and emails the error. A handler that answers
-// with its own coded body still calls this so the report is not lost.
-export async function reportUnexpectedError(
+// When the uploader opted in to share files for debugging, keeps their upload
+// and emails the error. A handler that answers with its own coded body and
+// logs the error itself still calls this so the report is not lost.
+export async function shareErrorForDebugging(
   req: express.Request,
   err: Error
 ): Promise<void> {
   const uploadedFiles = req.files as UploadedFile[];
-  console.info('Send error');
-  console.error(redactStripeIds(inspect(err)));
   const canShareFiles = shouldShareFilesForDebugging(req.body);
   if (canShareFiles && !isEmptyPayload(uploadedFiles)) {
     preserveFilesForDebugging(req, uploadedFiles, err);
@@ -131,7 +129,9 @@ export default async function ErrorHandler(
   const quietError = isQuietError(err);
 
   if (!quietError) {
-    await reportUnexpectedError(req, err);
+    console.info('Send error');
+    console.error(redactStripeIds(inspect(err)));
+    await shareErrorForDebugging(req, err);
   } else if (isLimitError(err)) {
     console.info('User no limit reached');
   }

@@ -35,11 +35,25 @@ function serializePdf(objects: Buffer[]): Buffer {
   return Buffer.concat(chunks);
 }
 
+function flateStream(body: string, dictionary = ''): Buffer {
+  const stream = zlib.deflateSync(Buffer.from(body));
+  return Buffer.concat([
+    Buffer.from(
+      `<< ${dictionary} /Length ${stream.length} /Filter /FlateDecode >>\nstream\n`
+    ),
+    stream,
+    Buffer.from('\nendstream'),
+  ]);
+}
+
+type Drawing = 'on the page' | 'inside a form';
+
 function buildPdf(
   pages: number,
   fontsPerPage: number,
   fontFactory: FontFactory,
-  lineFor: (page: number, line: number) => string
+  lineFor: (page: number, line: number) => string,
+  drawing: Drawing = 'on the page'
 ): Buffer {
   const objects: Buffer[] = [];
   const add = (body: Buffer | string) => {
@@ -56,20 +70,24 @@ function buildPdf(
     const lines = fontIds.map(
       (_, k) => `BT /F${k} 12 Tf 50 ${740 - k * 20} Td (${lineFor(p, k)}) Tj ET`
     );
-    const stream = zlib.deflateSync(Buffer.from(lines.join('\n')));
-    const contentId = add(
-      Buffer.concat([
-        Buffer.from(
-          `<< /Length ${stream.length} /Filter /FlateDecode >>\nstream\n`
-        ),
-        stream,
-        Buffer.from('\nendstream'),
-      ])
-    );
-    const fontResources = fontIds.map((id, k) => `/F${k} ${id} 0 R`).join(' ');
+    const fontResources = `/Font << ${fontIds.map((id, k) => `/F${k} ${id} 0 R`).join(' ')} >>`;
+    let resources = fontResources;
+    let contentId: number;
+    if (drawing === 'inside a form') {
+      const formId = add(
+        flateStream(
+          lines.join('\n'),
+          `/Type /XObject /Subtype /Form /BBox [0 0 612 792] /Resources << ${fontResources} >>`
+        )
+      );
+      resources = `/XObject << /Fm0 ${formId} 0 R >>`;
+      contentId = add(flateStream('q /Fm0 Do Q'));
+    } else {
+      contentId = add(flateStream(lines.join('\n')));
+    }
     pageIds.push(
       add(
-        `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << ${fontResources} >> >> /Contents ${contentId} 0 R >>`
+        `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << ${resources} >> /Contents ${contentId} 0 R >>`
       )
     );
   }
@@ -133,6 +151,24 @@ function sharedHelvetica(fontCount: number): FontFactory {
   };
 }
 
+// The first half of the pages brings new fonts; the second half draws with
+// the first half's fonts again, after they have been released.
+function newThenReusedType3(pages: number, fontsPerPage: number): FontFactory {
+  const half = Math.floor(pages / 2);
+  const firstHalf: number[] = [];
+  let calls = 0;
+  return (add) => {
+    const call = calls++;
+    const page = Math.floor(call / fontsPerPage);
+    if (page < half) {
+      const id = type3Font(call)(add);
+      firstHalf.push(id);
+      return id;
+    }
+    return firstHalf[call - half * fontsPerPage];
+  };
+}
+
 function sentence(page: number, line: number): string {
   return `Page ${page + 1} line ${line + 1} reads plainly`;
 }
@@ -157,15 +193,9 @@ describe('extractPdfText with a font per page', () => {
     infoSpy.mockRestore();
   });
 
-  // Measured locally: before the font cache was released this document needed
-  // more than 128 MB of old space and died; now it peaks near 65 MB.
-  it('reads a PDF that brings its own fonts on every page within a bounded heap', () => {
-    const pdfPath = path.join(dir, 'type3-per-page.pdf');
-    let seed = 0;
-    fs.writeFileSync(
-      pdfPath,
-      buildPdf(150, 6, (add) => type3Font(seed++)(add), glyphRun)
-    );
+  function extractUnderHeapCap(name: string, pdf: Buffer, heapMb: number) {
+    const pdfPath = path.join(dir, name);
+    fs.writeFileSync(pdfPath, pdf);
     const script = `
       const fs = require('fs');
       console.info = () => {};
@@ -175,15 +205,40 @@ describe('extractPdfText with a font per page', () => {
       });
     `;
 
-    const child = spawnSync(
+    return spawnSync(
       process.execPath,
-      ['--max-old-space-size=128', '--require', 'tsx/cjs', '-e', script],
+      [`--max-old-space-size=${heapMb}`, '--require', 'tsx/cjs', '-e', script],
       { encoding: 'utf8', timeout: 90000 }
+    );
+  }
+
+  // Measured locally: before the font cache was released this document needed
+  // more than 128 MB of old space and died; now it peaks near 65 MB.
+  it('reads a PDF that brings its own fonts on every page within a bounded heap', () => {
+    let seed = 0;
+    const child = extractUnderHeapCap(
+      'type3-per-page.pdf',
+      buildPdf(150, 6, (add) => type3Font(seed++)(add), glyphRun),
+      128
     );
 
     expect(child.signal).toBeNull();
     expect(child.status).toBe(0);
     expect(child.stdout).toMatch(/PAGE_COUNT=150$/);
+  }, 120000);
+
+  // Measured locally: main and a rule that counted only never-seen fonts both
+  // died under this cap; releasing idle fonts peaks near 70 MB.
+  it('reads a PDF that reuses its released fonts later within a bounded heap', () => {
+    const child = extractUnderHeapCap(
+      'type3-new-then-reused.pdf',
+      buildPdf(300, 6, newThenReusedType3(300, 6), glyphRun),
+      128
+    );
+
+    expect(child.signal).toBeNull();
+    expect(child.status).toBe(0);
+    expect(child.stdout).toMatch(/PAGE_COUNT=300$/);
   }, 120000);
 
   it('keeps every page of text when the font cache is released partway through', async () => {
@@ -201,14 +256,18 @@ describe('extractPdfText with a font per page', () => {
     );
   }, 30000);
 
-  it('logs how often the font cache was released', async () => {
-    await extractPdfText(buildPdf(60, 3, helvetica, sentence));
+  it.each<Drawing>(['on the page', 'inside a form'])(
+    'logs one release for 180 new fonts drawn %s',
+    async (drawing) => {
+      await extractPdfText(buildPdf(60, 3, helvetica, sentence, drawing));
 
-    expect(infoSpy).toHaveBeenCalledWith(
-      '[extractPdfText] result',
-      expect.objectContaining({ fontCacheReleases: 1 })
-    );
-  }, 30000);
+      expect(infoSpy).toHaveBeenCalledWith(
+        '[extractPdfText] result',
+        expect.objectContaining({ fontCacheReleases: 1 })
+      );
+    },
+    30000
+  );
 
   it('never releases the font cache for a PDF that reuses a few fonts', async () => {
     await extractPdfText(buildPdf(200, 3, sharedHelvetica(3), sentence));
@@ -219,18 +278,22 @@ describe('extractPdfText with a font per page', () => {
     );
   }, 30000);
 
-  it('releases once for a PDF that uses the same 101 fonts on every page', async () => {
-    const fontCount = MAX_RETAINED_PDF_FONTS + 1;
+  it.each<Drawing>(['on the page', 'inside a form'])(
+    'never releases the 101 fonts a PDF uses on every page, drawn %s',
+    async (drawing) => {
+      const fontCount = MAX_RETAINED_PDF_FONTS + 1;
 
-    await extractPdfText(
-      buildPdf(30, fontCount, sharedHelvetica(fontCount), sentence)
-    );
+      await extractPdfText(
+        buildPdf(30, fontCount, sharedHelvetica(fontCount), sentence, drawing)
+      );
 
-    expect(infoSpy).toHaveBeenCalledWith(
-      '[extractPdfText] result',
-      expect.objectContaining({ pageCount: 30, fontCacheReleases: 1 })
-    );
-  }, 30000);
+      expect(infoSpy).toHaveBeenCalledWith(
+        '[extractPdfText] result',
+        expect.objectContaining({ pageCount: 30, fontCacheReleases: 0 })
+      );
+    },
+    30000
+  );
 });
 
 describe('releaseDocumentFonts', () => {
