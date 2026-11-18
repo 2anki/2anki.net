@@ -2,6 +2,7 @@ import json
 import os
 import sys
 import tempfile
+import time
 import zipfile
 from pathlib import Path
 
@@ -439,6 +440,25 @@ class TestContentGuidCollisionForking:
         assert guids[0] == guids[2]
         assert guids[0] != guids[1]
 
+    def test_distinct_backs_take_ordinals_one_two_three_by_value(self):
+        from helpers.guid import guid_for
+
+        deck_info = _deck_info_cards(
+            "Deck",
+            [
+                ("What is H2O?", "Water"),
+                ("What is H2O?", "Hydrogen peroxide"),
+                ("What is H2O?", "Ice"),
+            ],
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            guids = _build_and_get_guids_in_order(deck_info, tmpdir, "ordinals")
+        assert guids == [
+            guid_for("Deck", "What is H2O?", "basic"),
+            guid_for("Deck", "What is H2O?", "basic", 2),
+            guid_for("Deck", "What is H2O?", "basic", 3),
+        ]
+
     def test_forked_guid_is_document_order_deterministic_across_runs(self):
         deck_info = _deck_info_cards(
             "Deck",
@@ -754,3 +774,72 @@ class TestContentGuidAvoidsLedgerGuids:
                 "second",
             )
         assert second == {**first, "block-c": guid_for(self.DECK, self.FRONT, "basic", 3)}
+
+    def test_new_card_in_a_sub_deck_steps_past_a_pinned_guid_there(self):
+        from helpers.guid import guid_for
+
+        sub_deck = "Deck::Sub"
+        pinned = {
+            "front": self.FRONT,
+            "back": "Water",
+            "block": "block-a",
+            "guid": guid_for(sub_deck, self.FRONT, "basic"),
+        }
+        deck_info = _upload_deck(self.DECK, [self._new("Water", "block-p")]) + _upload_deck(
+            sub_deck, [pinned, self._new("Hydrogen peroxide", "block-b")]
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            guids = _build_and_get_guids_by_block(deck_info, tmpdir, "sub-deck")
+        assert guids == {
+            "block-p": guid_for(self.DECK, self.FRONT, "basic"),
+            "block-a": guid_for(sub_deck, self.FRONT, "basic"),
+            "block-b": guid_for(sub_deck, self.FRONT, "basic", 2),
+        }
+
+
+def _assign_content_guids(cards: list) -> tuple:
+    data = [{"name": "Deck", "cards": cards}]
+    started = time.perf_counter()
+    pinned_backs = _mod._pinned_backs_by_guid(data)
+    seen = {}
+    guids = [
+        card["guid"]
+        if "guid" in card
+        else _mod._content_guid(("Deck", card["name"], "basic"), card["back"], seen, pinned_backs)
+        for card in cards
+    ]
+    return guids, time.perf_counter() - started
+
+
+class TestContentGuidAssignmentScales:
+    """Thousands of cards under one front must not make guid assignment
+    quadratic: it runs on every upload conversion.
+    """
+
+    def test_four_thousand_same_front_cards_are_assigned_quickly(self):
+        from helpers.guid import guid_for
+
+        cards = [{"name": "Same", "back": "back %d" % i} for i in range(4000)]
+        guids, elapsed = _assign_content_guids(cards)
+        assert elapsed < 2
+        assert len(set(guids)) == 4000
+        assert guids[:2] == [guid_for("Deck", "Same", "basic"), guid_for("Deck", "Same", "basic", 2)]
+        assert guids[-1] == guid_for("Deck", "Same", "basic", 4000)
+
+    def test_two_thousand_new_cards_beside_two_thousand_pins_are_assigned_quickly(self):
+        from helpers.guid import guid_for
+
+        new = [{"name": "Same", "back": "new %d" % i} for i in range(2000)]
+        pins = [
+            {
+                "name": "Same",
+                "back": "pinned %d" % i,
+                "guid": guid_for("Deck", "Same", "basic", *([i + 1] if i else [])),
+            }
+            for i in range(2000)
+        ]
+        guids, elapsed = _assign_content_guids(new + pins)
+        assert elapsed < 2
+        assert len(set(guids)) == 4000
+        assert guids[0] == guid_for("Deck", "Same", "basic", 2001)
+        assert guids[1999] == guid_for("Deck", "Same", "basic", 4000)

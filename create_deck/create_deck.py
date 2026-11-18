@@ -11,6 +11,7 @@ import html
 import json
 import sys
 import os
+from collections import deque
 
 from helpers.cards import get_safe_value
 from helpers.get_model import get_custom_model, get_model, resolve_tts_langs
@@ -81,17 +82,39 @@ def _content_guid(key, back, seen, pinned_backs):
     A guid the ledger pinned on another card in this build is taken unless
     that card has the same back (#5408): a new block sharing a pinned card's
     front would otherwise compute the pinned guid and merge into it in Anki.
+    The card gets the lowest ordinal that is neither given in this group nor
+    pinned to other backs. `next` is the lowest ordinal neither given nor
+    pinned; it only moves up, because a given ordinal stays given. Pinned
+    ordinals below it wait, per back, for a card with one of their backs.
     """
-    by_back = seen.setdefault(key, {})
+    group = seen.setdefault(key, {"by_back": {}, "given": set(), "next": 1, "waiting": {}})
+    by_back = group["by_back"]
     if back in by_back:
         return by_back[back]
-    assigned = set(by_back.values())
-    ordinal = 1
-    guid = guid_for(*key)
-    while guid in assigned or (guid in pinned_backs and back not in pinned_backs[guid]):
-        ordinal += 1
-        guid = guid_for(*key, ordinal)
+    guid = _lowest_unpinned_guid(key, group, pinned_backs)
+    waiting = group["waiting"].get(back)
+    while waiting and waiting[0] in group["given"]:
+        waiting.popleft()
+    if waiting:
+        guid = waiting.popleft()
+    else:
+        group["next"] += 1
+    group["given"].add(guid)
     by_back[back] = guid
+    return guid
+
+
+def _ordinal_guid(key, ordinal):
+    return guid_for(*key) if ordinal == 1 else guid_for(*key, ordinal)
+
+
+def _lowest_unpinned_guid(key, group, pinned_backs):
+    guid = _ordinal_guid(key, group["next"])
+    while guid in pinned_backs:
+        for pinned_back in pinned_backs[guid]:
+            group["waiting"].setdefault(pinned_back, deque()).append(guid)
+        group["next"] += 1
+        guid = _ordinal_guid(key, group["next"])
     return guid
 
 
