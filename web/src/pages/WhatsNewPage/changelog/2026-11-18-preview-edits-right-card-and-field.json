@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-18-preview-edits-right-card-and-field",
+  "date": "2026-11-18",
+  "type": "fix",
+  "title": "Edits in the deck preview change the card you picked and only the field you edited, with images and cloze markup kept"
+}

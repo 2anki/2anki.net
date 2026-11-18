@@ -29,7 +29,7 @@ import ImportApkgToNotionUseCase from '../usecases/apkg/ImportApkgToNotionUseCas
 import PackEditedApkgUseCase from '../usecases/apkg/PackEditedApkgUseCase';
 import ResolveImportParentPageUseCase from '../usecases/apkg/ResolveImportParentPageUseCase';
 import NoNotionPagesError from '../usecases/apkg/NoNotionPagesError';
-import { CardEdit } from '../services/ApkgPreviewService/applyEditsToCards';
+import { parseCardEdits } from './helpers/parseCardEdits';
 import {
   ApkgTooLargeError,
   InvalidApkgError,
@@ -281,7 +281,7 @@ class ApkgController {
         req.params.key
       )}/media/`;
       res.json(
-        this.previewService.getCardsPage(
+        this.previewService.getEditableCardsPage(
           parsed,
           cursor,
           pageSize,
@@ -554,17 +554,14 @@ class ApkgController {
         res.status(400).json({ message: 'Not an .apkg upload.' });
         return;
       }
-      const rawEdits = (req.body as { edits?: unknown })?.edits;
-      if (!Array.isArray(rawEdits)) {
-        res.status(400).json({ message: 'edits must be an array.' });
+      const parsedEdits = parseCardEdits(
+        (req.body as { edits?: unknown })?.edits
+      );
+      if (!parsedEdits.ok) {
+        res.status(400).json({ message: parsedEdits.message });
         return;
       }
-      const edits = rawEdits.filter(
-        (e): e is CardEdit =>
-          e != null &&
-          typeof e === 'object' &&
-          typeof (e as CardEdit).cardIndex === 'number'
-      );
+      const { edits } = parsedEdits;
       const { owner } = res.locals;
       const storageKey = await this.downloadService.findStoredKey(owner, key);
       if (storageKey == null) {
@@ -581,7 +578,9 @@ class ApkgController {
         res.status(404).json({ message: 'Upload not found.' });
         return;
       }
-      console.info(`APKG edited download packed: ${result.collectionName}`);
+      console.info(
+        `APKG edited download packed: ${result.collectionName}, notes updated: ${result.notesUpdated}, cards suspended: ${result.cardsSuspended}, cards deleted: ${result.cardsDeleted}, edits refused: ${result.editsRefused}`
+      );
       res.setHeader('Content-Type', 'application/octet-stream');
       res.setHeader(
         'Content-Disposition',

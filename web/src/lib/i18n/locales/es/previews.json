@@ -134,9 +134,8 @@
     "delete": "Eliminar",
     "showFront": "Mostrar anverso",
     "showBack": "Mostrar reverso",
-    "frontLabel": "Anverso",
-    "backLabel": "Reverso",
     "editFront": "Editar anverso",
-    "editBack": "Editar reverso"
+    "editBack": "Editar reverso",
+    "edited": "Editado"
   }
 }

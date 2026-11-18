@@ -134,9 +134,8 @@
     "delete": "Löschen",
     "showFront": "Vorderseite anzeigen",
     "showBack": "Rückseite anzeigen",
-    "frontLabel": "Vorderseite",
-    "backLabel": "Rückseite",
     "editFront": "Vorderseite bearbeiten",
-    "editBack": "Rückseite bearbeiten"
+    "editBack": "Rückseite bearbeiten",
+    "edited": "Bearbeitet"
   }
 }

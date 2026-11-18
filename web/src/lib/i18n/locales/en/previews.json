@@ -134,9 +134,8 @@
     "delete": "Delete",
     "showFront": "Show front",
     "showBack": "Show back",
-    "frontLabel": "Front",
-    "backLabel": "Back",
     "editFront": "Edit front",
-    "editBack": "Edit back"
+    "editBack": "Edit back",
+    "edited": "Edited"
   }
 }

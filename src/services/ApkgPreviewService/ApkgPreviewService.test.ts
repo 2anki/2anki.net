@@ -577,3 +577,99 @@ describe('ApkgPreviewService.load', () => {
     expect(a).toBe(b);
   });
 });
+
+describe('ApkgPreviewService.getEditableCardsPage', () => {
+  const service = new ApkgPreviewService();
+  const RAW_FRONT = 'Line one<br>Line&nbsp;two <img src="diagram.png">';
+  const RAW_BACK = 'Answer [sound:say.mp3]';
+
+  function basicTwoDeckCollection(): NormalizedCollection {
+    return {
+      noteTypes: new Map([
+        [
+          1,
+          {
+            id: 1,
+            name: 'Basic',
+            type: 0 as const,
+            css: '',
+            fields: [
+              { name: 'Front', ord: 0 },
+              { name: 'Back', ord: 1 },
+            ],
+            templates: [
+              {
+                name: 'Card 1',
+                ord: 0,
+                qfmt: '{{Front}}',
+                afmt: '{{FrontSide}}<hr id=answer>{{Back}}',
+              },
+            ],
+          },
+        ],
+      ]),
+      notes: new Map([
+        [10, { id: 10, mid: 1, tags: '', fields: [RAW_FRONT, RAW_BACK] }],
+        [11, { id: 11, mid: 1, tags: '', fields: ['Q2', 'A2'] }],
+      ]),
+      decks: new Map([
+        [2, { id: 2, name: 'A' }],
+        [3, { id: 3, name: 'B' }],
+      ]),
+      cards: [
+        { id: 100, nid: 10, did: 2, ord: 0 },
+        { id: 101, nid: 11, did: 3, ord: 0 },
+      ],
+    };
+  }
+
+  it('returns the stored field values, not the rendered card', () => {
+    const parsed = makeParsed(basicTwoDeckCollection());
+    parsed.mediaMap.set('diagram.png', '0');
+
+    const [card] = service.getEditableCardsPage(
+      parsed,
+      0,
+      1,
+      '/api/apkg/deck.apkg/media/'
+    ).cards;
+
+    expect(card.editable).toEqual({
+      front: { fieldIndex: 0, fieldName: 'Front', value: RAW_FRONT },
+      back: { fieldIndex: 1, fieldName: 'Back', value: RAW_BACK },
+    });
+    expect(card.front).toContain('/api/apkg/deck.apkg/media/');
+  });
+
+  it('keeps each card paired with its own fields under a deck filter', () => {
+    const parsed = makeParsed(basicTwoDeckCollection());
+
+    const { cards } = service.getEditableCardsPage(parsed, 0, 10, '', 3);
+
+    expect(cards.map((card) => [card.id, card.editable.front?.value])).toEqual([
+      [101, 'Q2'],
+    ]);
+  });
+
+  it('offers no editable field on an Image Occlusion card', () => {
+    const { cards } = service.getEditableCardsPage(
+      makeParsed(makeIoCollection()),
+      0,
+      1,
+      ''
+    );
+
+    expect(cards[0].editable).toEqual({ front: null, back: null });
+  });
+
+  it('leaves the plain card page without editable fields', () => {
+    const { cards } = service.getCardsPage(
+      makeParsed(basicTwoDeckCollection()),
+      0,
+      10,
+      ''
+    );
+
+    expect(cards.map((card) => 'editable' in card)).toEqual([false, false]);
+  });
+});

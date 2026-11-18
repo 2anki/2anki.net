@@ -134,9 +134,8 @@
     "delete": "Verwijderen",
     "showFront": "Voorkant tonen",
     "showBack": "Achterkant tonen",
-    "frontLabel": "Voorkant",
-    "backLabel": "Achterkant",
     "editFront": "Voorkant bewerken",
-    "editBack": "Achterkant bewerken"
+    "editBack": "Achterkant bewerken",
+    "edited": "Bewerkt"
   }
 }

@@ -58,6 +58,19 @@ export interface RenderedCard {
   back: string;
 }
 
+export interface EditableFieldValue {
+  fieldIndex: number;
+  fieldName: string;
+  value: string;
+}
+
+export interface EditableRenderedCard extends RenderedCard {
+  editable: {
+    front: EditableFieldValue | null;
+    back: EditableFieldValue | null;
+  };
+}
+
 export interface DeckMeta {
   id: number;
   fullName: string;

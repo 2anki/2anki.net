@@ -13,7 +13,11 @@ import {
 } from './useApkgPreviewStream';
 import { CardFrame } from './CardFrame';
 import { SharePopover } from './SharePopover';
-import { CardEditState, EditPayload } from './cardEditTypes';
+import {
+  CardEditState,
+  toEditPayloads,
+  withEditMapEntry,
+} from './cardEditTypes';
 import { downloadEditedApkg } from './downloadEditedApkg';
 import { isFinalRefusal } from '../../lib/shouldRetryQuery';
 
@@ -95,12 +99,8 @@ export default function PreviewApkgPage({
     return { deletedCount: deleted, suspendedCount: suspended };
   }, [editMap]);
 
-  const handleEdit = useCallback((index: number, state: CardEditState) => {
-    setEditMap((prev) => {
-      const next = new Map(prev);
-      next.set(index, state);
-      return next;
-    });
+  const handleEdit = useCallback((cardId: number, state: CardEditState) => {
+    setEditMap((prev) => withEditMapEntry(prev, cardId, state));
   }, []);
 
   const handleRestoreAll = useCallback(() => {
@@ -111,16 +111,7 @@ export default function PreviewApkgPage({
     if (!key) return;
     setDownloading(true);
     try {
-      const edits: EditPayload[] = Array.from(editMap.entries()).map(
-        ([cardIndex, state]) => ({
-          cardIndex,
-          front: state.front,
-          back: state.back,
-          deleted: state.deleted,
-          suspended: state.suspended,
-        })
-      );
-      await downloadEditedApkg(key, edits);
+      await downloadEditedApkg(key, toEditPayloads(editMap));
     } catch (err) {
       setError(err as Error);
     } finally {
@@ -286,12 +277,11 @@ export default function PreviewApkgPage({
               description={t('apkg.emptyDescription')}
             />
           )}
-          {cards.map((card, idx) => (
+          {cards.map((card) => (
             <CardFrame
               key={card.id}
               card={card}
-              cardIndex={idx}
-              editState={editMap.get(idx)}
+              editState={editMap.get(card.id)}
               onEdit={handleEdit}
               isEditable={isApkgKey}
             />
