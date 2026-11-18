@@ -156,9 +156,8 @@
     "delete": "Usuń",
     "showFront": "Pokaż przód",
     "showBack": "Pokaż tył",
-    "frontLabel": "Przód",
-    "backLabel": "Tył",
     "editFront": "Edytuj przód",
-    "editBack": "Edytuj tył"
+    "editBack": "Edytuj tył",
+    "edited": "Edytowano"
   }
 }

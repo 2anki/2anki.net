@@ -50,12 +50,7 @@ const findIframe = (container: HTMLElement): Promise<HTMLIFrameElement> =>
 describe('CardFrame sandbox', () => {
   it('sets sandbox to allow-scripts only', async () => {
     const { container } = render(
-      <CardFrame
-        card={buildCard()}
-        cardIndex={0}
-        onEdit={noop}
-        isEditable={false}
-      />
+      <CardFrame card={buildCard()} onEdit={noop} isEditable={false} />
     );
     expect((await findIframe(container)).getAttribute('sandbox')).toBe(
       'allow-scripts'
@@ -68,12 +63,7 @@ describe('CardFrame frame mounting', () => {
   // milliseconds after it was inserted with an empty one.
   it('never mounts the frame with an empty document', async () => {
     const { container } = render(
-      <CardFrame
-        card={buildCard()}
-        cardIndex={0}
-        onEdit={noop}
-        isEditable={false}
-      />
+      <CardFrame card={buildCard()} onEdit={noop} isEditable={false} />
     );
     expect(container.querySelector('iframe')).toBeNull();
     const iframe = await findIframe(container);
@@ -82,12 +72,7 @@ describe('CardFrame frame mounting', () => {
 
   it('mounts a new frame holding the back when the card is flipped', async () => {
     const { container } = render(
-      <CardFrame
-        card={buildCard()}
-        cardIndex={0}
-        onEdit={noop}
-        isEditable={false}
-      />
+      <CardFrame card={buildCard()} onEdit={noop} isEditable={false} />
     );
     const front = await findIframe(container);
     fireEvent.click(screen.getByRole('button', { name: /show back/i }));
@@ -108,7 +93,7 @@ describe('CardFrame srcDoc', () => {
   it('does not inject hardcoded background or foreground colors', async () => {
     const card = buildCard({ css: '' });
     const { container } = render(
-      <CardFrame card={card} cardIndex={0} onEdit={noop} isEditable={false} />
+      <CardFrame card={card} onEdit={noop} isEditable={false} />
     );
     const srcDoc = await waitForSrcDoc(container);
     expect(srcDoc).not.toContain('background: #fff');
@@ -118,12 +103,7 @@ describe('CardFrame srcDoc', () => {
   it('drives color-scheme from the app theme (light by default)', async () => {
     localStorage.setItem('2anki-theme', 'light');
     const { container } = render(
-      <CardFrame
-        card={buildCard()}
-        cardIndex={0}
-        onEdit={noop}
-        isEditable={false}
-      />
+      <CardFrame card={buildCard()} onEdit={noop} isEditable={false} />
     );
     const srcDoc = await waitForSrcDoc(container);
     expect(srcDoc).toContain('<meta name="color-scheme" content="light">');
@@ -133,12 +113,7 @@ describe('CardFrame srcDoc', () => {
   it('renders dark cards with nightMode + dark color-scheme when app theme is dark', async () => {
     localStorage.setItem('2anki-theme', 'dark');
     const { container } = render(
-      <CardFrame
-        card={buildCard()}
-        cardIndex={0}
-        onEdit={noop}
-        isEditable={false}
-      />
+      <CardFrame card={buildCard()} onEdit={noop} isEditable={false} />
     );
     const srcDoc = await waitForSrcDoc(container);
     expect(srcDoc).toContain('<meta name="color-scheme" content="dark">');
@@ -148,12 +123,7 @@ describe('CardFrame srcDoc', () => {
   it('treats the light-background themes (gold) as light, not dark', async () => {
     localStorage.setItem('2anki-theme', 'gold');
     const { container } = render(
-      <CardFrame
-        card={buildCard()}
-        cardIndex={0}
-        onEdit={noop}
-        isEditable={false}
-      />
+      <CardFrame card={buildCard()} onEdit={noop} isEditable={false} />
     );
     const srcDoc = await waitForSrcDoc(container);
     expect(srcDoc).toContain('<meta name="color-scheme" content="light">');
@@ -162,12 +132,7 @@ describe('CardFrame srcDoc', () => {
 
   it('shims sessionStorage and localStorage so opaque-origin template scripts do not throw', async () => {
     const { container } = render(
-      <CardFrame
-        card={buildCard()}
-        cardIndex={0}
-        onEdit={noop}
-        isEditable={false}
-      />
+      <CardFrame card={buildCard()} onEdit={noop} isEditable={false} />
     );
     const srcDoc = await waitForSrcDoc(container);
     expect(srcDoc).toContain("['sessionStorage', 'localStorage'].forEach");
@@ -176,12 +141,7 @@ describe('CardFrame srcDoc', () => {
 
   it('includes the resize-observer script', async () => {
     const { container } = render(
-      <CardFrame
-        card={buildCard()}
-        cardIndex={0}
-        onEdit={noop}
-        isEditable={false}
-      />
+      <CardFrame card={buildCard()} onEdit={noop} isEditable={false} />
     );
     const srcDoc = await waitForSrcDoc(container);
     expect(srcDoc).toContain('ResizeObserver');
@@ -193,7 +153,7 @@ describe('CardFrame srcDoc', () => {
       front: '<p class="q"><strong>Q:</strong> What is spaced repetition?</p>',
     });
     const { container } = render(
-      <CardFrame card={card} cardIndex={0} onEdit={noop} isEditable={false} />
+      <CardFrame card={card} onEdit={noop} isEditable={false} />
     );
     const srcDoc = await waitForSrcDoc(container);
     expect(srcDoc).toContain('<p class="q">');
@@ -205,7 +165,7 @@ describe('CardFrame srcDoc', () => {
       front: 'Hello<script>alert(1)</script> world',
     });
     const { container } = render(
-      <CardFrame card={card} cardIndex={0} onEdit={noop} isEditable={false} />
+      <CardFrame card={card} onEdit={noop} isEditable={false} />
     );
     const srcDoc = await waitForSrcDoc(container);
     expect(srcDoc).toContain('alert(1)');
@@ -214,7 +174,7 @@ describe('CardFrame srcDoc', () => {
   it('injects MathJax when the card contains inline math delimiters', async () => {
     const card = buildCard({ front: 'Euler: \\(e^{i\\pi} = -1\\)' });
     const { container } = render(
-      <CardFrame card={card} cardIndex={0} onEdit={noop} isEditable={false} />
+      <CardFrame card={card} onEdit={noop} isEditable={false} />
     );
     const srcDoc = await waitForSrcDoc(container);
     expect(srcDoc).toContain('mathjax@3/es5/tex-mml-chtml.js');
@@ -227,7 +187,7 @@ describe('CardFrame srcDoc', () => {
       back: '\\[\\int_0^1 x^2\\,dx\\]',
     });
     const { container } = render(
-      <CardFrame card={card} cardIndex={0} onEdit={noop} isEditable={false} />
+      <CardFrame card={card} onEdit={noop} isEditable={false} />
     );
     fireEvent.click(screen.getByRole('button', { name: /show back/i }));
     const srcDoc = await waitFor(() => {
@@ -243,7 +203,7 @@ describe('CardFrame srcDoc', () => {
   it('does not inject MathJax when the card has no math', async () => {
     const card = buildCard({ front: 'Plain front', back: 'Plain back' });
     const { container } = render(
-      <CardFrame card={card} cardIndex={0} onEdit={noop} isEditable={false} />
+      <CardFrame card={card} onEdit={noop} isEditable={false} />
     );
     const srcDoc = await waitForSrcDoc(container);
     expect(srcDoc).not.toContain('tex-mml-chtml.js');
@@ -254,7 +214,7 @@ describe('CardFrame postMessage height update', () => {
   it('updates frame height when a matching postMessage arrives', async () => {
     const card = buildCard({ id: 42 });
     const { container } = render(
-      <CardFrame card={card} cardIndex={0} onEdit={noop} isEditable={false} />
+      <CardFrame card={card} onEdit={noop} isEditable={false} />
     );
     const iframe = await findIframe(container);
 
@@ -279,7 +239,7 @@ describe('CardFrame postMessage height update', () => {
   it('ignores messages with wrong source string', async () => {
     const card = buildCard({ id: 7 });
     const { container } = render(
-      <CardFrame card={card} cardIndex={0} onEdit={noop} isEditable={false} />
+      <CardFrame card={card} onEdit={noop} isEditable={false} />
     );
     const iframe = await findIframe(container);
 
@@ -304,7 +264,7 @@ describe('CardFrame postMessage height update', () => {
   it('ignores messages with mismatched cardId', async () => {
     const card = buildCard({ id: 5 });
     const { container } = render(
-      <CardFrame card={card} cardIndex={0} onEdit={noop} isEditable={false} />
+      <CardFrame card={card} onEdit={noop} isEditable={false} />
     );
     const iframe = await findIframe(container);
 
@@ -329,7 +289,7 @@ describe('CardFrame postMessage height update', () => {
   it('ignores messages whose origin is not the sandboxed null origin', async () => {
     const card = buildCard({ id: 11 });
     const { container } = render(
-      <CardFrame card={card} cardIndex={0} onEdit={noop} isEditable={false} />
+      <CardFrame card={card} onEdit={noop} isEditable={false} />
     );
     const iframe = await findIframe(container);
 
@@ -354,7 +314,7 @@ describe('CardFrame postMessage height update', () => {
   it('clamps height to MAX_FRAME_HEIGHT when value is too large', async () => {
     const card = buildCard({ id: 3 });
     const { container } = render(
-      <CardFrame card={card} cardIndex={0} onEdit={noop} isEditable={false} />
+      <CardFrame card={card} onEdit={noop} isEditable={false} />
     );
     const iframe = await findIframe(container);
 
@@ -377,16 +337,24 @@ describe('CardFrame postMessage height update', () => {
   });
 });
 
+const RAW_FRONT = 'Line one<br>Line&nbsp;two <img src="diagram.png">';
+
+const editableCard = (overrides: Partial<ApkgPreviewCard> = {}) =>
+  buildCard({
+    id: 42,
+    front:
+      '<div>rendered front with /api/apkg/deck.apkg/media/diagram.png</div>',
+    back: '<div>rendered front</div><hr id=answer>rendered back',
+    editable: {
+      front: { fieldIndex: 0, fieldName: 'Front', value: RAW_FRONT },
+      back: { fieldIndex: 1, fieldName: 'Back', value: 'raw back' },
+    },
+    ...overrides,
+  });
+
 describe('CardFrame edit controls', () => {
   it('shows Delete and Suspend buttons when isEditable is true', () => {
-    render(
-      <CardFrame
-        card={buildCard()}
-        cardIndex={0}
-        onEdit={noop}
-        isEditable={true}
-      />
-    );
+    render(<CardFrame card={editableCard()} onEdit={noop} isEditable={true} />);
     expect(screen.getByRole('button', { name: /delete/i })).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: /suspend/i })
@@ -395,12 +363,7 @@ describe('CardFrame edit controls', () => {
 
   it('does not show Delete or Suspend when isEditable is false', () => {
     render(
-      <CardFrame
-        card={buildCard()}
-        cardIndex={0}
-        onEdit={noop}
-        isEditable={false}
-      />
+      <CardFrame card={editableCard()} onEdit={noop} isEditable={false} />
     );
     expect(
       screen.queryByRole('button', { name: /delete/i })
@@ -410,45 +373,28 @@ describe('CardFrame edit controls', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('calls onEdit with deleted=true when Delete is clicked', () => {
+  it('calls onEdit with the card id and deleted=true when Delete is clicked', () => {
     const onEdit = vi.fn();
     render(
-      <CardFrame
-        card={buildCard()}
-        cardIndex={2}
-        onEdit={onEdit}
-        isEditable={true}
-      />
+      <CardFrame card={editableCard()} onEdit={onEdit} isEditable={true} />
     );
     fireEvent.click(screen.getByRole('button', { name: /delete/i }));
-    expect(onEdit).toHaveBeenCalledWith(
-      2,
-      expect.objectContaining({ deleted: true })
-    );
+    expect(onEdit).toHaveBeenCalledWith(42, { deleted: true });
   });
 
-  it('calls onEdit with suspended=true when Suspend is clicked', () => {
+  it('calls onEdit with the card id and suspended=true when Suspend is clicked', () => {
     const onEdit = vi.fn();
     render(
-      <CardFrame
-        card={buildCard()}
-        cardIndex={1}
-        onEdit={onEdit}
-        isEditable={true}
-      />
+      <CardFrame card={editableCard()} onEdit={onEdit} isEditable={true} />
     );
     fireEvent.click(screen.getByRole('button', { name: /suspend/i }));
-    expect(onEdit).toHaveBeenCalledWith(
-      1,
-      expect.objectContaining({ suspended: true })
-    );
+    expect(onEdit).toHaveBeenCalledWith(42, { suspended: true });
   });
 
   it('shows Restore button when card is marked deleted', () => {
     render(
       <CardFrame
-        card={buildCard()}
-        cardIndex={0}
+        card={editableCard()}
         editState={{ deleted: true }}
         onEdit={noop}
         isEditable={true}
@@ -459,74 +405,136 @@ describe('CardFrame edit controls', () => {
     ).toBeInTheDocument();
   });
 
-  it('shows Edit front and Edit back buttons when isEditable is true', () => {
+  it('labels each editor with the field it changes', () => {
     render(
       <CardFrame
-        card={buildCard()}
-        cardIndex={0}
-        onEdit={noop}
-        isEditable={true}
-      />
-    );
-    expect(
-      screen.getByRole('button', { name: /edit front/i })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: /edit back/i })
-    ).toBeInTheDocument();
-  });
-
-  it('clicking Edit front shows a textarea with the current front text', () => {
-    render(
-      <CardFrame
-        card={buildCard({ front: 'original' })}
-        cardIndex={0}
+        card={editableCard({
+          editable: {
+            front: { fieldIndex: 1, fieldName: 'Back', value: 'b' },
+            back: { fieldIndex: 0, fieldName: 'Front', value: 'f' },
+          },
+        })}
         onEdit={noop}
         isEditable={true}
       />
     );
     fireEvent.click(screen.getByRole('button', { name: /edit front/i }));
-    const textarea = screen.getByRole('textbox', { name: /front/i });
-    expect(textarea).toBeInTheDocument();
-    expect((textarea as HTMLTextAreaElement).value).toBe('original');
+    expect(screen.getByRole('textbox', { name: 'Back' })).toHaveValue('b');
   });
 
-  it('pressing Escape on the front editor cancels the edit without calling onEdit', () => {
+  it('seeds the editor with the stored field, not the rendered card', () => {
+    render(<CardFrame card={editableCard()} onEdit={noop} isEditable={true} />);
+    fireEvent.click(screen.getByRole('button', { name: /edit front/i }));
+    expect(screen.getByRole('textbox', { name: 'Front' })).toHaveValue(
+      RAW_FRONT
+    );
+  });
+
+  it('offers only the Text field on a cloze card', () => {
+    render(
+      <CardFrame
+        card={editableCard({
+          editable: {
+            front: {
+              fieldIndex: 0,
+              fieldName: 'Text',
+              value: '{{c1::Oslo}} is in Norway',
+            },
+            back: null,
+          },
+        })}
+        onEdit={noop}
+        isEditable={true}
+      />
+    );
+    expect(
+      screen.queryByRole('button', { name: /edit back/i })
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /edit front/i }));
+    expect(screen.getByRole('textbox', { name: 'Text' })).toHaveValue(
+      '{{c1::Oslo}} is in Norway'
+    );
+  });
+
+  it('offers no text editor on a card without an editable field', () => {
+    render(
+      <CardFrame
+        card={buildCard({ editable: { front: null, back: null } })}
+        onEdit={noop}
+        isEditable={true}
+      />
+    );
+    expect(
+      screen.queryByRole('button', { name: /edit front/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it('records nothing when the editor closes without a change', () => {
     const onEdit = vi.fn();
     render(
-      <CardFrame
-        card={buildCard()}
-        cardIndex={0}
-        onEdit={onEdit}
-        isEditable={true}
-      />
+      <CardFrame card={editableCard()} onEdit={onEdit} isEditable={true} />
+    );
+    fireEvent.click(screen.getByRole('button', { name: /edit back/i }));
+    fireEvent.blur(screen.getByRole('textbox', { name: 'Back' }));
+    expect(onEdit).not.toHaveBeenCalled();
+    expect(screen.queryByText('Edited')).not.toBeInTheDocument();
+  });
+
+  it('pressing Escape cancels the edit without calling onEdit', () => {
+    const onEdit = vi.fn();
+    render(
+      <CardFrame card={editableCard()} onEdit={onEdit} isEditable={true} />
     );
     fireEvent.click(screen.getByRole('button', { name: /edit front/i }));
-    const textarea = screen.getByRole('textbox', { name: /front/i });
+    const textarea = screen.getByRole('textbox', { name: 'Front' });
+    fireEvent.change(textarea, { target: { value: 'typed' } });
     fireEvent.keyDown(textarea, { key: 'Escape' });
     expect(
-      screen.queryByRole('textbox', { name: /front/i })
+      screen.queryByRole('textbox', { name: 'Front' })
     ).not.toBeInTheDocument();
     expect(onEdit).not.toHaveBeenCalled();
   });
 
-  it('pressing Enter on the front editor commits the edit', () => {
+  it('pressing Enter records the draft under the field index', () => {
+    const onEdit = vi.fn();
+    render(
+      <CardFrame card={editableCard()} onEdit={onEdit} isEditable={true} />
+    );
+    fireEvent.click(screen.getByRole('button', { name: /edit back/i }));
+    const textarea = screen.getByRole('textbox', { name: 'Back' });
+    fireEvent.change(textarea, { target: { value: 'new back' } });
+    fireEvent.keyDown(textarea, { key: 'Enter' });
+    expect(onEdit).toHaveBeenCalledWith(42, { fields: { 1: 'new back' } });
+  });
+
+  it('drops the field edit when the draft goes back to the stored value', () => {
     const onEdit = vi.fn();
     render(
       <CardFrame
-        card={buildCard()}
-        cardIndex={3}
+        card={editableCard()}
+        editState={{ fields: { 1: 'new back' }, suspended: true }}
         onEdit={onEdit}
         isEditable={true}
       />
     );
-    fireEvent.click(screen.getByRole('button', { name: /edit front/i }));
-    const textarea = screen.getByRole('textbox', { name: /front/i });
-    fireEvent.change(textarea, { target: { value: 'new front text' } });
-    fireEvent.keyDown(textarea, { key: 'Enter' });
-    expect(onEdit).toHaveBeenCalledWith(
-      3,
-      expect.objectContaining({ front: 'new front text' })
+    fireEvent.click(screen.getByRole('button', { name: /edit back/i }));
+    const textarea = screen.getByRole('textbox', { name: 'Back' });
+    expect(textarea).toHaveValue('new back');
+    fireEvent.change(textarea, { target: { value: 'raw back' } });
+    fireEvent.blur(textarea);
+    expect(onEdit).toHaveBeenCalledWith(42, { fields: {}, suspended: true });
+  });
+
+  it('shows an edited field as text with an Edited marker', () => {
+    render(
+      <CardFrame
+        card={editableCard()}
+        editState={{ fields: { 1: '<b>bold</b> answer' } }}
+        onEdit={noop}
+        isEditable={true}
+      />
     );
+    expect(screen.getByText('Edited')).toBeInTheDocument();
+    expect(screen.getByText('<b>bold</b> answer')).toBeInTheDocument();
   });
 });

@@ -20,6 +20,7 @@ import {
   renderTemplate,
   TemplateSpecials,
 } from './renderTemplate';
+import { EditableField, resolveEditableFields } from './resolveEditableFields';
 import { rewriteMediaRefs } from './rewriteMedia';
 import {
   extractTemplateStyles,
@@ -28,6 +29,8 @@ import {
 } from './sanitize';
 import {
   DeckMeta,
+  EditableFieldValue,
+  EditableRenderedCard,
   NormalizedCollection,
   Note,
   NoteType,
@@ -353,6 +356,55 @@ export default class ApkgPreviewService {
       nextCursor: end < all.length ? end : null,
       total: all.length,
     };
+  }
+
+  getEditableCardsPage(
+    parsed: ParsedApkg,
+    cursor: number,
+    pageSize: number,
+    mediaBaseUrl: string,
+    deckId: number | null = null
+  ): {
+    cards: EditableRenderedCard[];
+    nextCursor: number | null;
+    total: number;
+  } {
+    const page = this.getCardsPage(
+      parsed,
+      cursor,
+      pageSize,
+      mediaBaseUrl,
+      deckId
+    );
+    return {
+      ...page,
+      cards: page.cards.map((card) => ({
+        ...card,
+        editable: this.editableFieldValues(parsed, card.id),
+      })),
+    };
+  }
+
+  private editableFieldValues(
+    parsed: ParsedApkg,
+    cardId: number
+  ): EditableRenderedCard['editable'] {
+    const card = parsed.collection.cards.find((c) => c.id === cardId);
+    const note = card ? parsed.collection.notes.get(card.nid) : undefined;
+    const noteType = note
+      ? parsed.collection.noteTypes.get(note.mid)
+      : undefined;
+    if (card == null || note == null || noteType == null) {
+      return { front: null, back: null };
+    }
+    const sides = resolveEditableFields(noteType, card.ord);
+    const withValue = (
+      side: EditableField | null
+    ): EditableFieldValue | null => {
+      if (side == null || side.fieldIndex >= note.fields.length) return null;
+      return { ...side, value: note.fields[side.fieldIndex] };
+    };
+    return { front: withValue(sides.front), back: withValue(sides.back) };
   }
 
   private isImageOcclusionTemplate(qfmt: string): boolean {

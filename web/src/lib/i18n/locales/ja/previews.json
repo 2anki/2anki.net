@@ -123,9 +123,8 @@
     "delete": "削除",
     "showFront": "表面を表示",
     "showBack": "裏面を表示",
-    "frontLabel": "表面",
-    "backLabel": "裏面",
     "editFront": "表面を編集",
-    "editBack": "裏面を編集"
+    "editBack": "裏面を編集",
+    "edited": "編集済み"
   }
 }

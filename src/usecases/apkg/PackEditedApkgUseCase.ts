@@ -6,15 +6,32 @@ import { promisify } from 'node:util';
 import zlib from 'node:zlib';
 import Database from 'better-sqlite3';
 import { createZipArchive } from '../../lib/archiver/createZipArchive';
-import { CardEdit } from '../../services/ApkgPreviewService/applyEditsToCards';
 import {
   ApkgArchive,
   extractApkg,
 } from '../../services/ApkgPreviewService/extractApkg';
+import { parseCollection } from '../../services/ApkgPreviewService/parseCollection';
+import { resolveEditableFields } from '../../services/ApkgPreviewService/resolveEditableFields';
+import {
+  Card,
+  NormalizedCollection,
+} from '../../services/ApkgPreviewService/types';
 
 const zstdCompress = promisify(zlib.zstdCompress);
 
 const NEW_FORMAT_COLLECTION = 'collection.anki21b';
+
+export interface FieldEdit {
+  index: number;
+  value: string;
+}
+
+export interface CardEdit {
+  cardId: number;
+  fields?: FieldEdit[];
+  deleted?: boolean;
+  suspended?: boolean;
+}
 
 export interface PackEditedApkgInput {
   sourceBytes: Buffer;
@@ -22,11 +39,20 @@ export interface PackEditedApkgInput {
   edits: CardEdit[];
 }
 
-export interface PackEditedApkgOutput {
+export interface EditCounts {
+  notesUpdated: number;
+  cardsSuspended: number;
+  cardsDeleted: number;
+  editsRefused: number;
+}
+
+export interface PackEditedApkgOutput extends EditCounts {
   buffer: Buffer;
   filename: string;
   collectionName: string;
 }
+
+const FIELD_SEPARATOR = '\x1f';
 
 function writeTempFile(buffer: Buffer, suffix: string): string {
   const p = path.join(os.tmpdir(), `apkg-edit-${crypto.randomUUID()}${suffix}`);
@@ -34,64 +60,93 @@ function writeTempFile(buffer: Buffer, suffix: string): string {
   return p;
 }
 
-function buildEditedSqlite(
-  collectionBuffer: Buffer,
+function editableFieldIndices(
+  collection: NormalizedCollection,
+  card: Card
+): Set<number> {
+  const note = collection.notes.get(card.nid);
+  const noteType = note ? collection.noteTypes.get(note.mid) : undefined;
+  if (noteType == null) return new Set();
+  const { front, back } = resolveEditableFields(noteType, card.ord);
+  return new Set(
+    [front, back].flatMap((side) => (side ? [side.fieldIndex] : []))
+  );
+}
+
+function applyEdits(
+  db: Database.Database,
+  collection: NormalizedCollection,
   edits: CardEdit[]
-): Buffer {
-  const deletedIndices = new Set<number>();
-  const suspendedIndices = new Set<number>();
-  const textEdits = new Map<number, { front?: string; back?: string }>();
+): EditCounts {
+  const cardsById = new Map(collection.cards.map((card) => [card.id, card]));
+  const counts: EditCounts = {
+    notesUpdated: 0,
+    cardsSuspended: 0,
+    cardsDeleted: 0,
+    editsRefused: 0,
+  };
+  const deletedIds = new Set(
+    edits
+      .filter((edit) => edit.deleted && cardsById.has(edit.cardId))
+      .map((edit) => edit.cardId)
+  );
+  const updatedNoteIds = new Set<number>();
+  const readFields = db.prepare('SELECT flds FROM notes WHERE id = ?');
+  const writeFields = db.prepare('UPDATE notes SET flds = ? WHERE id = ?');
 
   for (const edit of edits) {
-    if (edit.deleted) deletedIndices.add(edit.cardIndex);
-    if (edit.suspended) suspendedIndices.add(edit.cardIndex);
-    if (edit.front != null || edit.back != null) {
-      textEdits.set(edit.cardIndex, { front: edit.front, back: edit.back });
+    const card = cardsById.get(edit.cardId);
+    if (card == null) {
+      counts.editsRefused += 1;
+    } else if (!deletedIds.has(card.id)) {
+      if (edit.suspended) {
+        counts.cardsSuspended += db
+          .prepare('UPDATE cards SET queue = -1 WHERE id = ?')
+          .run(card.id).changes;
+      }
+      const allowed = editableFieldIndices(collection, card);
+      const row = readFields.get(card.nid) as { flds: string } | undefined;
+      if (row != null && edit.fields != null) {
+        const fields = row.flds.split(FIELD_SEPARATOR);
+        for (const field of edit.fields) {
+          if (allowed.has(field.index) && field.index < fields.length) {
+            fields[field.index] = field.value;
+          } else {
+            counts.editsRefused += 1;
+          }
+        }
+        const edited = fields.join(FIELD_SEPARATOR);
+        if (edited !== row.flds) {
+          writeFields.run(edited, card.nid);
+          updatedNoteIds.add(card.nid);
+        }
+      }
     }
   }
 
+  const remove = db.prepare('DELETE FROM cards WHERE id = ?');
+  for (const cardId of deletedIds) {
+    counts.cardsDeleted += remove.run(cardId).changes;
+  }
+  counts.notesUpdated = updatedNoteIds.size;
+  return counts;
+}
+
+function buildEditedSqlite(
+  collectionBuffer: Buffer,
+  edits: CardEdit[]
+): { sqlite: Buffer; counts: EditCounts } {
+  const collection = parseCollection(collectionBuffer);
   const tempPath = writeTempFile(collectionBuffer, '.sqlite');
   try {
     const db = new Database(tempPath);
+    let counts: EditCounts;
     try {
-      const allCards = db
-        .prepare('SELECT id, nid, ord FROM cards ORDER BY id')
-        .all() as Array<{ id: number; nid: number; ord: number }>;
-
-      const cardIdsToDelete: number[] = [];
-
-      for (let i = 0; i < allCards.length; i++) {
-        const card = allCards[i];
-        if (deletedIndices.has(i)) {
-          cardIdsToDelete.push(card.id);
-        }
-        if (suspendedIndices.has(i)) {
-          db.prepare('UPDATE cards SET queue = -1 WHERE id = ?').run(card.id);
-        }
-        const te = textEdits.get(i);
-        if (te) {
-          const note = db
-            .prepare('SELECT flds FROM notes WHERE id = ?')
-            .get(card.nid) as { flds: string } | undefined;
-          if (note) {
-            const fields = note.flds.split('\x1f');
-            if (te.front != null) fields[0] = te.front;
-            if (te.back != null && fields.length > 1) fields[1] = te.back;
-            db.prepare('UPDATE notes SET flds = ? WHERE id = ?').run(
-              fields.join('\x1f'),
-              card.nid
-            );
-          }
-        }
-      }
-
-      for (const cardId of cardIdsToDelete) {
-        db.prepare('DELETE FROM cards WHERE id = ?').run(cardId);
-      }
+      counts = db.transaction(() => applyEdits(db, collection, edits))();
     } finally {
       db.close();
     }
-    return fs.readFileSync(tempPath);
+    return { sqlite: fs.readFileSync(tempPath), counts };
   } finally {
     fs.unlinkSync(tempPath);
   }
@@ -146,13 +201,10 @@ export default class PackEditedApkgUseCase {
     const { sourceBytes, filename, edits } = input;
     const archive = await extractApkg(sourceBytes);
 
-    const editedCollectionBuffer = buildEditedSqlite(
-      archive.collectionBuffer,
-      edits
-    );
+    const edited = buildEditedSqlite(archive.collectionBuffer, edits);
 
     const apkgBuffer = await packApkg(
-      await buildEntries(archive, editedCollectionBuffer)
+      await buildEntries(archive, edited.sqlite)
     );
 
     const baseName = filename.replace(/\.apkg$/i, '');
@@ -160,6 +212,7 @@ export default class PackEditedApkgUseCase {
       buffer: apkgBuffer,
       filename: `${baseName}-edited.apkg`,
       collectionName: archive.collectionName,
+      ...edited.counts,
     };
   }
 }

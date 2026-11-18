@@ -245,3 +245,23 @@
   display: flex;
   flex-direction: column;
 }
+
+.editLabelRow {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.editedMarker {
+  font-size: var(--text-xs);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.editedValue {
+  margin: 0 0 0.5rem;
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

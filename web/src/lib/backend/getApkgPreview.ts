@@ -1,5 +1,11 @@
 import { get } from './api';
 
+export interface ApkgEditableField {
+  fieldIndex: number;
+  fieldName: string;
+  value: string;
+}
+
 export interface ApkgPreviewCard {
   id: number;
   ord: number;
@@ -10,6 +16,10 @@ export interface ApkgPreviewCard {
   css: string;
   front: string;
   back: string;
+  editable?: {
+    front: ApkgEditableField | null;
+    back: ApkgEditableField | null;
+  };
 }
 
 export interface ApkgPreviewBatch {

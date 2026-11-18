@@ -236,18 +236,73 @@ describe('ApkgController.downloadEdited', () => {
     const res = makeSendableRes();
     const req = makeReq({
       params: { key: 'deck.apkg' },
-      body: { edits: [{ cardIndex: 0, deleted: true }] },
+      body: { edits: [{ cardId: 100, deleted: true }] },
     }) as Request;
     await controller.downloadEdited(req, res);
     expect(executeMock).toHaveBeenCalledWith({
       sourceBytes: stored,
       filename: 'deck.apkg',
-      edits: [{ cardIndex: 0, deleted: true }],
+      edits: [{ cardId: 100, deleted: true }],
     });
     expect((res as unknown as Record<string, Mock>).send).toHaveBeenCalledWith(
       Buffer.from('fake-apkg')
     );
     expect(sharedPreviewLimits().coldLoads.inUse).toBe(0);
+  });
+
+  it('refuses the positional edits an older page sends, before reading the deck', async () => {
+    const { controller, downloadService } = makeEditedDownloadController(
+      Buffer.from('x')
+    );
+    const req = makeReq({
+      params: { key: 'deck.apkg' },
+      body: { edits: [{ cardIndex: 0, front: 'edited' }] },
+    }) as Request;
+    const res = makeSendableRes();
+    await controller.downloadEdited(req, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({
+      message:
+        'This preview is out of date. Reload the page and make your edits again.',
+    });
+    expect(downloadService.findStoredKey).not.toHaveBeenCalled();
+    expect(executeMock).not.toHaveBeenCalled();
+  });
+
+  it('refuses an edit with a field value that is not text', async () => {
+    const { controller } = makeEditedDownloadController(Buffer.from('x'));
+    const req = makeReq({
+      params: { key: 'deck.apkg' },
+      body: { edits: [{ cardId: 100, fields: [{ index: 0, value: 7 }] }] },
+    }) as Request;
+    const res = makeSendableRes();
+    await controller.downloadEdited(req, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(executeMock).not.toHaveBeenCalled();
+  });
+
+  it('logs the format and what the download changed', async () => {
+    executeMock.mockResolvedValue({
+      buffer: Buffer.from('fake-apkg'),
+      filename: 'deck-edited.apkg',
+      collectionName: 'collection.anki2',
+      notesUpdated: 2,
+      cardsSuspended: 1,
+      cardsDeleted: 3,
+      editsRefused: 1,
+    });
+    const { controller } = makeEditedDownloadController(Buffer.from('x'));
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const req = makeReq({
+      params: { key: 'deck.apkg' },
+      body: { edits: [] },
+    }) as Request;
+    await controller.downloadEdited(req, makeSendableRes());
+    const logged = infoSpy.mock.calls.map((call) => call[0]);
+    infoSpy.mockRestore();
+    expect(logged).toContain(
+      'APKG edited download packed: collection.anki2, notes updated: 2, cards suspended: 1, cards deleted: 3, edits refused: 1'
+    );
   });
 
   it('gives back its place under the shared limit when the repack fails', async () => {

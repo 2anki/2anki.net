@@ -1,7 +1,9 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import zlib from 'node:zlib';
 import JSZip from 'jszip';
 import Database from 'better-sqlite3';
-import PackEditedApkgUseCase from './PackEditedApkgUseCase';
+import PackEditedApkgUseCase, { CardEdit } from './PackEditedApkgUseCase';
 import {
   extractApkg,
   parseMediaManifest,
@@ -109,7 +111,7 @@ describe('PackEditedApkgUseCase', () => {
     const result = await useCase.execute({
       sourceBytes: apkg,
       filename: 'deck.apkg',
-      edits: [{ cardIndex: 1, deleted: true }],
+      edits: [{ cardId: 101, deleted: true }],
     });
     const archive = await extractApkg(result.buffer);
     const col = parseCollection(archive.collectionBuffer);
@@ -121,7 +123,7 @@ describe('PackEditedApkgUseCase', () => {
     const result = await useCase.execute({
       sourceBytes: apkg,
       filename: 'deck.apkg',
-      edits: [{ cardIndex: 0, front: 'edited front' }],
+      edits: [{ cardId: 100, fields: [{ index: 0, value: 'edited front' }] }],
     });
     const archive = await extractApkg(result.buffer);
     const col = parseCollection(archive.collectionBuffer);
@@ -134,7 +136,7 @@ describe('PackEditedApkgUseCase', () => {
     const result = await useCase.execute({
       sourceBytes: apkg,
       filename: 'deck.apkg',
-      edits: [{ cardIndex: 0, back: 'edited back' }],
+      edits: [{ cardId: 100, fields: [{ index: 1, value: 'edited back' }] }],
     });
     const archive = await extractApkg(result.buffer);
     const col = parseCollection(archive.collectionBuffer);
@@ -150,7 +152,7 @@ describe('PackEditedApkgUseCase', () => {
     const result = await useCase.execute({
       sourceBytes: apkg,
       filename: 'deck.apkg',
-      edits: [{ cardIndex: 0, suspended: true }],
+      edits: [{ cardId: 100, suspended: true }],
     });
     const archive = await extractApkg(result.buffer);
     const col = parseCollection(archive.collectionBuffer);
@@ -246,7 +248,7 @@ describe('PackEditedApkgUseCase with a new-format deck', () => {
     const result = await useCase.execute({
       sourceBytes: input.apkg,
       filename: 'deck.apkg',
-      edits: [{ cardIndex: 0, front: 'edited front' }],
+      edits: [{ cardId: 100, fields: [{ index: 0, value: 'edited front' }] }],
     });
     return { input, output: await readEntries(result.buffer), result };
   }
@@ -365,7 +367,7 @@ describe('PackEditedApkgUseCase with a legacy-format deck', () => {
       const result = await useCase.execute({
         sourceBytes: apkg,
         filename: 'deck.apkg',
-        edits: [{ cardIndex: 0, front: 'edited front' }],
+        edits: [{ cardId: 100, fields: [{ index: 0, value: 'edited front' }] }],
       });
       const output = await readEntries(result.buffer);
       const collection = output.get(collectionName) as Buffer;
@@ -378,4 +380,352 @@ describe('PackEditedApkgUseCase with a legacy-format deck', () => {
       expect(output.get('media')?.toString('utf8')).toBe('{}');
     }
   );
+});
+
+const SEP = String.fromCharCode(0x1f);
+
+interface ModelFixture {
+  id: number;
+  name: string;
+  type: 0 | 1;
+  fields: string[];
+  templates: Array<{ qfmt: string; afmt: string }>;
+}
+
+function n2aModel(id: number, name: string): ModelFixture {
+  const file = path.join(__dirname, '../../templates', `${name}.json`);
+  const template = JSON.parse(readFileSync(file, 'utf8')) as {
+    fields: Array<{ name: string }>;
+    front: string;
+    back: string;
+  };
+  return {
+    id,
+    name,
+    type: 0,
+    fields: template.fields.map((field) => field.name),
+    templates: [{ qfmt: template.front, afmt: template.back }],
+  };
+}
+
+const MODELS: ModelFixture[] = [
+  {
+    id: 1,
+    name: 'Basic',
+    type: 0,
+    fields: ['Front', 'Back'],
+    templates: [
+      { qfmt: '{{Front}}', afmt: '{{FrontSide}}<hr id=answer>{{Back}}' },
+    ],
+  },
+  {
+    id: 2,
+    name: 'Basic (and reversed card)',
+    type: 0,
+    fields: ['Front', 'Back'],
+    templates: [
+      { qfmt: '{{Front}}', afmt: '{{FrontSide}}<hr id=answer>{{Back}}' },
+      { qfmt: '{{Back}}', afmt: '{{FrontSide}}<hr id=answer>{{Front}}' },
+    ],
+  },
+  {
+    id: 3,
+    name: 'Cloze',
+    type: 1,
+    fields: ['Text', 'Back Extra'],
+    templates: [
+      { qfmt: '{{cloze:Text}}', afmt: '{{cloze:Text}}<br>{{Back Extra}}' },
+    ],
+  },
+  {
+    id: 4,
+    name: 'Vocab',
+    type: 0,
+    fields: ['Word', 'Pronunciation', 'Meaning'],
+    templates: [
+      {
+        qfmt: '{{Word}}<br>{{Pronunciation}}',
+        afmt: '{{FrontSide}}<hr id=answer>{{Meaning}}',
+      },
+    ],
+  },
+  n2aModel(5, 'n2a-basic'),
+];
+
+const HTML_FRONT =
+  'Line one<br>Line&nbsp;two <img src="diagram.png"> [sound:say.mp3]';
+const HTML_BACK = '<div>Answer<br/></div>&nbsp;<img src="a b.png">';
+
+const NOTES: Array<{ id: number; mid: number; fields: string[] }> = [
+  { id: 10, mid: 1, fields: ['Q1', 'A1'] },
+  { id: 11, mid: 1, fields: [HTML_FRONT, HTML_BACK] },
+  { id: 20, mid: 2, fields: ['Capital of Norway', 'Oslo'] },
+  { id: 30, mid: 3, fields: ['{{c1::Oslo}} is in {{c2::Norway}}', 'extra'] },
+  { id: 40, mid: 4, fields: ['word', 'pron', 'meaning'] },
+  { id: 50, mid: 5, fields: ['front', 'back', 'media'] },
+];
+
+const CARDS: Array<{ id: number; nid: number; did: number; ord: number }> = [
+  { id: 90, nid: 99, did: 2, ord: 0 },
+  { id: 100, nid: 10, did: 2, ord: 0 },
+  { id: 101, nid: 11, did: 3, ord: 0 },
+  { id: 200, nid: 20, did: 2, ord: 0 },
+  { id: 201, nid: 20, did: 2, ord: 1 },
+  { id: 300, nid: 30, did: 2, ord: 0 },
+  { id: 301, nid: 30, did: 2, ord: 1 },
+  { id: 400, nid: 40, did: 2, ord: 0 },
+  { id: 500, nid: 50, did: 3, ord: 0 },
+];
+
+function buildMixedCollection(): Buffer {
+  const db = new Database(buildCollectionBuffer([]));
+  const models = Object.fromEntries(
+    MODELS.map((model) => [
+      String(model.id),
+      {
+        id: model.id,
+        name: model.name,
+        type: model.type,
+        css: '',
+        flds: model.fields.map((name, ord) => ({ name, ord })),
+        tmpls: model.templates.map((t, ord) => ({
+          name: `Card ${ord + 1}`,
+          ord,
+          ...t,
+        })),
+      },
+    ])
+  );
+  const decks = { '2': { id: 2, name: 'A' }, '3': { id: 3, name: 'B' } };
+  db.prepare('UPDATE col SET models = ?, decks = ?').run(
+    JSON.stringify(models),
+    JSON.stringify(decks)
+  );
+  for (const note of NOTES) {
+    db.prepare(
+      "INSERT INTO notes (id, guid, mid, mod, usn, tags, flds, sfld, csum) VALUES (?, ?, ?, 1700000000, 3, ' ', ?, ?, 99)"
+    ).run(
+      note.id,
+      `guid${note.id}`,
+      note.mid,
+      note.fields.join(SEP),
+      note.fields[0]
+    );
+  }
+  for (const card of CARDS) {
+    db.prepare(
+      'INSERT INTO cards (id, nid, did, ord, mod, usn) VALUES (?, ?, ?, ?, 1700000000, 3)'
+    ).run(card.id, card.nid, card.did, card.ord);
+  }
+  const buf = Buffer.from(db.serialize());
+  db.close();
+  return buf;
+}
+
+type Row = Record<string, unknown>;
+
+function readRows(sqlite: Buffer): { notes: Row[]; cards: Row[] } {
+  const db = new Database(sqlite);
+  try {
+    return {
+      notes: db.prepare('SELECT * FROM notes ORDER BY id').all() as Row[],
+      cards: db.prepare('SELECT * FROM cards ORDER BY id').all() as Row[],
+    };
+  } finally {
+    db.close();
+  }
+}
+
+function fieldsOf(rows: { notes: Row[] }, noteId: number): string[] {
+  const note = rows.notes.find((row) => row.id === noteId);
+  return String(note?.flds).split(SEP);
+}
+
+function otherNotes(rows: { notes: Row[] }, noteId: number): Row[] {
+  return rows.notes.filter((row) => row.id !== noteId);
+}
+
+describe('PackEditedApkgUseCase applies edits by card id to stored fields', () => {
+  async function packWith(edits: CardEdit[]) {
+    const input = buildMixedCollection();
+    const zip = new JSZip();
+    zip.file('collection.anki2', input);
+    zip.file('media', '{}');
+    const result = await useCase.execute({
+      sourceBytes: await zip.generateAsync({ type: 'nodebuffer' }),
+      filename: 'deck.apkg',
+      edits,
+    });
+    const archive = await extractApkg(result.buffer);
+    return {
+      before: readRows(input),
+      after: readRows(archive.collectionBuffer),
+      result,
+    };
+  }
+
+  it.each([
+    {
+      noteType: 'Basic, back',
+      cardId: 100,
+      noteId: 10,
+      index: 1,
+      expected: ['Q1', 'edited'],
+    },
+    {
+      noteType: 'Basic and reversed, card 1 front',
+      cardId: 200,
+      noteId: 20,
+      index: 0,
+      expected: ['edited', 'Oslo'],
+    },
+    {
+      noteType: 'Basic and reversed, card 2 front (the Back field)',
+      cardId: 201,
+      noteId: 20,
+      index: 1,
+      expected: ['Capital of Norway', 'edited'],
+    },
+    {
+      noteType: 'Basic and reversed, card 2 back (the Front field)',
+      cardId: 201,
+      noteId: 20,
+      index: 0,
+      expected: ['edited', 'Oslo'],
+    },
+    {
+      noteType: 'Cloze, Text on the second cloze card',
+      cardId: 301,
+      noteId: 30,
+      index: 0,
+      expected: ['edited', 'extra'],
+    },
+    {
+      noteType: 'three fields, the Meaning back',
+      cardId: 400,
+      noteId: 40,
+      index: 2,
+      expected: ['word', 'pron', 'edited'],
+    },
+    {
+      noteType: 'n2a-basic, back',
+      cardId: 500,
+      noteId: 50,
+      index: 1,
+      expected: ['front', 'edited', 'media'],
+    },
+  ])(
+    'writes $noteType into that field only',
+    async ({ cardId, noteId, index, expected }) => {
+      const { before, after, result } = await packWith([
+        { cardId, fields: [{ index, value: 'edited' }] },
+      ]);
+
+      expect(fieldsOf(after, noteId)).toEqual(expected);
+      expect(otherNotes(after, noteId)).toEqual(otherNotes(before, noteId));
+      expect(after.cards).toEqual(before.cards);
+      expect(result).toMatchObject({ notesUpdated: 1, editsRefused: 0 });
+    }
+  );
+
+  it.each([
+    { noteType: 'Cloze Back Extra', cardId: 300, index: 1 },
+    { noteType: 'Vocab Pronunciation', cardId: 400, index: 1 },
+    { noteType: 'n2a-basic MyMedia', cardId: 500, index: 2 },
+    { noteType: 'a field past the end', cardId: 100, index: 5 },
+  ])(
+    'refuses a field the card does not show for editing: $noteType',
+    async ({ cardId, index }) => {
+      const { before, after, result } = await packWith([
+        { cardId, fields: [{ index, value: 'edited' }] },
+      ]);
+
+      expect(after).toEqual(before);
+      expect(result).toMatchObject({ notesUpdated: 0, editsRefused: 1 });
+    }
+  );
+
+  it('edits the card whose id was sent when its deck is not the first', async () => {
+    const { before, after } = await packWith([
+      { cardId: 101, fields: [{ index: 0, value: 'deck B edit' }] },
+    ]);
+
+    expect(fieldsOf(after, 11)).toEqual(['deck B edit', HTML_BACK]);
+    expect(otherNotes(after, 11)).toEqual(otherNotes(before, 11));
+  });
+
+  it('is not shifted by a card that cannot be shown', async () => {
+    const { before, after } = await packWith([
+      { cardId: 100, fields: [{ index: 0, value: 'first shown card' }] },
+    ]);
+
+    expect(fieldsOf(after, 10)).toEqual(['first shown card', 'A1']);
+    expect(after.cards).toEqual(before.cards);
+  });
+
+  it('writes nothing when the value equals the stored field', async () => {
+    const { before, after, result } = await packWith([
+      {
+        cardId: 101,
+        fields: [
+          { index: 0, value: HTML_FRONT },
+          { index: 1, value: HTML_BACK },
+        ],
+      },
+    ]);
+
+    expect(after).toEqual(before);
+    expect(result.notesUpdated).toBe(0);
+  });
+
+  it('keeps HTML, spaces, images and sounds byte for byte in a field it did not edit', async () => {
+    const { after } = await packWith([
+      { cardId: 101, fields: [{ index: 1, value: 'new back' }] },
+    ]);
+
+    expect(Buffer.from(fieldsOf(after, 11)[0])).toEqual(
+      Buffer.from(HTML_FRONT)
+    );
+  });
+
+  it('leaves the note alone when the same card is also deleted', async () => {
+    const { before, after, result } = await packWith([
+      { cardId: 100, fields: [{ index: 1, value: 'edited' }], deleted: true },
+    ]);
+
+    expect(after.notes).toEqual(before.notes);
+    expect(after.cards.map((card) => card.id)).not.toContain(100);
+    expect(result).toMatchObject({ notesUpdated: 0, cardsDeleted: 1 });
+  });
+
+  it('leaves the note alone when a separate edit deletes the card', async () => {
+    const { before, after } = await packWith([
+      { cardId: 100, fields: [{ index: 1, value: 'edited' }] },
+      { cardId: 100, deleted: true },
+    ]);
+
+    expect(after.notes).toEqual(before.notes);
+  });
+
+  it('skips an unknown card id and still packs the rest', async () => {
+    const { before, after, result } = await packWith([
+      { cardId: 123456, fields: [{ index: 0, value: 'nowhere' }] },
+      { cardId: 100, fields: [{ index: 1, value: 'edited' }] },
+    ]);
+
+    expect(fieldsOf(after, 10)).toEqual(['Q1', 'edited']);
+    expect(otherNotes(after, 10)).toEqual(otherNotes(before, 10));
+    expect(result).toMatchObject({ notesUpdated: 1, editsRefused: 1 });
+  });
+
+  it('suspends the card whose id was sent', async () => {
+    const { after, result } = await packWith([
+      { cardId: 500, suspended: true },
+    ]);
+
+    expect(
+      after.cards.filter((card) => card.queue === -1).map((card) => card.id)
+    ).toEqual([500]);
+    expect(result.cardsSuspended).toBe(1);
+  });
 });

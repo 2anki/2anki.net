@@ -194,14 +194,22 @@ const ApkgRouter = () => {
    *                 type: array
    *                 items:
    *                   type: object
-   *                   required: [cardIndex]
+   *                   required: [cardId]
    *                   properties:
-   *                     cardIndex:
+   *                     cardId:
    *                       type: integer
-   *                     front:
-   *                       type: string
-   *                     back:
-   *                       type: string
+   *                     fields:
+   *                       type: array
+   *                       maxItems: 2
+   *                       description: Stored field values to write. The index must be a field the card's template shows for editing (see `editable` on /cards).
+   *                       items:
+   *                         type: object
+   *                         required: [index, value]
+   *                         properties:
+   *                           index:
+   *                             type: integer
+   *                           value:
+   *                             type: string
    *                     deleted:
    *                       type: boolean
    *                     suspended:

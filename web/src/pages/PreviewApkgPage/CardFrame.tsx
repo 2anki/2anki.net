@@ -1,17 +1,97 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ApkgPreviewCard } from '../../lib/backend/getApkgPreview';
-import { CardEditState } from './cardEditTypes';
+import {
+  ApkgEditableField,
+  ApkgPreviewCard,
+} from '../../lib/backend/getApkgPreview';
+import { CardEditState, withFieldDraft } from './cardEditTypes';
 import { fetchMediaAsDataUrl, inlineApkgMedia } from './inlineMedia';
 import { useTheme } from '../../lib/hooks/useTheme';
 import styles from './PreviewApkgPage.module.css';
 
 interface CardFrameProps {
   card: ApkgPreviewCard;
-  cardIndex?: number;
   editState?: CardEditState;
-  onEdit?: (index: number, state: CardEditState) => void;
+  onEdit?: (cardId: number, state: CardEditState) => void;
   isEditable?: boolean;
+}
+
+interface FieldEditorProps {
+  cardId: number;
+  side: 'front' | 'back';
+  field: ApkgEditableField;
+  editedValue: string | undefined;
+  onCommit: (draft: string) => void;
+}
+
+function FieldEditor({
+  cardId,
+  side,
+  field,
+  editedValue,
+  onCommit,
+}: Readonly<FieldEditorProps>) {
+  const { t } = useTranslation('previews');
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const inputId = `${side}-${cardId}`;
+
+  function commit() {
+    onCommit(draft);
+    setEditing(false);
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      commit();
+    }
+    if (e.key === 'Escape') {
+      setEditing(false);
+    }
+  }
+
+  return (
+    <div className={styles.editFieldGroup}>
+      <div className={styles.editLabelRow}>
+        <label className={styles.editLabel} htmlFor={inputId}>
+          {field.fieldName}
+        </label>
+        {editedValue != null && (
+          <span className={styles.editedMarker}>{t('card.edited')}</span>
+        )}
+      </div>
+      {editing ? (
+        <textarea
+          id={inputId}
+          className={styles.editableField}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onBlur={commit}
+          autoFocus
+        />
+      ) : (
+        <>
+          {editedValue != null && (
+            <p className={styles.editedValue} data-hj-suppress>
+              {editedValue}
+            </p>
+          )}
+          <button
+            type="button"
+            className={styles.iconButton}
+            onClick={() => {
+              setDraft(editedValue ?? field.value);
+              setEditing(true);
+            }}
+          >
+            {side === 'front' ? t('card.editFront') : t('card.editBack')}
+          </button>
+        </>
+      )}
+    </div>
+  );
 }
 
 const mediaCache = new Map<string, string | null>();
@@ -130,7 +210,6 @@ const DEFAULT_FRAME_HEIGHT = 320;
 
 export function CardFrame({
   card,
-  cardIndex,
   editState,
   onEdit,
   isEditable,
@@ -138,10 +217,6 @@ export function CardFrame({
   const { t } = useTranslation('previews');
   const [showBack, setShowBack] = useState(false);
   const [frameHeight, setFrameHeight] = useState(DEFAULT_FRAME_HEIGHT);
-  const [editingFront, setEditingFront] = useState(false);
-  const [editingBack, setEditingBack] = useState(false);
-  const [draftFront, setDraftFront] = useState('');
-  const [draftBack, setDraftBack] = useState('');
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // Each document gets a freshly mounted frame: Chrome leaves a sandboxed
@@ -157,13 +232,15 @@ export function CardFrame({
 
   const isDeleted = editState?.deleted ?? false;
   const isSuspended = editState?.suspended ?? false;
-  const effectiveFront = editState?.front ?? card.front;
-  const effectiveBack = editState?.back ?? card.back;
+  const editableSides = (['front', 'back'] as const).flatMap((side) => {
+    const field = card.editable?.[side];
+    return field ? [{ side, field }] : [];
+  });
 
   useEffect(() => {
     let cancelled = false;
     const cardId = String(card.id);
-    const html = showBack ? effectiveBack : effectiveFront;
+    const html = showBack ? card.back : card.front;
     inlineApkgMedia(html, fetchMediaAsDataUrl, mediaCache).then((inlined) => {
       if (cancelled) return;
       const srcDoc = buildSrcDoc(inlined, card.css, cardId, isDark);
@@ -172,7 +249,7 @@ export function CardFrame({
     return () => {
       cancelled = true;
     };
-  }, [card, showBack, effectiveFront, effectiveBack, isDark]);
+  }, [card, showBack, isDark]);
 
   useEffect(() => {
     setFrameHeight(DEFAULT_FRAME_HEIGHT);
@@ -196,50 +273,21 @@ export function CardFrame({
     return () => window.removeEventListener('message', handleMessage);
   }, [card.id]);
 
-  function commitFrontEdit() {
-    if (onEdit != null && cardIndex != null) {
-      onEdit(cardIndex, { ...editState, front: draftFront });
-    }
-    setEditingFront(false);
-  }
-
-  function commitBackEdit() {
-    if (onEdit != null && cardIndex != null) {
-      onEdit(cardIndex, { ...editState, back: draftBack });
-    }
-    setEditingBack(false);
-  }
-
-  function handleFrontKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      commitFrontEdit();
-    }
-    if (e.key === 'Escape') {
-      setEditingFront(false);
-    }
-  }
-
-  function handleBackKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      commitBackEdit();
-    }
-    if (e.key === 'Escape') {
-      setEditingBack(false);
-    }
+  function commitField(field: ApkgEditableField, draft: string) {
+    const current = editState?.fields?.[field.fieldIndex] ?? field.value;
+    if (onEdit == null || draft === current) return;
+    onEdit(
+      card.id,
+      withFieldDraft(editState, field.fieldIndex, field.value, draft)
+    );
   }
 
   function toggleDelete() {
-    if (onEdit != null && cardIndex != null) {
-      onEdit(cardIndex, { ...editState, deleted: !isDeleted });
-    }
+    onEdit?.(card.id, { ...editState, deleted: !isDeleted });
   }
 
   function toggleSuspend() {
-    if (onEdit != null && cardIndex != null) {
-      onEdit(cardIndex, { ...editState, suspended: !isSuspended });
-    }
+    onEdit?.(card.id, { ...editState, suspended: !isSuspended });
   }
 
   return (
@@ -313,62 +361,18 @@ export function CardFrame({
           style={{ height: frameHeight }}
         />
       )}
-      {isEditable && (
+      {isEditable && editableSides.length > 0 && (
         <div className={styles.editPanel}>
-          <div className={styles.editFieldGroup}>
-            <label className={styles.editLabel} htmlFor={`front-${card.id}`}>
-              {t('card.frontLabel')}
-            </label>
-            {editingFront ? (
-              <textarea
-                id={`front-${card.id}`}
-                className={styles.editableField}
-                value={draftFront}
-                onChange={(e) => setDraftFront(e.target.value)}
-                onKeyDown={handleFrontKeyDown}
-                onBlur={commitFrontEdit}
-                autoFocus
-              />
-            ) : (
-              <button
-                type="button"
-                className={styles.iconButton}
-                onClick={() => {
-                  setDraftFront(editState?.front ?? card.front);
-                  setEditingFront(true);
-                }}
-              >
-                {t('card.editFront')}
-              </button>
-            )}
-          </div>
-          <div className={styles.editFieldGroup}>
-            <label className={styles.editLabel} htmlFor={`back-${card.id}`}>
-              {t('card.backLabel')}
-            </label>
-            {editingBack ? (
-              <textarea
-                id={`back-${card.id}`}
-                className={styles.editableField}
-                value={draftBack}
-                onChange={(e) => setDraftBack(e.target.value)}
-                onKeyDown={handleBackKeyDown}
-                onBlur={commitBackEdit}
-                autoFocus
-              />
-            ) : (
-              <button
-                type="button"
-                className={styles.iconButton}
-                onClick={() => {
-                  setDraftBack(editState?.back ?? card.back);
-                  setEditingBack(true);
-                }}
-              >
-                {t('card.editBack')}
-              </button>
-            )}
-          </div>
+          {editableSides.map(({ side, field }) => (
+            <FieldEditor
+              key={side}
+              cardId={card.id}
+              side={side}
+              field={field}
+              editedValue={editState?.fields?.[field.fieldIndex]}
+              onCommit={(draft) => commitField(field, draft)}
+            />
+          ))}
         </div>
       )}
     </section>
