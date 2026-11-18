@@ -42,6 +42,7 @@ export interface EditCounts {
   notesUpdated: number;
   cardsDeleted: number;
   editsRefused: number;
+  notesRemoved: number;
 }
 
 export interface PackEditedApkgOutput extends EditCounts {
@@ -56,6 +57,10 @@ const CHANGED_LOCALLY_USN = -1;
 
 export function hasFieldBreakingCharacter(value: string): boolean {
   return value.includes(FIELD_SEPARATOR) || value.includes(NUL);
+}
+
+function newerThanStored(storedMod: number, editedAtSecs: number): number {
+  return Math.max(editedAtSecs, storedMod + 1);
 }
 
 function writeTempFile(buffer: Buffer, suffix: string): string {
@@ -88,6 +93,7 @@ function applyEdits(
     notesUpdated: 0,
     cardsDeleted: 0,
     editsRefused: 0,
+    notesRemoved: 0,
   };
   const deletedIds = new Set(
     edits
@@ -126,18 +132,37 @@ function applyEdits(
     }
   }
 
+  const readStoredMod = db.prepare('SELECT mod FROM notes WHERE id = ?');
   const writeNote = db.prepare(
     'UPDATE notes SET flds = ?, mod = ?, usn = ? WHERE id = ?'
   );
   for (const [noteId, flds] of editedFields) {
     if (flds !== storedFields.get(noteId)) {
-      writeNote.run(flds, editedAtSecs, CHANGED_LOCALLY_USN, noteId);
+      const { mod } = readStoredMod.get(noteId) as { mod: number };
+      writeNote.run(
+        flds,
+        newerThanStored(mod, editedAtSecs),
+        CHANGED_LOCALLY_USN,
+        noteId
+      );
       counts.notesUpdated += 1;
     }
   }
   const remove = db.prepare('DELETE FROM cards WHERE id = ?');
   for (const cardId of deletedIds) {
     counts.cardsDeleted += remove.run(cardId).changes;
+  }
+  const removeNoteLeftWithoutCards = db.prepare(
+    'DELETE FROM notes WHERE id = ? AND NOT EXISTS (SELECT 1 FROM cards WHERE nid = notes.id)'
+  );
+  const notesOfDeletedCards = new Set(
+    [...deletedIds].flatMap((cardId) => {
+      const card = cardsById.get(cardId);
+      return card ? [card.nid] : [];
+    })
+  );
+  for (const noteId of notesOfDeletedCards) {
+    counts.notesRemoved += removeNoteLeftWithoutCards.run(noteId).changes;
   }
   return counts;
 }

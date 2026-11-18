@@ -395,6 +395,18 @@ describe('CardFrame edit controls', () => {
     ).toBeInTheDocument();
   });
 
+  it('describes Delete as leaving the card out of the download, not out of Anki', () => {
+    render(<CardFrame card={editableCard()} onEdit={noop} isEditable={true} />);
+    const deleteButton = screen.getByRole('button', { name: 'Delete' });
+    expect(deleteButton).toHaveAccessibleDescription(
+      'Leave this card out of the download. A card already in your Anki collection stays there.'
+    );
+    expect(deleteButton).toHaveAttribute(
+      'title',
+      'Leave this card out of the download. A card already in your Anki collection stays there.'
+    );
+  });
+
   it('labels each editor with the field it changes', () => {
     render(
       <CardFrame

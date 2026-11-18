@@ -511,12 +511,22 @@ function buildMixedCollection(): Buffer {
 
 type Row = Record<string, unknown>;
 
-function readRows(sqlite: Buffer): { notes: Row[]; cards: Row[] } {
+function readRows(sqlite: Buffer): {
+  notes: Row[];
+  cards: Row[];
+  graves?: Row[];
+} {
   const db = new Database(sqlite);
   try {
+    const hasGraves = db
+      .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?")
+      .get('graves');
     return {
       notes: db.prepare('SELECT * FROM notes ORDER BY id').all() as Row[],
       cards: db.prepare('SELECT * FROM cards ORDER BY id').all() as Row[],
+      ...(hasGraves == null
+        ? {}
+        : { graves: db.prepare('SELECT * FROM graves').all() as Row[] }),
     };
   } finally {
     db.close();
@@ -694,18 +704,18 @@ describe('PackEditedApkgUseCase applies edits by card id to stored fields', () =
 
   it('leaves the note alone when the same card is also deleted', async () => {
     const { before, after, result } = await packWith([
-      { cardId: 100, fields: [{ index: 1, value: 'edited' }], deleted: true },
+      { cardId: 200, fields: [{ index: 1, value: 'edited' }], deleted: true },
     ]);
 
     expect(after.notes).toEqual(before.notes);
-    expect(after.cards.map((card) => card.id)).not.toContain(100);
+    expect(after.cards.map((card) => card.id)).not.toContain(200);
     expect(result).toMatchObject({ notesUpdated: 0, cardsDeleted: 1 });
   });
 
   it('leaves the note alone when a separate edit deletes the card', async () => {
     const { before, after } = await packWith([
-      { cardId: 100, fields: [{ index: 1, value: 'edited' }] },
-      { cardId: 100, deleted: true },
+      { cardId: 200, fields: [{ index: 1, value: 'edited' }] },
+      { cardId: 200, deleted: true },
     ]);
 
     expect(after.notes).toEqual(before.notes);
@@ -947,6 +957,25 @@ function withoutId(rows: Row[], id: number): Row[] {
   return rows.filter((row) => row.id !== id);
 }
 
+function adjusted(
+  sqlite: Buffer,
+  adjust: (db: Database.Database) => void
+): Buffer {
+  const db = new Database(sqlite);
+  try {
+    adjust(db);
+    return Buffer.from(db.serialize());
+  } finally {
+    db.close();
+  }
+}
+
+function addNoteWithoutCards(db: Database.Database): void {
+  db.prepare(
+    "INSERT INTO notes (id, guid, mid, mod, usn, tags, flds, sfld) VALUES (14, 'guid14', 1, ?, ?, '', ?, 'Q5')"
+  ).run(EXPORTED_AT_SECS, EXPORTED_USN, ['Q5', 'A5'].join(SEP));
+}
+
 describe.each([
   {
     format: 'a legacy collection.anki2',
@@ -963,8 +992,11 @@ describe.each([
   ({ collectionName, build }) => {
     const clockedUseCase = new PackEditedApkgUseCase(() => EDITED_AT_MS);
 
-    async function packWith(edits: CardEdit[]) {
-      const input = build();
+    async function packWith(
+      edits: CardEdit[],
+      adjust: (db: Database.Database) => void = () => {}
+    ) {
+      const input = adjusted(build(), adjust);
       const result = await clockedUseCase.execute({
         sourceBytes: await packageCollection(collectionName, input),
         filename: 'deck.apkg',
@@ -1081,14 +1113,14 @@ describe.each([
     it('leaves the note of a deleted card unstamped', async () => {
       const { before, after } = await packWith([
         {
-          cardId: 102,
+          cardId: 104,
           fields: [{ index: 0, value: 'edited' }],
           deleted: true,
         },
       ]);
 
       expect(after.notes).toEqual(before.notes);
-      expect(after.cards).toEqual(withoutId(before.cards, 102));
+      expect(after.cards).toEqual(withoutId(before.cards, 104));
     });
 
     it('stamps every note edited in one download', async () => {
@@ -1118,5 +1150,97 @@ describe.each([
         parseCollection(archive.collectionBuffer).notes.get(11)?.fields
       ).toEqual(['edited front', 'A2']);
     });
+
+    it('removes a note whose every card was deleted and keeps every other row as it was', async () => {
+      const { before, after, result } = await packWith([
+        { cardId: 100, deleted: true },
+        { cardId: 104, deleted: true },
+      ]);
+
+      expect(after.notes).toEqual(withoutId(before.notes, 10));
+      expect(after.cards).toEqual(withoutId(withoutId(before.cards, 100), 104));
+      expect(result).toMatchObject({ notesRemoved: 1, cardsDeleted: 2 });
+    });
+
+    it('keeps a note when one of its two cards is deleted', async () => {
+      const { before, after, result } = await packWith([
+        { cardId: 104, deleted: true },
+      ]);
+
+      expect(after.notes).toEqual(before.notes);
+      expect(result).toMatchObject({ notesRemoved: 0, cardsDeleted: 1 });
+    });
+
+    it('keeps a note that already had no cards', async () => {
+      const { before, after, result } = await packWith(
+        [{ cardId: 101, deleted: true }],
+        addNoteWithoutCards
+      );
+
+      expect(before.notes.map((note) => note.id)).toContain(14);
+      expect(after.notes).toEqual(withoutId(before.notes, 11));
+      expect(result).toMatchObject({ notesRemoved: 1 });
+    });
+
+    it('removes a note whose deleted cards were also edited, stamping nothing', async () => {
+      const { before, after, result } = await packWith([
+        { cardId: 100, fields: [{ index: 0, value: 'edited' }] },
+        { cardId: 104, fields: [{ index: 1, value: 'edited' }], deleted: true },
+        { cardId: 100, deleted: true },
+      ]);
+
+      expect(after.notes).toEqual(withoutId(before.notes, 10));
+      expect(result).toMatchObject({ notesUpdated: 0, notesRemoved: 1 });
+    });
+
+    it('writes no grave for a removed note', async () => {
+      const { after } = await packWith([{ cardId: 101, deleted: true }], (db) =>
+        db.exec(
+          'CREATE TABLE graves (usn INTEGER NOT NULL, oid INTEGER NOT NULL, type INTEGER NOT NULL)'
+        )
+      );
+
+      expect(after.graves).toEqual([]);
+    });
+
+    it.each([
+      {
+        label: 'before the edit time',
+        storedMod: EDITED_AT_SECS - 100,
+        stamped: EDITED_AT_SECS,
+      },
+      {
+        label: 'equal to the edit time',
+        storedMod: EDITED_AT_SECS,
+        stamped: EDITED_AT_SECS + 1,
+      },
+      {
+        label: 'ahead of the edit time',
+        storedMod: EDITED_AT_SECS + 500,
+        stamped: EDITED_AT_SECS + 501,
+      },
+      {
+        label: 'in milliseconds',
+        storedMod: EDITED_AT_MS,
+        stamped: EDITED_AT_MS + 1,
+      },
+    ])(
+      'stamps a note whose stored mod is $label at the later of the edit time and that mod plus one',
+      async ({ storedMod, stamped }) => {
+        const { before, after } = await packWith(
+          [{ cardId: 101, fields: [{ index: 0, value: 'edited front' }] }],
+          (db) => db.prepare('UPDATE notes SET mod = ?').run(storedMod)
+        );
+
+        expect(rowOf(after.notes, 11)).toEqual({
+          ...rowOf(before.notes, 11),
+          flds: ['edited front', 'A2'].join(SEP),
+          mod: stamped,
+          usn: -1,
+        });
+        expect(withoutId(after.notes, 11)).toEqual(withoutId(before.notes, 11));
+        expect(after.cards).toEqual(before.cards);
+      }
+    );
   }
 );

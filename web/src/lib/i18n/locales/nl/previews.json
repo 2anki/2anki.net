@@ -126,7 +126,7 @@
     "front": "voorkant",
     "back": "achterkant",
     "restoreCard": "Kaart herstellen",
-    "deleteCard": "Kaart verwijderen",
+    "deleteCard": "Laat deze kaart weg uit de download. Een kaart die al in je Anki-collectie staat, blijft daar.",
     "restore": "Herstellen",
     "delete": "Verwijderen",
     "showFront": "Voorkant tonen",

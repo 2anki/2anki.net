@@ -115,7 +115,7 @@
     "front": "表面",
     "back": "裏面",
     "restoreCard": "カードを復元",
-    "deleteCard": "カードを削除",
+    "deleteCard": "このカードをダウンロードに含めません。Ankiのコレクションにすでにあるカードはそのまま残ります。",
     "restore": "復元",
     "delete": "削除",
     "showFront": "表面を表示",

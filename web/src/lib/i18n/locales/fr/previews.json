@@ -126,7 +126,7 @@
     "front": "recto",
     "back": "verso",
     "restoreCard": "Restaurer la carte",
-    "deleteCard": "Supprimer la carte",
+    "deleteCard": "Retire cette carte du téléchargement. Une carte déjà dans ta collection Anki y reste.",
     "restore": "Restaurer",
     "delete": "Supprimer",
     "showFront": "Afficher le recto",
