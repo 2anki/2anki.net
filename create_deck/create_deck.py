@@ -11,6 +11,7 @@ import html
 import json
 import sys
 import os
+from collections import deque
 
 from helpers.cards import get_safe_value
 from helpers.get_model import get_custom_model, get_model, resolve_tts_langs
@@ -49,7 +50,17 @@ def _clamp_output_path(path: str) -> str:
     return os.path.join(directory, new_basename)
 
 
-def _content_guid(deck_name, guid_value, card_type, back, seen):
+def _pinned_backs_by_guid(data):
+    pinned = {}
+    for deck in data:
+        for card in deck.get("cards", []):
+            explicit_guid = card.get("guid")
+            if explicit_guid:
+                pinned.setdefault(explicit_guid, set()).add(card.get("back", ""))
+    return pinned
+
+
+def _content_guid(key, back, seen, pinned_backs):
     """
     Two cards with the same front + type collapse onto one Anki note by
     default (the content-formula guid ignores the back). When their backs
@@ -65,20 +76,45 @@ def _content_guid(deck_name, guid_value, card_type, back, seen):
     A card whose back exactly repeats one already seen in this group reuses
     that back's guid, deliberately: Anki's own duplicate handling is the
     right outcome when the content is truly identical, and nothing is lost.
-    `seen` is one dict per build_one_deck call, so ordinals are assigned in
-    the same order on every re-run of the same input, keeping guids stable.
+    `key` is the (deck name, guid_value, card type) group. `seen` is one dict
+    per build_one_deck call, so ordinals are assigned in the same order on
+    every re-run of the same input, keeping guids stable.
+    A guid the ledger pinned on another card in this build is taken unless
+    that card has the same back (#5408): a new block sharing a pinned card's
+    front would otherwise compute the pinned guid and merge into it in Anki.
+    The card gets the lowest ordinal that is neither given in this group nor
+    pinned to other backs. `next` is the lowest ordinal neither given nor
+    pinned; it only moves up, because a given ordinal stays given. Pinned
+    ordinals below it wait, per back, for a card with one of their backs.
     """
-    key = (deck_name, guid_value, card_type)
-    by_back = seen.setdefault(key, {})
+    group = seen.setdefault(key, {"by_back": {}, "given": set(), "next": 1, "waiting": {}})
+    by_back = group["by_back"]
     if back in by_back:
         return by_back[back]
-    ordinal = len(by_back) + 1
-    guid = (
-        guid_for(deck_name, guid_value, card_type)
-        if ordinal == 1
-        else guid_for(deck_name, guid_value, card_type, ordinal)
-    )
+    guid = _lowest_unpinned_guid(key, group, pinned_backs)
+    waiting = group["waiting"].get(back)
+    while waiting and waiting[0] in group["given"]:
+        waiting.popleft()
+    if waiting:
+        guid = waiting.popleft()
+    else:
+        group["next"] += 1
+    group["given"].add(guid)
     by_back[back] = guid
+    return guid
+
+
+def _ordinal_guid(key, ordinal):
+    return guid_for(*key) if ordinal == 1 else guid_for(*key, ordinal)
+
+
+def _lowest_unpinned_guid(key, group, pinned_backs):
+    guid = _ordinal_guid(key, group["next"])
+    while guid in pinned_backs:
+        for pinned_back in pinned_backs[guid]:
+            group["waiting"].setdefault(pinned_back, deque()).append(guid)
+        group["next"] += 1
+        guid = _ordinal_guid(key, group["next"])
     return guid
 
 
@@ -154,6 +190,8 @@ def build_one_deck(data_file, template_dir):
 
     if len(data) == 0:
         return None
+
+    pinned_backs = _pinned_backs_by_guid(data)
 
     mt = data[0].get("settings", {})
     STYLING = data[0].get('style', "") or ""
@@ -333,7 +371,9 @@ def build_one_deck(data_file, template_dir):
                 # keyed on.
                 if card.get("frontEscaped", False):
                     guid_value = html.unescape(guid_value)
-                guid = _content_guid(deck["name"], guid_value, card_type, back, content_guid_seen)
+                guid = _content_guid(
+                    (deck["name"], guid_value, card_type), back, content_guid_seen, pinned_backs
+                )
             my_note = N2ANote(model, fields=fields, tags=tags,
                               guid=guid, mod=card.get("mod"))
             guid_records.append({"notionId": notion_id, "guid": guid})

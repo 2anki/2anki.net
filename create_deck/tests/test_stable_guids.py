@@ -2,6 +2,7 @@ import json
 import os
 import sys
 import tempfile
+import time
 import zipfile
 from pathlib import Path
 
@@ -439,6 +440,25 @@ class TestContentGuidCollisionForking:
         assert guids[0] == guids[2]
         assert guids[0] != guids[1]
 
+    def test_distinct_backs_take_ordinals_one_two_three_by_value(self):
+        from helpers.guid import guid_for
+
+        deck_info = _deck_info_cards(
+            "Deck",
+            [
+                ("What is H2O?", "Water"),
+                ("What is H2O?", "Hydrogen peroxide"),
+                ("What is H2O?", "Ice"),
+            ],
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            guids = _build_and_get_guids_in_order(deck_info, tmpdir, "ordinals")
+        assert guids == [
+            guid_for("Deck", "What is H2O?", "basic"),
+            guid_for("Deck", "What is H2O?", "basic", 2),
+            guid_for("Deck", "What is H2O?", "basic", 3),
+        ]
+
     def test_forked_guid_is_document_order_deterministic_across_runs(self):
         deck_info = _deck_info_cards(
             "Deck",
@@ -520,3 +540,306 @@ class TestContentGuidCollisionForking:
         with tempfile.TemporaryDirectory() as tmpdir:
             guids = _build_and_get_guids_in_order(deck_info, tmpdir, "lookalike")
         assert len(set(guids)) == 3
+
+
+def _upload_deck(deck_name: str, cards: list) -> list:
+    return [
+        {
+            "id": abs(hash(deck_name)) % (10**10),
+            "name": deck_name,
+            "useContentGuid": True,
+            "cards": [
+                {
+                    "name": card["front"],
+                    "back": card["back"],
+                    "number": index,
+                    "tags": [],
+                    "media": [],
+                    "cloze": card.get("cloze", False),
+                    "enableInput": False,
+                    "notionId": card["block"],
+                    **({"guid": card["guid"]} if "guid" in card else {}),
+                }
+                for index, card in enumerate(cards)
+            ],
+            "settings": {},
+        }
+    ]
+
+
+def _build_and_get_guids_by_block(deck_info: list, tmpdir: str, suffix: str) -> dict:
+    run_dir = os.path.join(tmpdir, suffix)
+    os.makedirs(run_dir)
+    _build_and_get_guids(deck_info, run_dir, suffix)
+    records = json.loads(Path(run_dir, "guids.json").read_text())
+    return {record["notionId"]: record["guid"] for record in records}
+
+
+class TestContentGuidAvoidsLedgerGuids:
+    """A card pinned from the owner's ledger (#5408) never goes through the
+    content formula, so a new block with the same front used to compute the
+    pinned card's exact guid and merge into it in Anki, even with a different
+    back. A computed guid now steps past a pinned guid whose back differs.
+    """
+
+    DECK = "Deck"
+    FRONT = "What is H2O?"
+
+    def _pinned(self, back="Water", ordinal=1, block="block-a"):
+        from helpers.guid import guid_for
+
+        args = (self.DECK, self.FRONT, "basic") + ((ordinal,) if ordinal > 1 else ())
+        return {"front": self.FRONT, "back": back, "block": block, "guid": guid_for(*args)}
+
+    def _new(self, back, block):
+        return {"front": self.FRONT, "back": back, "block": block}
+
+    def test_new_card_after_a_pinned_one_takes_the_next_ordinal(self):
+        from helpers.guid import guid_for
+
+        deck_info = _upload_deck(
+            self.DECK, [self._pinned(), self._new("Hydrogen peroxide", "block-b")]
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            guids = _build_and_get_guids_by_block(deck_info, tmpdir, "after")
+        assert guids == {
+            "block-a": guid_for(self.DECK, self.FRONT, "basic"),
+            "block-b": guid_for(self.DECK, self.FRONT, "basic", 2),
+        }
+
+    def test_new_card_before_a_pinned_one_takes_the_next_ordinal(self):
+        from helpers.guid import guid_for
+
+        deck_info = _upload_deck(
+            self.DECK, [self._new("Hydrogen peroxide", "block-b"), self._pinned()]
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            guids = _build_and_get_guids_by_block(deck_info, tmpdir, "before")
+        assert guids == {
+            "block-a": guid_for(self.DECK, self.FRONT, "basic"),
+            "block-b": guid_for(self.DECK, self.FRONT, "basic", 2),
+        }
+
+    def test_new_card_with_the_pinned_back_still_collapses_onto_it(self):
+        from helpers.guid import guid_for
+
+        deck_info = _upload_deck(self.DECK, [self._pinned(), self._new("Water", "block-b")])
+        with tempfile.TemporaryDirectory() as tmpdir:
+            guids = _build_and_get_guids_by_block(deck_info, tmpdir, "collapse")
+        assert guids == {
+            "block-a": guid_for(self.DECK, self.FRONT, "basic"),
+            "block-b": guid_for(self.DECK, self.FRONT, "basic"),
+        }
+
+    def test_two_new_cards_beside_a_pinned_one_each_get_their_own_guid(self):
+        from helpers.guid import guid_for
+
+        deck_info = _upload_deck(
+            self.DECK,
+            [
+                self._new("Hydrogen peroxide", "block-b"),
+                self._pinned(),
+                self._new("Ice", "block-c"),
+            ],
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            guids = _build_and_get_guids_by_block(deck_info, tmpdir, "two-new")
+        assert guids == {
+            "block-a": guid_for(self.DECK, self.FRONT, "basic"),
+            "block-b": guid_for(self.DECK, self.FRONT, "basic", 2),
+            "block-c": guid_for(self.DECK, self.FRONT, "basic", 3),
+        }
+
+    def test_new_card_skips_every_pinned_ordinal_already_taken(self):
+        from helpers.guid import guid_for
+
+        deck_info = _upload_deck(
+            self.DECK,
+            [
+                self._pinned(),
+                self._pinned(back="Ice", ordinal=2, block="block-c"),
+                self._new("Hydrogen peroxide", "block-b"),
+            ],
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            guids = _build_and_get_guids_by_block(deck_info, tmpdir, "taken")
+        assert guids["block-b"] == guid_for(self.DECK, self.FRONT, "basic", 3)
+
+    def test_new_card_rejoins_a_pinned_fork_with_its_back(self):
+        from helpers.guid import guid_for
+
+        deck_info = _upload_deck(
+            self.DECK,
+            [
+                self._pinned(),
+                self._pinned(back="Ice", ordinal=2, block="block-c"),
+                self._new("Ice", "block-b"),
+            ],
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            guids = _build_and_get_guids_by_block(deck_info, tmpdir, "rejoin")
+        assert guids["block-b"] == guid_for(self.DECK, self.FRONT, "basic", 2)
+
+    def test_cloze_card_steps_past_a_pinned_cloze_guid(self):
+        from helpers.guid import guid_for
+
+        front = "{{c1::Water}} is H2O"
+        pinned = {
+            "front": front,
+            "back": "first",
+            "block": "block-a",
+            "guid": guid_for(self.DECK, front, "cloze"),
+            "cloze": True,
+        }
+        new = {"front": front, "back": "second", "block": "block-b", "cloze": True}
+        deck_info = _upload_deck(self.DECK, [pinned, new])
+        with tempfile.TemporaryDirectory() as tmpdir:
+            guids = _build_and_get_guids_by_block(deck_info, tmpdir, "cloze")
+        assert guids["block-b"] == guid_for(self.DECK, front, "cloze", 2)
+
+    def test_pinned_guid_of_another_card_type_does_not_move_the_new_card(self):
+        from helpers.guid import guid_for
+
+        deck_info = _upload_deck(
+            self.DECK,
+            [
+                {**self._pinned(), "guid": guid_for(self.DECK, self.FRONT, "cloze")},
+                self._new("Hydrogen peroxide", "block-b"),
+            ],
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            guids = _build_and_get_guids_by_block(deck_info, tmpdir, "other-type")
+        assert guids["block-b"] == guid_for(self.DECK, self.FRONT, "basic")
+
+    def test_unrelated_pinned_guids_leave_new_cards_on_the_plain_formula(self):
+        from helpers.guid import guid_for
+
+        deck_info = _upload_deck(
+            self.DECK,
+            [
+                {**self._pinned(), "guid": guid_for("block-a")},
+                self._new("Hydrogen peroxide", "block-b"),
+                self._new("Ice", "block-c"),
+            ],
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            guids = _build_and_get_guids_by_block(deck_info, tmpdir, "unrelated")
+        assert guids == {
+            "block-a": guid_for("block-a"),
+            "block-b": guid_for(self.DECK, self.FRONT, "basic"),
+            "block-c": guid_for(self.DECK, self.FRONT, "basic", 2),
+        }
+
+    def test_second_upload_with_the_new_guids_pinned_keeps_every_guid(self):
+        cards = [
+            self._new("Hydrogen peroxide", "block-b"),
+            self._pinned(),
+            self._new("Ice", "block-c"),
+        ]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            first = _build_and_get_guids_by_block(_upload_deck(self.DECK, cards), tmpdir, "first")
+            replayed = [{**card, "guid": first[card["block"]]} for card in cards]
+            second = _build_and_get_guids_by_block(
+                _upload_deck(self.DECK, replayed), tmpdir, "second"
+            )
+            reordered = _build_and_get_guids_by_block(
+                _upload_deck(self.DECK, list(reversed(replayed))), tmpdir, "reordered"
+            )
+        assert second == first
+        assert reordered == first
+
+    def test_new_cards_get_the_same_guids_when_nothing_was_recorded(self):
+        cards = [
+            self._new("Hydrogen peroxide", "block-b"),
+            self._pinned(),
+            self._new("Ice", "block-c"),
+        ]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            first = _build_and_get_guids_by_block(_upload_deck(self.DECK, cards), tmpdir, "first")
+            second = _build_and_get_guids_by_block(_upload_deck(self.DECK, cards), tmpdir, "second")
+        assert second == first
+
+    def test_new_card_added_later_steps_past_every_recorded_guid(self):
+        from helpers.guid import guid_for
+
+        first_cards = [self._pinned(), self._new("Hydrogen peroxide", "block-b")]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            first = _build_and_get_guids_by_block(
+                _upload_deck(self.DECK, first_cards), tmpdir, "first"
+            )
+            replayed = [{**card, "guid": first[card["block"]]} for card in first_cards]
+            second = _build_and_get_guids_by_block(
+                _upload_deck(self.DECK, [self._new("Ice", "block-c")] + replayed),
+                tmpdir,
+                "second",
+            )
+        assert second == {**first, "block-c": guid_for(self.DECK, self.FRONT, "basic", 3)}
+
+    def test_new_card_in_a_sub_deck_steps_past_a_pinned_guid_there(self):
+        from helpers.guid import guid_for
+
+        sub_deck = "Deck::Sub"
+        pinned = {
+            "front": self.FRONT,
+            "back": "Water",
+            "block": "block-a",
+            "guid": guid_for(sub_deck, self.FRONT, "basic"),
+        }
+        deck_info = _upload_deck(self.DECK, [self._new("Water", "block-p")]) + _upload_deck(
+            sub_deck, [pinned, self._new("Hydrogen peroxide", "block-b")]
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            guids = _build_and_get_guids_by_block(deck_info, tmpdir, "sub-deck")
+        assert guids == {
+            "block-p": guid_for(self.DECK, self.FRONT, "basic"),
+            "block-a": guid_for(sub_deck, self.FRONT, "basic"),
+            "block-b": guid_for(sub_deck, self.FRONT, "basic", 2),
+        }
+
+
+def _assign_content_guids(cards: list) -> tuple:
+    data = [{"name": "Deck", "cards": cards}]
+    started = time.perf_counter()
+    pinned_backs = _mod._pinned_backs_by_guid(data)
+    seen = {}
+    guids = [
+        card["guid"]
+        if "guid" in card
+        else _mod._content_guid(("Deck", card["name"], "basic"), card["back"], seen, pinned_backs)
+        for card in cards
+    ]
+    return guids, time.perf_counter() - started
+
+
+class TestContentGuidAssignmentScales:
+    """Thousands of cards under one front must not make guid assignment
+    quadratic: it runs on every upload conversion.
+    """
+
+    def test_four_thousand_same_front_cards_are_assigned_quickly(self):
+        from helpers.guid import guid_for
+
+        cards = [{"name": "Same", "back": "back %d" % i} for i in range(4000)]
+        guids, elapsed = _assign_content_guids(cards)
+        assert elapsed < 2
+        assert len(set(guids)) == 4000
+        assert guids[:2] == [guid_for("Deck", "Same", "basic"), guid_for("Deck", "Same", "basic", 2)]
+        assert guids[-1] == guid_for("Deck", "Same", "basic", 4000)
+
+    def test_two_thousand_new_cards_beside_two_thousand_pins_are_assigned_quickly(self):
+        from helpers.guid import guid_for
+
+        new = [{"name": "Same", "back": "new %d" % i} for i in range(2000)]
+        pins = [
+            {
+                "name": "Same",
+                "back": "pinned %d" % i,
+                "guid": guid_for("Deck", "Same", "basic", *([i + 1] if i else [])),
+            }
+            for i in range(2000)
+        ]
+        guids, elapsed = _assign_content_guids(new + pins)
+        assert elapsed < 2
+        assert len(set(guids)) == 4000
+        assert guids[0] == guid_for("Deck", "Same", "basic", 2001)
+        assert guids[1999] == guid_for("Deck", "Same", "basic", 4000)
