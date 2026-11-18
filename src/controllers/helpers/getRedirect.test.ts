@@ -273,6 +273,8 @@ describe('getRedirect security tests', () => {
         '/pricing?ref=mcp&k=held&a=a&held_until=2028-02-29',
       ],
       ['/pricing?ref=mcp&k=limit&a=a', '/pricing?ref=mcp&k=limit&a=a'],
+      ['/pricing?ref=mcp&k=photo&a=b', '/pricing?ref=mcp&k=photo&a=b'],
+      ['/pricing?ref=MCP&k=photo&a=b', '/pricing?k=photo&a=b'],
       [
         '/pricing?ref=mcp&held_until=2026-11-25',
         '/pricing?ref=mcp&held_until=2026-11-25',

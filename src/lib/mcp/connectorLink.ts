@@ -1,4 +1,4 @@
-export type ConnectorLimitKind = 'partial' | 'held' | 'limit';
+export type ConnectorLimitKind = 'partial' | 'held' | 'limit' | 'photo';
 
 export type ConnectorArm = 'a' | 'b';
 
@@ -6,6 +6,7 @@ const LIMIT_KINDS: ReadonlySet<string> = new Set<ConnectorLimitKind>([
   'partial',
   'held',
   'limit',
+  'photo',
 ]);
 
 const ARMS: ReadonlySet<string> = new Set<ConnectorArm>(['a', 'b']);

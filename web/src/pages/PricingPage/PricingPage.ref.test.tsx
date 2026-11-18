@@ -586,6 +586,13 @@ describe('PricingPage for a connector link that names its limit and arm', () => 
     );
   });
 
+  it('records a photo-limit link under its own kind', () => {
+    renderAt('/pricing/?ref=mcp&k=photo&a=a');
+    expect(landingProps()).toEqual([
+      expect.objectContaining({ limit_kind: 'photo', arm: 'a' }),
+    ]);
+  });
+
   it('drops values outside the fixed sets from the sign-in redirect', () => {
     renderAt('/pricing/?ref=mcp&k=partial%26next%3D%2F%2Fevil.com&a=z');
 

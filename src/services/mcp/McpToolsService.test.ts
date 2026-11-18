@@ -1585,10 +1585,38 @@ describe('McpToolsService.photoToDeck', () => {
 
     expect(error).toBeInstanceOf(Error);
     expect((error as Error).message).toBe(
-      "You've used all 5 free photos for this month. The count resets on January 1. Plan details: https://2anki.net/pricing/?ref=mcp"
+      "You've used all 5 free photos for this month. The count resets on January 1. Plan details: https://2anki.net/pricing/?ref=mcp&k=photo&a=a"
     );
     expect(error).toMatchObject({ status: 429, used: 5, limit: 5 });
   });
+
+  it.each([
+    ['42', 'b'],
+    ['41', 'a'],
+  ])(
+    'links the photo limit for user %s to arm %s without firing a paywall event',
+    async (owner, arm) => {
+      const generateCards = vi.fn(async () => {
+        throw makeFreeQuotaReachedError(5, 5);
+      });
+      const { service } = makeService({ generateCards });
+      trackMock.mockClear();
+
+      const error = await service
+        .photoToDeck({ image: ONE_PIXEL_PNG_BASE64 }, owner, {})
+        .catch((e: unknown) => e);
+
+      expect((error as Error).message).toMatch(
+        new RegExp(
+          `Plan details: https://2anki\\.net/pricing/\\?ref=mcp&k=photo&a=${arm}$`
+        )
+      );
+      expect(trackMock).not.toHaveBeenCalledWith(
+        'paywall_shown',
+        expect.anything()
+      );
+    }
+  );
 
   it('passes other vision errors through unchanged', async () => {
     const otherError = Object.assign(new Error('Too many requests'), {

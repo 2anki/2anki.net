@@ -1,11 +1,20 @@
 import type AuthenticationService from '../../services/AuthenticationService';
 import { track } from '../../services/events/track';
 import { readConnectorLinkParams } from '../../lib/mcp/connectorLink';
+import type { FetchSite } from '../../lib/http/fetchSite';
+import type { UserAgentClass } from '../../lib/http/userAgentClass';
+
+export interface ArrivalRequest {
+  fetchSite: FetchSite;
+  prefetch: boolean;
+  uaClass: UserAgentClass;
+}
 
 export interface ConnectorArrival {
   query: URLSearchParams;
   sessionToken: string | null;
   anonymousId: string | null;
+  request: ArrivalRequest;
 }
 
 export type SessionResolver = Pick<AuthenticationService, 'getUserFrom'>;
@@ -33,6 +42,9 @@ export class RecordConnectorArrivalUseCase {
         arm: link.arm ?? 'unknown',
         signed_in: userId != null,
         held: link.heldUntil != null,
+        fetch_site: arrival.request.fetchSite,
+        prefetch: arrival.request.prefetch,
+        ua_class: arrival.request.uaClass,
       },
     });
   }

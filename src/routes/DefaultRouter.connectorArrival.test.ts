@@ -47,6 +47,11 @@ const trackMock = track as Mock;
 const PRICING_HTML = '<html><head></head><body>pricing page</body></html>';
 const VALID_SESSION = 'valid-session';
 const CONNECTOR_LINK = '/pricing/?ref=mcp&k=partial&a=b&held_until=2026-11-25';
+const BROWSER_NAVIGATION = {
+  fetch_site: 'cross-site',
+  prefetch: false,
+  ua_class: 'browser',
+};
 const BROWSER =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36';
 
@@ -117,6 +122,20 @@ async function snapshot(
   return { status: res.status, headers, body: await res.text() };
 }
 
+function rawGet(
+  base: string,
+  pathAndQuery: string,
+  headers: Record<string, string>
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const req = http.get(`${base}${pathAndQuery}`, { headers }, (res) => {
+      res.resume();
+      res.on('end', () => resolve());
+    });
+    req.on('error', reject);
+  });
+}
+
 function settle(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 30));
 }
@@ -125,7 +144,11 @@ function visit(base: string, pathAndQuery: string, init: RequestInit = {}) {
   return fetch(`${base}${pathAndQuery}`, {
     redirect: 'manual',
     ...init,
-    headers: { 'user-agent': BROWSER, ...(init.headers ?? {}) },
+    headers: {
+      'user-agent': BROWSER,
+      'sec-fetch-site': 'cross-site',
+      ...(init.headers ?? {}),
+    },
   });
 }
 
@@ -169,8 +192,74 @@ describe('recording a connector link arrival on /pricing', () => {
     expect(trackMock).toHaveBeenCalledWith('connector_link_arrived', {
       userId: null,
       anonymousId: null,
-      props: { limit_kind: 'partial', arm: 'b', signed_in: false, held: true },
+      props: {
+        limit_kind: 'partial',
+        arm: 'b',
+        signed_in: false,
+        held: true,
+        ...BROWSER_NAVIGATION,
+      },
     });
+  });
+
+  it('marks the row a sign-in return records as same-origin', async () => {
+    await visit(current.url, CONNECTOR_LINK);
+    await vi.waitFor(() => expect(trackMock).toHaveBeenCalledTimes(1));
+    const signedInReturn = {
+      headers: {
+        cookie: `token=${VALID_SESSION}`,
+        'sec-fetch-site': 'same-origin',
+      },
+    };
+    const redirect = await visit(
+      current.url,
+      '/pricing?ref=mcp&k=partial&a=b&held_until=2026-11-25',
+      signedInReturn
+    );
+    expect(redirect.status).toBe(301);
+    await visit(
+      current.url,
+      redirect.headers.get('location') as string,
+      signedInReturn
+    );
+    await vi.waitFor(() => expect(trackMock).toHaveBeenCalledTimes(2));
+
+    expect(
+      trackMock.mock.calls.map(([, options]) => [
+        options.userId,
+        options.props.signed_in,
+        options.props.fetch_site,
+      ])
+    ).toEqual([
+      [null, false, 'cross-site'],
+      [42, true, 'same-origin'],
+    ]);
+  });
+
+  it.each([
+    [
+      'a chat client fetching the link',
+      { 'user-agent': 'Mozilla/5.0 (compatible; Claude-User/1.0)' },
+      { fetch_site: 'absent', prefetch: false, ua_class: 'fetcher' },
+    ],
+    [
+      'a script fetching the link',
+      { 'user-agent': 'python-requests/2.32.3' },
+      { fetch_site: 'absent', prefetch: false, ua_class: 'fetcher' },
+    ],
+    [
+      'a browser prefetch',
+      { 'sec-purpose': 'prefetch', 'sec-fetch-site': 'none' },
+      { fetch_site: 'none', prefetch: true, ua_class: 'browser' },
+    ],
+  ])('records %s with its request labels', async (_label, headers, labels) => {
+    await rawGet(current.url, CONNECTOR_LINK, {
+      'user-agent': BROWSER,
+      ...headers,
+    });
+
+    await vi.waitFor(() => expect(trackMock).toHaveBeenCalledTimes(1));
+    expect(trackMock.mock.calls[0][1].props).toMatchObject(labels);
   });
 
   it('records a signed-in arrival under the user', async () => {
@@ -235,7 +324,13 @@ describe('recording a connector link arrival on /pricing', () => {
     expect(trackMock).toHaveBeenCalledWith(
       'connector_link_arrived',
       expect.objectContaining({
-        props: { limit_kind: 'limit', arm: 'a', signed_in: false, held: false },
+        props: {
+          limit_kind: 'limit',
+          arm: 'a',
+          signed_in: false,
+          held: false,
+          ...BROWSER_NAVIGATION,
+        },
       })
     );
   });
@@ -262,9 +357,20 @@ describe('recording a connector link arrival on /pricing', () => {
           arm: 'unknown',
           signed_in: false,
           held: true,
+          ...BROWSER_NAVIGATION,
         },
       })
     );
+  });
+
+  it('records a photo-limit link under its own kind', async () => {
+    await visit(current.url, '/pricing/?ref=mcp&k=photo&a=a');
+
+    await vi.waitFor(() => expect(trackMock).toHaveBeenCalledTimes(1));
+    expect(trackMock.mock.calls[0][1].props).toMatchObject({
+      limit_kind: 'photo',
+      arm: 'a',
+    });
   });
 
   it.each([
@@ -282,6 +388,7 @@ describe('recording a connector link arrival on /pricing', () => {
     ['a visit without the connector ref', '/pricing/?k=partial&a=b', {}],
     ['a visit with another ref', '/pricing/?ref=newsletter&k=partial', {}],
     ['another page with the connector ref', '/upload?ref=mcp&k=partial', {}],
+    ['a ref in another case', '/pricing/?ref=MCP&k=partial&a=b', {}],
   ] as const)('records nothing for %s', async (_label, link, init) => {
     const res = await visit(current.url, link, init as RequestInit);
 

@@ -135,10 +135,15 @@ function isFreePhotoQuotaError(
   );
 }
 
-function freePhotoQuotaError(used: number, limit: number): Error {
+function freePhotoQuotaError(
+  owner: string,
+  used: number,
+  limit: number
+): Error {
+  const plansUrl = connectorPlansUrl(owner, 'photo', null);
   return Object.assign(
     new Error(
-      `You've used all ${limit} free photos for this month. The count resets on ${nextMonthlyReset()}. Plan details: ${PLANS_URL}`
+      `You've used all ${limit} free photos for this month. The count resets on ${nextMonthlyReset()}. Plan details: ${plansUrl}`
     ),
     { status: 429, used, limit }
   );
@@ -648,7 +653,7 @@ export class McpToolsService {
       return await this.photoToFlashcards.generateCards(input);
     } catch (error) {
       if (isFreePhotoQuotaError(error)) {
-        throw freePhotoQuotaError(error.used, error.limit);
+        throw freePhotoQuotaError(input.owner, error.used, error.limit);
       }
       throw error;
     }

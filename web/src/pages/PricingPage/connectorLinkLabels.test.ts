@@ -6,6 +6,7 @@ describe('connectorLinkLabels', () => {
     ['k=partial&a=b', { kind: 'partial', arm: 'b' }],
     ['k=held&a=a', { kind: 'held', arm: 'a' }],
     ['k=limit', { kind: 'limit', arm: null }],
+    ['k=photo&a=a', { kind: 'photo', arm: 'a' }],
     ['a=b', { kind: null, arm: 'b' }],
     ['k=held&k=evil&a=a&a=b', { kind: 'held', arm: 'a' }],
   ])('reads %s', (query, labels) => {

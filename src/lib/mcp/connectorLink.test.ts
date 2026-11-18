@@ -19,7 +19,7 @@ describe('connectorArmFor', () => {
 });
 
 describe('parseConnectorLimitKind', () => {
-  it.each(['partial', 'held', 'limit'])('accepts %s', (kind) => {
+  it.each(['partial', 'held', 'limit', 'photo'])('accepts %s', (kind) => {
     expect(parseConnectorLimitKind(kind)).toBe(kind);
   });
 

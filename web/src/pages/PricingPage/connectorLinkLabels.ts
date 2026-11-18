@@ -1,4 +1,9 @@
-const LIMIT_KINDS: ReadonlySet<string> = new Set(['partial', 'held', 'limit']);
+const LIMIT_KINDS: ReadonlySet<string> = new Set([
+  'partial',
+  'held',
+  'limit',
+  'photo',
+]);
 const ARMS: ReadonlySet<string> = new Set(['a', 'b']);
 
 export interface ConnectorLinkLabels {

@@ -1,6 +1,9 @@
 import type express from 'express';
 
 import { isBotUserAgent } from '../lib/http/isBotUserAgent';
+import { userAgentClass } from '../lib/http/userAgentClass';
+import { fetchSiteOf } from '../lib/http/fetchSite';
+import { isPrefetchRequest } from '../lib/auth/magicLinkBinding';
 import { analyticsAnonId } from '../lib/http/consentRegion';
 import { getMintedAnonId } from '../lib/User/getOwner';
 import type {
@@ -49,11 +52,12 @@ export class ConnectorArrivalController {
     req: express.Request,
     res: express.Response
   ): ConnectorArrival | null {
-    if (req.method !== 'GET' || isBotUserAgent(req.get('user-agent'))) {
+    const userAgent = req.get('user-agent');
+    if (req.method !== 'GET' || isBotUserAgent(userAgent)) {
       return null;
     }
     const query = queryOf(req.originalUrl);
-    if (query.get('ref')?.toLowerCase() !== CONNECTOR_REF) {
+    if (query.get('ref') !== CONNECTOR_REF) {
       return null;
     }
     return {
@@ -63,6 +67,11 @@ export class ConnectorArrivalController {
         req,
         cookie(req, 'anon_id') ?? getMintedAnonId(res)
       ),
+      request: {
+        fetchSite: fetchSiteOf(req.get('sec-fetch-site')),
+        prefetch: isPrefetchRequest(req),
+        uaClass: userAgentClass(userAgent),
+      },
     };
   }
 }

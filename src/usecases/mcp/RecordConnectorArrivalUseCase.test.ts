@@ -5,7 +5,10 @@ import AuthenticationService from '../../services/AuthenticationService';
 import type TokenRepository from '../../data_layer/TokenRepository';
 import type UsersRepository from '../../data_layer/UsersRepository';
 import { track } from '../../services/events/track';
-import { RecordConnectorArrivalUseCase } from './RecordConnectorArrivalUseCase';
+import {
+  RecordConnectorArrivalUseCase,
+  type ArrivalRequest,
+} from './RecordConnectorArrivalUseCase';
 
 vi.mock('../../services/events/track', () => ({ track: vi.fn() }));
 
@@ -33,15 +36,29 @@ function authService(): AuthenticationService {
   return new AuthenticationService(tokens, users);
 }
 
+const BROWSER_NAVIGATION: ArrivalRequest = {
+  fetchSite: 'cross-site',
+  prefetch: false,
+  uaClass: 'browser',
+};
+
+const REQUEST_PROPS = {
+  fetch_site: 'cross-site',
+  prefetch: false,
+  ua_class: 'browser',
+};
+
 function arrival(
   query: string,
   sessionToken: string | null = null,
-  anonymousId: string | null = null
+  anonymousId: string | null = null,
+  request: ArrivalRequest = BROWSER_NAVIGATION
 ) {
   return {
     query: new URLSearchParams(query),
     sessionToken,
     anonymousId,
+    request,
   };
 }
 
@@ -74,6 +91,7 @@ describe('RecordConnectorArrivalUseCase', () => {
         arm: 'b',
         signed_in: true,
         held: true,
+        ...REQUEST_PROPS,
       },
     });
   });
@@ -86,7 +104,13 @@ describe('RecordConnectorArrivalUseCase', () => {
     expect(trackMock).toHaveBeenCalledWith('connector_link_arrived', {
       userId: null,
       anonymousId: null,
-      props: { limit_kind: 'limit', arm: 'a', signed_in: false, held: false },
+      props: {
+        limit_kind: 'limit',
+        arm: 'a',
+        signed_in: false,
+        held: false,
+        ...REQUEST_PROPS,
+      },
     });
   });
 
@@ -104,7 +128,13 @@ describe('RecordConnectorArrivalUseCase', () => {
       expect(trackMock).toHaveBeenCalledWith('connector_link_arrived', {
         userId: null,
         anonymousId: null,
-        props: { limit_kind: 'held', arm: 'a', signed_in: false, held: true },
+        props: {
+          limit_kind: 'held',
+          arm: 'a',
+          signed_in: false,
+          held: true,
+          ...REQUEST_PROPS,
+        },
       });
     }
   );
@@ -116,6 +146,8 @@ describe('RecordConnectorArrivalUseCase', () => {
     ['ref=mcp&k=PARTIAL&a=B', 'unknown', 'unknown', false],
     ['ref=mcp&k=held&a=b&held_until=2026-13-40', 'held', 'b', false],
     ['ref=mcp&k=held&a=b&held_until=next-week', 'held', 'b', false],
+    ['ref=mcp&k=photo&a=b', 'photo', 'b', false],
+    ['ref=mcp&k=held&a=b&held_until=2020-01-01', 'held', 'b', true],
   ])(
     'reads %s as kind %s, arm %s, held %s',
     async (query, limitKind, arm, held) => {
@@ -126,12 +158,18 @@ describe('RecordConnectorArrivalUseCase', () => {
       expect(trackMock).toHaveBeenCalledWith('connector_link_arrived', {
         userId: null,
         anonymousId: null,
-        props: { limit_kind: limitKind, arm, signed_in: false, held },
+        props: {
+          limit_kind: limitKind,
+          arm,
+          signed_in: false,
+          held,
+          ...REQUEST_PROPS,
+        },
       });
     }
   );
 
-  it('stores nothing from the query string beyond the four labels', async () => {
+  it('stores nothing from the query string beyond its labels', async () => {
     await new RecordConnectorArrivalUseCase(authService()).execute(
       arrival(
         'ref=mcp&k=partial&a=b&held_until=2026-11-25&utm_source=x&id=99&email=a@b.c'
@@ -144,8 +182,35 @@ describe('RecordConnectorArrivalUseCase', () => {
       'arm',
       'signed_in',
       'held',
+      'fetch_site',
+      'prefetch',
+      'ua_class',
     ]);
     expect(JSON.stringify(options)).not.toContain('2026-11-25');
+  });
+
+  it('records a fetcher prefetch with its request labels', async () => {
+    await new RecordConnectorArrivalUseCase(authService()).execute(
+      arrival('ref=mcp&k=limit&a=b', null, null, {
+        fetchSite: 'absent',
+        prefetch: true,
+        uaClass: 'fetcher',
+      })
+    );
+
+    expect(trackMock).toHaveBeenCalledWith('connector_link_arrived', {
+      userId: null,
+      anonymousId: null,
+      props: {
+        limit_kind: 'limit',
+        arm: 'b',
+        signed_in: false,
+        held: false,
+        fetch_site: 'absent',
+        prefetch: true,
+        ua_class: 'fetcher',
+      },
+    });
   });
 
   it('records nothing and resolves when the session lookup fails', async () => {
