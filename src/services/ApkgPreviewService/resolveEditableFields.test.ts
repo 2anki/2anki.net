@@ -272,7 +272,22 @@ describe('resolveEditableFields', () => {
       ),
       ord: 0,
       front: 'Front',
-      back: 'Data',
+      back: null,
+    },
+    {
+      label: 'a field shown on the question and used in the answer script',
+      type: noteType(
+        ['Front', 'Back'],
+        [
+          {
+            qfmt: '{{Front}}',
+            afmt: '{{FrontSide}}{{Back}}<script>var q = "{{Front}}";</script>',
+          },
+        ]
+      ),
+      ord: 0,
+      front: null,
+      back: 'Back',
     },
     {
       label: 'a field inside an unterminated script',
@@ -508,4 +523,33 @@ describe('resolveEditableFields', () => {
       back: side(back),
     });
   });
+
+  it('treats an opening script tag that never closes as code to the end', () => {
+    const type = noteType(
+      ['Front', 'Data'],
+      [{ qfmt: '{{Front}}', afmt: '{{FrontSide}}<script {{Data}}' }]
+    );
+
+    expect(resolveEditableFields(type, 0)).toEqual({
+      front: { fieldIndex: 0, fieldName: 'Front' },
+      back: null,
+    });
+  });
+
+  it.each(['<script', '<script ', '<style a', '<script>'])(
+    'reads a template made of 400,000 characters of %j in linear time',
+    (piece) => {
+      const repeated = piece.repeat(Math.ceil(400_000 / piece.length));
+      const type = noteType(
+        ['Front', 'Back'],
+        [{ qfmt: `{{Front}}${repeated}`, afmt: `{{Back}}${repeated}` }]
+      );
+      const started = performance.now();
+
+      const sides = resolveEditableFields(type, 0);
+
+      expect(sides.front).toEqual({ fieldIndex: 0, fieldName: 'Front' });
+      expect(performance.now() - started).toBeLessThan(2000);
+    }
+  );
 });

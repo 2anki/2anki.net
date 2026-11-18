@@ -21,7 +21,7 @@ interface FieldReference {
 const TEMPLATE_TAG = /\{\{([#^/])?([^{}]+?)\}\}/g; // NOSONAR
 
 const SCRIPT_OR_STYLE_BLOCK =
-  /<(script|style)\b[^>]*>[\s\S]*?(?:<\/\1\s*>|$)/gi; // NOSONAR
+  /<(script|style)\b[^>]*(?:>[\s\S]*?(?:<\/\1\s*>|$)|$)/gi; // NOSONAR
 
 const SPECIAL_NAMES = new Set([
   'FrontSide',
@@ -42,9 +42,24 @@ function isTypeInAnswer(reference: FieldReference): boolean {
   return reference.filters.includes('type');
 }
 
+function fieldNameOf(rawTag: string): string {
+  return (rawTag.split(':').pop() ?? '').trim();
+}
+
+function fieldNamesInsideCode(template: string): Set<string> {
+  const names = new Set<string>();
+  for (const block of template.match(SCRIPT_OR_STYLE_BLOCK) ?? []) {
+    for (const tag of block.matchAll(TEMPLATE_TAG)) {
+      names.add(fieldNameOf(tag[2]));
+    }
+  }
+  return names;
+}
+
 function fieldReferences(
   template: string,
-  noteType: NoteType
+  noteType: NoteType,
+  usedInCode: Set<string>
 ): FieldReference[] {
   const ordByName = new Map(
     noteType.fields.map((field) => [field.name, field.ord])
@@ -69,6 +84,7 @@ function fieldReferences(
       if (
         fieldIndex != null &&
         !SPECIAL_NAMES.has(name) &&
+        !usedInCode.has(name) &&
         !filters.some(isTextToSpeech)
       ) {
         references.push({
@@ -114,9 +130,15 @@ export function resolveEditableFields(
   if (template.qfmt.includes('image-occlusion-canvas')) {
     return NO_EDITABLE_FIELDS;
   }
-  const shownOnQuestion = fieldReferences(template.qfmt, noteType).filter(
-    (reference) => !isTypeInAnswer(reference)
-  );
+  const usedInCode = new Set([
+    ...fieldNamesInsideCode(template.qfmt),
+    ...fieldNamesInsideCode(template.afmt),
+  ]);
+  const shownOnQuestion = fieldReferences(
+    template.qfmt,
+    noteType,
+    usedInCode
+  ).filter((reference) => !isTypeInAnswer(reference));
   if (noteType.type === 1) {
     const clozeReferences = shownOnQuestion.filter((reference) =>
       reference.filters.includes('cloze')
@@ -131,7 +153,9 @@ export function resolveEditableFields(
   return {
     front,
     back:
-      firstShown(fieldReferences(template.afmt, noteType), editedOnQuestion) ??
-      firstShown(shownOnQuestion, editedOnQuestion),
+      firstShown(
+        fieldReferences(template.afmt, noteType, usedInCode),
+        editedOnQuestion
+      ) ?? firstShown(shownOnQuestion, editedOnQuestion),
   };
 }
