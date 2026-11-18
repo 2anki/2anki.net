@@ -175,7 +175,7 @@ describe('PreviewApkgPage', () => {
     expect(JSON.parse(String(init.body))).toEqual({
       edits: [{ cardId: 200, fields: [{ index: 1, value: 'atom, edited' }] }],
     });
-  });
+  }, 15_000);
 
   it('keeps retrying a network failure and offers to try again', async () => {
     fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));

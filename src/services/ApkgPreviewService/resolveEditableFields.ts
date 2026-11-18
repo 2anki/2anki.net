@@ -20,6 +20,9 @@ interface FieldReference {
 // config, not from HTTP input. Negated classes bound the captures.
 const TEMPLATE_TAG = /\{\{([#^/])?([^{}]+?)\}\}/g; // NOSONAR
 
+const SCRIPT_OR_STYLE_BLOCK =
+  /<(script|style)\b[^>]*>[\s\S]*?(?:<\/\1\s*>|$)/gi; // NOSONAR
+
 const SPECIAL_NAMES = new Set([
   'FrontSide',
   'Tags',
@@ -48,9 +51,10 @@ function fieldReferences(
   );
   const openSections: string[] = [];
   const references: FieldReference[] = [];
+  const shownMarkup = template.replace(SCRIPT_OR_STYLE_BLOCK, '');
   TEMPLATE_TAG.lastIndex = 0;
   let match: RegExpExecArray | null;
-  while ((match = TEMPLATE_TAG.exec(template)) != null) {
+  while ((match = TEMPLATE_TAG.exec(shownMarkup)) != null) {
     const [, sigil, raw] = match;
     if (sigil === '#' || sigil === '^') {
       openSections.push(raw.trim());

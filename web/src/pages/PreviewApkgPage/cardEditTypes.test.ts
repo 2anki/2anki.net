@@ -49,6 +49,31 @@ describe('withEditMapEntry', () => {
     ]);
   });
 
+  it('keeps a card in place when only its suspend or delete flag changes', () => {
+    let editMap = new Map<number, CardEditState>();
+    editMap = withEditMapEntry(editMap, 200, { fields: { 0: 'from card 1' } });
+    editMap = withEditMapEntry(editMap, 201, { fields: { 0: 'from card 2' } });
+    editMap = withEditMapEntry(editMap, 200, {
+      fields: { 0: 'from card 1' },
+      suspended: true,
+    });
+    editMap = withEditMapEntry(editMap, 200, {
+      fields: { 0: 'from card 1' },
+      suspended: true,
+      deleted: true,
+    });
+
+    expect(toEditPayloads(editMap)).toEqual([
+      {
+        cardId: 200,
+        fields: [{ index: 0, value: 'from card 1' }],
+        suspended: true,
+        deleted: true,
+      },
+      { cardId: 201, fields: [{ index: 0, value: 'from card 2' }] },
+    ]);
+  });
+
   it('keeps other cards when one changes', () => {
     const before = new Map<number, CardEditState>([[7, { deleted: true }]]);
 

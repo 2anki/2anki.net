@@ -450,6 +450,7 @@ const MODELS: ModelFixture[] = [
     ],
   },
   n2aModel(5, 'n2a-basic'),
+  n2aModel(6, 'n2a-mcq'),
 ];
 
 const HTML_FRONT =
@@ -463,6 +464,11 @@ const NOTES: Array<{ id: number; mid: number; fields: string[] }> = [
   { id: 30, mid: 3, fields: ['{{c1::Oslo}} is in {{c2::Norway}}', 'extra'] },
   { id: 40, mid: 4, fields: ['word', 'pron', 'meaning'] },
   { id: 50, mid: 5, fields: ['front', 'back', 'media'] },
+  {
+    id: 60,
+    mid: 6,
+    fields: ['Capital of Norway?', 'Oslo<br>Bergen', 'Oslo', 'explanation'],
+  },
 ];
 
 const CARDS: Array<{ id: number; nid: number; did: number; ord: number }> = [
@@ -475,6 +481,7 @@ const CARDS: Array<{ id: number; nid: number; did: number; ord: number }> = [
   { id: 301, nid: 30, did: 2, ord: 1 },
   { id: 400, nid: 40, did: 2, ord: 0 },
   { id: 500, nid: 50, did: 3, ord: 0 },
+  { id: 600, nid: 60, did: 2, ord: 0 },
 ];
 
 function buildMixedCollection(): Buffer {
@@ -614,6 +621,13 @@ describe('PackEditedApkgUseCase applies edits by card id to stored fields', () =
       index: 1,
       expected: ['front', 'edited', 'media'],
     },
+    {
+      noteType: 'n2a-mcq, the Extra explanation',
+      cardId: 600,
+      noteId: 60,
+      index: 3,
+      expected: ['Capital of Norway?', 'Oslo<br>Bergen', 'Oslo', 'edited'],
+    },
   ])(
     'writes $noteType into that field only',
     async ({ cardId, noteId, index, expected }) => {
@@ -632,6 +646,16 @@ describe('PackEditedApkgUseCase applies edits by card id to stored fields', () =
     { noteType: 'Cloze Back Extra', cardId: 300, index: 1 },
     { noteType: 'Vocab Pronunciation', cardId: 400, index: 1 },
     { noteType: 'n2a-basic MyMedia', cardId: 500, index: 2 },
+    {
+      noteType: 'n2a-mcq Multiple Choice, only in a script',
+      cardId: 600,
+      index: 1,
+    },
+    {
+      noteType: 'n2a-mcq Correct Answer, only in a script',
+      cardId: 600,
+      index: 2,
+    },
     { noteType: 'a field past the end', cardId: 100, index: 5 },
   ])(
     'refuses a field the card does not show for editing: $noteType',

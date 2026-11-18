@@ -229,6 +229,97 @@ describe('resolveEditableFields', () => {
       back: 'Back',
     },
     {
+      label: 'Anki Cloze with type in the answer',
+      type: noteType(
+        ['Text', 'Back Extra'],
+        [
+          {
+            qfmt: '{{cloze:Text}}\n{{type:cloze:Text}}',
+            afmt: '{{cloze:Text}}\n{{type:cloze:Text}}<br>\n{{Back Extra}}',
+          },
+        ],
+        1
+      ),
+      ord: 0,
+      front: 'Text',
+      back: null,
+    },
+    {
+      label: 'a field only inside a script',
+      type: noteType(
+        ['Front', 'Data', 'Back'],
+        [
+          {
+            qfmt: '{{Front}}<script>var data = "{{Data}}";</script>',
+            afmt: '{{FrontSide}}<script>render("{{Data}}")</script>{{Back}}',
+          },
+        ]
+      ),
+      ord: 0,
+      front: 'Front',
+      back: 'Back',
+    },
+    {
+      label: 'a field inside a script and also on the card',
+      type: noteType(
+        ['Front', 'Data'],
+        [
+          {
+            qfmt: '{{Front}}<script>var data = "{{Data}}";</script>',
+            afmt: '{{FrontSide}}<div>{{Data}}</div>',
+          },
+        ]
+      ),
+      ord: 0,
+      front: 'Front',
+      back: 'Data',
+    },
+    {
+      label: 'a field inside an unterminated script',
+      type: noteType(
+        ['Front', 'Data'],
+        [
+          {
+            qfmt: '{{Front}}',
+            afmt: '{{FrontSide}}<script>var data = "{{Data}}";',
+          },
+        ]
+      ),
+      ord: 0,
+      front: 'Front',
+      back: null,
+    },
+    {
+      label: 'a field inside an uppercase script with attributes',
+      type: noteType(
+        ['Front', 'Data'],
+        [
+          {
+            qfmt: '{{Front}}',
+            afmt: '{{FrontSide}}<SCRIPT type="text/javascript">x("{{Data}}")</SCRIPT >',
+          },
+        ]
+      ),
+      ord: 0,
+      front: 'Front',
+      back: null,
+    },
+    {
+      label: 'a field only inside a style block',
+      type: noteType(
+        ['Front', 'Colour', 'Back'],
+        [
+          {
+            qfmt: '<style>.card { color: {{Colour}}; }</style>{{Front}}',
+            afmt: '{{FrontSide}}{{Back}}',
+          },
+        ]
+      ),
+      ord: 0,
+      front: 'Front',
+      back: 'Back',
+    },
+    {
       label: 'Anki Basic (and reversed card), card 1',
       type: BASIC_AND_REVERSED,
       ord: 0,
@@ -297,7 +388,7 @@ describe('resolveEditableFields', () => {
       type: n2aNoteType('n2a-mcq'),
       ord: 0,
       front: 'Question',
-      back: 'Multiple Choice',
+      back: 'Extra',
     },
     {
       label: 'n2a-io (Image Occlusion)',

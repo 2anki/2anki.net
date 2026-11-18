@@ -24,10 +24,29 @@ export function withEditMapEntry(
   cardId: number,
   state: CardEditState
 ): Map<number, CardEditState> {
+  const previous = editMap.get(cardId);
   const next = new Map(editMap);
-  next.delete(cardId);
-  if (!isEmptyEdit(state)) next.set(cardId, state);
+  if (previous == null || !sameFields(previous.fields, state.fields)) {
+    next.delete(cardId);
+  }
+  if (isEmptyEdit(state)) {
+    next.delete(cardId);
+  } else {
+    next.set(cardId, state);
+  }
   return next;
+}
+
+function sameFields(
+  a: Record<number, string> | undefined,
+  b: Record<number, string> | undefined
+): boolean {
+  const left = Object.entries(a ?? {});
+  const right = b ?? {};
+  return (
+    left.length === Object.keys(right).length &&
+    left.every(([index, value]) => right[Number(index)] === value)
+  );
 }
 
 const FIELD_BREAKING_CHARACTERS = [
