@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-18-reupload-same-question-cards",
+  "date": "2026-11-18",
+  "type": "fix",
+  "title": "Uploading a Notion page again keeps a new card that shares a question with an earlier one but has a different answer"
+}

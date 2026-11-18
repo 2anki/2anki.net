@@ -49,7 +49,17 @@ def _clamp_output_path(path: str) -> str:
     return os.path.join(directory, new_basename)
 
 
-def _content_guid(deck_name, guid_value, card_type, back, seen):
+def _pinned_backs_by_guid(data):
+    pinned = {}
+    for deck in data:
+        for card in deck.get("cards", []):
+            explicit_guid = card.get("guid")
+            if explicit_guid:
+                pinned.setdefault(explicit_guid, set()).add(card.get("back", ""))
+    return pinned
+
+
+def _content_guid(key, back, seen, pinned_backs):
     """
     Two cards with the same front + type collapse onto one Anki note by
     default (the content-formula guid ignores the back). When their backs
@@ -65,19 +75,22 @@ def _content_guid(deck_name, guid_value, card_type, back, seen):
     A card whose back exactly repeats one already seen in this group reuses
     that back's guid, deliberately: Anki's own duplicate handling is the
     right outcome when the content is truly identical, and nothing is lost.
-    `seen` is one dict per build_one_deck call, so ordinals are assigned in
-    the same order on every re-run of the same input, keeping guids stable.
+    `key` is the (deck name, guid_value, card type) group. `seen` is one dict
+    per build_one_deck call, so ordinals are assigned in the same order on
+    every re-run of the same input, keeping guids stable.
+    A guid the ledger pinned on another card in this build is taken unless
+    that card has the same back (#5408): a new block sharing a pinned card's
+    front would otherwise compute the pinned guid and merge into it in Anki.
     """
-    key = (deck_name, guid_value, card_type)
     by_back = seen.setdefault(key, {})
     if back in by_back:
         return by_back[back]
-    ordinal = len(by_back) + 1
-    guid = (
-        guid_for(deck_name, guid_value, card_type)
-        if ordinal == 1
-        else guid_for(deck_name, guid_value, card_type, ordinal)
-    )
+    assigned = set(by_back.values())
+    ordinal = 1
+    guid = guid_for(*key)
+    while guid in assigned or (guid in pinned_backs and back not in pinned_backs[guid]):
+        ordinal += 1
+        guid = guid_for(*key, ordinal)
     by_back[back] = guid
     return guid
 
@@ -154,6 +167,8 @@ def build_one_deck(data_file, template_dir):
 
     if len(data) == 0:
         return None
+
+    pinned_backs = _pinned_backs_by_guid(data)
 
     mt = data[0].get("settings", {})
     STYLING = data[0].get('style', "") or ""
@@ -333,7 +348,9 @@ def build_one_deck(data_file, template_dir):
                 # keyed on.
                 if card.get("frontEscaped", False):
                     guid_value = html.unescape(guid_value)
-                guid = _content_guid(deck["name"], guid_value, card_type, back, content_guid_seen)
+                guid = _content_guid(
+                    (deck["name"], guid_value, card_type), back, content_guid_seen, pinned_backs
+                )
             my_note = N2ANote(model, fields=fields, tags=tags,
                               guid=guid, mod=card.get("mod"))
             guid_records.append({"notionId": notion_id, "guid": guid})

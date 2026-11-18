@@ -208,6 +208,37 @@ describeWithPython('the shipped apkg keeps prod-compatible GUIDs', () => {
     expect(forked.guids[0]).not.toBe(forked.guids[1]);
     expect(countDuplicateGuids(forked.workspace.location)).toBe(0);
   });
+
+  it('gives a new toggle that shares a pinned toggle’s question its own guid, records it, and keeps both on the next upload', async () => {
+    const first = await buildApkg(withId, 'Deck One', {});
+    const pinned = first.guids[0];
+    const newToggle = detailsToggle(
+      OTHER_BLOCK_ID,
+      'Same question',
+      '<p>A different answer</p>'
+    );
+
+    const second = await buildApkg(withId + newToggle, 'Deck One', {
+      [BLOCK_ID]: pinned,
+    });
+    expect(second.guids).toHaveLength(2);
+    expect(second.guids[0]).toBe(pinned);
+    expect(second.guids[1]).not.toBe(pinned);
+    expect(second.parser.issuedGuidEntries).toEqual([
+      {
+        blockId: OTHER_BLOCK_ID,
+        sourcePageId: undefined,
+        guid: second.guids[1],
+      },
+    ]);
+
+    const third = await buildApkg(newToggle + withId, 'Deck One', {
+      [BLOCK_ID]: pinned,
+      [OTHER_BLOCK_ID]: second.guids[1],
+    });
+    expect(third.guids).toEqual([second.guids[1], pinned]);
+    expect(third.parser.issuedGuidEntries).toEqual([]);
+  });
 });
 
 describe('guid ledger replay', () => {
