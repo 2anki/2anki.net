@@ -36,13 +36,13 @@ Control arm: today's message, unchanged. Test arm (users with an even id): the n
 The connector's existing tool results and the existing `/pricing?ref=mcp` page, which already leads with the Day Pass for connector arrivals. No new page in stage 1.
 
 ### Scope
-In, stage 1a (measurement only, nothing a user sees changes):
+Prerequisite, stage 1a (measurement only, nothing a user sees changes; approved to ship now as its own PR, ahead of this spec):
 - Record an arrival on the server when `/pricing` is requested with `ref=mcp`: the limit kind (`k` = held, partial or limit), the arm, and whether the request carried a session. Routes → controller → use case; no identifier in the link.
 - Add `arm` to the connector's `paywall_shown` event.
 - Keep `held_until`, `k` and the arm through the sign-in return from `/pricing` (`resolvePricingReturn` keeps only `ref` and `interval` today).
 - Use the existing `connector` checkout surface for checkouts started from a connector arrival.
 
-In, stage 1b (the test):
+In, stage 1b (the test; this PR):
 - New message for the test arm in the three limit results: part of the deck delivered and the rest saved; nothing delivered and the deck saved; refused and not saved.
 - The link on its own line in each, labelled "See the N saved cards:" when cards are saved.
 - Structured `next_step` fields that say the same: `state`, `cards_delivered`, `cards_saved`, `saved_until`, `free_resets_on`, `fits_free_after_reset`, `link` (label and url). `plans_url`, `upgrade_url`, `cards_held_back` and `held_until` stay as aliases for one release.
@@ -61,15 +61,16 @@ As a learner who asked my chat for a deck and got part of it, I want to be told 
 - [ ] The message never says the saved cards arrive at the reset (they are kept 7 days, then deleted), never tells the model to recommend or persuade, uses no urgency, and does not contain the words upgrade, pricing or checkout (the existing test stays).
 - [ ] The deck title appears only in structured fields and inside the untrusted-data wrapper, as today.
 - [ ] The link is `https://2anki.net/pricing/?ref=mcp&k=<kind>&a=<arm>` plus `held_until` when cards are saved; dropping or mangling any parameter still lands on a working page.
-- [ ] A request for that page records one server-side arrival with kind, arm and `signed_in`; the same visit is not counted twice on reload within a session [NEEDS CLARIFICATION: dedupe window, or count raw requests and dedupe at read time?].
+- [ ] A request for that page records one server-side arrival with kind, arm and `signed_in`. Raw requests are counted; repeats are removed when the numbers are read.
 - [ ] Signing in from that page returns to it with `held_until`, `k` and the arm intact; any other parameter is dropped.
 - [ ] Control-arm results are byte-for-byte today's. Arm assignment is by user id parity and is stable.
 - [ ] New event names are added on web and server in the same PR where both sides use them (parity test).
 - [ ] Old links in existing chats (`/pricing/?ref=mcp&held_until=…`) keep working.
 
 ### Open questions
-- [NEEDS CLARIFICATION: should saved cards be released free at the monthly reset, up to the allowance, instead of deleted after 7 days? Default: no change here. It is a pricing decision; if taken, the message becomes "get them now or wait".]
-- [NEEDS CLARIFICATION: may stage 1a ship before the pending checkout read, since it changes nothing a user sees? Default: yes.]
+- Decided: saved cards stay as they are (kept 7 days, then deleted). Releasing them at the reset is revisited after this test has a result, so the test measures one thing.
+- Decided: stage 1a ships now. The message test (this PR) starts only after the pending checkout read.
+- Decided: the connector keeps holding cards past the free limit for the length of the test.
 - [NEEDS CLARIFICATION: does changing the server instruction wording require a directory re-review? Default: treat the existing rule as binding and keep the change minimal.]
 - [NEEDS CLARIFICATION: is the 30-day test window long enough at current connector volume, or should the read wait for a fixed number of users per arm?]
 
@@ -87,6 +88,6 @@ As a learner who asked my chat for a deck and got part of it, I want to be told 
 - Verified in code: the plans link and its rule comment (`McpToolsService.ts`, `PLANS_URL`); the copy test that rejects upgrade, pricing and checkout (`McpToolsService.test.ts`); the 7-day hold (`PLAN_HOLD_TTL_MS` in `UploadService.ts`); `resolvePricingReturn` keeping only `ref` and `interval` (`getRedirect.ts`); checkout surfaces parsed in `usecases/checkout/checkoutSurface.ts`.
 - Platform check: Stripe's hosted checkout already prefills the email or reuses the customer for a signed-in buyer and offers saved payment methods; nothing here writes to Stripe.
 - Layers: `services/mcp` (message, fields, instruction), `routes`/`controllers`/`usecases` (server arrival record), `controllers/helpers` (sign-in return), `types/AnalyticsEvents.ts` and `web/src/lib/analytics/events.ts`.
-- Two PRs: 1a small (measurement, return fix), 1b small to medium (message and fields). 1b ships after 1a is live so the control baseline exists.
+- Stage 1a is a separate measurement PR that ships first so the control baseline exists; this PR is stage 1b, small to medium (message and fields).
 - Security: no token, reference or account data in the link; arm and kind are validated against fixed sets before being recorded; nothing account-specific is rendered before sign-in. The sign-in return change touches an auth-adjacent helper and needs a security pass.
 - Tests: message builders and structured fields per state and per arm, the copy test, the arrival record (signed in and out, bad parameters), the return allowlist, arm stability.
