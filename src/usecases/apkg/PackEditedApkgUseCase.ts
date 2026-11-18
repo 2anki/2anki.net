@@ -30,7 +30,6 @@ export interface CardEdit {
   cardId: number;
   fields?: FieldEdit[];
   deleted?: boolean;
-  suspended?: boolean;
 }
 
 export interface PackEditedApkgInput {
@@ -41,7 +40,6 @@ export interface PackEditedApkgInput {
 
 export interface EditCounts {
   notesUpdated: number;
-  cardsSuspended: number;
   cardsDeleted: number;
   editsRefused: number;
 }
@@ -88,7 +86,6 @@ function applyEdits(
   const cardsById = new Map(collection.cards.map((card) => [card.id, card]));
   const counts: EditCounts = {
     notesUpdated: 0,
-    cardsSuspended: 0,
     cardsDeleted: 0,
     editsRefused: 0,
   };
@@ -106,13 +103,6 @@ function applyEdits(
     if (card == null) {
       counts.editsRefused += 1;
     } else if (!deletedIds.has(card.id)) {
-      if (edit.suspended) {
-        counts.cardsSuspended += db
-          .prepare(
-            'UPDATE cards SET queue = -1, mod = ?, usn = ? WHERE id = ? AND queue != -1'
-          )
-          .run(editedAtSecs, CHANGED_LOCALLY_USN, card.id).changes;
-      }
       const allowed = editableFieldIndices(collection, card);
       const current =
         editedFields.get(card.nid) ??

@@ -145,27 +145,6 @@ describe('PackEditedApkgUseCase', () => {
     expect(note?.fields[1]).toBe('edited back');
   });
 
-  it('sets queue=-1 on suspended cards', async () => {
-    const apkg = await buildApkgBuffer([
-      { front: 'Q1', back: 'A1' },
-      { front: 'Q2', back: 'A2' },
-    ]);
-    const result = await useCase.execute({
-      sourceBytes: apkg,
-      filename: 'deck.apkg',
-      edits: [{ cardId: 100, suspended: true }],
-    });
-    const archive = await extractApkg(result.buffer);
-    const col = parseCollection(archive.collectionBuffer);
-    const cardId = col.cards[0].id;
-    const tmpDb = new Database(archive.collectionBuffer);
-    const row = tmpDb
-      .prepare('SELECT queue FROM cards WHERE id = ?')
-      .get(cardId) as { queue: number } | undefined;
-    tmpDb.close();
-    expect(row?.queue).toBe(-1);
-  });
-
   it('returns a filename with -edited suffix', async () => {
     const apkg = await buildApkgBuffer([{ front: 'Q', back: 'A' }]);
     const result = await useCase.execute({
@@ -777,17 +756,6 @@ describe('PackEditedApkgUseCase applies edits by card id to stored fields', () =
       expect(fieldsOf(after, 20)).toEqual([expected, 'Oslo']);
     }
   );
-
-  it('suspends the card whose id was sent', async () => {
-    const { after, result } = await packWith([
-      { cardId: 500, suspended: true },
-    ]);
-
-    expect(
-      after.cards.filter((card) => card.queue === -1).map((card) => card.id)
-    ).toEqual([500]);
-    expect(result.cardsSuspended).toBe(1);
-  });
 });
 
 const EXPORTED_AT_SECS = 1_700_000_000;
@@ -1033,28 +1001,22 @@ describe.each([
       expect(after.cards).toEqual(before.cards);
     });
 
-    it('suspends a card with the edit time and a local-change usn, leaving the rest', async () => {
-      const { before, after } = await packWith([
-        { cardId: 102, suspended: true },
-      ]);
+    it('leaves every card as it was when an older page still sends a suspend flag', async () => {
+      const staleSuspend = { cardId: 102, suspended: true } as CardEdit;
 
-      expect(rowOf(after.cards, 102)).toEqual({
-        ...rowOf(before.cards, 102),
-        queue: -1,
-        mod: EDITED_AT_SECS,
-        usn: -1,
-      });
-      expect(withoutId(after.cards, 102)).toEqual(withoutId(before.cards, 102));
-      expect(after.notes).toEqual(before.notes);
-    });
-
-    it('stamps nothing when the card is already suspended', async () => {
-      const { before, after, result } = await packWith([
-        { cardId: 101, suspended: true },
-      ]);
+      const { before, after, result } = await packWith([staleSuspend]);
 
       expect(after).toEqual(before);
-      expect(result.cardsSuspended).toBe(0);
+      expect(result).toMatchObject({ notesUpdated: 0, cardsDeleted: 0 });
+    });
+
+    it('keeps a card the deck already had suspended as it was', async () => {
+      const { before, after } = await packWith([
+        { cardId: 100, fields: [{ index: 0, value: 'edited' }] },
+      ]);
+
+      expect(rowOf(after.cards, 101)).toEqual(rowOf(before.cards, 101));
+      expect(rowOf(after.cards, 101)?.queue).toBe(-1);
     });
 
     it('stamps nothing when an edit leaves the text as it was', async () => {

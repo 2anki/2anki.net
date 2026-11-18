@@ -1,14 +1,12 @@
 export interface CardEditState {
   fields?: Record<number, string>;
   deleted?: boolean;
-  suspended?: boolean;
 }
 
 export interface EditPayload {
   cardId: number;
   fields?: Array<{ index: number; value: string }>;
   deleted?: boolean;
-  suspended?: boolean;
 }
 
 function hasFieldEdits(state: CardEditState): boolean {
@@ -16,7 +14,7 @@ function hasFieldEdits(state: CardEditState): boolean {
 }
 
 export function isEmptyEdit(state: CardEditState): boolean {
-  return !state.deleted && !state.suspended && !hasFieldEdits(state);
+  return !state.deleted && !hasFieldEdits(state);
 }
 
 export function withEditMapEntry(
@@ -87,7 +85,6 @@ export function toEditPayloads(
       );
     }
     if (state.deleted) payload.deleted = true;
-    if (state.suspended) payload.suspended = true;
     return payload;
   });
 }

@@ -13,11 +13,25 @@ describe('parseCardEdits', () => {
     const edits = [
       { cardId: 1700000000123, fields: [{ index: 1, value: 'new back' }] },
       { cardId: 1700000000124, deleted: true },
-      { cardId: 1700000000125, suspended: true },
     ];
 
     expect(parseCardEdits(edits)).toEqual({ ok: true, edits });
   });
+
+  it.each([true, false, 1])(
+    'ignores a suspended flag of %s that an older page still sends',
+    (suspended) => {
+      expect(
+        parseCardEdits([
+          { cardId: 5, suspended },
+          { cardId: 6, deleted: true, suspended },
+        ])
+      ).toEqual({
+        ok: true,
+        edits: [{ cardId: 5 }, { cardId: 6, deleted: true }],
+      });
+    }
+  );
 
   it('accepts an empty list', () => {
     expect(parseCardEdits([])).toEqual({ ok: true, edits: [] });
@@ -44,7 +58,6 @@ describe('parseCardEdits', () => {
     ['an unsafe card id', [{ cardId: Number.MAX_SAFE_INTEGER + 2 }]],
     ['a string card id', [{ cardId: '5' }]],
     ['a non-boolean deleted', [{ cardId: 5, deleted: 'yes' }]],
-    ['a non-boolean suspended', [{ cardId: 5, suspended: 1 }]],
     ['fields that are not a list', [{ cardId: 5, fields: { index: 0 } }]],
     [
       'a fractional field index',

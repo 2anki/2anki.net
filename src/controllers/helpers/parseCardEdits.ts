@@ -76,7 +76,7 @@ function parseFieldEdits(raw: unknown): FieldEdit[] | Refusal | undefined {
 }
 
 function parseCardEdit(raw: Record<string, unknown>): CardEdit | Refusal {
-  const { cardId, deleted, suspended } = raw;
+  const { cardId, deleted } = raw;
   if (
     typeof cardId !== 'number' ||
     !Number.isSafeInteger(cardId) ||
@@ -84,7 +84,7 @@ function parseCardEdit(raw: Record<string, unknown>): CardEdit | Refusal {
   ) {
     return INVALID;
   }
-  if (!isOptionalBoolean(deleted) || !isOptionalBoolean(suspended)) {
+  if (!isOptionalBoolean(deleted)) {
     return INVALID;
   }
   const fields = parseFieldEdits(raw.fields);
@@ -92,7 +92,6 @@ function parseCardEdit(raw: Record<string, unknown>): CardEdit | Refusal {
   const edit: CardEdit = { cardId };
   if (fields !== undefined) edit.fields = fields;
   if (deleted !== undefined) edit.deleted = deleted;
-  if (suspended !== undefined) edit.suspended = suspended;
   return edit;
 }
 
