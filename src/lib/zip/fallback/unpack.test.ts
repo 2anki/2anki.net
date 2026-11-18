@@ -127,4 +127,25 @@ describe('unpack', () => {
       )
     ).rejects.toMatchObject({ code: 'ENOENT' });
   });
+
+  it('rejects a tool that cannot start only once its log files are closed', async () => {
+    const tarPath = path.join(scripts, 'missing');
+
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const attemptWorkspace = fs.mkdtempSync(path.join(workspace, 'try-'));
+      const attemptArchive = path.join(attemptWorkspace, 'upload-copy');
+      fs.writeFileSync(attemptArchive, 'the uploaded archive');
+
+      await expect(
+        unpack(attemptArchive, attemptWorkspace, limits({ tarPath }))
+      ).rejects.toMatchObject({ code: 'ENOENT' });
+
+      expect(fs.readdirSync(attemptWorkspace).sort()).toEqual([
+        'tar_stderr.log',
+        'tar_stdout.log',
+        'upload-copy',
+      ]);
+      fs.rmSync(attemptWorkspace, { recursive: true });
+    }
+  });
 });

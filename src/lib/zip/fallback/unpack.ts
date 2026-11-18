@@ -1,5 +1,9 @@
 import { spawn } from 'node:child_process';
-import { createWriteStream, promises as fsPromises } from 'node:fs';
+import {
+  createWriteStream,
+  promises as fsPromises,
+  type WriteStream,
+} from 'node:fs';
 import { join } from 'node:path';
 
 import { MAX_EXTRACTED_BYTES, MAX_RECOVERY_MS } from '../zipLimits';
@@ -48,6 +52,18 @@ async function extractedBytes(
 function openLog(logPath: string) {
   return createWriteStream(logPath, { flags: 'a' }).on('error', () => {
     console.warn('[zip] recovery log is unavailable');
+  });
+}
+
+// A log still opening when unpack settles creates its file afterwards, inside
+// a workspace the caller may already be removing (ENOTEMPTY).
+function closeLog(stream: WriteStream): Promise<void> {
+  if (stream.closed) {
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => {
+    stream.once('close', () => resolve());
+    stream.destroy();
   });
 }
 
@@ -115,7 +131,9 @@ export function unpack(
       settled = true;
       clearInterval(sizeCheck);
       clearTimeout(deadline);
-      reject(error);
+      Promise.all([closeLog(stdoutStream), closeLog(stderrStream)]).then(() =>
+        reject(error)
+      );
     });
 
     decompressProcess.on('close', () => {
