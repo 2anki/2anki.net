@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-18-ankify-send-stops-when-anki-hangs",
+  "date": "2026-11-18",
+  "type": "fix",
+  "title": "Send to Anki stops after about 10 seconds when your Anki is not answering, and very large sends stop at a 13-minute limit"
+}

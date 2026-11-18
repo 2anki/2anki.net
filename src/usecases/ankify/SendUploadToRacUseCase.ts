@@ -11,6 +11,7 @@ import { IUploadRepository } from '../../data_layer/UploadRespository';
 import {
   AnkiConnectClient,
   AnkiConnectError,
+  AnkiConnectMalformedResponseError,
   AnkiConnectNote,
   AnkiConnectUnreachableError,
 } from '../../services/ankify/AnkiConnectClient';
@@ -49,6 +50,39 @@ export class SendAlreadyRunningError extends Error {
     this.name = 'SendAlreadyRunningError';
   }
 }
+
+// Bounds how long one send holds its account: after the last check one note
+// can still make 3 calls (30s) and the final AnkiWeb sync takes up to 60s, so
+// a send ends within 780 + 30 + 60 = 870s. Apache cuts this route's response
+// at its global 300s (scripts/deploy-blue-green.sh), so a browser waiting on
+// a send this long has already had a proxy error; the dispatch log keeps the
+// outcome.
+export const SEND_DEADLINE_MS = 13 * 60_000;
+
+const THIN_SPACE = ' ';
+
+const formatCount = (count: number): string =>
+  count >= 10000
+    ? String(count).replace(/\B(?=(\d{3})+(?!\d))/g, THIN_SPACE)
+    : String(count);
+
+export class SendDeadlineExceededError extends Error {
+  constructor(
+    readonly sent: number,
+    readonly total: number
+  ) {
+    const minutes = Math.round(SEND_DEADLINE_MS / 60_000);
+    const noun = total === 1 ? 'note' : 'notes';
+    super(
+      `Sent ${formatCount(sent)} of ${formatCount(total)} ${noun} before the ${minutes}-minute limit. Split the deck into smaller ones and send each.`
+    );
+    this.name = 'SendDeadlineExceededError';
+  }
+}
+
+const isTransportFailure = (error: unknown): boolean =>
+  error instanceof AnkiConnectUnreachableError &&
+  !(error instanceof AnkiConnectMalformedResponseError);
 
 export type { AnkiWebSyncStatus };
 
@@ -179,6 +213,7 @@ export class SendUploadToRacUseCase {
   private async send(
     input: SendUploadToRacInput
   ): Promise<SendUploadToRacResult> {
+    const deadline = Date.now() + SEND_DEADLINE_MS;
     const upload = await this.uploads.findByIdAndOwner(
       input.uploadId,
       input.owner
@@ -219,26 +254,57 @@ export class SendUploadToRacUseCase {
     const overrides =
       (await this.templateOverridesProvider?.(input.owner)) ?? null;
     await ensureAnkifyModels(ac, this.modelCache(client.id), overrides);
-    await this.uploadAllMedia(ac, parsed, result);
 
-    for (const [noteId, note] of collection.notes) {
-      await this.processNote({
-        noteId,
-        note,
-        collection,
-        client,
+    let reachedDeadline = false;
+    try {
+      reachedDeadline = !(await this.uploadAllMedia(
         ac,
-        fallbackDeckName,
-        seenDeckNames,
+        parsed,
         result,
-        overrides,
-      });
+        deadline
+      ));
+      for (const [noteId, note] of collection.notes) {
+        if (reachedDeadline || Date.now() > deadline) {
+          reachedDeadline = true;
+          break;
+        }
+        await this.processNote({
+          noteId,
+          note,
+          collection,
+          client,
+          ac,
+          fallbackDeckName,
+          seenDeckNames,
+          result,
+          overrides,
+        });
+      }
+    } catch (error) {
+      if (isTransportFailure(error)) {
+        result.deckNames = Array.from(seenDeckNames);
+        await this.persistDispatchLog(
+          input,
+          client,
+          result,
+          (error as Error).message
+        );
+      }
+      throw error;
     }
 
     result.deckNames = Array.from(seenDeckNames);
 
     await this.runFinalAnkiWebSync(ac, result);
-    await this.persistDispatchLog(input, client, result);
+    if (reachedDeadline) {
+      const stop = new SendDeadlineExceededError(
+        result.created + result.updated,
+        collection.notes.size
+      );
+      await this.persistDispatchLog(input, client, result, stop.message);
+      throw stop;
+    }
+    await this.persistDispatchLog(input, client, result, null);
 
     return result;
   }
@@ -332,26 +398,26 @@ export class SendUploadToRacUseCase {
         }
       }
     } catch (error) {
-      if (
-        error instanceof AnkiConnectUnreachableError ||
-        error instanceof AnkiConnectError
-      ) {
-        result.errors.push(`Note ${noteId}: ${error.message}`);
-      } else {
-        result.errors.push(`Note ${noteId}: ${(error as Error).message}`);
+      if (isTransportFailure(error)) {
+        throw error;
       }
+      result.errors.push(`Note ${noteId}: ${(error as Error).message}`);
     }
   }
 
   private async uploadAllMedia(
     ac: AnkiConnectClient,
     parsed: ParsedApkgForSend,
-    result: SendUploadToRacResult
-  ): Promise<void> {
+    result: SendUploadToRacResult,
+    deadline: number
+  ): Promise<boolean> {
     for (const [originalName, archiveName] of parsed.mediaMap) {
       const bytes = parsed.mediaEntries.get(archiveName);
       if (bytes == null) {
         continue;
+      }
+      if (Date.now() > deadline) {
+        return false;
       }
       try {
         await ac.storeMediaFile({
@@ -359,11 +425,15 @@ export class SendUploadToRacUseCase {
           data: bytes.toString('base64'),
         });
       } catch (error) {
+        if (isTransportFailure(error)) {
+          throw error;
+        }
         result.errors.push(
           `Media ${originalName}: ${(error as Error).message}`
         );
       }
     }
+    return true;
   }
 
   private async runFinalAnkiWebSync(
@@ -385,17 +455,22 @@ export class SendUploadToRacUseCase {
   private async persistDispatchLog(
     input: SendUploadToRacInput,
     client: AnkifyClient,
-    result: SendUploadToRacResult
+    result: SendUploadToRacResult,
+    stoppedBecause: string | null
   ): Promise<void> {
     if (this.logs == null) {
       return;
     }
+    const counts = `${result.created} new, ${result.updated} updated, ${result.errors.length} errors`;
     await this.logs
       .log({
         owner: input.owner,
         kind: 'dispatch',
-        status: syncLogStatus(result),
-        message: `dispatched upload ${input.uploadId} (${result.created} new, ${result.updated} updated, ${result.errors.length} errors)`,
+        status: stoppedBecause == null ? syncLogStatus(result) : 'error',
+        message:
+          stoppedBecause == null
+            ? `dispatched upload ${input.uploadId} (${counts})`
+            : `stopped upload ${input.uploadId} (${counts}): ${stoppedBecause}`,
         payload: {
           upload_id: input.uploadId,
           ankify_client_id: client.id,
@@ -403,6 +478,7 @@ export class SendUploadToRacUseCase {
           created: result.created,
           updated: result.updated,
           errors: result.errors,
+          ...(stoppedBecause == null ? {} : { stopped: stoppedBecause }),
         },
       })
       .catch((logError) => {

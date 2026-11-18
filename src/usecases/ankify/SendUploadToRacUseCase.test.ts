@@ -2,17 +2,21 @@ import { vi, type Mock, type Mocked } from 'vitest';
 import {
   NoActiveAnkifyClientError,
   ParsedApkgForSend,
+  SEND_DEADLINE_MS,
   SendAlreadyRunningError,
+  SendDeadlineExceededError,
   SendUploadToRacUseCase,
   UploadNotFoundError,
 } from './SendUploadToRacUseCase';
-import { AnkifyClient } from '../../entities/ankify';
+import { AnkifyClient, AnkifySyncMapping } from '../../entities/ankify';
 import { AnkifyClientsRepositoryInterface } from '../../data_layer/ankify/AnkifyClientsRepository';
 import { AnkifySyncMappingsRepositoryInterface } from '../../data_layer/ankify/AnkifySyncMappingsRepository';
 import { IUploadRepository } from '../../data_layer/UploadRespository';
 import {
   AnkiConnectClient,
   AnkiConnectError,
+  AnkiConnectTimeoutError,
+  AnkiConnectUnreachableError,
 } from '../../services/ankify/AnkiConnectClient';
 import { NormalizedCollection } from '../../services/ApkgPreviewService/types';
 
@@ -760,5 +764,362 @@ describe('SendUploadToRacUseCase', () => {
     await expect(
       useCase.execute({ uploadId: 7, owner: 42 })
     ).resolves.toMatchObject({ created: 1 });
+  });
+});
+
+const MALFORMED = Symbol('malformed body');
+type AnkiReply = { result: unknown; error: string | null } | typeof MALFORMED;
+type ActionHandler = (signal: AbortSignal) => Promise<AnkiReply>;
+
+const answer =
+  (result: unknown): ActionHandler =>
+  async () => ({ result, error: null });
+
+const neverAnswer: ActionHandler = (signal) =>
+  new Promise((_resolve, reject) => {
+    signal.addEventListener('abort', () => reject(new Error('aborted')));
+  });
+
+const answerAfter =
+  (ms: number, result: unknown): ActionHandler =>
+  () =>
+    new Promise((resolve) => {
+      setTimeout(() => resolve({ result, error: null }), ms);
+    });
+
+const makeAnkiContainer = (handlers: Record<string, ActionHandler>) => {
+  const calls: string[] = [];
+  const fetchImpl = vi.fn(
+    async (_url: string, init: { body: string; signal: AbortSignal }) => {
+      const { action } = JSON.parse(init.body) as { action: string };
+      calls.push(action);
+      const handler = handlers[action] ?? answer(null);
+      const reply = await handler(init.signal);
+      return {
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: async () => {
+          if (reply === MALFORMED) {
+            throw new SyntaxError('Unexpected token < in JSON');
+          }
+          return reply;
+        },
+      };
+    }
+  ) as unknown as typeof fetch;
+  const callsOf = (action: string) => calls.filter((c) => c === action).length;
+  return { fetchImpl, handlers, callsOf };
+};
+
+const manyNotes = (count: number): Parameters<typeof buildCollection>[0] => {
+  const notes = new Map<
+    number,
+    { id: number; mid: number; tags: string; fields: string[]; guid: string }
+  >();
+  const cards: { id: number; nid: number; did: number; ord: number }[] = [];
+  for (let i = 0; i < count; i++) {
+    const id = 1000 + i;
+    notes.set(id, {
+      id,
+      mid: 1,
+      tags: '',
+      fields: [`front ${i}`, `back ${i}`],
+      guid: `guid-${i}`,
+    });
+    cards.push({ id: 5000 + i, nid: id, did: 10, ord: 0 });
+  }
+  return { notes, cards };
+};
+
+const settle = <T>(promise: Promise<T>) =>
+  promise.then(
+    (value) => ({ value, error: null }),
+    (error: unknown) => ({ value: null, error })
+  );
+
+describe('SendUploadToRacUseCase when Anki stops answering', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const buildUseCase = (
+    container: ReturnType<typeof makeAnkiContainer>,
+    parsed: ParsedApkgForSend
+  ) => {
+    const repos = makeRepos();
+    const stored = new Map<string, AnkifySyncMapping>();
+    repos.mappings.findBySourceId.mockImplementation(
+      async (_clientId, sourceId) => stored.get(sourceId) ?? null
+    );
+    repos.mappings.upsert.mockImplementation(async (input) => {
+      const mapping: AnkifySyncMapping = {
+        id: stored.size + 1,
+        ankify_client_id: input.ankify_client_id,
+        source_id: input.source_id,
+        source_type: input.source_type,
+        anki_note_id: input.anki_note_id,
+        deck_name: input.deck_name,
+        content_hash: input.content_hash ?? null,
+        last_synced_at: new Date(),
+      };
+      stored.set(input.source_id, mapping);
+      return mapping;
+    });
+    const logs = { log: vi.fn(async () => undefined), list: vi.fn() };
+    const useCase = new SendUploadToRacUseCase(
+      repos.clients,
+      repos.mappings,
+      repos.uploads,
+      async () => parsed,
+      () =>
+        new AnkiConnectClient(
+          'http://anki',
+          container.fetchImpl,
+          undefined,
+          null,
+          'response'
+        ),
+      logs as never
+    );
+    return { useCase, logs, ...repos };
+  };
+
+  test('ends the send after the first call that times out, not after every note', async () => {
+    const container = makeAnkiContainer({ addNote: neverAnswer });
+    const { useCase, mappings } = buildUseCase(
+      container,
+      buildParsed(manyNotes(3))
+    );
+
+    const outcome = settle(useCase.execute({ uploadId: 7, owner: 42 }));
+    await vi.advanceTimersByTimeAsync(60_000);
+    const { error } = await outcome;
+
+    expect(error).toBeInstanceOf(AnkiConnectTimeoutError);
+    expect(container.callsOf('addNote')).toBe(1);
+    expect(container.callsOf('sync')).toBe(0);
+    expect(mappings.upsert).not.toHaveBeenCalled();
+  });
+
+  test('records a send that stopped on a timeout in the dispatch log, with its counts', async () => {
+    let addNoteCalls = 0;
+    const container = makeAnkiContainer({
+      addNote: (signal) => {
+        addNoteCalls += 1;
+        return addNoteCalls === 1
+          ? answer(9_876_543_210)(signal)
+          : neverAnswer(signal);
+      },
+    });
+    const { useCase, logs } = buildUseCase(
+      container,
+      buildParsed(manyNotes(3))
+    );
+
+    const outcome = settle(useCase.execute({ uploadId: 7, owner: 42 }));
+    await vi.advanceTimersByTimeAsync(60_000);
+    await outcome;
+
+    expect(logs.log).toHaveBeenCalledTimes(1);
+    expect(logs.log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'dispatch',
+        status: 'error',
+        message: expect.stringMatching(
+          /^stopped upload 7 \(1 new, 0 updated, 0 errors\): AnkiConnect call 'addNote' timed out/
+        ),
+        payload: expect.objectContaining({
+          created: 1,
+          updated: 0,
+          deck_names: ['Imported::Subdeck'],
+        }),
+      })
+    );
+    expect(container.callsOf('sync')).toBe(0);
+  });
+
+  test('records a malformed reply against its note and keeps going', async () => {
+    let addNoteCalls = 0;
+    const container = makeAnkiContainer({
+      addNote: async () => {
+        addNoteCalls += 1;
+        return addNoteCalls === 1
+          ? MALFORMED
+          : { result: 9_876_543_210, error: null };
+      },
+    });
+    const { useCase } = buildUseCase(container, buildParsed(manyNotes(3)));
+
+    const result = await useCase.execute({ uploadId: 7, owner: 42 });
+
+    expect(result.created).toBe(2);
+    expect(result.errors).toEqual([
+      'Note 1000: AnkiConnect unreachable at http://anki',
+    ]);
+    expect(container.callsOf('addNote')).toBe(3);
+  });
+
+  test('ends the send after the first media upload that times out', async () => {
+    const container = makeAnkiContainer({ storeMediaFile: neverAnswer });
+    const { useCase } = buildUseCase(
+      container,
+      buildParsed(manyNotes(1), {
+        mediaMap: new Map([
+          ['a.png', '0'],
+          ['b.png', '1'],
+        ]),
+        mediaEntries: new Map([
+          ['0', Buffer.from('a')],
+          ['1', Buffer.from('b')],
+        ]),
+      })
+    );
+
+    const outcome = settle(useCase.execute({ uploadId: 7, owner: 42 }));
+    await vi.advanceTimersByTimeAsync(60_000);
+    const { error } = await outcome;
+
+    expect(error).toBeInstanceOf(AnkiConnectTimeoutError);
+    expect(container.callsOf('storeMediaFile')).toBe(1);
+    expect(container.callsOf('addNote')).toBe(0);
+  });
+
+  test('releases the account once a send ended on a timeout, so the next send runs', async () => {
+    const container = makeAnkiContainer({ addNote: neverAnswer });
+    const { useCase } = buildUseCase(container, buildParsed(manyNotes(3)));
+
+    const first = settle(useCase.execute({ uploadId: 7, owner: 42 }));
+    await vi.advanceTimersByTimeAsync(60_000);
+    await first;
+    container.handlers.addNote = answer(9_876_543_210);
+
+    await expect(
+      useCase.execute({ uploadId: 7, owner: 42 })
+    ).resolves.toMatchObject({ created: 3, errors: [] });
+  });
+
+  test('keeps going after Anki rejects a note and reports the partial result', async () => {
+    let addNoteCalls = 0;
+    const container = makeAnkiContainer({
+      addNote: async () => {
+        addNoteCalls += 1;
+        return addNoteCalls === 1
+          ? { result: null, error: 'cannot create note because it is empty' }
+          : { result: 9_876_543_210, error: null };
+      },
+    });
+    const { useCase } = buildUseCase(container, buildParsed(manyNotes(3)));
+
+    const result = await useCase.execute({ uploadId: 7, owner: 42 });
+
+    expect(result.created).toBe(2);
+    expect(result.errors).toEqual([
+      'Note 1000: cannot create note because it is empty',
+    ]);
+    expect(container.callsOf('sync')).toBe(1);
+  });
+
+  describe('a container that answers every call in 5 s', () => {
+    const perNoteMs = 5_000;
+    const notesBeforeDeadline = Math.floor(SEND_DEADLINE_MS / perNoteMs) + 1;
+    const noteCount = notesBeforeDeadline + 40;
+
+    const slowContainer = () =>
+      makeAnkiContainer({
+        addNote: answerAfter(perNoteMs, 9_876_543_210),
+        updateNoteFields: answerAfter(perNoteMs, null),
+      });
+
+    test('ends the send at the deadline with the counts in its message', async () => {
+      const container = slowContainer();
+      const { useCase } = buildUseCase(
+        container,
+        buildParsed(manyNotes(noteCount))
+      );
+
+      const outcome = settle(useCase.execute({ uploadId: 7, owner: 42 }));
+      await vi.advanceTimersByTimeAsync(noteCount * perNoteMs + 120_000);
+      const { error } = await outcome;
+
+      expect(error).toBeInstanceOf(SendDeadlineExceededError);
+      expect(error).not.toBeInstanceOf(AnkiConnectUnreachableError);
+      expect((error as Error).message).toBe(
+        `Sent ${notesBeforeDeadline} of ${noteCount} notes before the 13-minute limit. Split the deck into smaller ones and send each.`
+      );
+      expect(container.callsOf('addNote')).toBe(notesBeforeDeadline);
+    });
+
+    test('syncs what landed to AnkiWeb and records the stop in the dispatch log', async () => {
+      const container = slowContainer();
+      const { useCase, logs } = buildUseCase(
+        container,
+        buildParsed(manyNotes(noteCount))
+      );
+
+      const outcome = settle(useCase.execute({ uploadId: 7, owner: 42 }));
+      await vi.advanceTimersByTimeAsync(noteCount * perNoteMs + 120_000);
+      await outcome;
+
+      expect(container.callsOf('sync')).toBe(1);
+      expect(logs.log).toHaveBeenCalledTimes(1);
+      expect(logs.log).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: 'error',
+          message: `stopped upload 7 (${notesBeforeDeadline} new, 0 updated, 0 errors): Sent ${notesBeforeDeadline} of ${noteCount} notes before the 13-minute limit. Split the deck into smaller ones and send each.`,
+          payload: expect.objectContaining({ created: notesBeforeDeadline }),
+        })
+      );
+    });
+
+    test('releases the account by about 800 s, so the next send runs', async () => {
+      const container = slowContainer();
+      const { useCase } = buildUseCase(
+        container,
+        buildParsed(manyNotes(noteCount))
+      );
+
+      let settled = false;
+      const first = settle(useCase.execute({ uploadId: 7, owner: 42 })).then(
+        (outcome) => {
+          settled = true;
+          return outcome;
+        }
+      );
+      await vi.advanceTimersByTimeAsync(800_000);
+      expect(settled).toBe(true);
+      expect((await first).error).toBeInstanceOf(SendDeadlineExceededError);
+
+      container.handlers.addNote = answer(9_876_543_210);
+      container.handlers.updateNoteFields = answer(null);
+      await expect(
+        useCase.execute({ uploadId: 7, owner: 42 })
+      ).resolves.toMatchObject({
+        created: noteCount - notesBeforeDeadline,
+        updated: notesBeforeDeadline,
+      });
+    });
+
+    test('a send after a deadline stop updates the notes already sent instead of adding them again', async () => {
+      const container = slowContainer();
+      const { useCase } = buildUseCase(
+        container,
+        buildParsed(manyNotes(noteCount))
+      );
+
+      const first = settle(useCase.execute({ uploadId: 7, owner: 42 }));
+      await vi.advanceTimersByTimeAsync(noteCount * perNoteMs + 120_000);
+      await first;
+      container.handlers.addNote = answer(9_876_543_210);
+      container.handlers.updateNoteFields = answer(null);
+      await useCase.execute({ uploadId: 7, owner: 42 });
+
+      expect(container.callsOf('addNote')).toBe(noteCount);
+      expect(container.callsOf('updateNoteFields')).toBe(notesBeforeDeadline);
+    });
   });
 });

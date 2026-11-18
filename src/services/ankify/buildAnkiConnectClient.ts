@@ -11,3 +11,16 @@ export const ankiConnectFactory = (
     undefined,
     apiKey
   );
+
+export const ankiConnectSendFactory = (
+  host: string,
+  port: number,
+  apiKey: string | null
+): AnkiConnectClient =>
+  new AnkiConnectClient(
+    buildAnkiConnectUrl(host, port),
+    undefined,
+    undefined,
+    apiKey,
+    'response'
+  );

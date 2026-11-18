@@ -69,14 +69,30 @@ export class AnkiConnectTimeoutError extends AnkiConnectUnreachableError {
   }
 }
 
+// The container answered, but not with JSON. Extends the unreachable class so
+// existing `instanceof` checks behave as before; a caller that wants to tell a
+// garbled reply from a dead container checks this class first.
+export class AnkiConnectMalformedResponseError extends AnkiConnectUnreachableError {
+  constructor(url: string, cause: unknown) {
+    super(url, cause);
+    this.name = 'AnkiConnectMalformedResponseError';
+  }
+}
+
 type FetchLike = typeof fetch;
+
+// 'headers': the per-call timeout stops once the response headers arrive and
+// the body may take as long as it needs. No body duration has been measured,
+// so this stays the default. 'response': the timeout also covers the body.
+export type AnkiConnectTimeoutScope = 'headers' | 'response';
 
 export class AnkiConnectClient {
   constructor(
     private readonly baseUrl: string,
     private readonly fetchImpl: FetchLike = fetch,
     private readonly timeoutMs: number = ANKI_CONNECT_DEFAULT_TIMEOUT_MS,
-    private readonly apiKey: string | null = null
+    private readonly apiKey: string | null = null,
+    private readonly timeoutScope: AnkiConnectTimeoutScope = 'headers'
   ) {}
 
   async createDeck(deck: string): Promise<number> {
@@ -287,7 +303,23 @@ export class AnkiConnectClient {
   ): Promise<T> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await this.post(action, params, timeoutMs, controller);
+      if (this.timeoutScope === 'headers') {
+        clearTimeout(timer);
+      }
+      return await this.readResult<T>(response, action, timeoutMs, controller);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
 
+  private async post(
+    action: string,
+    params: Record<string, unknown> | undefined,
+    timeoutMs: number,
+    controller: AbortController
+  ): Promise<Response> {
     let response: Response;
     try {
       response = await this.fetchImpl(this.baseUrl, {
@@ -313,8 +345,6 @@ export class AnkiConnectClient {
         );
       }
       throw new AnkiConnectUnreachableError(this.baseUrl, error);
-    } finally {
-      clearTimeout(timer);
     }
 
     if (!response.ok) {
@@ -322,7 +352,15 @@ export class AnkiConnectClient {
         `AnkiConnect HTTP ${response.status} ${response.statusText}`
       );
     }
+    return response;
+  }
 
+  private async readResult<T>(
+    response: Response,
+    action: string,
+    timeoutMs: number,
+    controller: AbortController
+  ): Promise<T> {
     let body: AnkiConnectResponse<T>;
     try {
       body = (await response.json()) as AnkiConnectResponse<T>;
@@ -334,6 +372,9 @@ export class AnkiConnectClient {
           timeoutMs,
           error
         );
+      }
+      if (error instanceof SyntaxError) {
+        throw new AnkiConnectMalformedResponseError(this.baseUrl, error);
       }
       throw new AnkiConnectUnreachableError(this.baseUrl, error);
     }

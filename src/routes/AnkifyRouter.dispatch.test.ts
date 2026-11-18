@@ -8,6 +8,7 @@ import { buildTinyApkg } from '../test/fixtures/apkg/buildTinyApkg';
 
 const send = vi.hoisted(() => vi.fn());
 const addNote = vi.hoisted(() => vi.fn());
+const modelNames = vi.hoisted(() => vi.fn());
 
 vi.mock('@aws-sdk/client-s3', async () => {
   const actual =
@@ -88,19 +89,25 @@ vi.mock('../data_layer/SettingsRepository', () => ({
   }),
 }));
 
-vi.mock('../services/ankify/buildAnkiConnectClient', () => ({
-  ankiConnectFactory: () => ({
-    modelNames: vi.fn().mockResolvedValue([]),
+vi.mock('../services/ankify/buildAnkiConnectClient', () => {
+  const ankiConnectStub = () => ({
+    modelNames,
     createModel: vi.fn().mockResolvedValue(undefined),
     storeMediaFile: vi.fn().mockResolvedValue('picture.png'),
     createDeck: vi.fn().mockResolvedValue(1),
     addNote,
     updateNoteFields: vi.fn().mockResolvedValue(null),
     sync: vi.fn().mockResolvedValue(null),
-  }),
-}));
+  });
+  return {
+    ankiConnectFactory: ankiConnectStub,
+    ankiConnectSendFactory: ankiConnectStub,
+  };
+});
 
 import AnkifyRouter from './AnkifyRouter';
+import { AnkiConnectTimeoutError } from '../services/ankify/AnkiConnectClient';
+import { SEND_DEADLINE_MS } from '../usecases/ankify/SendUploadToRacUseCase';
 import {
   COLD_LOAD_BUDGET_BYTES,
   PREVIEW_MAX_STORED_BYTES,
@@ -173,6 +180,7 @@ describe('AnkifyRouter sending an upload to Ankify', () => {
     resetPreviewMemoryLimitsForTesting();
     send.mockReset();
     addNote.mockReset().mockResolvedValue(101);
+    modelNames.mockReset().mockResolvedValue([]);
   });
 
   it('sends a 200 MiB upload', async () => {
@@ -289,5 +297,48 @@ describe('AnkifyRouter sending an upload to Ankify', () => {
 
     expect(statuses).toEqual([200, 200]);
     expect(sharedPreviewLimits().coldLoads.inUse).toBe(0);
+  });
+
+  it('answers 503 with the unreachable message when a call timed out, then takes the next send', async () => {
+    storageReports(4096);
+    addNote.mockRejectedValueOnce(
+      new AnkiConnectTimeoutError('http://anki', 'addNote', 10_000, null)
+    );
+
+    const [stopped, next] = await withServer(async (base) => [
+      await postDispatch(base),
+      await postDispatch(base),
+    ]);
+
+    expect(stopped.status).toBe(503);
+    expect(await stopped.json()).toEqual({
+      message:
+        'AnkiConnect is unreachable. Make sure the hosted Anki container is healthy.',
+    });
+    expect(next.status).toBe(200);
+  });
+
+  it('answers 504 with the counts when the send passed its deadline, then takes the next send', async () => {
+    storageReports(4096);
+    modelNames.mockImplementationOnce(async () => {
+      vi.setSystemTime(Date.now() + SEND_DEADLINE_MS + 1_000);
+      return [];
+    });
+
+    try {
+      const [stopped, next] = await withServer(async (base) => [
+        await postDispatch(base),
+        await postDispatch(base),
+      ]);
+
+      expect(stopped.status).toBe(504);
+      expect(await stopped.json()).toEqual({
+        message:
+          'Sent 0 of 1 note before the 13-minute limit. Split the deck into smaller ones and send each.',
+      });
+      expect(next.status).toBe(200);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
