@@ -370,6 +370,12 @@ describe('LimitPage — anonymous variant', () => {
     expect(cta.getAttribute('href')).toBe('/register?redirect=/upload');
   });
 
+  it('loads /register as a full page so a provider sign-up returns to /upload', () => {
+    renderPage();
+    const cta = screen.getByRole('link', { name: 'Create a free account' });
+    expect(fireEvent.click(cta)).toBe(true);
+  });
+
   it('tracks the sign-up click as the free_signup plan', () => {
     renderPage();
     fireEvent.click(
@@ -554,6 +560,12 @@ describe('LimitPage — anonymous Day Pass card variant', () => {
     expect(signUp.className).toContain('planCtaSecondary');
   });
 
+  it('loads /register as a full page from the Day Pass card', () => {
+    renderPage(['/limit?cards=340']);
+    const signUp = screen.getByRole('link', { name: 'Create a free account' });
+    expect(fireEvent.click(signUp)).toBe(true);
+  });
+
   it('tags paywall_shown with the over-a-month deck bucket', () => {
     renderPage(['/limit?cards=340']);
     expect(mockTrack).toHaveBeenCalledWith('paywall_shown', {
@@ -616,6 +628,12 @@ describe('LimitPage — pass-first wall', () => {
     expect(follows(signUp, signIn)).toBe(true);
     expect(signUp.className).not.toContain('planCta');
     expect(signUp.getAttribute('href')).toBe('/register?redirect=/upload');
+  });
+
+  it('loads /register as a full page from the pass-first wall', () => {
+    renderPage(['/limit?kind=anonymous&cards=184']);
+    const signUp = screen.getByRole('link', { name: 'Create a free account' });
+    expect(fireEvent.click(signUp)).toBe(true);
   });
 
   it('says the file was not kept under the pass-first wall after the card cap', () => {

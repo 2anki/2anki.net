@@ -191,12 +191,12 @@ export function HomePage({
         <div className={styles.heroControls}>
           <p className={`${sharedStyles.aiOffBadgeBody} ${styles.heroAiBadge}`}>
             {t('home.hero.aiBadgeIntro')}{' '}
-            <Link
-              to="/register?redirect=/card-options"
+            <a
+              href="/register?redirect=/card-options"
               onClick={() => track('home_ai_anon_badge_clicked')}
             >
               {t('home.hero.createAccount')}
-            </Link>
+            </a>
             .
           </p>
         </div>
