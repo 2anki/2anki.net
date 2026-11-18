@@ -15,8 +15,11 @@ import { hashIp, resolveClientIp } from '../../lib/rateLimit/ipHelpers';
 import NotionService from '../../services/NotionService';
 import UploadService from '../../services/UploadService';
 import {
+  ACCEPTED_UPLOAD_FIELDS,
   getUploadHandler,
+  MixedUploadFieldsError,
   UPLOAD_FIELD,
+  UPLOAD_FIELD_ALIAS,
 } from '../../lib/misc/GetUploadHandler';
 import { getMaxUploadCount } from '../../lib/misc/getMaxUploadCount';
 import { isLimitError } from '../../lib/misc/isLimitError';
@@ -51,16 +54,36 @@ const DROPBOX_PAGE_SIZE = 10;
 const GOOGLE_DRIVE_PAGE_SIZE = 10;
 const GOOGLE_DRIVE_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
 
-// `.array(field, maxCount)` reports an over-count file as LIMIT_UNEXPECTED_FILE
-// on that field; LIMIT_FILE_COUNT only fires from `limits.files`, which the
+// `.fields([{ name, maxCount }])` reports an over-count file as
+// LIMIT_UNEXPECTED_FILE on that field; LIMIT_FILE_COUNT only fires from `limits.files`, which the
 // upload handler does not set. Both mean "more files than the plan takes".
 function isFileCountError(error: unknown): boolean {
   if (!(error instanceof multer.MulterError)) return false;
   return (
     error.code === 'LIMIT_FILE_COUNT' ||
-    (error.code === 'LIMIT_UNEXPECTED_FILE' && error.field === UPLOAD_FIELD)
+    (error.code === 'LIMIT_UNEXPECTED_FILE' &&
+      error.field != null &&
+      ACCEPTED_UPLOAD_FIELDS.includes(error.field))
   );
 }
+
+function isUnacceptedFieldError(error: unknown): error is multer.MulterError {
+  return (
+    error instanceof multer.MulterError &&
+    error.code === 'LIMIT_UNEXPECTED_FILE' &&
+    (error.field == null || !ACCEPTED_UPLOAD_FIELDS.includes(error.field))
+  );
+}
+
+const UNACCEPTED_FIELD_BODY = {
+  code: 'wrong_upload_field',
+  message: `Upload failed — send the file in a form field named “${UPLOAD_FIELD}” or “${UPLOAD_FIELD_ALIAS}”.`,
+} as const;
+
+const MIXED_FIELDS_BODY = {
+  code: 'wrong_upload_field',
+  message: `Upload failed — send every file in one form field, “${UPLOAD_FIELD}” or “${UPLOAD_FIELD_ALIAS}”, not both.`,
+} as const;
 
 function removeTempUpload(tempPath: string): Promise<void> {
   return fs.promises.unlink(tempPath).catch((e) => {
@@ -171,6 +194,19 @@ class UploadController {
             code: 'too_many_files',
             message: `Upload failed — that’s more than ${cap} files at once. Send them in smaller batches.`,
           });
+        }
+        if (isUnacceptedFieldError(error)) {
+          console.info('[upload] file sent under an unaccepted field', {
+            requestId: res.locals.requestId,
+            field: String(error.field ?? '').slice(0, 40),
+          });
+          return res.status(400).json(UNACCEPTED_FIELD_BODY);
+        }
+        if (error instanceof MixedUploadFieldsError) {
+          console.info('[upload] files split across both upload fields', {
+            requestId: res.locals.requestId,
+          });
+          return res.status(400).json(MIXED_FIELDS_BODY);
         }
         if (isLimitError(error)) {
           return handleUploadLimitError(

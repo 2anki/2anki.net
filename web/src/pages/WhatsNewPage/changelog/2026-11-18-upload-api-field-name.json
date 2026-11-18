@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-18-upload-api-field-name",
+  "date": "2026-11-18",
+  "type": "fix",
+  "title": "The upload API accepts the documented file field and names the right field when a request uses another"
+}

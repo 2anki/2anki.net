@@ -179,10 +179,12 @@ const UploadRouter = () => {
    *           schema:
    *             type: object
    *             properties:
-   *               file:
-   *                 type: string
-   *                 format: binary
-   *                 description: The file to upload (PDF, DOCX, etc.)
+   *               pakker:
+   *                 type: array
+   *                 items:
+   *                   type: string
+   *                   format: binary
+   *                 description: The files to upload (PDF, DOCX, etc.), one part per file. "file" is accepted as an alias; send every file under one of the two names, not both.
    *               options:
    *                 type: string
    *                 description: JSON string with conversion options
@@ -202,7 +204,7 @@ const UploadRouter = () => {
    *             schema:
    *               $ref: '#/components/schemas/Upload'
    *       400:
-   *         description: Invalid file or request
+   *         description: Invalid file or request. Code "wrong_upload_field" when a file arrives under a field other than "pakker" or "file", or under both; nothing is stored.
    *         content:
    *           application/json:
    *             schema:
