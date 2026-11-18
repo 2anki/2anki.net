@@ -723,6 +723,21 @@ describe.each(providers)(
 
       expect(done.headers.get('location')).toBe(MCP_RETURN_PATH);
     });
+
+    it('lands a sign-in started on the connector plans page back on it, marked as a return', async () => {
+      const started = await startSignIn(
+        `?redirect=${encodeURIComponent('/pricing?ref=mcp&k=partial&a=b')}`
+      );
+
+      const done = await finish(
+        started.state,
+        joinCookies(started.stateCookie, started.returnCookie)
+      );
+
+      expect(done.headers.get('location')).toBe(
+        '/pricing?ref=mcp&k=partial&a=b&r=1'
+      );
+    });
   }
 );
 

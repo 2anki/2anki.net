@@ -2367,7 +2367,7 @@ describe('UsersController.login — Notion-aware redirect', () => {
     await controller.login(req, res, vi.fn());
 
     const payload = res.json.mock.calls[0][0];
-    expect(payload.redirect).toBe('/pricing?ref=mcp&interval=year');
+    expect(payload.redirect).toBe('/pricing?ref=mcp&interval=year&r=1');
   });
 
   it('returns a visitor to the limit page they signed in from', async () => {
@@ -4580,7 +4580,7 @@ describe('UsersController — sign-in returns a connector to the authorize scree
       res
     );
 
-    expect(res.redirect).toHaveBeenCalledWith('/pricing?ref=mcp');
+    expect(res.redirect).toHaveBeenCalledWith('/pricing?ref=mcp&r=1');
   });
 
   it('a magic link login returns a connector visitor to the pricing view', async () => {
@@ -4605,6 +4605,7 @@ describe('UsersController — sign-in returns a connector to the authorize scree
   describe('a provider sign-in returns to the page that sent the visitor to /login', () => {
     const LOGIN_RETURN = 'login_return';
     const PRICING = '/pricing?ref=mcp';
+    const PRICING_RETURN = '/pricing?ref=mcp&r=1';
 
     const signedOutLoginPage = async (redirect?: string) => {
       const res = buildSigninRes();
@@ -4644,7 +4645,7 @@ describe('UsersController — sign-in returns a connector to the authorize scree
       expect(loginReturnCookies(res)).toEqual([
         [
           LOGIN_RETURN,
-          PRICING,
+          PRICING_RETURN,
           expect.objectContaining({
             httpOnly: true,
             secure: true,
@@ -4744,7 +4745,7 @@ describe('UsersController — sign-in returns a connector to the authorize scree
       );
 
       expect(res.clearCookie).not.toHaveBeenCalled();
-      expect(retry.redirect).toHaveBeenCalledWith(PRICING);
+      expect(retry.redirect).toHaveBeenCalledWith(PRICING_RETURN);
     });
 
     it('a password sign-in the login return steers logs via=password', async () => {
@@ -4790,7 +4791,7 @@ describe('UsersController — sign-in returns a connector to the authorize scree
         res
       );
 
-      expect(res.redirect).toHaveBeenCalledWith(PRICING);
+      expect(res.redirect).toHaveBeenCalledWith(PRICING_RETURN);
       expect(loginReturnCookies(res)).toEqual([]);
     });
 
@@ -4921,7 +4922,7 @@ describe('UsersController — sign-in returns a connector to the authorize scree
 
         await signIn(res, { [LOGIN_RETURN]: PRICING });
 
-        expect(res.redirect).toHaveBeenCalledWith(PRICING);
+        expect(res.redirect).toHaveBeenCalledWith(PRICING_RETURN);
         expect(res.clearCookie).toHaveBeenCalledWith(
           LOGIN_RETURN,
           expect.objectContaining({ path: '/' })
@@ -5032,7 +5033,7 @@ describe('UsersController — sign-in returns a connector to the authorize scree
 
       expect(res.json).toHaveBeenCalledWith({
         token: 'session-jwt',
-        redirect: PRICING,
+        redirect: PRICING_RETURN,
       });
       expect(res.clearCookie).toHaveBeenCalledWith(
         LOGIN_RETURN,
@@ -5090,6 +5091,7 @@ describe('UsersController — sign-in returns a connector to the authorize scree
 describe('UsersController — provider sign-ins bind the OAuth state to the browser', () => {
   const LOGIN_RETURN = 'login_return';
   const PRICING = '/pricing?ref=mcp';
+  const PRICING_RETURN = '/pricing?ref=mcp&r=1';
   const GOOGLE_STATE = 'google_login_state';
   const MICROSOFT_STATE = 'microsoft_login_state';
   const NOTION_STATE = 'notion_login_state';
@@ -5372,7 +5374,7 @@ describe('UsersController — provider sign-ins bind the OAuth state to the brow
 
         expect(authService[exchange]).toHaveBeenCalledTimes(1);
         expect(sessionCookies(res)).toHaveLength(1);
-        expect(res.redirect).toHaveBeenCalledWith(PRICING);
+        expect(res.redirect).toHaveBeenCalledWith(PRICING_RETURN);
         expect(res.clearCookie).toHaveBeenCalledWith(
           cookie,
           expect.objectContaining({ path: '/' })
@@ -5403,7 +5405,7 @@ describe('UsersController — provider sign-ins bind the OAuth state to the brow
         [LOGIN_RETURN]: PRICING,
       });
 
-      expect(res.redirect).toHaveBeenCalledWith(PRICING);
+      expect(res.redirect).toHaveBeenCalledWith(PRICING_RETURN);
     }
   );
 });

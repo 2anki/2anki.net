@@ -2,6 +2,10 @@ export type ConnectorLimitKind = 'partial' | 'held' | 'limit' | 'photo';
 
 export type ConnectorArm = 'a' | 'b';
 
+export const CONNECTOR_REF = 'mcp';
+export const CONNECTOR_RETURN_MARKER = 'r';
+export const CONNECTOR_RETURN_VALUE = '1';
+
 const LIMIT_KINDS: ReadonlySet<string> = new Set<ConnectorLimitKind>([
   'partial',
   'held',
@@ -47,6 +51,7 @@ export interface ConnectorLinkParams {
   kind: ConnectorLimitKind | null;
   arm: ConnectorArm | null;
   heldUntil: string | null;
+  returned: boolean;
 }
 
 export function readConnectorLinkParams(
@@ -56,5 +61,11 @@ export function readConnectorLinkParams(
     kind: parseConnectorLimitKind(params.get('k')),
     arm: parseConnectorArm(params.get('a')),
     heldUntil: parseIsoDate(params.get('held_until')),
+    returned: isConnectorReturn(params),
   };
+}
+
+function isConnectorReturn(params: URLSearchParams): boolean {
+  const markers = params.getAll(CONNECTOR_RETURN_MARKER);
+  return markers.length === 1 && markers[0] === CONNECTOR_RETURN_VALUE;
 }

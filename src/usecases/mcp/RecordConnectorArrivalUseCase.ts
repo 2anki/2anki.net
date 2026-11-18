@@ -42,6 +42,7 @@ export class RecordConnectorArrivalUseCase {
         arm: link.arm ?? 'unknown',
         signed_in: userId != null,
         held: link.heldUntil != null,
+        returned: link.returned,
         fetch_site: arrival.request.fetchSite,
         prefetch: arrival.request.prefetch,
         ua_class: arrival.request.uaClass,

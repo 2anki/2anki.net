@@ -6,12 +6,11 @@ import { fetchSiteOf } from '../lib/http/fetchSite';
 import { isPrefetchRequest } from '../lib/auth/magicLinkBinding';
 import { analyticsAnonId } from '../lib/http/consentRegion';
 import { getMintedAnonId } from '../lib/User/getOwner';
+import { CONNECTOR_REF } from '../lib/mcp/connectorLink';
 import type {
   ConnectorArrival,
   RecordConnectorArrivalUseCase,
 } from '../usecases/mcp/RecordConnectorArrivalUseCase';
-
-const CONNECTOR_REF = 'mcp';
 
 function queryOf(originalUrl: string): URLSearchParams {
   const start = originalUrl.indexOf('?');

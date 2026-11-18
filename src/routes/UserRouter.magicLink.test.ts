@@ -537,6 +537,21 @@ describe('opening a magic link in the browser that requested it', () => {
     });
   });
 
+  it.each([
+    ['/pricing?ref=mcp&k=partial&a=b', '/pricing?ref=mcp&k=partial&a=b&r=1'],
+    ['/pricing/?ref=mcp&k=held&a=a&r=2', '/pricing?ref=mcp&k=held&a=a&r=1'],
+    ['/pricing?interval=year', '/pricing?interval=year'],
+    ['/upload', '/upload'],
+  ])(
+    'emails a sign-in link that returns to %s as %s',
+    async (redirect, emailed) => {
+      await requestLink(new Browser(), EMAIL, { redirect });
+
+      const calls = holder.sendMagicLinkEmail?.mock.calls ?? [];
+      expect(calls[calls.length - 1][3]).toBe(emailed);
+    }
+  );
+
   it('only skips the click for the most recently requested link', async () => {
     const browser = new Browser();
     const first = await issueLink(browser);

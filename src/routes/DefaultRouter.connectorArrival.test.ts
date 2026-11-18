@@ -48,6 +48,7 @@ const PRICING_HTML = '<html><head></head><body>pricing page</body></html>';
 const VALID_SESSION = 'valid-session';
 const CONNECTOR_LINK = '/pricing/?ref=mcp&k=partial&a=b&held_until=2026-11-25';
 const BROWSER_NAVIGATION = {
+  returned: false,
   fetch_site: 'cross-site',
   prefetch: false,
   ua_class: 'browser',
@@ -202,25 +203,25 @@ describe('recording a connector link arrival on /pricing', () => {
     });
   });
 
-  it('marks the row a sign-in return records as same-origin', async () => {
+  it('marks a provider-style sign-in return as returned, not as a first arrival', async () => {
     await visit(current.url, CONNECTOR_LINK);
     await vi.waitFor(() => expect(trackMock).toHaveBeenCalledTimes(1));
-    const signedInReturn = {
+    const providerReturn = {
       headers: {
         cookie: `token=${VALID_SESSION}`,
-        'sec-fetch-site': 'same-origin',
+        'sec-fetch-site': 'cross-site',
       },
     };
     const redirect = await visit(
       current.url,
-      '/pricing?ref=mcp&k=partial&a=b&held_until=2026-11-25',
-      signedInReturn
+      '/pricing?ref=mcp&k=partial&a=b&held_until=2026-11-25&r=1',
+      providerReturn
     );
     expect(redirect.status).toBe(301);
     await visit(
       current.url,
       redirect.headers.get('location') as string,
-      signedInReturn
+      providerReturn
     );
     await vi.waitFor(() => expect(trackMock).toHaveBeenCalledTimes(2));
 
@@ -228,13 +229,28 @@ describe('recording a connector link arrival on /pricing', () => {
       trackMock.mock.calls.map(([, options]) => [
         options.userId,
         options.props.signed_in,
+        options.props.returned,
         options.props.fetch_site,
       ])
     ).toEqual([
-      [null, false, 'cross-site'],
-      [42, true, 'same-origin'],
+      [null, false, false, 'cross-site'],
+      [42, true, true, 'cross-site'],
     ]);
   });
+
+  it.each(['&r=2', '&r=', '&r=1&r=1', '&r=yes'])(
+    'records %s as not returned and stores no r value',
+    async (marker) => {
+      await visit(current.url, `${CONNECTOR_LINK}${marker}`, {
+        headers: { cookie: `token=${VALID_SESSION}` },
+      });
+
+      await vi.waitFor(() => expect(trackMock).toHaveBeenCalledTimes(1));
+      const [, options] = trackMock.mock.calls[0];
+      expect(options.props.returned).toBe(false);
+      expect(JSON.stringify(options)).not.toMatch(/"r"|yes/);
+    }
+  );
 
   it.each([
     [

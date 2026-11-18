@@ -69,7 +69,12 @@ describe('readConnectorLinkParams', () => {
       readConnectorLinkParams(
         new URLSearchParams('ref=mcp&k=partial&a=b&held_until=2026-11-25')
       )
-    ).toEqual({ kind: 'partial', arm: 'b', heldUntil: '2026-11-25' });
+    ).toEqual({
+      kind: 'partial',
+      arm: 'b',
+      heldUntil: '2026-11-25',
+      returned: false,
+    });
   });
 
   it('returns null for each missing or invalid parameter', () => {
@@ -77,18 +82,35 @@ describe('readConnectorLinkParams', () => {
       readConnectorLinkParams(
         new URLSearchParams('ref=mcp&k=upgrade&a=z&held_until=2026-13-40')
       )
-    ).toEqual({ kind: null, arm: null, heldUntil: null });
+    ).toEqual({ kind: null, arm: null, heldUntil: null, returned: false });
   });
 
   it('reads the first value of a repeated parameter', () => {
     expect(
       readConnectorLinkParams(new URLSearchParams('k=held&k=evil&a=a&a=b'))
-    ).toEqual({ kind: 'held', arm: 'a', heldUntil: null });
+    ).toEqual({ kind: 'held', arm: 'a', heldUntil: null, returned: false });
   });
 
   it('does not decode a value into a second parameter', () => {
     expect(
       readConnectorLinkParams(new URLSearchParams('k=partial%26a%3Db'))
-    ).toEqual({ kind: null, arm: null, heldUntil: null });
+    ).toEqual({ kind: null, arm: null, heldUntil: null, returned: false });
   });
+
+  it('reads exactly one r=1 as a sign-in return', () => {
+    expect(
+      readConnectorLinkParams(new URLSearchParams('ref=mcp&k=held&a=b&r=1'))
+        .returned
+    ).toBe(true);
+  });
+
+  it.each(['r=2', 'r=', 'r=1&r=1', 'r=1&r=2', 'r=true', 'R=1', ''])(
+    'does not read %j as a sign-in return',
+    (query) => {
+      expect(
+        readConnectorLinkParams(new URLSearchParams(`ref=mcp&${query}`))
+          .returned
+      ).toBe(false);
+    }
+  );
 });

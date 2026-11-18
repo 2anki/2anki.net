@@ -91,6 +91,7 @@ describe('RecordConnectorArrivalUseCase', () => {
         arm: 'b',
         signed_in: true,
         held: true,
+        returned: false,
         ...REQUEST_PROPS,
       },
     });
@@ -109,6 +110,7 @@ describe('RecordConnectorArrivalUseCase', () => {
         arm: 'a',
         signed_in: false,
         held: false,
+        returned: false,
         ...REQUEST_PROPS,
       },
     });
@@ -133,6 +135,7 @@ describe('RecordConnectorArrivalUseCase', () => {
           arm: 'a',
           signed_in: false,
           held: true,
+          returned: false,
           ...REQUEST_PROPS,
         },
       });
@@ -163,6 +166,7 @@ describe('RecordConnectorArrivalUseCase', () => {
           arm,
           signed_in: false,
           held,
+          returned: false,
           ...REQUEST_PROPS,
         },
       });
@@ -182,6 +186,7 @@ describe('RecordConnectorArrivalUseCase', () => {
       'arm',
       'signed_in',
       'held',
+      'returned',
       'fetch_site',
       'prefetch',
       'ua_class',
@@ -206,11 +211,27 @@ describe('RecordConnectorArrivalUseCase', () => {
         arm: 'b',
         signed_in: false,
         held: false,
+        returned: false,
         fetch_site: 'absent',
         prefetch: true,
         ua_class: 'fetcher',
       },
     });
+  });
+
+  it.each([
+    ['r=1', true],
+    ['r=2', false],
+    ['r=', false],
+    ['r=1&r=1', false],
+  ])('reads %s as returned %s', async (marker, returned) => {
+    await new RecordConnectorArrivalUseCase(authService()).execute(
+      arrival(`ref=mcp&k=partial&a=b&${marker}`, STORED_SESSION)
+    );
+
+    const [, options] = trackMock.mock.calls[0];
+    expect(options.props.returned).toBe(returned);
+    expect(JSON.stringify(options)).not.toContain('r=');
   });
 
   it('records nothing and resolves when the session lookup fails', async () => {

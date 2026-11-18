@@ -3,7 +3,7 @@ import { isBotUserAgent } from './isBotUserAgent';
 export type UserAgentClass = 'browser' | 'fetcher' | 'unknown';
 
 const FETCHER_PATTERN =
-  /claude-user|chatgpt-user|facebookexternalhit|whatsapp|python-requests|curl\/|go-http-client|node-fetch|axios\/|okhttp/i;
+  /-user\/|claude-user|chatgpt-user|facebookexternalhit|whatsapp|python-requests|curl\/|go-http-client|node-fetch|axios\/|okhttp|headlesschrome|googleother|skypeuripreview/i;
 
 const BROWSER_PREFIX = 'Mozilla/';
 

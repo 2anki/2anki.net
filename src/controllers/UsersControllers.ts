@@ -19,7 +19,7 @@ import AuthenticationService, {
   UserWithOwner,
 } from '../services/AuthenticationService';
 import UsersService, { type MagicTokenClaim } from '../services/UsersService';
-import { getRedirect } from './helpers/getRedirect';
+import { getRedirect, markConnectorReturn } from './helpers/getRedirect';
 import { recordUnverifiedSignin } from './helpers/recordUnverifiedSignin';
 import { sanitizeRelativeRedirect } from './helpers/sanitizeRelativeRedirect';
 import { takeMcpLoginReturn } from '../lib/mcp/loginReturn';
@@ -1547,7 +1547,9 @@ class UsersController {
   ) {
     const { email, purpose: rawPurpose } = req.body;
     const purpose = rawPurpose ?? 'login';
-    const redirect = sanitizeRelativeRedirect(req.body?.redirect);
+    const redirect = markConnectorReturn(
+      sanitizeRelativeRedirect(req.body?.redirect)
+    );
 
     if (
       email == null ||

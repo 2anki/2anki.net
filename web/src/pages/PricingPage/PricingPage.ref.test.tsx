@@ -593,6 +593,19 @@ describe('PricingPage for a connector link that names its limit and arm', () => 
     ]);
   });
 
+  it('leaves the return marker to the server on a fresh sign-in redirect', () => {
+    renderAt('/pricing/?ref=mcp&k=partial&a=b&r=1');
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Get Pro — billed monthly' })
+    );
+
+    expect(globalThis.location.href).toBe(
+      `/login?redirect=${encodeURIComponent('/pricing?ref=mcp&k=partial&a=b')}`
+    );
+    expect(landingProps()[0]).not.toHaveProperty('r');
+  });
+
   it('drops values outside the fixed sets from the sign-in redirect', () => {
     renderAt('/pricing/?ref=mcp&k=partial%26next%3D%2F%2Fevil.com&a=z');
 

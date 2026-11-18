@@ -12,6 +12,11 @@ describe('userAgentClass', () => {
     'node-fetch/1.0 (+https://github.com/bitinn/node-fetch)',
     'axios/1.7.7',
     'okhttp/4.12.0',
+    'Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Perplexity-User/1.0; +https://perplexity.ai/perplexity-user)',
+    'Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; MistralAI-User/1.0; +https://docs.mistral.ai/robots)',
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/131.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (compatible; GoogleOther)',
+    'Mozilla/5.0 (Windows NT 6.1; WOW64) SkypeUriPreview Preview/0.5 skype-url-preview@microsoft.com',
     'Slackbot-LinkExpanding 1.0 (+https://api.slack.com/robots)',
     'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
   ])('classes %s as a fetcher', (userAgent) => {
