@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 import { track } from '../../lib/analytics/track';
@@ -50,15 +51,15 @@ export function CreateAccountNotice({
       <p className={styles.body} data-hj-suppress>
         {hasDeckName ? t(keys.body, { deckName }) : t(keys.bodyNoName)}
       </p>
-      <a
+      <Link
         className={
           secondary ? `${styles.cta} ${styles.ctaSecondary}` : styles.cta
         }
-        href="/register?redirect=/upload"
+        to="/register?redirect=/upload"
         onClick={() => track('account_offer_clicked', { surface: SURFACE })}
       >
         {t('createAccount.cta')}
-      </a>
+      </Link>
     </section>
   );
 }

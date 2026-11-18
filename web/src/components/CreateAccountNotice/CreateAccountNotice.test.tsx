@@ -79,7 +79,7 @@ describe('CreateAccountNotice', () => {
     const cta = screen.getByRole('link', { name: 'Save your decks — free' });
     expect(cta).toHaveAttribute('href', '/register?redirect=/upload');
 
-    expect(fireEvent.click(cta)).toBe(true);
+    expect(fireEvent.click(cta)).toBe(false);
     expect(mockTrack).toHaveBeenCalledWith('account_offer_clicked', {
       surface: 'upload_success_signup',
     });

@@ -78,8 +78,8 @@ function FreeAccountCard({
         <li className={styles.planBenefit}>{t('limit.connectServices')}</li>
       </ul>
       <div className={styles.planCtas}>
-        <a
-          href="/register?redirect=/upload"
+        <Link
+          to="/register?redirect=/upload"
           className={featured ? styles.planCtaPrimary : styles.planCtaSecondary}
           onClick={() =>
             track('paywall_upgrade_clicked', {
@@ -89,7 +89,7 @@ function FreeAccountCard({
           }
         >
           {t('limit.signUpFree')}
-        </a>
+        </Link>
         <Link
           to="/login?redirect=/upload"
           className={featured ? styles.planCtaSecondary : styles.signInLink}
@@ -181,8 +181,8 @@ function AnonymousPassFirst({
             : t('afterPayRedropTotal', { total: totalCards })
         }
       >
-        <a
-          href="/register?redirect=/upload"
+        <Link
+          to="/register?redirect=/upload"
           onClick={() =>
             track('paywall_upgrade_clicked', {
               surface: REF,
@@ -191,7 +191,7 @@ function AnonymousPassFirst({
           }
         >
           {t('freeSignup')}
-        </a>
+        </Link>
         <Link
           to="/login?redirect=/upload"
           onClick={() =>
@@ -287,8 +287,8 @@ function AnonymousLimit({
               </li>
             </ul>
             <div className={styles.planCtas}>
-              <a
-                href="/register?redirect=/upload"
+              <Link
+                to="/register?redirect=/upload"
                 className={styles.planCtaPrimary}
                 onClick={() =>
                   track('paywall_upgrade_clicked', {
@@ -298,7 +298,7 @@ function AnonymousLimit({
                 }
               >
                 {t('limit.signUpFree')}
-              </a>
+              </Link>
               <Link
                 to="/login?redirect=/upload"
                 className={styles.planCtaSecondary}

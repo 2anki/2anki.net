@@ -1,20 +1,23 @@
+import { withSignInReturn } from '../../lib/auth/withSignInReturn';
 import styles from '../../styles/auth.module.css';
 
 interface WithNotionLinkProps {
   text: string;
   variant?: 'row' | 'card';
   onSelect?: () => void;
+  redirect?: string | null;
 }
 
 export function WithNotionLink({
   text,
   variant = 'row',
   onSelect,
+  redirect,
 }: Readonly<WithNotionLinkProps>) {
   const isCard = variant === 'card';
   return (
     <a
-      href="/api/users/auth/notion/init"
+      href={withSignInReturn('/api/users/auth/notion/init', redirect)}
       className={isCard ? styles.oauthCard : styles.notionButton}
       aria-label={isCard ? text : undefined}
       onClick={onSelect}

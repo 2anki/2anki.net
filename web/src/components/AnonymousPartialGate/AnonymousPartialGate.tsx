@@ -114,8 +114,8 @@ function FreeSignupLink({ monthly }: { readonly monthly: number }) {
   const { t } = useTranslation('anonymousPartial');
   return (
     <p className={styles.freeLink}>
-      <a
-        href="/register?redirect=/upload"
+      <Link
+        to="/register?redirect=/upload"
         onClick={() =>
           track('paywall_upgrade_clicked', {
             surface: SURFACE,
@@ -124,7 +124,7 @@ function FreeSignupLink({ monthly }: { readonly monthly: number }) {
         }
       >
         {t('gateFreeLink', { monthly })}
-      </a>
+      </Link>
     </p>
   );
 }
@@ -154,8 +154,8 @@ function PassFirstGate({
             : t('gateBody', { cap: ANONYMOUS_CARD_CAP })
         }
       >
-        <a
-          href="/register?redirect=/upload"
+        <Link
+          to="/register?redirect=/upload"
           onClick={() =>
             track('paywall_upgrade_clicked', {
               surface: SURFACE,
@@ -164,7 +164,7 @@ function PassFirstGate({
           }
         >
           {t('freeSignupCap', { cap: ANONYMOUS_CARD_CAP })}
-        </a>
+        </Link>
         <Link
           to="/login?redirect=/upload"
           onClick={() =>

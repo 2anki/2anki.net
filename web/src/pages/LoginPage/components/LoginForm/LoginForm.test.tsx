@@ -109,6 +109,51 @@ describe('LoginForm', () => {
     ).toBeInTheDocument();
   });
 
+  describe('provider sign-in return target', () => {
+    const providers = [
+      ['Sign in with Google', '/api/users/auth/google/init'],
+      ['Continue with Notion', '/api/users/auth/notion/init'],
+      ['Sign in with Microsoft', '/api/users/auth/microsoft/init'],
+      ['Sign in with Apple', '/api/users/auth/apple/init'],
+    ];
+
+    const providerInit = (name: string) =>
+      new URL(
+        screen.getByRole('link', { name }).getAttribute('href') ?? '',
+        'https://2anki.net'
+      );
+
+    it.each(providers)('carries the page redirect to %s', (name, initPath) => {
+      renderLoginForm('/login?redirect=/card-options');
+
+      const init = providerInit(name);
+
+      expect(init.pathname).toBe(initPath);
+      expect(init.searchParams.get('redirect')).toBe('/card-options');
+    });
+
+    it.each(providers)(
+      'sends %s no redirect when the page has none',
+      (name, initPath) => {
+        renderLoginForm('/login');
+
+        const init = providerInit(name);
+
+        expect(init.pathname).toBe(initPath);
+        expect(init.search).toBe('');
+      }
+    );
+
+    it.each(providers)(
+      'drops a redirect that is not a relative path from %s',
+      (name) => {
+        renderLoginForm(`/login?redirect=${encodeURIComponent('//evil.com')}`);
+
+        expect(providerInit(name).search).toBe('');
+      }
+    );
+  });
+
   it('shows Use password instead link on email step', () => {
     renderLoginForm();
     expect(screen.getByText('Use password instead')).toBeInTheDocument();

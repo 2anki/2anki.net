@@ -252,21 +252,25 @@ function RegisterForm({ setErrorMessage, redirect, variant = 'page' }: Props) {
           variant="card"
           text={getVisibleText('navigation.register.google')}
           onSelect={() => track('signup_started', { method: 'google' })}
+          redirect={redirect}
         />
         <WithNotionLink
           variant="card"
           text="Continue with Notion"
           onSelect={() => track('signup_started', { method: 'notion' })}
+          redirect={redirect}
         />
         <WithMicrosoftLink
           variant="card"
           text={getVisibleText('navigation.register.microsoft')}
           onSelect={() => track('signup_started', { method: 'microsoft' })}
+          redirect={redirect}
         />
         <WithAppleLink
           variant="card"
           text="Sign in with Apple"
           onSelect={() => track('signup_started', { method: 'apple' })}
+          redirect={redirect}
         />
       </div>
       <div className={styles.divider}>

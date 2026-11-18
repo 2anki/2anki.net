@@ -4096,7 +4096,7 @@ describe('UploadForm analytics events', () => {
     });
     expect(cta).toHaveAttribute('href', '/register?redirect=/photo-to-deck');
     expect(cta.className).toContain('actionButton');
-    expect(fireEvent.click(cta)).toBe(true);
+    expect(fireEvent.click(cta)).toBe(false);
     expect(
       screen.getByText('5 photos a month are free with an account.')
     ).toBeInTheDocument();
@@ -5474,7 +5474,7 @@ describe('limit state', () => {
     expect(registerLink?.getAttribute('href')).toBe(
       '/register?redirect=/upload'
     );
-    expect(fireEvent.click(registerLink as Element)).toBe(true);
+    expect(fireEvent.click(registerLink as Element)).toBe(false);
 
     const dayPassBtn = Array.from(container.querySelectorAll('button')).find(
       (b) => b.textContent?.includes('Day Pass')
@@ -5916,7 +5916,7 @@ describe('limit state', () => {
         Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
     expect(signUp).toHaveAttribute('href', '/register?redirect=/upload');
-    expect(fireEvent.click(signUp)).toBe(true);
+    expect(fireEvent.click(signUp)).toBe(false);
     expect(signIn).toHaveAttribute('href', '/login?redirect=/upload');
     fireEvent.click(signIn);
     expect(track).toHaveBeenCalledWith('paywall_upgrade_clicked', {

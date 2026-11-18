@@ -124,12 +124,12 @@ describe('AnonymousPartialGate', () => {
       expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument();
     });
 
-    it('loads /register as a full page from the folded link so a provider sign-up returns to /upload', () => {
+    it('routes to /register in the app from the folded link', () => {
       renderGate(overMonth);
       const signUp = screen.getByRole('link', {
         name: 'Or create a free account for the first 100 cards',
       });
-      expect(fireEvent.click(signUp)).toBe(true);
+      expect(fireEvent.click(signUp)).toBe(false);
     });
 
     it('records the free sign-up click from the folded link', () => {
@@ -449,12 +449,12 @@ describe('AnonymousPartialGate — pass-first', () => {
     expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument();
   });
 
-  it('loads /register as a full page from the pass-first sign-up link', () => {
+  it('routes to /register in the app from the pass-first sign-up link', () => {
     renderPassFirst();
     const signUp = screen.getByRole('link', {
       name: 'Create a free account for the first 21 cards',
     });
-    expect(fireEvent.click(signUp)).toBe(true);
+    expect(fireEvent.click(signUp)).toBe(false);
   });
 });
 

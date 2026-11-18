@@ -165,6 +165,54 @@ describe('RegisterForm', () => {
     }
   );
 
+  describe('provider sign-in return target', () => {
+    const providers = [
+      ['Google', '/api/users/auth/google/init'],
+      ['Notion', '/api/users/auth/notion/init'],
+      ['Microsoft', '/api/users/auth/microsoft/init'],
+      ['Apple', '/api/users/auth/apple/init'],
+    ];
+
+    const providerInit = (label: string) =>
+      new URL(
+        screen.getByText(label).closest('a')?.getAttribute('href') ?? '',
+        'https://2anki.net'
+      );
+
+    it.each(providers)(
+      'carries the page redirect to the %s sign-in',
+      (label, initPath) => {
+        renderForm('/card-options');
+
+        const init = providerInit(label);
+
+        expect(init.pathname).toBe(initPath);
+        expect(init.searchParams.get('redirect')).toBe('/card-options');
+      }
+    );
+
+    it.each(providers)(
+      'sends the %s sign-in no redirect when the page has none',
+      (label, initPath) => {
+        renderForm();
+
+        const init = providerInit(label);
+
+        expect(init.pathname).toBe(initPath);
+        expect(init.search).toBe('');
+      }
+    );
+
+    it.each(providers)(
+      'drops a redirect that is not a relative path from the %s sign-in',
+      (label) => {
+        renderForm('https://evil.com/card-options');
+
+        expect(providerInit(label).search).toBe('');
+      }
+    );
+  });
+
   it.each([
     [400, 'An account with this email already exists.', 'account_exists'],
     [400, 'Invalid user data. Required email and password!', 'validation'],

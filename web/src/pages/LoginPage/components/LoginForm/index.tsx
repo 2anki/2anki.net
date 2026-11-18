@@ -39,13 +39,10 @@ function LoginForm() {
     useHandleLoginSubmit((e) => setError((e as Error).message));
 
   const registerHref = buildRegisterHref(searchParams);
+  const pageRedirect = sanitizeRelativeRedirect(searchParams.get('redirect'));
 
   const requestLoginLink = () =>
-    get2ankiApi().requestMagicLink(
-      email,
-      'login',
-      sanitizeRelativeRedirect(searchParams.get('redirect'))
-    );
+    get2ankiApi().requestMagicLink(email, 'login', pageRedirect);
 
   const handleSendMagicLink = async () => {
     setMagicLinkLoading(true);
@@ -173,13 +170,23 @@ function LoginForm() {
               <WithGoogleLink
                 variant="card"
                 text={getVisibleText('navigation.login.google')}
+                redirect={pageRedirect}
               />
-              <WithNotionLink variant="card" text="Continue with Notion" />
+              <WithNotionLink
+                variant="card"
+                text="Continue with Notion"
+                redirect={pageRedirect}
+              />
               <WithMicrosoftLink
                 variant="card"
                 text={getVisibleText('navigation.login.microsoft')}
+                redirect={pageRedirect}
               />
-              <WithAppleLink variant="card" text="Sign in with Apple" />
+              <WithAppleLink
+                variant="card"
+                text="Sign in with Apple"
+                redirect={pageRedirect}
+              />
             </div>
           </>
         ) : (

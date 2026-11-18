@@ -1,3 +1,4 @@
+import { withSignInReturn } from '../../lib/auth/withSignInReturn';
 import { getAppleSignInUrl } from '../../lib/backend/getAppleSignInUrl';
 import styles from '../../styles/auth.module.css';
 
@@ -5,17 +6,19 @@ interface WithAppleLinkProps {
   text: string;
   variant?: 'row' | 'card';
   onSelect?: () => void;
+  redirect?: string | null;
 }
 
 export function WithAppleLink({
   text,
   variant = 'row',
   onSelect,
+  redirect,
 }: Readonly<WithAppleLinkProps>) {
   const isCard = variant === 'card';
   return (
     <a
-      href={getAppleSignInUrl()}
+      href={withSignInReturn(getAppleSignInUrl(), redirect)}
       className={isCard ? styles.appleCard : styles.appleButton}
       aria-label={isCard ? text : undefined}
       onClick={onSelect}

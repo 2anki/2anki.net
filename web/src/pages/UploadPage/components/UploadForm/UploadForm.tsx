@@ -3693,8 +3693,8 @@ function UploadForm({
             >
               {showSignInPrompt ? (
                 <>
-                  <a
-                    href="/register?redirect=/upload"
+                  <Link
+                    to="/register?redirect=/upload"
                     onClick={() => {
                       saveFilenameForReattach(limitInfo?.filename ?? null);
                       track('paywall_upgrade_clicked', {
@@ -3704,7 +3704,7 @@ function UploadForm({
                     }}
                   >
                     {t('passFirst:freeSignup')}
-                  </a>
+                  </Link>
                   <Link
                     to="/login?redirect=/upload"
                     onClick={() => {
@@ -3731,15 +3731,15 @@ function UploadForm({
         ) : (
           <div className={formStyles.limitActions}>
             {showSignInPrompt ? (
-              <a
-                href="/register?redirect=/upload"
+              <Link
+                to="/register?redirect=/upload"
                 className={`${sharedStyles.btnPrimary} ${sharedStyles.btnInline}`}
                 onClick={() =>
                   saveFilenameForReattach(limitInfo?.filename ?? null)
                 }
               >
                 {t('accountx:limit.signUpFree')}
-              </a>
+              </Link>
             ) : (
               <>
                 <button
@@ -4520,15 +4520,15 @@ function UploadForm({
             {t('upload.form.tryPhotoToDeck')}
           </button>
         ) : (
-          <a
-            href="/register?redirect=/photo-to-deck"
+          <Link
+            to="/register?redirect=/photo-to-deck"
             className={formStyles.actionButton}
             onClick={() =>
               track('image_only_photo_deck_clicked', { context: 'anonymous' })
             }
           >
             {t('upload.form.imagesCreateAccount')}
-          </a>
+          </Link>
         )}
         <button
           type="button"
