@@ -1,6 +1,7 @@
 import { Request } from 'express';
 import { ALLOWED_ORIGINS } from '../../lib/constants';
 import { asMcpAuthorizeReturn } from '../../lib/mcp/loginReturn';
+import { readConnectorLinkParams } from '../../lib/mcp/connectorLink';
 
 const DEFAULT_REDIRECT = '/upload';
 
@@ -69,6 +70,16 @@ const resolvePricingReturn = (candidate: string): string | null => {
     if (parsed.searchParams.get(key) === value) {
       kept.set(key, value);
     }
+  }
+  const connector = readConnectorLinkParams(parsed.searchParams);
+  if (connector.kind != null) {
+    kept.set('k', connector.kind);
+  }
+  if (connector.arm != null) {
+    kept.set('a', connector.arm);
+  }
+  if (connector.heldUntil != null) {
+    kept.set('held_until', connector.heldUntil);
   }
   const query = kept.toString();
   const hash = PRICING_RETURN_HASHES.has(parsed.hash) ? parsed.hash : '';

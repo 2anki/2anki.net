@@ -142,6 +142,7 @@ describe('TrackEventUseCase', () => {
     'ai_usage_recorded',
     'mcp_tool_called',
     'mcp_tool_result',
+    'connector_link_arrived',
   ])(
     'drops a client-submitted %s so it cannot stand in for a server record',
     async (name) => {

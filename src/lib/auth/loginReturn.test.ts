@@ -36,6 +36,10 @@ describe('asLoginReturn', () => {
     ['/pricing?ref=mcp', '/pricing?ref=mcp'],
     ['/pricing/?ref=mcp#auto-sync', '/pricing?ref=mcp#auto-sync'],
     ['/pricing?ref=mcp&utm=x', '/pricing?ref=mcp'],
+    [
+      '/pricing?ref=mcp&k=partial&a=b&held_until=2026-11-25&user=42',
+      '/pricing?ref=mcp&k=partial&a=b&held_until=2026-11-25',
+    ],
     ['/upload', '/upload'],
     ['/notion/some-page', '/notion'],
     ['/api/download/u/abc123', '/api/download/u/abc123'],

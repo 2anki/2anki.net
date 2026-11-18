@@ -4,6 +4,14 @@ import TokenRepository from '../../data_layer/TokenRepository';
 import UsersRepository from '../../data_layer/UsersRepository';
 import { getDatabase } from '../../data_layer';
 
+export const sessionAuthService = (): AuthenticationService => {
+  const database = getDatabase();
+  return new AuthenticationService(
+    new TokenRepository(database),
+    new UsersRepository(database)
+  );
+};
+
 export const makeOptionalAuthMiddleware = (
   authService: AuthenticationService
 ) => {

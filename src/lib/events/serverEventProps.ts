@@ -28,7 +28,8 @@ export const SERVER_ONLY_EVENT_PROP_KEYS: ReadonlySet<string> = new Set([
 // alert) would silence an alert, forged conversion outcomes or upload starts
 // would skew the rates the tripwire and the ops funnel read, and a forged MCP
 // tool call would count as activity that keeps an account from inactivity
-// deletion, and a forged usage record would change an account's AI credits.
+// deletion, a forged usage record would change an account's AI credits, and
+// a forged connector arrival would move the connector link test's read.
 export const SERVER_ONLY_EVENT_NAMES: ReadonlySet<string> = new Set([
   'metric_tripwire_checked',
   'metric_tripwire_alert_sent',
@@ -43,4 +44,5 @@ export const SERVER_ONLY_EVENT_NAMES: ReadonlySet<string> = new Set([
   'ai_usage_recorded',
   'mcp_tool_called',
   'mcp_tool_result',
+  'connector_link_arrived',
 ]);

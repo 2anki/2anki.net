@@ -262,6 +262,72 @@ describe('getRedirect security tests', () => {
     });
   });
 
+  describe('should return a connector arrival with its saved-deck context', () => {
+    const kept: [string, string][] = [
+      [
+        '/pricing?ref=mcp&held_until=2026-11-25&k=partial&a=b',
+        '/pricing?ref=mcp&k=partial&a=b&held_until=2026-11-25',
+      ],
+      [
+        '/pricing/?ref=mcp&k=held&a=a&held_until=2028-02-29',
+        '/pricing?ref=mcp&k=held&a=a&held_until=2028-02-29',
+      ],
+      ['/pricing?ref=mcp&k=limit&a=a', '/pricing?ref=mcp&k=limit&a=a'],
+      [
+        '/pricing?ref=mcp&held_until=2026-11-25',
+        '/pricing?ref=mcp&held_until=2026-11-25',
+      ],
+      [
+        '/pricing?ref=mcp&interval=year&k=partial&a=b#auto-sync',
+        '/pricing?ref=mcp&interval=year&k=partial&a=b#auto-sync',
+      ],
+      ['/pricing?k=partial&a=b', '/pricing?k=partial&a=b'],
+      [
+        '/pricing?ref=mcp&k=partial&k=held&a=b&a=a',
+        '/pricing?ref=mcp&k=partial&a=b',
+      ],
+    ];
+    kept.forEach(([input, expected]) => {
+      it(`keeps ${input} as ${expected}`, () => {
+        expect(getRedirect(createMockRequest(input))).toBe(expected);
+      });
+    });
+
+    const stripped: [string, string][] = [
+      ['/pricing?ref=mcp&held_until=2026-13-40', '/pricing?ref=mcp'],
+      ['/pricing?ref=mcp&held_until=2026-02-30', '/pricing?ref=mcp'],
+      ['/pricing?ref=mcp&held_until=2026-11-25T00:00Z', '/pricing?ref=mcp'],
+      ['/pricing?ref=mcp&held_until=%3Cscript%3E', '/pricing?ref=mcp'],
+      ['/pricing?ref=mcp&k=upgrade&a=c', '/pricing?ref=mcp'],
+      ['/pricing?ref=mcp&k=PARTIAL&a=B', '/pricing?ref=mcp'],
+      [
+        '/pricing?ref=mcp&k=partial%26next%3D%2F%2Fevil.com&a=b',
+        '/pricing?ref=mcp&a=b',
+      ],
+      [
+        '/pricing?ref=mcp&k=partial&a=b&user=42&token=abc&next=//evil.com',
+        '/pricing?ref=mcp&k=partial&a=b',
+      ],
+      ['/pricing?ref=mcp&a=b%0D%0ALocation:%20//evil.com', '/pricing?ref=mcp'],
+      ['/pricing?ref=mcp&k%3Dpartial', '/pricing?ref=mcp'],
+    ];
+    stripped.forEach(([input, expected]) => {
+      it(`drops what does not validate: ${input} -> ${expected}`, () => {
+        expect(getRedirect(createMockRequest(input))).toBe(expected);
+      });
+    });
+
+    it('reads the connector return from the request body as well', () => {
+      const req = createMockRequest(
+        undefined,
+        '/pricing?ref=mcp&k=held&a=b&held_until=2026-11-25'
+      );
+      expect(getRedirect(req)).toBe(
+        '/pricing?ref=mcp&k=held&a=b&held_until=2026-11-25'
+      );
+    });
+  });
+
   describe('should return a visitor to the limit page they signed in from', () => {
     const kept: [string, string][] = [
       ['/limit', '/limit'],

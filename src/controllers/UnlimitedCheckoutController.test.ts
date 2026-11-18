@@ -154,6 +154,50 @@ describe('UnlimitedCheckoutController', () => {
     });
   });
 
+  it('records the connector pricing variant on checkout_started', async () => {
+    const req = {
+      body: {
+        interval: 'month',
+        surface: 'pricing_page',
+        variant: 'mcp-day-first',
+      },
+    } as Request;
+    const res = makeResponse();
+    const sink = makeSink();
+    const controller = new UnlimitedCheckoutController(makeUseCase(), sink);
+
+    await controller.createSession(req, res as unknown as Response);
+
+    expect(sink.record).toHaveBeenCalledWith({
+      name: 'checkout_started',
+      user_id: 42,
+      props: {
+        plan: 'subscription',
+        interval: 'month',
+        cohort: 'v2',
+        surface: 'pricing_page',
+        variant: 'mcp-day-first',
+        country: null,
+        device: 'unknown',
+      },
+    });
+  });
+
+  it('keeps an unknown variant off checkout_started', async () => {
+    const req = {
+      body: { interval: 'month', variant: 'made-up' },
+    } as Request;
+    const res = makeResponse();
+    const sink = makeSink();
+    const controller = new UnlimitedCheckoutController(makeUseCase(), sink);
+
+    await controller.createSession(req, res as unknown as Response);
+
+    expect((sink.record as Mock).mock.calls[0][0].props).not.toHaveProperty(
+      'variant'
+    );
+  });
+
   it('omits surface from checkout_started when the caller sent none', async () => {
     const req = { body: { interval: 'month' } } as Request;
     const res = makeResponse();
