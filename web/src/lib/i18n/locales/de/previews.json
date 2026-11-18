@@ -126,7 +126,7 @@
     "front": "Vorderseite",
     "back": "Rückseite",
     "restoreCard": "Karte wiederherstellen",
-    "deleteCard": "Karte löschen",
+    "deleteCard": "Lass diese Karte aus dem Download weg. Eine Karte, die schon in deiner Anki-Sammlung ist, bleibt dort.",
     "restore": "Wiederherstellen",
     "delete": "Löschen",
     "showFront": "Vorderseite anzeigen",

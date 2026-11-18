@@ -148,7 +148,7 @@
     "front": "przód",
     "back": "tył",
     "restoreCard": "Przywróć kartę",
-    "deleteCard": "Usuń kartę",
+    "deleteCard": "Pomiń tę kartę w pobieranym pliku. Karta, która już jest w twojej kolekcji Anki, tam zostaje.",
     "restore": "Przywróć",
     "delete": "Usuń",
     "showFront": "Pokaż przód",

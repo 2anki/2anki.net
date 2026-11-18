@@ -126,7 +126,7 @@
     "front": "frente",
     "back": "verso",
     "restoreCard": "Restaurar cartão",
-    "deleteCard": "Eliminar cartão",
+    "deleteCard": "Deixe este cartão fora do download. Um cartão que já está na sua coleção do Anki continua lá.",
     "restore": "Restaurar",
     "delete": "Eliminar",
     "showFront": "Mostrar frente",

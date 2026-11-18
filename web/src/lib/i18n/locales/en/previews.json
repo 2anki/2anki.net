@@ -126,7 +126,7 @@
     "front": "front",
     "back": "back",
     "restoreCard": "Restore card",
-    "deleteCard": "Delete card",
+    "deleteCard": "Leave this card out of the download. A card already in your Anki collection stays there.",
     "restore": "Restore",
     "delete": "Delete",
     "showFront": "Show front",

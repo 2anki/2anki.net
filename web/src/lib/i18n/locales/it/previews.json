@@ -126,7 +126,7 @@
     "front": "fronte",
     "back": "retro",
     "restoreCard": "Ripristina scheda",
-    "deleteCard": "Elimina scheda",
+    "deleteCard": "Lascia questa scheda fuori dal download. Una scheda già presente nella tua collezione Anki resta lì.",
     "restore": "Ripristina",
     "delete": "Elimina",
     "showFront": "Mostra fronte",
