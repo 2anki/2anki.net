@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-18-sidebar-stays-open",
+  "date": "2026-11-18",
+  "type": "fix",
+  "title": "The sidebar opens and closes only when you click it, so the page stays put while you read"
+}

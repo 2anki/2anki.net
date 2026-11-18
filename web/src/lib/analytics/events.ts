@@ -35,8 +35,6 @@ export const KNOWN_EVENTS = new Set([
   'photo_quota_reached',
   'photo_verbatim_no_questions',
   'photo_verbatim_switch_to_generate',
-  'sidebar_auto_minimize_fired',
-  'sidebar_auto_minimize_reverted',
   'notion_column_mapping_submitted',
   'database_preview_viewed',
   'convert_clicked_from_preview',
