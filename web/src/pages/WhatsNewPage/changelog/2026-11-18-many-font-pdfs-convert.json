@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-18-many-font-pdfs-convert",
+  "date": "2026-11-18",
+  "type": "fix",
+  "title": "Long PDFs with a new set of fonts on every page, like merged lecture decks or scanned books, convert instead of failing"
+}

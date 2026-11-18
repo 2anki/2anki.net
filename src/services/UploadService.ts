@@ -94,6 +94,8 @@ import type {
 } from '../data_layer/ConversionRuleScoresRepository';
 import type { ConversionEngine } from '../lib/parser/conversionEngine';
 import {
+  CONVERSION_OUT_OF_MEMORY_REASON,
+  CONVERSION_PROCESS_CRASHED_REASON,
   MARKDOWN_LIKELY_LOSSY_REASON,
   isUnreadablePdfError,
   jobFailureReasonCode,
@@ -141,6 +143,8 @@ import { isHTMLFile, isMarkdownFile } from '../lib/storage/checks';
 import { isConnectorPlanHoldEligible } from '../lib/upload/isConnectorPlanHoldEligible';
 import { BytesToMegaBytes, FileSizeInMegaBytes } from '../lib/misc/file';
 import {
+  isConversionChildCrashedError,
+  isConversionOutOfMemoryError,
   isWorkerTerminationError,
   WORKER_INTERRUPTED_REASON,
 } from '../lib/workerTermination';
@@ -1525,6 +1529,28 @@ class UploadService {
         return res.status(503).json({
           code: 'unknown',
           message: WORKER_INTERRUPTED_REASON,
+        });
+      } else if (isConversionChildCrashedError(err)) {
+        const outOfMemory = isConversionOutOfMemoryError(err);
+        console.error(
+          '[UploadService] sync upload conversion process crashed',
+          {
+            exitCode: err.exitCode,
+            signal: err.signal,
+            lastRssBytes: err.lastRssBytes,
+            outOfMemory,
+          }
+        );
+        this.trackUploadFailed(req, res, uploadFailureReason(err));
+        if (outOfMemory) {
+          return res.status(400).json({
+            code: 'too_large',
+            message: CONVERSION_OUT_OF_MEMORY_REASON,
+          });
+        }
+        return res.status(500).json({
+          code: 'unknown',
+          message: CONVERSION_PROCESS_CRASHED_REASON,
         });
       } else if (err instanceof UploadFileUnavailableError) {
         // A visitor who leaves the page mid-upload takes the request with

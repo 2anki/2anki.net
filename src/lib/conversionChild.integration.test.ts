@@ -7,7 +7,10 @@ import {
   ForkFn,
   PooledChild,
 } from './conversionProcessPool';
-import { ConversionChildCrashedError } from './workerTermination';
+import {
+  ConversionChildCrashedError,
+  isConversionOutOfMemoryError,
+} from './workerTermination';
 
 vi.setConfig({ testTimeout: 60_000 });
 
@@ -19,11 +22,11 @@ const fixturePath = path.join(
 const realFork: ForkFn = (modulePath, args, options) =>
   fork(modulePath, args, options) as unknown as PooledChild;
 
-function makeRealPool(maxChildren = 2) {
+function makeRealPool(maxChildren = 2, heapArgs: string[] = []) {
   return new ConversionProcessPool({
     forkFn: realFork,
     childModulePath: fixturePath,
-    childExecArgv: ['--require', 'tsx/cjs'],
+    childExecArgv: ['--require', 'tsx/cjs', ...heapArgs],
     childEnv: { ...process.env },
     maxChildren,
     recycleTasks: 1_000,
@@ -110,6 +113,27 @@ describe('conversion child (real fork)', () => {
       value: 'after-crash',
     });
     expect(recovered).toBe('after-crash');
+  });
+
+  it('does not call a crash that exited on its own an out-of-memory one', async () => {
+    const crash = await pool.runTask({ type: 'crash' }).catch((e) => e);
+    expect(isConversionOutOfMemoryError(crash)).toBe(false);
+  });
+});
+
+describe('conversion child out of memory', () => {
+  it('rejects a task that runs the child out of heap as out of memory', async () => {
+    const pool = makeRealPool(1, ['--max-old-space-size=32']);
+    pool.start();
+    try {
+      const error = await pool
+        .runTask({ type: 'exhaust-heap' })
+        .catch((e) => e);
+      expect(error).toBeInstanceOf(ConversionChildCrashedError);
+      expect(isConversionOutOfMemoryError(error)).toBe(true);
+    } finally {
+      await pool.shutdown(2_000);
+    }
   });
 });
 

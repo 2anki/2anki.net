@@ -15,7 +15,10 @@ import { EmptyDeckError, EmptyDeckReason } from './EmptyDeckError';
 import { inferColumnMapping } from '../../lib/notionDatabase/inferColumnMapping';
 import { isPdfPasswordSentinel } from '../../lib/pdf/pdfPasswordSentinel';
 import { isNotionDatabaseNotPageError } from '../../services/NotionService/helpers/isNotionDatabaseNotPageError';
-import { isConversionChildCrashedError } from '../../lib/workerTermination';
+import {
+  isConversionChildCrashedError,
+  isConversionOutOfMemoryError,
+} from '../../lib/workerTermination';
 
 export const NOTION_DATABASE_NOT_PAGE_REASON =
   'This Notion link points to a database. We read the database rows as cards — share the database with the 2anki integration in Notion, then convert again.';
@@ -24,6 +27,11 @@ export const NOTION_TOKEN_EXPIRED_REASON = 'notion_token_expired';
 
 export const CONVERSION_PROCESS_CRASHED_REASON =
   'This conversion stopped unexpectedly. Convert again, and if the file is very large, split it into smaller parts first.';
+
+// The downloads page localizes any reason that says "too large" as the
+// too_large upload error, so this copy matches that one.
+export const CONVERSION_OUT_OF_MEMORY_REASON =
+  'This file is too large to convert in one go. Split it into smaller files and convert each one separately.';
 
 export const EMPTY_DECK_REASON_PREFIX = 'No cards in this deck yet.';
 
@@ -206,9 +214,13 @@ export type JobFailureReasonCode =
   | 'claude_refusal'
   | 'empty_content'
   | 'conversion_process_crashed'
+  | 'conversion_out_of_memory'
   | 'unknown';
 
 export function jobFailureReasonCode(error: unknown): JobFailureReasonCode {
+  if (isConversionOutOfMemoryError(error)) {
+    return 'conversion_out_of_memory';
+  }
   if (isConversionChildCrashedError(error)) {
     return 'conversion_process_crashed';
   }
@@ -314,6 +326,9 @@ export function jobFailureReasonFromError(
   error: unknown,
   jobId?: string
 ): string {
+  if (isConversionOutOfMemoryError(error)) {
+    return CONVERSION_OUT_OF_MEMORY_REASON;
+  }
   if (isConversionChildCrashedError(error)) {
     return CONVERSION_PROCESS_CRASHED_REASON;
   }

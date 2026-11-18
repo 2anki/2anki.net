@@ -51,3 +51,11 @@ export function isConversionChildCrashedError(
 ): err is ConversionChildCrashedError {
   return err instanceof ConversionChildCrashedError;
 }
+
+// V8 aborts the process when a conversion reaches the child's heap ceiling, so
+// the parent sees the child exit on SIGABRT rather than an error it can read.
+export function isConversionOutOfMemoryError(
+  err: unknown
+): err is ConversionChildCrashedError {
+  return isConversionChildCrashedError(err) && err.signal === 'SIGABRT';
+}

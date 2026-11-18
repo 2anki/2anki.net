@@ -33,6 +33,7 @@ const RASTER_IMAGE_OPS = [
 // colour space) into setFillRGBColor with 0-255 components before the operator
 // list is produced, so tracking this one op is enough to see all text colour.
 const FILL_RGB_OP = 'setFillRGBColor';
+const SET_FONT_OP = 'setFont';
 const TEXT_SHOW_OPS = [
   'showText',
   'showSpacedText',
@@ -181,6 +182,14 @@ interface PdfOperatorList {
   argsArray: unknown[];
 }
 
+interface PdfJsTransport {
+  messageHandler?: {
+    sendWithPromise(action: 'Cleanup', data: null): Promise<unknown>;
+  };
+  commonObjs?: { objs?: Record<string, unknown>; clear(): void };
+  fontLoader?: { clear(): void };
+}
+
 interface PdfJsPageProxy {
   getTextContent(options: {
     normalizeWhitespace: boolean;
@@ -190,6 +199,33 @@ interface PdfJsPageProxy {
   cleanup(): void;
   view?: number[];
   rotate?: number;
+  transport?: PdfJsTransport;
+}
+
+// pdf.js keeps every font it parses, and the glyph outlines it builds from
+// it, until the document closes. A PDF that embeds fresh font subsets on every
+// page (merged decks, OCR'd scans) grows the heap with each page until the
+// conversion runs out of memory. Once this many fonts have loaded, the
+// document's font cache is dropped; a font used again is parsed again.
+export const MAX_RETAINED_PDF_FONTS = 100;
+
+// Without a worker, pdf.js talks to itself on promises alone, and its font
+// loader hands each font over in a setTimeout. Those timers never get a turn
+// while pages keep parsing, so every font stays queued until the last page.
+function letFontLoaderTimersRun(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+async function releaseDocumentFonts(
+  transport: PdfJsTransport | undefined
+): Promise<boolean> {
+  if (transport?.messageHandler == null || transport.commonObjs == null) {
+    return false;
+  }
+  await transport.messageHandler.sendWithPromise('Cleanup', null);
+  transport.commonObjs.clear();
+  transport.fontLoader?.clear();
+  return true;
 }
 
 // Layout signals logged with every extraction so a later change can tell
@@ -267,8 +303,27 @@ function resolveColorTextOpcodes(): ColorTextOpcodes {
   };
 }
 
+function resolveSetFontOpcode(): number | null {
+  const code = loadPdfJs()?.OPS?.[SET_FONT_OP];
+  return typeof code === 'number' ? code : null;
+}
+
 const RASTER_IMAGE_OPCODES = resolveRasterImageOpcodes();
 const COLOR_TEXT_OPCODES = resolveColorTextOpcodes();
+const SET_FONT_OPCODE = resolveSetFontOpcode();
+
+function addLoadedFontNames(
+  operatorList: PdfOperatorList | null,
+  loadedFonts: Set<string>
+): void {
+  if (operatorList == null || SET_FONT_OPCODE == null) return;
+  for (let i = 0; i < operatorList.fnArray.length; i++) {
+    if (operatorList.fnArray[i] !== SET_FONT_OPCODE) continue;
+    const args = operatorList.argsArray[i];
+    const name = Array.isArray(args) ? args[0] : undefined;
+    if (typeof name === 'string') loadedFonts.add(name);
+  }
+}
 
 export function isChromaticRgb(args: unknown): boolean {
   if (args == null || typeof args !== 'object') return false;
@@ -396,6 +451,8 @@ export async function extractPdfText(
   const imageCounts: number[] = [];
   const coloredTextFlags: boolean[] = [];
   const landscapeFlags: boolean[] = [];
+  const loadedFonts = new Set<string>();
+  let fontCacheReleases = 0;
 
   const pagerender = async (pageData: PdfJsPageProxy): Promise<string> => {
     const textContent = await pageData.getTextContent({
@@ -406,7 +463,19 @@ export async function extractPdfText(
     imageCounts.push(countImagePaintOps(operatorList));
     coloredTextFlags.push(pageHasColoredText(operatorList));
     landscapeFlags.push(isLandscapePage(pageData.view, pageData.rotate));
+    const fontsBefore = loadedFonts.size;
+    addLoadedFontNames(operatorList, loadedFonts);
     pageData.cleanup();
+    if (loadedFonts.size > fontsBefore) {
+      await letFontLoaderTimersRun();
+    }
+    if (
+      loadedFonts.size >= MAX_RETAINED_PDF_FONTS &&
+      (await releaseDocumentFonts(pageData.transport))
+    ) {
+      loadedFonts.clear();
+      fontCacheReleases += 1;
+    }
     return extractPageText(textContent) + '\f';
   };
   const layoutAt = (index: number): PageLayout => ({
@@ -495,6 +564,7 @@ export async function extractPdfText(
       pairShare == null ? null : Math.round(pairShare * 100) / 100,
     isDrmLocked,
     credentialProvided: credential != null,
+    fontCacheReleases,
     durationMs: Date.now() - t0,
   });
 
