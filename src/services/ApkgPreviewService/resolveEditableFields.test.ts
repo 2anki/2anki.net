@@ -38,9 +38,60 @@ function n2aNoteType(name: string, type: 0 | 1 = 0): NoteType {
   );
 }
 
+function templateFile(name: string): string {
+  return readFileSync(
+    path.join(__dirname, '../../templates', `${name}.html`),
+    'utf8'
+  );
+}
+
+function htmlNoteType(
+  fieldNames: string[],
+  prefix: string,
+  type: 0 | 1 = 0,
+  answerFile = `${prefix}_back`
+): NoteType {
+  return noteType(
+    fieldNames,
+    [{ qfmt: templateFile(`${prefix}_front`), afmt: templateFile(answerFile) }],
+    type
+  );
+}
+
+const N2A_BASIC_FIELDS = ['Front', 'Back', 'MyMedia'];
+const N2A_INPUT_FIELDS = ['Front', 'Back', 'Input', 'MyMedia'];
+const STARTER_BASIC_FIELDS = ['Front', 'Back', 'Image', 'Tags'];
+const STARTER_CLOZE_FIELDS = ['Text', 'Extra', 'Image', 'Tags'];
+
 const BASIC = noteType(
   ['Front', 'Back'],
   [{ qfmt: '{{Front}}', afmt: '{{FrontSide}}<hr id=answer>{{Back}}' }]
+);
+
+const ANKI_BASIC = noteType(
+  ['Front', 'Back'],
+  [{ qfmt: '{{Front}}', afmt: '{{FrontSide}}\n\n<hr id=answer>\n\n{{Back}}' }]
+);
+
+const ANKI_OPTIONAL_REVERSED = noteType(
+  ['Front', 'Back', 'Add Reverse'],
+  [
+    { qfmt: '{{Front}}', afmt: '{{FrontSide}}\n\n<hr id=answer>\n\n{{Back}}' },
+    {
+      qfmt: '{{#Add Reverse}}{{Back}}{{/Add Reverse}}',
+      afmt: '{{FrontSide}}\n\n<hr id=answer>\n\n{{Front}}',
+    },
+  ]
+);
+
+const ANKI_TYPE_IN = noteType(
+  ['Front', 'Back'],
+  [
+    {
+      qfmt: '{{Front}}\n\n{{type:Back}}',
+      afmt: '{{Front}}\n\n<hr id=answer>\n\n{{type:Back}}',
+    },
+  ]
 );
 
 const BASIC_AND_REVERSED = noteType(
@@ -163,47 +214,207 @@ describe('resolveEditableFields', () => {
     });
   });
 
-  it.each([
+  it.each<{
+    label: string;
+    type: NoteType;
+    ord: number;
+    front: string | null;
+    back: string | null;
+  }>([
     {
-      name: 'n2a-basic',
-      type: 0 as const,
-      front: { fieldIndex: 0, fieldName: 'Front' },
-      back: { fieldIndex: 1, fieldName: 'Back' },
+      label: 'Anki Basic',
+      type: ANKI_BASIC,
+      ord: 0,
+      front: 'Front',
+      back: 'Back',
     },
     {
-      name: 'n2a-cloze',
-      type: 1 as const,
-      front: { fieldIndex: 0, fieldName: 'Text' },
+      label: 'Anki Basic (and reversed card), card 1',
+      type: BASIC_AND_REVERSED,
+      ord: 0,
+      front: 'Front',
+      back: 'Back',
+    },
+    {
+      label: 'Anki Basic (and reversed card), card 2',
+      type: BASIC_AND_REVERSED,
+      ord: 1,
+      front: 'Back',
+      back: 'Front',
+    },
+    {
+      label: 'Anki Basic (optional reversed card), card 1',
+      type: ANKI_OPTIONAL_REVERSED,
+      ord: 0,
+      front: 'Front',
+      back: 'Back',
+    },
+    {
+      label: 'Anki Basic (optional reversed card), card 2',
+      type: ANKI_OPTIONAL_REVERSED,
+      ord: 1,
+      front: 'Back',
+      back: 'Front',
+    },
+    {
+      label: 'Anki Basic (type in the answer)',
+      type: ANKI_TYPE_IN,
+      ord: 0,
+      front: 'Front',
+      back: 'Back',
+    },
+    { label: 'Anki Cloze', type: CLOZE, ord: 0, front: 'Text', back: null },
+    {
+      label: 'n2a-basic',
+      type: n2aNoteType('n2a-basic'),
+      ord: 0,
+      front: 'Front',
+      back: 'Back',
+    },
+    {
+      label: 'n2a-cloze',
+      type: n2aNoteType('n2a-cloze', 1),
+      ord: 0,
+      front: 'Text',
       back: null,
     },
     {
-      name: 'n2a-input',
-      type: 0 as const,
-      front: { fieldIndex: 0, fieldName: 'Front' },
-      back: { fieldIndex: 1, fieldName: 'Back' },
+      label: 'n2a-input',
+      type: n2aNoteType('n2a-input'),
+      ord: 0,
+      front: 'Front',
+      back: 'Back',
     },
     {
-      name: 'n2a-hierarchy',
-      type: 0 as const,
-      front: { fieldIndex: 3, fieldName: 'Question' },
-      back: { fieldIndex: 4, fieldName: 'Answer' },
+      label: 'n2a-hierarchy',
+      type: n2aNoteType('n2a-hierarchy'),
+      ord: 0,
+      front: 'Question',
+      back: 'Answer',
     },
     {
-      name: 'n2a-mcq',
-      type: 0 as const,
-      front: { fieldIndex: 0, fieldName: 'Question' },
-      back: { fieldIndex: 3, fieldName: 'Extra' },
+      label: 'n2a-mcq',
+      type: n2aNoteType('n2a-mcq'),
+      ord: 0,
+      front: 'Question',
+      back: 'Multiple Choice',
     },
     {
-      name: 'n2a-io',
-      type: 1 as const,
+      label: 'n2a-io (Image Occlusion)',
+      type: n2aNoteType('n2a-io', 1),
+      ord: 0,
       front: null,
       back: null,
     },
-  ])('maps the $name note type', ({ name, type, front, back }) => {
-    expect(resolveEditableFields(n2aNoteType(name, type), 0)).toEqual({
-      front,
-      back,
+    {
+      label: 'abhiyan basic on a converted deck',
+      type: htmlNoteType(N2A_BASIC_FIELDS, 'abhiyan_basic'),
+      ord: 0,
+      front: 'Front',
+      back: 'Back',
+    },
+    {
+      label: 'abhiyan basic starter',
+      type: htmlNoteType(STARTER_BASIC_FIELDS, 'abhiyan_basic'),
+      ord: 0,
+      front: 'Front',
+      back: 'Back',
+    },
+    {
+      label: 'abhiyan input',
+      type: htmlNoteType(
+        N2A_INPUT_FIELDS,
+        'abhiyan_input',
+        0,
+        'abhiyan_basic_back'
+      ),
+      ord: 0,
+      front: 'Front',
+      back: 'Back',
+    },
+    {
+      label: 'abhiyan cloze',
+      type: htmlNoteType(STARTER_CLOZE_FIELDS, 'abhiyan_cloze', 1),
+      ord: 0,
+      front: 'Text',
+      back: null,
+    },
+    {
+      label: 'alex deluxe basic',
+      type: htmlNoteType(N2A_BASIC_FIELDS, 'alex_deluxe_basic'),
+      ord: 0,
+      front: 'Front',
+      back: 'Back',
+    },
+    {
+      label: 'alex deluxe input',
+      type: htmlNoteType(N2A_INPUT_FIELDS, 'alex_deluxe_input'),
+      ord: 0,
+      front: 'Front',
+      back: 'Back',
+    },
+    {
+      label: 'alex deluxe cloze',
+      type: htmlNoteType(['Text', 'Extra'], 'alex_deluxe_cloze', 1),
+      ord: 0,
+      front: 'Text',
+      back: null,
+    },
+    {
+      label: 'material basic on a converted deck',
+      type: htmlNoteType(N2A_BASIC_FIELDS, 'material_basic'),
+      ord: 0,
+      front: 'Front',
+      back: 'Back',
+    },
+    {
+      label: 'material basic starter',
+      type: htmlNoteType(STARTER_BASIC_FIELDS, 'material_basic'),
+      ord: 0,
+      front: 'Front',
+      back: 'Back',
+    },
+    {
+      label: 'material cloze',
+      type: htmlNoteType(STARTER_CLOZE_FIELDS, 'material_cloze', 1),
+      ord: 0,
+      front: 'Text',
+      back: null,
+    },
+    {
+      label: 'a kept custom note type with three fields',
+      type: noteType(
+        ['Word', 'Reading', 'Meaning'],
+        [
+          {
+            qfmt: '{{Word}}',
+            afmt: '{{FrontSide}}<hr id="answer"><br>{{Reading}}<br>{{Meaning}}',
+          },
+        ]
+      ),
+      ord: 0,
+      front: 'Word',
+      back: 'Reading',
+    },
+    {
+      label: 'a single-field note type',
+      type: noteType(['Text'], [{ qfmt: '{{Text}}', afmt: '{{FrontSide}}' }]),
+      ord: 0,
+      front: 'Text',
+      back: null,
+    },
+  ])('maps $label', ({ type, ord, front, back }) => {
+    const side = (name: string | null) =>
+      name == null
+        ? null
+        : {
+            fieldIndex: type.fields.findIndex((field) => field.name === name),
+            fieldName: name,
+          };
+
+    expect(resolveEditableFields(type, ord)).toEqual({
+      front: side(front),
+      back: side(back),
     });
   });
 });

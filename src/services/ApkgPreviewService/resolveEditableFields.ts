@@ -35,6 +35,10 @@ function isTextToSpeech(filter: string): boolean {
   return filter === 'tts' || filter.startsWith('tts ');
 }
 
+function isTypeInAnswer(reference: FieldReference): boolean {
+  return reference.filters.includes('type');
+}
+
 function fieldReferences(
   template: string,
   noteType: NoteType
@@ -106,21 +110,24 @@ export function resolveEditableFields(
   if (template.qfmt.includes('image-occlusion-canvas')) {
     return NO_EDITABLE_FIELDS;
   }
-  const questionReferences = fieldReferences(template.qfmt, noteType);
+  const shownOnQuestion = fieldReferences(template.qfmt, noteType).filter(
+    (reference) => !isTypeInAnswer(reference)
+  );
   if (noteType.type === 1) {
-    const clozeReferences = questionReferences.filter((reference) =>
+    const clozeReferences = shownOnQuestion.filter((reference) =>
       reference.filters.includes('cloze')
     );
     return {
-      front: firstShown(clozeReferences) ?? firstShown(questionReferences),
+      front: firstShown(clozeReferences) ?? firstShown(shownOnQuestion),
       back: null,
     };
   }
-  const shownOnFront = new Set(
-    questionReferences.map((reference) => reference.field.fieldIndex)
-  );
+  const front = firstShown(shownOnQuestion);
+  const editedOnQuestion = new Set(front == null ? [] : [front.fieldIndex]);
   return {
-    front: firstShown(questionReferences),
-    back: firstShown(fieldReferences(template.afmt, noteType), shownOnFront),
+    front,
+    back:
+      firstShown(fieldReferences(template.afmt, noteType), editedOnQuestion) ??
+      firstShown(shownOnQuestion, editedOnQuestion),
   };
 }

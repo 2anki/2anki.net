@@ -4,7 +4,11 @@ import {
   ApkgEditableField,
   ApkgPreviewCard,
 } from '../../lib/backend/getApkgPreview';
-import { CardEditState, withFieldDraft } from './cardEditTypes';
+import {
+  CardEditState,
+  withFieldDraft,
+  withoutFieldBreakingCharacters,
+} from './cardEditTypes';
 import { fetchMediaAsDataUrl, inlineApkgMedia } from './inlineMedia';
 import { useTheme } from '../../lib/hooks/useTheme';
 import styles from './PreviewApkgPage.module.css';
@@ -34,7 +38,7 @@ function FieldEditor({
   const { t } = useTranslation('previews');
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
-  const inputId = `${side}-${cardId}`;
+  const labelId = `${side}-field-${cardId}`;
 
   function commit() {
     onCommit(draft);
@@ -54,22 +58,25 @@ function FieldEditor({
   return (
     <div className={styles.editFieldGroup}>
       <div className={styles.editLabelRow}>
-        <label className={styles.editLabel} htmlFor={inputId}>
+        <span id={labelId} className={styles.editLabel} data-hj-suppress>
           {field.fieldName}
-        </label>
+        </span>
         {editedValue != null && (
           <span className={styles.editedMarker}>{t('card.edited')}</span>
         )}
       </div>
       {editing ? (
         <textarea
-          id={inputId}
+          aria-labelledby={labelId}
           className={styles.editableField}
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={(e) =>
+            setDraft(withoutFieldBreakingCharacters(e.target.value))
+          }
           onKeyDown={handleKeyDown}
           onBlur={commit}
           autoFocus
+          data-hj-suppress
         />
       ) : (
         <>
@@ -81,6 +88,7 @@ function FieldEditor({
           <button
             type="button"
             className={styles.iconButton}
+            aria-describedby={labelId}
             onClick={() => {
               setDraft(editedValue ?? field.value);
               setEditing(true);

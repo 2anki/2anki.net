@@ -53,6 +53,11 @@ export interface PackEditedApkgOutput extends EditCounts {
 }
 
 const FIELD_SEPARATOR = '\x1f';
+const NUL = '\0';
+
+export function hasFieldBreakingCharacter(value: string): boolean {
+  return value.includes(FIELD_SEPARATOR) || value.includes(NUL);
+}
 
 function writeTempFile(buffer: Buffer, suffix: string): string {
   const p = path.join(os.tmpdir(), `apkg-edit-${crypto.randomUUID()}${suffix}`);
@@ -109,7 +114,11 @@ function applyEdits(
       if (row != null && edit.fields != null) {
         const fields = row.flds.split(FIELD_SEPARATOR);
         for (const field of edit.fields) {
-          if (allowed.has(field.index) && field.index < fields.length) {
+          if (
+            allowed.has(field.index) &&
+            field.index < fields.length &&
+            !hasFieldBreakingCharacter(field.value)
+          ) {
             fields[field.index] = field.value;
           } else {
             counts.editsRefused += 1;

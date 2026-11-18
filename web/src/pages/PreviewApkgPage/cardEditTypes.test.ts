@@ -4,6 +4,7 @@ import {
   toEditPayloads,
   withEditMapEntry,
   withFieldDraft,
+  withoutFieldBreakingCharacters,
 } from './cardEditTypes';
 
 describe('withFieldDraft', () => {
@@ -33,6 +34,21 @@ describe('withEditMapEntry', () => {
     expect([...after.keys()]).toEqual([]);
   });
 
+  it('moves a card it changes again to the end, so its edit is applied last', () => {
+    const before = new Map<number, CardEditState>([
+      [200, { fields: { 0: 'from card 1' } }],
+      [201, { fields: { 0: 'from card 2' } }],
+    ]);
+
+    const after = withEditMapEntry(before, 200, {
+      fields: { 0: 'from card 1, again' },
+    });
+
+    expect(toEditPayloads(after).map((payload) => payload.cardId)).toEqual([
+      201, 200,
+    ]);
+  });
+
   it('keeps other cards when one changes', () => {
     const before = new Map<number, CardEditState>([[7, { deleted: true }]]);
 
@@ -42,6 +58,16 @@ describe('withEditMapEntry', () => {
       [7, { deleted: true }],
       [9, { suspended: true }],
     ]);
+  });
+});
+
+describe('withoutFieldBreakingCharacters', () => {
+  it('removes the field separator and NUL and keeps everything else', () => {
+    const pasted = `one${String.fromCharCode(0x1f)}two${String.fromCharCode(0)}<br>&nbsp;\tthree`;
+
+    expect(withoutFieldBreakingCharacters(pasted)).toBe(
+      'onetwo<br>&nbsp;\tthree'
+    );
   });
 });
 

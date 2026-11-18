@@ -718,6 +718,41 @@ describe('PackEditedApkgUseCase applies edits by card id to stored fields', () =
     expect(result).toMatchObject({ notesUpdated: 1, editsRefused: 1 });
   });
 
+  it.each([
+    ['the field separator', `evil${SEP}shifted`],
+    ['a NUL character', `a${String.fromCharCode(0)}b`],
+  ])(
+    'refuses a value holding %s and keeps the note’s field count',
+    async (_label, value) => {
+      const { before, after, result } = await packWith([
+        { cardId: 100, fields: [{ index: 1, value }] },
+      ]);
+
+      expect(fieldsOf(after, 10)).toEqual(['Q1', 'A1']);
+      expect(after).toEqual(before);
+      expect(result).toMatchObject({ notesUpdated: 0, editsRefused: 1 });
+    }
+  );
+
+  it.each([
+    { order: [200, 201], expected: 'from card 2' },
+    { order: [201, 200], expected: 'from card 1' },
+  ])(
+    'lets the later edit win when both cards of a note change the same field ($order)',
+    async ({ order, expected }) => {
+      const value = (cardId: number) =>
+        cardId === 200 ? 'from card 1' : 'from card 2';
+      const { after } = await packWith(
+        order.map((cardId) => ({
+          cardId,
+          fields: [{ index: 0, value: value(cardId) }],
+        }))
+      );
+
+      expect(fieldsOf(after, 20)).toEqual([expected, 'Oslo']);
+    }
+  );
+
   it('suspends the card whose id was sent', async () => {
     const { after, result } = await packWith([
       { cardId: 500, suspended: true },

@@ -25,12 +25,21 @@ export function withEditMapEntry(
   state: CardEditState
 ): Map<number, CardEditState> {
   const next = new Map(editMap);
-  if (isEmptyEdit(state)) {
-    next.delete(cardId);
-  } else {
-    next.set(cardId, state);
-  }
+  next.delete(cardId);
+  if (!isEmptyEdit(state)) next.set(cardId, state);
   return next;
+}
+
+const FIELD_BREAKING_CHARACTERS = [
+  String.fromCharCode(0x1f),
+  String.fromCharCode(0),
+];
+
+export function withoutFieldBreakingCharacters(draft: string): string {
+  return FIELD_BREAKING_CHARACTERS.reduce(
+    (text, character) => text.replaceAll(character, ''),
+    draft
+  );
 }
 
 export function withFieldDraft(

@@ -525,6 +525,47 @@ describe('CardFrame edit controls', () => {
     expect(onEdit).toHaveBeenCalledWith(42, { fields: {}, suspended: true });
   });
 
+  it('strips a pasted field separator from the draft before recording it', () => {
+    const onEdit = vi.fn();
+    render(
+      <CardFrame card={editableCard()} onEdit={onEdit} isEditable={true} />
+    );
+    fireEvent.click(screen.getByRole('button', { name: /edit back/i }));
+    const textarea = screen.getByRole('textbox', { name: 'Back' });
+    fireEvent.change(textarea, {
+      target: { value: `pasted${String.fromCharCode(0x1f)}text` },
+    });
+    expect(textarea).toHaveValue('pastedtext');
+    fireEvent.blur(textarea);
+    expect(onEdit).toHaveBeenCalledWith(42, { fields: { 1: 'pastedtext' } });
+  });
+
+  it('names the field on the closed editor’s button', () => {
+    render(<CardFrame card={editableCard()} onEdit={noop} isEditable={true} />);
+    expect(
+      screen.getByRole('button', { name: /edit back/i })
+    ).toHaveAccessibleDescription('Back');
+  });
+
+  it('keeps field names and edited text out of session recordings', () => {
+    render(
+      <CardFrame
+        card={editableCard()}
+        editState={{ fields: { 1: 'private answer' } }}
+        onEdit={noop}
+        isEditable={true}
+      />
+    );
+    expect(screen.getByText('private answer')).toHaveAttribute(
+      'data-hj-suppress'
+    );
+    expect(screen.getByText('Back')).toHaveAttribute('data-hj-suppress');
+    fireEvent.click(screen.getByRole('button', { name: /edit front/i }));
+    expect(screen.getByRole('textbox', { name: 'Front' })).toHaveAttribute(
+      'data-hj-suppress'
+    );
+  });
+
   it('shows an edited field as text with an Edited marker', () => {
     render(
       <CardFrame

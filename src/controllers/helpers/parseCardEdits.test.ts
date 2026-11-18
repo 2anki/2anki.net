@@ -1,6 +1,9 @@
 import {
+  EDITS_TOO_LONG_MESSAGE,
+  FIELD_TOO_LONG_MESSAGE,
   INVALID_EDITS_MESSAGE,
   MAX_FIELD_VALUE_LENGTH,
+  MAX_TOTAL_FIELD_LENGTH,
   parseCardEdits,
   STALE_PREVIEW_MESSAGE,
 } from './parseCardEdits';
@@ -53,11 +56,22 @@ describe('parseCardEdits', () => {
     ],
     ['a non-string value', [{ cardId: 5, fields: [{ index: 0, value: 3 }] }]],
     [
-      'a value over the length limit',
+      'a value holding the field separator',
       [
         {
           cardId: 5,
-          fields: [{ index: 0, value: 'x'.repeat(MAX_FIELD_VALUE_LENGTH + 1) }],
+          fields: [
+            { index: 0, value: `evil${String.fromCharCode(0x1f)}shifted` },
+          ],
+        },
+      ],
+    ],
+    [
+      'a value holding a NUL character',
+      [
+        {
+          cardId: 5,
+          fields: [{ index: 0, value: `a${String.fromCharCode(0)}b` }],
         },
       ],
     ],
@@ -79,6 +93,33 @@ describe('parseCardEdits', () => {
       ok: false,
       message: INVALID_EDITS_MESSAGE,
     });
+  });
+
+  it('names a value over the per-field limit', () => {
+    const value = 'x'.repeat(MAX_FIELD_VALUE_LENGTH + 1);
+
+    expect(
+      parseCardEdits([{ cardId: 5, fields: [{ index: 0, value }] }])
+    ).toEqual({ ok: false, message: FIELD_TOO_LONG_MESSAGE });
+  });
+
+  it('names edits whose fields together pass the total limit', () => {
+    const value = 'x'.repeat(MAX_FIELD_VALUE_LENGTH);
+    const cards =
+      Math.floor(MAX_TOTAL_FIELD_LENGTH / MAX_FIELD_VALUE_LENGTH) + 1;
+    const edits = Array.from({ length: cards }, (_, i) => ({
+      cardId: i + 1,
+      fields: [{ index: 0, value }],
+    }));
+
+    expect(parseCardEdits(edits)).toEqual({
+      ok: false,
+      message: EDITS_TOO_LONG_MESSAGE,
+    });
+  });
+
+  it('keeps the limits inside the 50 MB request body at three bytes a character', () => {
+    expect(MAX_TOTAL_FIELD_LENGTH * 3).toBeLessThan(50 * 1024 * 1024);
   });
 
   it('accepts a value exactly at the length limit', () => {
