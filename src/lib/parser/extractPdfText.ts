@@ -182,7 +182,7 @@ interface PdfOperatorList {
   argsArray: unknown[];
 }
 
-interface PdfJsTransport {
+export interface PdfJsTransport {
   messageHandler?: {
     sendWithPromise(action: 'Cleanup', data: null): Promise<unknown>;
   };
@@ -205,9 +205,14 @@ interface PdfJsPageProxy {
 // pdf.js keeps every font it parses, and the glyph outlines it builds from
 // it, until the document closes. A PDF that embeds fresh font subsets on every
 // page (merged decks, OCR'd scans) grows the heap with each page until the
-// conversion runs out of memory. Once this many fonts have loaded, the
-// document's font cache is dropped; a font used again is parsed again.
+// conversion runs out of memory. Once this many fonts the document had not
+// used before have loaded, its font cache is dropped. A font used again is
+// parsed again but keeps its name, so it never counts toward the next drop.
 export const MAX_RETAINED_PDF_FONTS = 100;
+
+// Dropping the cache waits on every font pdf.js has in flight. Past this the
+// extraction stops waiting and keeps every font, as it did before.
+export const FONT_RELEASE_TIMEOUT_MS = 5_000;
 
 // Without a worker, pdf.js talks to itself on promises alone, and its font
 // loader hands each font over in a setTimeout. Those timers never get a turn
@@ -216,16 +221,43 @@ function letFontLoaderTimersRun(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
-async function releaseDocumentFonts(
-  transport: PdfJsTransport | undefined
+function answersWithin(
+  pending: Promise<unknown>,
+  timeoutMs: number
 ): Promise<boolean> {
-  if (transport?.messageHandler == null || transport.commonObjs == null) {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(false), timeoutMs);
+    pending.then(
+      () => {
+        clearTimeout(timer);
+        resolve(true);
+      },
+      () => {
+        clearTimeout(timer);
+        resolve(false);
+      }
+    );
+  });
+}
+
+export async function releaseDocumentFonts(
+  transport: PdfJsTransport | undefined,
+  timeoutMs: number = FONT_RELEASE_TIMEOUT_MS
+): Promise<boolean> {
+  try {
+    if (transport?.messageHandler == null || transport.commonObjs == null) {
+      return false;
+    }
+    const cleanup = transport.messageHandler.sendWithPromise('Cleanup', null);
+    if (!(await answersWithin(cleanup, timeoutMs))) {
+      return false;
+    }
+    transport.commonObjs.clear();
+    transport.fontLoader?.clear();
+    return true;
+  } catch {
     return false;
   }
-  await transport.messageHandler.sendWithPromise('Cleanup', null);
-  transport.commonObjs.clear();
-  transport.fontLoader?.clear();
-  return true;
 }
 
 // Layout signals logged with every extraction so a later change can tell
@@ -312,17 +344,16 @@ const RASTER_IMAGE_OPCODES = resolveRasterImageOpcodes();
 const COLOR_TEXT_OPCODES = resolveColorTextOpcodes();
 const SET_FONT_OPCODE = resolveSetFontOpcode();
 
-function addLoadedFontNames(
-  operatorList: PdfOperatorList | null,
-  loadedFonts: Set<string>
-): void {
-  if (operatorList == null || SET_FONT_OPCODE == null) return;
+function fontNamesSetOn(operatorList: PdfOperatorList | null): string[] {
+  const names = new Set<string>();
+  if (operatorList == null || SET_FONT_OPCODE == null) return [];
   for (let i = 0; i < operatorList.fnArray.length; i++) {
     if (operatorList.fnArray[i] !== SET_FONT_OPCODE) continue;
     const args = operatorList.argsArray[i];
     const name = Array.isArray(args) ? args[0] : undefined;
-    if (typeof name === 'string') loadedFonts.add(name);
+    if (typeof name === 'string') names.add(name);
   }
+  return [...names];
 }
 
 export function isChromaticRgb(args: unknown): boolean {
@@ -451,8 +482,11 @@ export async function extractPdfText(
   const imageCounts: number[] = [];
   const coloredTextFlags: boolean[] = [];
   const landscapeFlags: boolean[] = [];
-  const loadedFonts = new Set<string>();
+  const fontsSeen = new Set<string>();
+  const fontsLoadedSinceRelease = new Set<string>();
+  let unseenFontsSinceRelease = 0;
   let fontCacheReleases = 0;
+  let fontReleaseFailed = false;
 
   const pagerender = async (pageData: PdfJsPageProxy): Promise<string> => {
     const textContent = await pageData.getTextContent({
@@ -463,18 +497,29 @@ export async function extractPdfText(
     imageCounts.push(countImagePaintOps(operatorList));
     coloredTextFlags.push(pageHasColoredText(operatorList));
     landscapeFlags.push(isLandscapePage(pageData.view, pageData.rotate));
-    const fontsBefore = loadedFonts.size;
-    addLoadedFontNames(operatorList, loadedFonts);
+    const pageFonts = fontNamesSetOn(operatorList);
     pageData.cleanup();
-    if (loadedFonts.size > fontsBefore) {
+    const reloaded = pageFonts.filter((n) => !fontsLoadedSinceRelease.has(n));
+    for (const name of reloaded) fontsLoadedSinceRelease.add(name);
+    for (const name of pageFonts) {
+      if (fontsSeen.has(name)) continue;
+      fontsSeen.add(name);
+      unseenFontsSinceRelease += 1;
+    }
+    if (reloaded.length > 0) {
       await letFontLoaderTimersRun();
     }
     if (
-      loadedFonts.size >= MAX_RETAINED_PDF_FONTS &&
-      (await releaseDocumentFonts(pageData.transport))
+      !fontReleaseFailed &&
+      unseenFontsSinceRelease >= MAX_RETAINED_PDF_FONTS
     ) {
-      loadedFonts.clear();
-      fontCacheReleases += 1;
+      if (await releaseDocumentFonts(pageData.transport)) {
+        fontsLoadedSinceRelease.clear();
+        unseenFontsSinceRelease = 0;
+        fontCacheReleases += 1;
+      } else {
+        fontReleaseFailed = true;
+      }
     }
     return extractPageText(textContent) + '\f';
   };
@@ -565,6 +610,7 @@ export async function extractPdfText(
     isDrmLocked,
     credentialProvided: credential != null,
     fontCacheReleases,
+    fontReleaseFailed,
     durationMs: Date.now() - t0,
   });
 

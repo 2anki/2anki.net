@@ -4,7 +4,12 @@ import os from 'os';
 import path from 'path';
 import zlib from 'zlib';
 import { vi, type MockInstance } from 'vitest';
-import { extractPdfText, MAX_RETAINED_PDF_FONTS } from './extractPdfText';
+import {
+  extractPdfText,
+  MAX_RETAINED_PDF_FONTS,
+  releaseDocumentFonts,
+  type PdfJsTransport,
+} from './extractPdfText';
 
 type FontFactory = (add: (body: Buffer | string) => number) => number;
 
@@ -118,6 +123,16 @@ function glyphRun(page: number, line: number): string {
 const helvetica: FontFactory = (add) =>
   add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
 
+function sharedHelvetica(fontCount: number): FontFactory {
+  const ids: number[] = [];
+  let calls = 0;
+  return (add) => {
+    const slot = calls++ % fontCount;
+    ids[slot] ??= helvetica(add);
+    return ids[slot];
+  };
+}
+
 function sentence(page: number, line: number): string {
   return `Page ${page + 1} line ${line + 1} reads plainly`;
 }
@@ -196,19 +211,83 @@ describe('extractPdfText with a font per page', () => {
   }, 30000);
 
   it('never releases the font cache for a PDF that reuses a few fonts', async () => {
-    const ids: number[] = [];
-    let calls = 0;
-    const threeSharedFonts: FontFactory = (add) => {
-      const slot = calls++ % 3;
-      ids[slot] ??= helvetica(add);
-      return ids[slot];
-    };
-
-    await extractPdfText(buildPdf(200, 3, threeSharedFonts, sentence));
+    await extractPdfText(buildPdf(200, 3, sharedHelvetica(3), sentence));
 
     expect(infoSpy).toHaveBeenCalledWith(
       '[extractPdfText] result',
       expect.objectContaining({ pageCount: 200, fontCacheReleases: 0 })
     );
   }, 30000);
+
+  it('releases once for a PDF that uses the same 101 fonts on every page', async () => {
+    const fontCount = MAX_RETAINED_PDF_FONTS + 1;
+
+    await extractPdfText(
+      buildPdf(30, fontCount, sharedHelvetica(fontCount), sentence)
+    );
+
+    expect(infoSpy).toHaveBeenCalledWith(
+      '[extractPdfText] result',
+      expect.objectContaining({ pageCount: 30, fontCacheReleases: 1 })
+    );
+  }, 30000);
+});
+
+describe('releaseDocumentFonts', () => {
+  function transportAnswering(cleanup: () => Promise<unknown>) {
+    const commonObjs = { objs: { font: {} }, clear: vi.fn() };
+    const transport: PdfJsTransport = {
+      messageHandler: { sendWithPromise: vi.fn(cleanup) },
+      commonObjs,
+      fontLoader: { clear: vi.fn() },
+    };
+    return { transport, commonObjs };
+  }
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('clears the fonts the page side holds once pdf.js has cleaned up', async () => {
+    const { transport, commonObjs } = transportAnswering(() =>
+      Promise.resolve()
+    );
+
+    await expect(releaseDocumentFonts(transport)).resolves.toBe(true);
+    expect(commonObjs.clear).toHaveBeenCalledTimes(1);
+  });
+
+  it('answers false and keeps the fonts when pdf.js rejects the cleanup', async () => {
+    const { transport, commonObjs } = transportAnswering(() =>
+      Promise.reject(new Error('cleanup failed'))
+    );
+
+    await expect(releaseDocumentFonts(transport)).resolves.toBe(false);
+    expect(commonObjs.clear).not.toHaveBeenCalled();
+  });
+
+  it('answers false when sending the cleanup throws', async () => {
+    const { transport } = transportAnswering(() => {
+      throw new Error('channel closed');
+    });
+
+    await expect(releaseDocumentFonts(transport)).resolves.toBe(false);
+  });
+
+  it('stops waiting and answers false when pdf.js never answers', async () => {
+    vi.useFakeTimers();
+    const { transport, commonObjs } = transportAnswering(
+      () => new Promise(() => {})
+    );
+
+    const released = releaseDocumentFonts(transport, 1_000);
+    await vi.advanceTimersByTimeAsync(1_000);
+
+    await expect(released).resolves.toBe(false);
+    expect(commonObjs.clear).not.toHaveBeenCalled();
+  });
+
+  it('answers false without a transport, as pdf.js builds without one', async () => {
+    await expect(releaseDocumentFonts(undefined)).resolves.toBe(false);
+  });
 });

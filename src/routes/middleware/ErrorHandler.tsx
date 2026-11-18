@@ -101,27 +101,37 @@ function isQuietError(err: Error): boolean {
   );
 }
 
+// Logs the error and, when the uploader opted in to share files for
+// debugging, keeps their upload and emails the error. A handler that answers
+// with its own coded body still calls this so the report is not lost.
+export async function reportUnexpectedError(
+  req: express.Request,
+  err: Error
+): Promise<void> {
+  const uploadedFiles = req.files as UploadedFile[];
+  console.info('Send error');
+  console.error(redactStripeIds(inspect(err)));
+  const canShareFiles = shouldShareFilesForDebugging(req.body);
+  if (canShareFiles && !isEmptyPayload(uploadedFiles)) {
+    preserveFilesForDebugging(req, uploadedFiles, err);
+  }
+
+  try {
+    await sendErrorEmail(err, req);
+  } catch (emailErr) {
+    console.error('Failed to send error email:', emailErr);
+  }
+}
+
 export default async function ErrorHandler(
   res: express.Response,
   req: express.Request,
   err: Error
 ) {
-  const uploadedFiles = req.files as UploadedFile[];
   const quietError = isQuietError(err);
 
   if (!quietError) {
-    console.info('Send error');
-    console.error(redactStripeIds(inspect(err)));
-    const canShareFiles = shouldShareFilesForDebugging(req.body);
-    if (canShareFiles && !isEmptyPayload(uploadedFiles)) {
-      preserveFilesForDebugging(req, uploadedFiles, err);
-    }
-
-    try {
-      await sendErrorEmail(err, req);
-    } catch (emailErr) {
-      console.error('Failed to send error email:', emailErr);
-    }
+    await reportUnexpectedError(req, err);
   } else if (isLimitError(err)) {
     console.info('User no limit reached');
   }

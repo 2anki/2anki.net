@@ -5,6 +5,11 @@ import path from 'path';
 import express from 'express';
 import knex, { Knex } from 'knex';
 
+const debugEmailSendMail = vi.hoisted(() => vi.fn().mockResolvedValue({}));
+vi.mock('nodemailer', () => ({
+  default: { createTransport: () => ({ sendMail: debugEmailSendMail }) },
+}));
+
 vi.mock('../usecases/uploads/GeneratePackagesUseCase', () => {
   return {
     __esModule: true,
@@ -1859,7 +1864,7 @@ describe('UploadService.handleUpload — error paths', () => {
       });
     }
 
-    async function upload() {
+    async function upload(request: express.Request = buildRequest()) {
       const service = new UploadService(
         buildRepository(),
         {} as JobRepository,
@@ -1867,8 +1872,32 @@ describe('UploadService.handleUpload — error paths', () => {
         ...fakeUploadServiceDeps()
       );
       const response = buildResponse();
-      await service.handleUpload(buildRequest(), response.res);
+      await service.handleUpload(request, response.res);
       return response;
+    }
+
+    function uploadOfRealFile(body: Record<string, unknown>) {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'crash-report-'));
+      const filePath = path.join(dir, 'lecture.pdf');
+      fs.writeFileSync(filePath, '%PDF-1.4 crash report');
+      return buildRequest({
+        body,
+        files: [
+          {
+            originalname: 'lecture.pdf',
+            mimetype: 'application/pdf',
+            size: 21,
+            path: filePath,
+          },
+        ] as unknown as express.Request['files'],
+      });
+    }
+
+    function preservedUploadPath(infoSpy: MockInstance): string | null {
+      const call = infoSpy.mock.calls.find(
+        (args) => args[0] === 'Debug directory:'
+      );
+      return call == null ? null : path.join(String(call[1]), '0-lecture.pdf');
     }
 
     let errorSpy: MockInstance;
@@ -1917,6 +1946,60 @@ describe('UploadService.handleUpload — error paths', () => {
         '[UploadService] sync upload conversion process crashed',
         expect.objectContaining({ signal: 'SIGABRT', outOfMemory: true })
       );
+    });
+
+    describe('when the uploader shares files for debugging', () => {
+      let infoSpy: MockInstance;
+
+      beforeEach(() => {
+        debugEmailSendMail.mockClear();
+        vi.stubEnv('NODE_ENV', 'production');
+        infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+      });
+
+      afterEach(() => {
+        vi.unstubAllEnvs();
+        infoSpy.mockRestore();
+      });
+
+      it('keeps the upload and emails the crash, then answers with the coded body', async () => {
+        crashWith('SIGABRT', null);
+
+        const { capturedStatus, capturedJson } = await upload(
+          uploadOfRealFile({ 'share-files-for-debugging': 'true' })
+        );
+
+        const preserved = preservedUploadPath(infoSpy);
+        expect(preserved).not.toBeNull();
+        expect(fs.readFileSync(preserved as string, 'utf8')).toBe(
+          '%PDF-1.4 crash report'
+        );
+        expect(debugEmailSendMail).toHaveBeenCalledTimes(1);
+        expect(debugEmailSendMail.mock.calls[0][0]).toMatchObject({
+          subject: expect.stringContaining('Conversion process crashed'),
+        });
+        expect(capturedStatus()).toBe(400);
+        expect(capturedJson()).toEqual({
+          code: 'too_large',
+          message: CONVERSION_OUT_OF_MEMORY_REASON,
+        });
+      });
+
+      it('neither keeps the upload nor emails the crash without the opt-in', async () => {
+        crashWith(null, 137);
+
+        const { capturedStatus, capturedJson } = await upload(
+          uploadOfRealFile({})
+        );
+
+        expect(preservedUploadPath(infoSpy)).toBeNull();
+        expect(debugEmailSendMail).not.toHaveBeenCalled();
+        expect(capturedStatus()).toBe(500);
+        expect(capturedJson()).toEqual({
+          code: 'unknown',
+          message: CONVERSION_PROCESS_CRASHED_REASON,
+        });
+      });
     });
 
     it('answers any other crash with the retry copy instead of its internals', async () => {
