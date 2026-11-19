@@ -153,6 +153,16 @@
   line-height: var(--leading-relaxed);
 }
 
+.legalNote {
+  margin: 0.5rem auto 0;
+  text-align: center;
+  font-size: var(--text-sm);
+}
+
+.legalNote a {
+  color: var(--color-text-tertiary);
+}
+
 .reassurance {
   list-style: none;
   margin: 1.5rem auto 0;

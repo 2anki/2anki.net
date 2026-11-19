@@ -27,6 +27,9 @@ function Footer() {
           <a href="/documentation/reference/privacy/">
             {t('common:nav.privacy')}
           </a>
+          <a href="/tokushoho/" lang="ja">
+            {t('footer.tokushoho')}
+          </a>
           <a href="/security/">{t('footer.security')}</a>
           <a href={STRIPE_CUSTOMER_PORTAL_URL} rel="noreferrer">
             {t('footer.manageSubscription')}
