@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-18-many-font-pdfs-convert",
+  "date": "2026-11-18",
+  "type": "fix",
+  "title": "PDFs that embed many fonts, such as merged lecture decks, convert instead of running out of memory"
+}

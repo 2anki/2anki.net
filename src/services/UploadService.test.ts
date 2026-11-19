@@ -5,6 +5,11 @@ import path from 'path';
 import express from 'express';
 import knex, { Knex } from 'knex';
 
+const debugEmailSendMail = vi.hoisted(() => vi.fn().mockResolvedValue({}));
+vi.mock('nodemailer', () => ({
+  default: { createTransport: () => ({ sendMail: debugEmailSendMail }) },
+}));
+
 vi.mock('../usecases/uploads/GeneratePackagesUseCase', () => {
   return {
     __esModule: true,
@@ -114,9 +119,14 @@ import { ANKI_PACKAGE_ZIP_MESSAGE } from '../usecases/uploads/isAnkiPackageZip';
 import { buildPdfFallbackChoiceSentinel } from '../lib/pdf/pdfFallbackChoice';
 import { buildPdfPasswordSentinel } from '../lib/pdf/pdfPasswordSentinel';
 import {
+  ConversionChildCrashedError,
   createWorkerTerminationError,
   WORKER_INTERRUPTED_REASON,
 } from '../lib/workerTermination';
+import {
+  CONVERSION_OUT_OF_MEMORY_REASON,
+  CONVERSION_PROCESS_CRASHED_REASON,
+} from '../usecases/jobs/jobFailureReason';
 import { AiCreditsExhaustedError } from '../lib/claude/aiSpendGuard';
 import { DeckTooLargeError } from '../lib/parser/exporters/DeckTooLargeError';
 import CustomExporter from '../lib/parser/exporters/CustomExporter';
@@ -1836,6 +1846,180 @@ describe('UploadService.handleUpload — error paths', () => {
       'conversion_failed',
       expect.anything()
     );
+  });
+
+  describe('a sync upload whose conversion process died', () => {
+    function crashWith(signal: NodeJS.Signals | null, exitCode: number | null) {
+      MockGeneratePackagesUseCase.mockImplementation(function () {
+        return {
+          execute: vi.fn().mockRejectedValue(
+            new ConversionChildCrashedError({
+              exitCode,
+              signal,
+              lastRssBytes: 1_100_000_000,
+              reason: 'conversion_process_crashed',
+            })
+          ),
+        } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+      });
+    }
+
+    async function upload(request: express.Request = buildRequest()) {
+      const service = new UploadService(
+        buildRepository(),
+        {} as JobRepository,
+        buildUsersRepo(),
+        ...fakeUploadServiceDeps()
+      );
+      const response = buildResponse();
+      await service.handleUpload(request, response.res);
+      return response;
+    }
+
+    function uploadOfRealFile(body: Record<string, unknown>) {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'crash-report-'));
+      const filePath = path.join(dir, 'lecture.pdf');
+      fs.writeFileSync(filePath, '%PDF-1.4 crash report');
+      return buildRequest({
+        body,
+        files: [
+          {
+            originalname: 'lecture.pdf',
+            mimetype: 'application/pdf',
+            size: 21,
+            path: filePath,
+          },
+        ] as unknown as express.Request['files'],
+      });
+    }
+
+    function preservedUploadPath(infoSpy: MockInstance): string | null {
+      const call = infoSpy.mock.calls.find(
+        (args) => args[0] === 'Debug directory:'
+      );
+      return call == null ? null : path.join(String(call[1]), '0-lecture.pdf');
+    }
+
+    let errorSpy: MockInstance;
+
+    beforeEach(() => {
+      errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      errorSpy.mockRestore();
+    });
+
+    it('answers an out-of-memory crash as too large to convert in one go', async () => {
+      crashWith('SIGABRT', null);
+
+      const { capturedStatus, capturedJson } = await upload();
+
+      expect(capturedStatus()).toBe(400);
+      expect(capturedJson()).toEqual({
+        code: 'too_large',
+        message: CONVERSION_OUT_OF_MEMORY_REASON,
+      });
+    });
+
+    it('records an out-of-memory crash as its own failure reason', async () => {
+      crashWith('SIGABRT', null);
+
+      await upload();
+
+      expect(trackMock).toHaveBeenCalledWith(
+        'conversion_failed',
+        expect.objectContaining({
+          props: expect.objectContaining({
+            reason: 'conversion_out_of_memory',
+          }),
+        })
+      );
+    });
+
+    it('logs the crash once, with its signal, exit code and memory', async () => {
+      crashWith('SIGABRT', null);
+
+      await upload();
+
+      expect(errorSpy.mock.calls).toEqual([
+        [
+          '[UploadService] sync upload conversion process crashed',
+          {
+            exitCode: null,
+            signal: 'SIGABRT',
+            lastRssBytes: 1_100_000_000,
+            outOfMemory: true,
+          },
+        ],
+      ]);
+    });
+
+    describe('when the uploader shares files for debugging', () => {
+      let infoSpy: MockInstance;
+
+      beforeEach(() => {
+        debugEmailSendMail.mockClear();
+        vi.stubEnv('NODE_ENV', 'production');
+        infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+      });
+
+      afterEach(() => {
+        vi.unstubAllEnvs();
+        infoSpy.mockRestore();
+      });
+
+      it('keeps the upload and emails the crash, then answers with the coded body', async () => {
+        crashWith('SIGABRT', null);
+
+        const { capturedStatus, capturedJson } = await upload(
+          uploadOfRealFile({ 'share-files-for-debugging': 'true' })
+        );
+
+        const preserved = preservedUploadPath(infoSpy);
+        expect(preserved).not.toBeNull();
+        expect(fs.readFileSync(preserved as string, 'utf8')).toBe(
+          '%PDF-1.4 crash report'
+        );
+        expect(debugEmailSendMail).toHaveBeenCalledTimes(1);
+        expect(debugEmailSendMail.mock.calls[0][0]).toMatchObject({
+          subject: expect.stringContaining('Conversion process crashed'),
+        });
+        expect(capturedStatus()).toBe(400);
+        expect(capturedJson()).toEqual({
+          code: 'too_large',
+          message: CONVERSION_OUT_OF_MEMORY_REASON,
+        });
+      });
+
+      it('neither keeps the upload nor emails the crash without the opt-in', async () => {
+        crashWith(null, 137);
+
+        const { capturedStatus, capturedJson } = await upload(
+          uploadOfRealFile({})
+        );
+
+        expect(preservedUploadPath(infoSpy)).toBeNull();
+        expect(debugEmailSendMail).not.toHaveBeenCalled();
+        expect(capturedStatus()).toBe(500);
+        expect(capturedJson()).toEqual({
+          code: 'unknown',
+          message: CONVERSION_PROCESS_CRASHED_REASON,
+        });
+      });
+    });
+
+    it('answers any other crash with the retry copy instead of its internals', async () => {
+      crashWith(null, 137);
+
+      const { capturedStatus, capturedJson } = await upload();
+
+      expect(capturedStatus()).toBe(500);
+      expect(capturedJson()).toEqual({
+        code: 'unknown',
+        message: CONVERSION_PROCESS_CRASHED_REASON,
+      });
+    });
   });
 
   it('returns 400 with code pdf_processing_failed when pdf.js rejects the file structure', async () => {
@@ -8241,6 +8425,32 @@ describe('UploadService.handleUpload — failure events for the success-rate til
         CLAUDE_REFUSAL_USER_MESSAGE
       );
       expect(conversionFailedReasons()).toEqual([]);
+    });
+
+    it('stores the too-large copy on the job when the background conversion runs out of memory', async () => {
+      failWith(
+        new ConversionChildCrashedError({
+          exitCode: null,
+          signal: 'SIGABRT',
+          lastRssBytes: 1_100_000_000,
+          reason: 'conversion_process_crashed',
+        })
+      );
+      const jobRepository = buildJobRepo();
+      const { res } = buildPayingResponse();
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      await buildService(jobRepository).handleUpload(buildAiRequest(), res);
+      await settle();
+      errorSpy.mockRestore();
+
+      expect(jobRepository.updateJobStatus).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.anything(),
+        'failed',
+        CONVERSION_OUT_OF_MEMORY_REASON
+      );
+      expect(conversionFailedReasons()).toEqual(['conversion_out_of_memory']);
     });
 
     it('records a credits error that lost its class across the worker boundary as ai_credits_exhausted', async () => {

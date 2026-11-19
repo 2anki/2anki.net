@@ -33,6 +33,7 @@ const RASTER_IMAGE_OPS = [
 // colour space) into setFillRGBColor with 0-255 components before the operator
 // list is produced, so tracking this one op is enough to see all text colour.
 const FILL_RGB_OP = 'setFillRGBColor';
+const SET_FONT_OP = 'setFont';
 const TEXT_SHOW_OPS = [
   'showText',
   'showSpacedText',
@@ -181,6 +182,14 @@ interface PdfOperatorList {
   argsArray: unknown[];
 }
 
+export interface PdfJsTransport {
+  messageHandler?: {
+    sendWithPromise(action: 'Cleanup', data: null): Promise<unknown>;
+  };
+  commonObjs?: { objs?: Record<string, unknown>; clear(): void };
+  fontLoader?: { clear(): void };
+}
+
 interface PdfJsPageProxy {
   getTextContent(options: {
     normalizeWhitespace: boolean;
@@ -190,6 +199,66 @@ interface PdfJsPageProxy {
   cleanup(): void;
   view?: number[];
   rotate?: number;
+  transport?: PdfJsTransport;
+}
+
+// pdf.js keeps every font it parses, and the glyph outlines it builds from
+// it, until the document closes. A PDF that embeds fresh font subsets on every
+// page (merged decks, OCR'd scans) grows the heap with each page until the
+// conversion runs out of memory. Once this many fonts loaded since the last
+// drop go unused on the current page, the font cache is dropped; a font used
+// again is parsed again. Fonts every page uses are never idle, so they are
+// not dropped and parsed over and over.
+export const MAX_RETAINED_PDF_FONTS = 100;
+
+// Dropping the cache waits on every font pdf.js has in flight. Past this the
+// extraction stops waiting and keeps every font, as it did before.
+export const FONT_RELEASE_TIMEOUT_MS = 5_000;
+
+// Without a worker, pdf.js talks to itself on promises alone, and its font
+// loader hands each font over in a setTimeout. Those timers never get a turn
+// while pages keep parsing, so every font stays queued until the last page.
+function letFontLoaderTimersRun(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+function answersWithin(
+  pending: Promise<unknown>,
+  timeoutMs: number
+): Promise<boolean> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(false), timeoutMs);
+    pending.then(
+      () => {
+        clearTimeout(timer);
+        resolve(true);
+      },
+      () => {
+        clearTimeout(timer);
+        resolve(false);
+      }
+    );
+  });
+}
+
+export async function releaseDocumentFonts(
+  transport: PdfJsTransport | undefined,
+  timeoutMs: number = FONT_RELEASE_TIMEOUT_MS
+): Promise<boolean> {
+  try {
+    if (transport?.messageHandler == null || transport.commonObjs == null) {
+      return false;
+    }
+    const cleanup = transport.messageHandler.sendWithPromise('Cleanup', null);
+    if (!(await answersWithin(cleanup, timeoutMs))) {
+      return false;
+    }
+    transport.commonObjs.clear();
+    transport.fontLoader?.clear();
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // Layout signals logged with every extraction so a later change can tell
@@ -267,8 +336,30 @@ function resolveColorTextOpcodes(): ColorTextOpcodes {
   };
 }
 
+function resolveSetFontOpcode(): number | null {
+  const code = loadPdfJs()?.OPS?.[SET_FONT_OP];
+  return typeof code === 'number' ? code : null;
+}
+
 const RASTER_IMAGE_OPCODES = resolveRasterImageOpcodes();
 const COLOR_TEXT_OPCODES = resolveColorTextOpcodes();
+const SET_FONT_OPCODE = resolveSetFontOpcode();
+
+// pdf.js inlines a page's form XObjects into its operator list, so a font set
+// inside a form shows here too. A font set only inside a Type3 glyph does not:
+// it is never counted, and a release that drops it runs after the page's text
+// is read, so the next page that needs it parses it again.
+function fontNamesSetOn(operatorList: PdfOperatorList | null): Set<string> {
+  const names = new Set<string>();
+  if (operatorList == null || SET_FONT_OPCODE == null) return names;
+  for (let i = 0; i < operatorList.fnArray.length; i++) {
+    if (operatorList.fnArray[i] !== SET_FONT_OPCODE) continue;
+    const args = operatorList.argsArray[i];
+    const name = Array.isArray(args) ? args[0] : undefined;
+    if (typeof name === 'string') names.add(name);
+  }
+  return names;
+}
 
 export function isChromaticRgb(args: unknown): boolean {
   if (args == null || typeof args !== 'object') return false;
@@ -396,6 +487,9 @@ export async function extractPdfText(
   const imageCounts: number[] = [];
   const coloredTextFlags: boolean[] = [];
   const landscapeFlags: boolean[] = [];
+  const fontsLoadedSinceRelease = new Set<string>();
+  let fontCacheReleases = 0;
+  let fontReleaseFailed = false;
 
   const pagerender = async (pageData: PdfJsPageProxy): Promise<string> => {
     const textContent = await pageData.getTextContent({
@@ -406,7 +500,22 @@ export async function extractPdfText(
     imageCounts.push(countImagePaintOps(operatorList));
     coloredTextFlags.push(pageHasColoredText(operatorList));
     landscapeFlags.push(isLandscapePage(pageData.view, pageData.rotate));
+    const pageFonts = fontNamesSetOn(operatorList);
     pageData.cleanup();
+    const loadedBefore = fontsLoadedSinceRelease.size;
+    for (const name of pageFonts) fontsLoadedSinceRelease.add(name);
+    if (fontsLoadedSinceRelease.size > loadedBefore) {
+      await letFontLoaderTimersRun();
+    }
+    const unusedOnThisPage = fontsLoadedSinceRelease.size - pageFonts.size;
+    if (!fontReleaseFailed && unusedOnThisPage >= MAX_RETAINED_PDF_FONTS) {
+      if (await releaseDocumentFonts(pageData.transport)) {
+        fontsLoadedSinceRelease.clear();
+        fontCacheReleases += 1;
+      } else {
+        fontReleaseFailed = true;
+      }
+    }
     return extractPageText(textContent) + '\f';
   };
   const layoutAt = (index: number): PageLayout => ({
@@ -495,6 +604,8 @@ export async function extractPdfText(
       pairShare == null ? null : Math.round(pairShare * 100) / 100,
     isDrmLocked,
     credentialProvided: credential != null,
+    fontCacheReleases,
+    fontReleaseFailed,
     durationMs: Date.now() - t0,
   });
 

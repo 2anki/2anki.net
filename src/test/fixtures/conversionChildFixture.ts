@@ -31,6 +31,10 @@ async function handle(
       // Dies mid-task; the scheduler must reject with ConversionChildCrashedError.
       process.exit(137);
       return undefined;
+    case 'exhaust-heap': {
+      const held: unknown[][] = [];
+      for (;;) held.push(new Array(100_000).fill({ held: held.length }));
+    }
     case 'hang':
       await new Promise<void>(() => {});
       return undefined;

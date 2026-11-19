@@ -78,6 +78,25 @@ describe('conversion process crash', () => {
   });
 });
 
+describe('conversion process out of memory', () => {
+  const outOfMemory = new ConversionChildCrashedError({
+    exitCode: null,
+    signal: 'SIGABRT',
+    lastRssBytes: 1_200_000_000,
+    reason: 'conversion_process_crashed',
+  });
+
+  it('maps a child that ran out of heap to the conversion_out_of_memory code', () => {
+    expect(jobFailureReasonCode(outOfMemory)).toBe('conversion_out_of_memory');
+  });
+
+  it('tells the user to split the file', () => {
+    expect(jobFailureReasonFromError(outOfMemory, 'job-oom')).toBe(
+      'This file is too large to convert in one go. Split it into smaller files and convert each one separately.'
+    );
+  });
+});
+
 describe('jobFailureReasonFromError', () => {
   it('never puts the stack of an error rebuilt from the upload worker in the reason', () => {
     const rebuilt = Object.assign(
