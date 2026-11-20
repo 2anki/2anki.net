@@ -593,7 +593,7 @@ describe('UploadForm reads the account again before refusing a file over the fre
       );
     });
 
-    it('drops the first file and sends a folder dropped during the read, with no wall', async () => {
+    it('ignores a folder dropped during the read and shows the wall for the first file', async () => {
       const read = controlledRead();
       setLocals(signedInFree, { refetch: read.refetch });
       const fetchMock = stubServer();
@@ -638,14 +638,16 @@ describe('UploadForm reads the account again before refusing a file over the fre
         read.answer(freshRead(signedInFree));
       });
 
-      await waitFor(() => expect(uploadsSent(fetchMock)).toHaveLength(1));
-      const submitted = vi
-        .mocked(track)
-        .mock.calls.filter(([name]) => name === 'upload_submitted');
-      expect(submitted).toEqual([
-        ['upload_submitted', expect.objectContaining({ input_format: 'zip' })],
-      ]);
-      expect(screen.queryByText(OVER_FREE_TITLE)).toBeNull();
+      expect(
+        await screen.findByText(OVER_FREE_TITLE, { selector: 'p' })
+      ).toBeInTheDocument();
+      expect(screen.getByText(/lecture\.pdf/)).toBeInTheDocument();
+      expect(folderDrop.defaultPrevented).toBe(true);
+      await settle();
+      expect(uploadsSent(fetchMock)).toEqual([]);
+      expect(vi.mocked(track)).not.toHaveBeenCalledWith(
+        'folder_upload_packaged'
+      );
     });
 
     it('sends nothing and logs no error when the page goes away during the read', async () => {

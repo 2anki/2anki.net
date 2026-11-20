@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-20-folder-drop-during-upload",
+  "date": "2026-11-20",
+  "type": "fix",
+  "title": "A folder dropped while a file is converting is ignored, so the file in progress finishes and its deck shows"
+}
