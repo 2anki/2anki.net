@@ -1352,7 +1352,8 @@ function UploadForm({
       if (
         isUploadLocked ||
         zoneState === 'packaging' ||
-        zoneState === 'heldForSignup'
+        zoneState === 'heldForSignup' ||
+        zoneStateRef.current === 'converting'
       ) {
         event.preventDefault();
         return;
@@ -1374,10 +1375,6 @@ function UploadForm({
         return;
       }
       if (dataTransfer && dataTransfer.files.length > 0) {
-        if (zoneStateRef.current === 'converting') {
-          event.preventDefault();
-          return;
-        }
         const { files } = dataTransfer;
         moveScreenOn();
         fileInputRef.current!.files = files;

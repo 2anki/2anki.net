@@ -1749,6 +1749,77 @@ describe('UploadForm Google Drive picker interaction', () => {
     expect(body.get('pdf-page-range')).toBeNull();
   });
 
+  it('ignores a folder dropped while a Drive import converts and shows the Drive deck', async () => {
+    stubGoogleDrivePicked();
+    vi.stubGlobal('scrollTo', vi.fn());
+    let answerDrive: (response: unknown) => void = () => {};
+    const fetchMock = vi.fn((url: string) =>
+      url === '/api/upload/google_drive'
+        ? new Promise((resolve) => {
+            answerDrive = resolve;
+          })
+        : Promise.resolve(new Response(null, { status: 204 }))
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    globalThis.URL.createObjectURL = vi.fn(() => 'blob:x');
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    fireEvent.click(
+      within(container).getByRole('button', { name: 'Google Drive' })
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Choose from Google Drive' })
+    );
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.filter(
+          ([url]) => url === '/api/upload/google_drive'
+        )
+      ).toHaveLength(1)
+    );
+    const folder = {
+      isFile: false,
+      isDirectory: true,
+      name: 'notes',
+      fullPath: '/notes',
+      createReader: () => ({
+        readEntries: (resolve: (batch: unknown[]) => void) => resolve([]),
+      }),
+    };
+    const folderDrop = new Event('drop', { bubbles: true, cancelable: true });
+    Object.defineProperty(folderDrop, 'dataTransfer', {
+      value: { items: [{ webkitGetAsEntry: () => folder }], files: [] },
+    });
+    await act(async () => {
+      document.body.dispatchEvent(folderDrop);
+    });
+    await act(async () => {
+      answerDrive({
+        redirected: false,
+        status: 200,
+        headers: new Headers({
+          'Content-Type': 'application/octet-stream',
+          'Content-Disposition': 'attachment; filename="deck.apkg"',
+          'X-Card-Count': '3',
+        }),
+        blob: () => Promise.resolve(new Blob(['fake'])),
+      });
+    });
+
+    await waitFor(() =>
+      expect(
+        container.querySelector('output[aria-live="polite"]')?.textContent
+      ).toBe('Your deck is ready — 3 cards.')
+    );
+    expect(folderDrop.defaultPrevented).toBe(true);
+    expect(vi.mocked(track)).not.toHaveBeenCalledWith('folder_upload_packaged');
+    expect(
+      fetchMock.mock.calls.filter(([url]) => url === '/api/upload/file')
+    ).toEqual([]);
+  });
+
   it('offers a card options link for a Drive deck with folded toggles, since the page holds no bytes', async () => {
     stubGoogleDrivePicked();
     vi.stubGlobal('scrollTo', vi.fn());
