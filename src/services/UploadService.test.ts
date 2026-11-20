@@ -10185,6 +10185,25 @@ describe('UploadService.respondToBrokenUpload', () => {
     );
   });
 
+  it('keeps the upload_incomplete event to its existing props', () => {
+    trackMock.mockClear();
+    const { res } = buildResponse();
+
+    service().respondToBrokenUpload(
+      buildRequest(),
+      res,
+      new Error('Unexpected end of form')
+    );
+
+    expect(Object.keys(trackMock.mock.calls[0][1].props).sort()).toEqual([
+      'input_format',
+      'reason',
+      'signup_origin',
+      'source',
+      'upload_error',
+    ]);
+  });
+
   it('names a multer error by its code', () => {
     trackMock.mockClear();
     const { res } = buildResponse();

@@ -62,6 +62,7 @@ import GeneratePackagesUseCase from '../usecases/uploads/GeneratePackagesUseCase
 import { toText } from './NotionService/BlockHandler/helpers/deckNameToText';
 import { isPaying } from '../lib/isPaying';
 import { isLimitError } from '../lib/misc/isLimitError';
+import { readUploadStreamProgress } from '../lib/misc/uploadStreamProgress';
 import { handleUploadLimitError } from '../controllers/Upload/helpers/handleUploadLimitError';
 import { getUploadValidationError } from '../lib/upload/getUploadValidationError';
 import { isImageOnlyUpload } from '../lib/upload/isImageOnlyUpload';
@@ -3333,22 +3334,28 @@ class UploadService {
       }
       return;
     }
+    const progress = readUploadStreamProgress(req);
     console.warn('[upload] upload stream ended with an error', {
       requestId: res.locals.requestId,
       uploadError,
       message: error.message,
       files: Array.isArray(req.files) ? req.files.length : 0,
       clientLeft,
+      ...progress,
     });
-    this.trackUploadFailed(
-      req,
-      res,
-      clientLeft ? 'client_left' : 'upload_incomplete',
-      { upload_error: String(uploadError) }
-    );
     if (clientLeft) {
+      this.trackUploadFailed(req, res, 'client_left', {
+        upload_error: String(uploadError),
+        declared_bytes: progress.contentLength,
+        bytes_received: progress.bytesReceived,
+        elapsed_ms: progress.elapsedMs,
+        files_started: progress.filesStarted,
+      });
       return;
     }
+    this.trackUploadFailed(req, res, 'upload_incomplete', {
+      upload_error: String(uploadError),
+    });
     const batch = Array.isArray(req.files) && req.files.length > 1;
     res.status(400).json({
       code: 'upload_incomplete',

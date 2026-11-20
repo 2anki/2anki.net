@@ -8,6 +8,9 @@ import express from 'express';
 import cookieParser from 'cookie-parser';
 
 const s3Puts = vi.hoisted(() => [] as string[]);
+const recordedEvents = vi.hoisted(
+  () => [] as { name: string; props: Record<string, unknown> }[]
+);
 
 vi.mock('@aws-sdk/client-s3', async (importActual) => {
   const actual = await importActual<typeof import('@aws-sdk/client-s3')>();
@@ -46,7 +49,9 @@ vi.mock('../../lib/conversionPool', async (importActual) => {
 
 vi.mock('../../services/events/eventsSinkInstance', () => ({
   getEventsSink: () => ({
-    record: () => undefined,
+    record: (event: { name: string; props: Record<string, unknown> }) => {
+      recordedEvents.push(event);
+    },
     flushDurable: () => Promise.resolve(),
   }),
   resetEventsSinkForTesting: () => undefined,
@@ -190,6 +195,7 @@ beforeEach(() => {
 afterEach(() => {
   __resetFeatureFlagModuleForTests();
   s3Puts.length = 0;
+  recordedEvents.length = 0;
   for (const entry of fs.readdirSync(uploadBase)) {
     fs.rmSync(path.join(uploadBase, entry), { recursive: true, force: true });
   }
@@ -378,5 +384,124 @@ describe('the multipart field a file arrives under on /api/upload/file', () => {
       },
     });
     expect(tempFilesLeft()).toEqual([]);
+  });
+});
+
+const BROKEN_UPLOAD_LOG = '[upload] upload stream ended with an error';
+const ABORT_BOUNDARY = 'abort-boundary';
+const DECLARED_LENGTH = 1_000_000;
+const MS_BEFORE_LEAVING = 1234;
+const PARTIAL_BODY =
+  [
+    `--${ABORT_BOUNDARY}`,
+    'Content-Disposition: form-data; name="pakker"; filename="Field notes.html"',
+    'Content-Type: text/html',
+    '',
+    '',
+  ].join('\r\n') + NOTES.repeat(20);
+
+async function until(condition: () => boolean): Promise<void> {
+  while (!condition()) {
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+}
+
+function captureWarnings() {
+  const warnings: unknown[][] = [];
+  const spy = vi.spyOn(console, 'warn').mockImplementation((...args) => {
+    warnings.push(args);
+  });
+  const brokenUploadRecord = () =>
+    warnings.find(([message]) => message === BROKEN_UPLOAD_LOG)?.[1] as
+      | Record<string, unknown>
+      | undefined;
+  return { spy, brokenUploadRecord };
+}
+
+async function leaveMidUpload(
+  headers: http.OutgoingHttpHeaders
+): Promise<Record<string, unknown>> {
+  const { spy, brokenUploadRecord } = captureWarnings();
+  const request = http.request(`${baseUrl}/api/upload/file`, {
+    method: 'POST',
+    headers: {
+      'content-type': `multipart/form-data; boundary=${ABORT_BOUNDARY}`,
+      ...headers,
+    },
+  });
+  request.on('error', () => undefined);
+  request.write(PARTIAL_BODY);
+  await until(() => tempFilesLeft().length > 0);
+  vi.advanceTimersByTime(MS_BEFORE_LEAVING);
+  request.destroy();
+  await until(() => brokenUploadRecord() != null);
+  spy.mockRestore();
+  return brokenUploadRecord() ?? {};
+}
+
+describe('what the log says when someone leaves /api/upload/file mid-upload', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['performance'] });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('records the declared length, the bytes read, the time and the file begun', async () => {
+    const record = await leaveMidUpload({
+      'content-length': String(DECLARED_LENGTH),
+    });
+
+    expect(record).toMatchObject({
+      requestId: 'field-name-request',
+      clientLeft: true,
+      contentLength: DECLARED_LENGTH,
+      elapsedMs: MS_BEFORE_LEAVING,
+      filesStarted: 1,
+    });
+    expect(record.bytesReceived).toBeGreaterThan(0);
+    expect(record.bytesReceived).toBeLessThan(DECLARED_LENGTH);
+  });
+
+  it('records a chunked upload with no declared length', async () => {
+    const record = await leaveMidUpload({ 'transfer-encoding': 'chunked' });
+
+    expect(record).toMatchObject({
+      contentLength: null,
+      elapsedMs: MS_BEFORE_LEAVING,
+      filesStarted: 1,
+    });
+    expect(record.bytesReceived).toBeGreaterThan(0);
+    expect(record.bytesReceived).toBeLessThanOrEqual(PARTIAL_BODY.length);
+  });
+
+  it('puts the same numbers on the client_left event', async () => {
+    const record = await leaveMidUpload({
+      'content-length': String(DECLARED_LENGTH),
+    });
+
+    expect(recordedEvents).toContainEqual(
+      expect.objectContaining({
+        name: 'conversion_failed',
+        props: expect.objectContaining({
+          reason: 'client_left',
+          declared_bytes: DECLARED_LENGTH,
+          bytes_received: record.bytesReceived,
+          elapsed_ms: MS_BEFORE_LEAVING,
+          files_started: 1,
+        }),
+      })
+    );
+  });
+
+  it('logs nothing about a broken stream for an upload that completes', async () => {
+    const { spy, brokenUploadRecord } = captureWarnings();
+
+    const result = await postFiles(['pakker']);
+    spy.mockRestore();
+
+    expect(result).toEqual({ status: 200, body: 'field-name-apkg' });
+    expect(brokenUploadRecord()).toBeUndefined();
   });
 });
