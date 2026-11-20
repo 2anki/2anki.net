@@ -315,6 +315,7 @@ describe('ApkgController.downloadEdited', () => {
       cardsDeleted: 3,
       editsRefused: 1,
       notesRemoved: 2,
+      emptyClozeCardsRemoved: 4,
     });
     const { controller } = makeEditedDownloadController(Buffer.from('x'));
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
@@ -326,7 +327,7 @@ describe('ApkgController.downloadEdited', () => {
     const logged = infoSpy.mock.calls.map((call) => call[0]);
     infoSpy.mockRestore();
     expect(logged).toContain(
-      'APKG edited download packed: collection.anki2, notes updated: 2, cards deleted: 3, notes removed: 2, edits refused: 1'
+      'APKG edited download packed: collection.anki2, notes updated: 2, cards deleted: 3, notes removed: 2, empty cloze cards removed: 4, edits refused: 1'
     );
   });
 

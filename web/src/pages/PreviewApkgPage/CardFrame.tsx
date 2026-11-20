@@ -289,6 +289,12 @@ export function CardFrame({
     );
   }
 
+  function deleteHint(): string {
+    if (isDeleted) return t('card.restoreCard');
+    if (card.noteHasOtherCards) return t('card.deleteCardOfMultiCardNote');
+    return t('card.deleteCard');
+  }
+
   function toggleDelete() {
     onEdit?.(card.id, { ...editState, deleted: !isDeleted });
   }
@@ -321,7 +327,7 @@ export function CardFrame({
               className={`${styles.iconButton}${isDeleted ? ` ${styles.iconButtonActive}` : ''}`}
               onClick={toggleDelete}
               aria-pressed={isDeleted}
-              title={isDeleted ? t('card.restoreCard') : t('card.deleteCard')}
+              title={deleteHint()}
             >
               {isDeleted ? t('card.restore') : t('card.delete')}
             </button>

@@ -595,7 +595,8 @@ describe('PackEditedApkgUseCase applies edits by card id to stored fields', () =
       cardId: 301,
       noteId: 30,
       index: 0,
-      expected: ['edited', 'extra'],
+      value: '{{c1::edited}} {{c2::text}}',
+      expected: ['{{c1::edited}} {{c2::text}}', 'extra'],
     },
     {
       noteType: 'three fields, the Meaning back',
@@ -620,9 +621,9 @@ describe('PackEditedApkgUseCase applies edits by card id to stored fields', () =
     },
   ])(
     'writes $noteType into that field only',
-    async ({ cardId, noteId, index, expected }) => {
+    async ({ cardId, noteId, index, value = 'edited', expected }) => {
       const { before, after, result } = await packWith([
-        { cardId, fields: [{ index, value: 'edited' }] },
+        { cardId, fields: [{ index, value }] },
       ]);
 
       expect(fieldsOf(after, noteId)).toEqual(expected);
@@ -1242,5 +1243,313 @@ describe.each([
         expect(after.cards).toEqual(before.cards);
       }
     );
+  }
+);
+
+const CLOZE_TEXT = '{{c1::Oslo}} is in {{c2::Norway}}';
+
+const CLOZE_NOTE_TYPE = {
+  id: 3,
+  name: 'Cloze',
+  fields: ['Text', 'Back Extra'],
+  templates: [
+    {
+      name: 'Cloze',
+      qfmt: '{{cloze:Text}}',
+      afmt: '{{cloze:Text}}<br>{{Back Extra}}',
+    },
+  ],
+};
+
+const REVERSED_NOTE_TYPE = {
+  id: 2,
+  name: 'Basic (and reversed card)',
+  fields: ['Front', 'Back'],
+  templates: [
+    {
+      name: 'Card 1',
+      qfmt: '{{Front}}',
+      afmt: '{{FrontSide}}<hr id=answer>{{Back}}',
+    },
+    {
+      name: 'Card 2',
+      qfmt: '{{Back}}',
+      afmt: '{{FrontSide}}<hr id=answer>{{Front}}',
+    },
+  ],
+};
+
+const MULTI_CARD_NOTES = [
+  {
+    id: 20,
+    mid: REVERSED_NOTE_TYPE.id,
+    fields: ['Capital of Norway', 'Oslo'],
+    cards: [
+      { id: 200, ord: 0 },
+      { id: 201, ord: 1 },
+    ],
+  },
+  {
+    id: 30,
+    mid: CLOZE_NOTE_TYPE.id,
+    fields: [CLOZE_TEXT, 'extra'],
+    cards: [
+      { id: 300, ord: 0 },
+      { id: 301, ord: 1 },
+    ],
+  },
+  {
+    id: 31,
+    mid: CLOZE_NOTE_TYPE.id,
+    fields: ['{{c1::Bergen}} is in Vestland', ''],
+    cards: [
+      { id: 310, ord: 0 },
+      { id: 311, ord: 1 },
+    ],
+  },
+];
+
+function insertMultiCardNotes(db: Database.Database): void {
+  for (const note of MULTI_CARD_NOTES) {
+    db.prepare(
+      "INSERT INTO notes (id, guid, mid, mod, usn, tags, flds, sfld) VALUES (?, ?, ?, ?, ?, '', ?, ?)"
+    ).run(
+      note.id,
+      `guid${note.id}`,
+      note.mid,
+      EXPORTED_AT_SECS,
+      EXPORTED_USN,
+      note.fields.join(SEP),
+      note.fields[0]
+    );
+    for (const card of note.cards) {
+      db.prepare(
+        'INSERT INTO cards (id, nid, did, ord) VALUES (?, ?, 2, ?)'
+      ).run(card.id, note.id, card.ord);
+    }
+  }
+}
+
+function legacyModel(
+  noteType: typeof CLOZE_NOTE_TYPE,
+  type: 0 | 1
+): Record<string, unknown> {
+  return {
+    id: noteType.id,
+    name: noteType.name,
+    type,
+    css: '',
+    flds: noteType.fields.map((name, ord) => ({ name, ord })),
+    tmpls: noteType.templates.map((template, ord) => ({ ...template, ord })),
+  };
+}
+
+function buildLegacyMultiCardCollection(): Buffer {
+  const db = new Database(buildCollectionBuffer([]));
+  db.prepare('UPDATE col SET models = ?').run(
+    JSON.stringify({
+      '2': legacyModel(REVERSED_NOTE_TYPE, 0),
+      '3': legacyModel(CLOZE_NOTE_TYPE, 1),
+    })
+  );
+  insertMultiCardNotes(db);
+  const buf = Buffer.from(db.serialize());
+  db.close();
+  return buf;
+}
+
+function buildSchema18MultiCardCollection(): Buffer {
+  const fixtureNote = { id: 1, fields: ['', ''] };
+  const db = new Database(
+    buildModernCollection({
+      noteType: { ...CLOZE_NOTE_TYPE, kind: 1, css: '' },
+      deck: { id: 2, name: 'Test' },
+      note: fixtureNote,
+      cards: [],
+    })
+  );
+  const reversed = new Database(
+    buildModernCollection({
+      noteType: { ...REVERSED_NOTE_TYPE, kind: 0, css: '' },
+      deck: { id: 2, name: 'Test' },
+      note: fixtureNote,
+      cards: [],
+    })
+  );
+  for (const table of ['notetypes', 'fields', 'templates']) {
+    copyRows(reversed, db, table);
+  }
+  reversed.close();
+  db.exec('DELETE FROM notes');
+  insertMultiCardNotes(db);
+  const buf = Buffer.from(db.serialize());
+  db.close();
+  return buf;
+}
+
+function cardIdsOf(rows: { cards: Row[] }, noteId: number): unknown[] {
+  return rows.cards.filter((card) => card.nid === noteId).map((c) => c.id);
+}
+
+describe.each([
+  {
+    format: 'a legacy collection.anki2',
+    collectionName: 'collection.anki2',
+    build: buildLegacyMultiCardCollection,
+  },
+  {
+    format: 'a schema-18 collection.anki21b',
+    collectionName: 'collection.anki21b',
+    build: buildSchema18MultiCardCollection,
+  },
+])(
+  'PackEditedApkgUseCase with cloze edits in $format',
+  ({ collectionName, build }) => {
+    const clockedUseCase = new PackEditedApkgUseCase(() => EDITED_AT_MS);
+
+    async function packWith(edits: CardEdit[]) {
+      const input = build();
+      const result = await clockedUseCase.execute({
+        sourceBytes: await packageCollection(collectionName, input),
+        filename: 'deck.apkg',
+        edits,
+      });
+      const archive = await extractApkg(result.buffer);
+      return {
+        before: readRows(input),
+        after: readRows(archive.collectionBuffer),
+        result,
+      };
+    }
+
+    function editClozeText(cardId: number, value: string): CardEdit {
+      return { cardId, fields: [{ index: 0, value }] };
+    }
+
+    it.each([
+      { through: 'the c1 card', cardId: 300 },
+      { through: 'the c2 card itself', cardId: 301 },
+    ])(
+      'leaves out the card of a cloze the edit removed, edited through $through, and keeps every other row as it was',
+      async ({ cardId }) => {
+        const { before, after, result } = await packWith([
+          editClozeText(cardId, '{{c1::Oslo}} is in Norway'),
+        ]);
+
+        expect(after.cards).toEqual(withoutId(before.cards, 301));
+        expect(withoutId(after.notes, 30)).toEqual(withoutId(before.notes, 30));
+        expect(fieldsOf(after, 30)).toEqual([
+          '{{c1::Oslo}} is in Norway',
+          'extra',
+        ]);
+        expect(result).toMatchObject({
+          notesUpdated: 1,
+          cardsDeleted: 0,
+          notesRemoved: 0,
+          emptyClozeCardsRemoved: 1,
+        });
+      }
+    );
+
+    it.each([
+      {
+        label: 'keeps both clozes',
+        text: '{{c1::Oslo}} is the capital of {{c2::Norway}}',
+        kept: [300, 301],
+      },
+      {
+        label: 'nests c2 inside c1',
+        text: '{{c1::Oslo is in {{c2::Norway}}}}',
+        kept: [300, 301],
+      },
+      {
+        label: 'gives both clozes a hint',
+        text: '{{c1::Oslo::city}} is in {{c2::Norway::country}}',
+        kept: [300, 301],
+      },
+      {
+        label: 'keeps only a hinted c2',
+        text: '{{c2::Oslo::city}} is in Norway',
+        kept: [301],
+      },
+      {
+        label: 'leaves c2 unclosed',
+        text: '{{c1::Oslo}} is in {{c2::Norway',
+        kept: [300],
+      },
+      {
+        label: 'removes every cloze',
+        text: 'Oslo is in Norway',
+        kept: [300],
+      },
+    ])(
+      'keeps the cards whose cloze is still in the text when the edit $label',
+      async ({ text, kept }) => {
+        const { before, after, result } = await packWith([
+          editClozeText(300, text),
+        ]);
+
+        expect(cardIdsOf(after, 30)).toEqual(kept);
+        expect(after.cards.filter((card) => card.nid !== 30)).toEqual(
+          before.cards.filter((card) => card.nid !== 30)
+        );
+        expect(result.emptyClozeCardsRemoved).toBe(2 - kept.length);
+      }
+    );
+
+    it('keeps the last card of a note when the other one was deleted and the edit empties it', async () => {
+      const { after, result } = await packWith([
+        { cardId: 300, deleted: true },
+        editClozeText(301, 'Oslo is in {{c1::Norway}}'),
+      ]);
+
+      expect(cardIdsOf(after, 30)).toEqual([301]);
+      expect(fieldsOf(after, 30)).toEqual([
+        'Oslo is in {{c1::Norway}}',
+        'extra',
+      ]);
+      expect(result).toMatchObject({
+        cardsDeleted: 1,
+        notesRemoved: 0,
+        emptyClozeCardsRemoved: 0,
+      });
+    });
+
+    it('keeps both cards of a standard two-card note with a text edit', async () => {
+      const { before, after, result } = await packWith([
+        { cardId: 200, fields: [{ index: 0, value: 'edited' }] },
+      ]);
+
+      expect(after.cards).toEqual(before.cards);
+      expect(fieldsOf(after, 20)).toEqual(['edited', 'Oslo']);
+      expect(result).toMatchObject({
+        notesUpdated: 1,
+        emptyClozeCardsRemoved: 0,
+      });
+    });
+
+    it('leaves the cards of a cloze note that was not edited as they were', async () => {
+      const { before, after } = await packWith([
+        editClozeText(300, '{{c1::Oslo}} is in Norway'),
+      ]);
+
+      expect(cardIdsOf(after, 31)).toEqual([310, 311]);
+      expect(after.cards.filter((card) => card.nid === 31)).toEqual(
+        before.cards.filter((card) => card.nid === 31)
+      );
+      expect(rowOf(after.notes, 31)).toEqual(rowOf(before.notes, 31));
+    });
+
+    it('leaves a cloze note alone when the edit keeps its text as it was', async () => {
+      const { before, after, result } = await packWith([
+        editClozeText(310, '{{c1::Bergen}} is in Vestland'),
+      ]);
+
+      expect(after).toEqual(before);
+      expect(result).toMatchObject({
+        notesUpdated: 0,
+        emptyClozeCardsRemoved: 0,
+      });
+    });
   }
 );

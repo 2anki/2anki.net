@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-20-preview-removed-cloze-card",
+  "date": "2026-11-20",
+  "type": "fix",
+  "title": "Removing a cloze in the deck preview also leaves its card out of the download, so Anki shows no empty card"
+}

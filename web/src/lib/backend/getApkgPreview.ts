@@ -20,6 +20,7 @@ export interface ApkgPreviewCard {
     front: ApkgEditableField | null;
     back: ApkgEditableField | null;
   };
+  noteHasOtherCards?: boolean;
 }
 
 export interface ApkgPreviewBatch {

@@ -376,13 +376,33 @@ export default class ApkgPreviewService {
       mediaBaseUrl,
       deckId
     );
+    const cardsSharingANote = this.cardsSharingANote(parsed, page.cards);
     return {
       ...page,
       cards: page.cards.map((card) => ({
         ...card,
         editable: this.editableFieldValues(parsed, card.id),
+        noteHasOtherCards: cardsSharingANote.has(card.id),
       })),
     };
+  }
+
+  private cardsSharingANote(
+    parsed: ParsedApkg,
+    pageCards: RenderedCard[]
+  ): Set<number> {
+    const pageCardIds = new Set(pageCards.map((card) => card.id));
+    const noteOfPageCard = new Map<number, number>();
+    const cardsPerNote = new Map<number, number>();
+    for (const card of parsed.collection.cards) {
+      if (pageCardIds.has(card.id)) noteOfPageCard.set(card.id, card.nid);
+      cardsPerNote.set(card.nid, (cardsPerNote.get(card.nid) ?? 0) + 1);
+    }
+    return new Set(
+      [...noteOfPageCard]
+        .filter(([, noteId]) => (cardsPerNote.get(noteId) ?? 0) > 1)
+        .map(([cardId]) => cardId)
+    );
   }
 
   private editableFieldValues(

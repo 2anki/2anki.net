@@ -395,15 +395,63 @@ describe('CardFrame edit controls', () => {
     ).toBeInTheDocument();
   });
 
-  it('describes Delete as leaving the card out of the download, not out of Anki', () => {
-    render(<CardFrame card={editableCard()} onEdit={noop} isEditable={true} />);
+  it.each([
+    { label: 'no note information', overrides: {} },
+    {
+      label: 'a note with only this card',
+      overrides: { noteHasOtherCards: false },
+    },
+  ])(
+    'describes Delete as leaving the card out of the download, not out of Anki, for $label',
+    ({ overrides }) => {
+      render(
+        <CardFrame
+          card={editableCard(overrides)}
+          onEdit={noop}
+          isEditable={true}
+        />
+      );
+      const deleteButton = screen.getByRole('button', { name: 'Delete' });
+      expect(deleteButton).toHaveAccessibleDescription(
+        'Leave this card out of the download. A card already in your Anki collection stays there.'
+      );
+      expect(deleteButton).toHaveAttribute(
+        'title',
+        'Leave this card out of the download. A card already in your Anki collection stays there.'
+      );
+    }
+  );
+
+  it('says Anki may add the card back when its note makes more than one card', () => {
+    render(
+      <CardFrame
+        card={editableCard({ noteHasOtherCards: true })}
+        onEdit={noop}
+        isEditable={true}
+      />
+    );
     const deleteButton = screen.getByRole('button', { name: 'Delete' });
     expect(deleteButton).toHaveAccessibleDescription(
-      'Leave this card out of the download. A card already in your Anki collection stays there.'
+      'Leave this card out of the download. Anki may add it back as a new card, because its note makes more than one card. A card already in your Anki collection stays there.'
     );
     expect(deleteButton).toHaveAttribute(
       'title',
-      'Leave this card out of the download. A card already in your Anki collection stays there.'
+      'Leave this card out of the download. Anki may add it back as a new card, because its note makes more than one card. A card already in your Anki collection stays there.'
+    );
+  });
+
+  it('keeps Restore’s hint on a deleted card whose note makes more than one card', () => {
+    render(
+      <CardFrame
+        card={editableCard({ noteHasOtherCards: true })}
+        editState={{ deleted: true }}
+        onEdit={noop}
+        isEditable={true}
+      />
+    );
+    expect(screen.getByRole('button', { name: 'Restore' })).toHaveAttribute(
+      'title',
+      'Restore card'
     );
   });
 

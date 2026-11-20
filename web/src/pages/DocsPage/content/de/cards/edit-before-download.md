@@ -25,3 +25,7 @@ Der Button "Restore all" macht jede Bearbeitung und Löschung der aktuellen Sitz
 ## Bearbeitungen bleiben nicht erhalten
 
 Bearbeitungen leben in der Seite, bis du den Tab schließt oder neu lädst. Wenn du ungespeicherte Bearbeitungen hast und die Seite verlassen willst, warnt dich dein Browser. Nach dem Herunterladen bleibt die ursprüngliche Quelldatei auf 2anki unverändert — öffne die Vorschau erneut, um frisch anzufangen oder andere Bearbeitungen auszuprobieren.
+
+## Das bearbeitete Deck in Anki importieren
+
+Anki aktualisiert eine Notiz aus dem Download nur, wenn die heruntergeladene Notiz neuer ist als die Kopie in deiner Sammlung, und ersetzt dann jedes Feld dieser Notiz. Hast du eine Notiz in Anki zu dem Zeitpunkt, an dem du deine Bearbeitungen hier heruntergeladen hast, oder danach geändert, behält Anki seine eigene Kopie und überspringt deine ohne Hinweis. Ist deine Bearbeitung hier neuer, ersetzt sie die ganze Notiz, auch ein Feld, das du nur in Anki geändert hast. Wenn die Notiz einer gelöschten Karte mehr als eine Karte erzeugt, kann Anki diese Karte später als neue Karte wieder hinzufügen, zum Beispiel wenn du "Datenbank prüfen" ausführst oder die Notiz in Anki bearbeitest; löschst du jede Karte einer Notiz, bleibt die Notiz aus dem Download weg.

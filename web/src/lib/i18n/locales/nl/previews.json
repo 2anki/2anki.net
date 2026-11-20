@@ -127,6 +127,7 @@
     "back": "achterkant",
     "restoreCard": "Kaart herstellen",
     "deleteCard": "Laat deze kaart weg uit de download. Een kaart die al in je Anki-collectie staat, blijft daar.",
+    "deleteCardOfMultiCardNote": "Laat deze kaart weg uit de download. Anki kan deze kaart opnieuw toevoegen als nieuwe kaart, omdat de notitie ervan meer dan één kaart maakt. Een kaart die al in je Anki-collectie staat, blijft daar.",
     "restore": "Herstellen",
     "delete": "Verwijderen",
     "showFront": "Voorkant tonen",

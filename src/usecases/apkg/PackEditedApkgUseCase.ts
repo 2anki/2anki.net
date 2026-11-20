@@ -10,6 +10,7 @@ import {
   ApkgArchive,
   extractApkg,
 } from '../../services/ApkgPreviewService/extractApkg';
+import { clozeCardOrdinals } from '../../services/ApkgPreviewService/clozeCardOrdinals';
 import { parseCollection } from '../../services/ApkgPreviewService/parseCollection';
 import { resolveEditableFields } from '../../services/ApkgPreviewService/resolveEditableFields';
 import {
@@ -43,6 +44,7 @@ export interface EditCounts {
   cardsDeleted: number;
   editsRefused: number;
   notesRemoved: number;
+  emptyClozeCardsRemoved: number;
 }
 
 export interface PackEditedApkgOutput extends EditCounts {
@@ -54,6 +56,7 @@ export interface PackEditedApkgOutput extends EditCounts {
 const FIELD_SEPARATOR = '\x1f';
 const NUL = '\0';
 const CHANGED_LOCALLY_USN = -1;
+const CLOZE_NOTE_TYPE = 1;
 
 export function hasFieldBreakingCharacter(value: string): boolean {
   return value.includes(FIELD_SEPARATOR) || value.includes(NUL);
@@ -82,6 +85,40 @@ function editableFieldIndices(
   );
 }
 
+function isClozeNote(
+  collection: NormalizedCollection,
+  noteId: number
+): boolean {
+  const note = collection.notes.get(noteId);
+  const noteType = note ? collection.noteTypes.get(note.mid) : undefined;
+  return noteType?.type === CLOZE_NOTE_TYPE;
+}
+
+function removeEmptiedClozeCards(
+  db: Database.Database,
+  collection: NormalizedCollection,
+  writtenFields: Map<number, string>
+): number {
+  const readCards = db.prepare(
+    'SELECT id, ord FROM cards WHERE nid = ? ORDER BY ord, id'
+  );
+  const remove = db.prepare('DELETE FROM cards WHERE id = ?');
+  let removed = 0;
+  for (const [noteId, flds] of writtenFields) {
+    if (isClozeNote(collection, noteId)) {
+      const asked = clozeCardOrdinals(flds.split(FIELD_SEPARATOR));
+      const cards = readCards.all(noteId) as Array<{ id: number; ord: number }>;
+      const emptied = cards.filter((card) => !asked.has(card.ord));
+      const removable =
+        emptied.length === cards.length ? emptied.slice(1) : emptied;
+      for (const card of removable) {
+        removed += remove.run(card.id).changes;
+      }
+    }
+  }
+  return removed;
+}
+
 function applyEdits(
   db: Database.Database,
   collection: NormalizedCollection,
@@ -94,6 +131,7 @@ function applyEdits(
     cardsDeleted: 0,
     editsRefused: 0,
     notesRemoved: 0,
+    emptyClozeCardsRemoved: 0,
   };
   const deletedIds = new Set(
     edits
@@ -136,8 +174,10 @@ function applyEdits(
   const writeNote = db.prepare(
     'UPDATE notes SET flds = ?, mod = ?, usn = ? WHERE id = ?'
   );
+  const writtenFields = new Map<number, string>();
   for (const [noteId, flds] of editedFields) {
     if (flds !== storedFields.get(noteId)) {
+      writtenFields.set(noteId, flds);
       const { mod } = readStoredMod.get(noteId) as { mod: number };
       writeNote.run(
         flds,
@@ -152,6 +192,11 @@ function applyEdits(
   for (const cardId of deletedIds) {
     counts.cardsDeleted += remove.run(cardId).changes;
   }
+  counts.emptyClozeCardsRemoved = removeEmptiedClozeCards(
+    db,
+    collection,
+    writtenFields
+  );
   const removeNoteLeftWithoutCards = db.prepare(
     'DELETE FROM notes WHERE id = ? AND NOT EXISTS (SELECT 1 FROM cards WHERE nid = notes.id)'
   );
