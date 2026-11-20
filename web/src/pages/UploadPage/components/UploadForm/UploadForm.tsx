@@ -163,6 +163,11 @@ import type {
   LockedPdfInfo,
   LimitInfo,
 } from './hooks/useUploadFormState';
+import {
+  monthlyLimitCopy,
+  monthlyLimitRefusalFromSearch,
+  monthlyLimitWallPath,
+} from '../../../../lib/limits/monthlyLimitRefusal';
 
 interface UploadFormProps {
   setErrorMessage: ErrorHandlerType;
@@ -219,6 +224,15 @@ function getLimitKind(url: URL): 'file_size' | 'card_count' {
   return url.searchParams.get('kind') === 'card_count'
     ? 'card_count'
     : 'file_size';
+}
+
+function monthlyLimitOnRedirect(
+  url: URL,
+  kind: 'file_size' | 'card_count'
+): LimitInfo['monthlyLimit'] {
+  return kind === 'card_count'
+    ? monthlyLimitRefusalFromSearch(url.searchParams)
+    : null;
 }
 
 function getLimitDescriptionKey(
@@ -1088,7 +1102,11 @@ function UploadForm({
         } else if (result.status === 404 || result.status === 410) {
           setZoneState('heldExpired');
         } else if (result.status === 409) {
-          leaveTo('/limit?kind=card_count');
+          leaveTo(
+            result.monthlyLimit == null
+              ? '/limit?kind=card_count'
+              : monthlyLimitWallPath(result.monthlyLimit)
+          );
         } else if (result.error?.code === 'empty_export') {
           setLocalError(result.error);
           setZoneState('emptyDeck');
@@ -1790,6 +1808,7 @@ function UploadForm({
           filename: picked.filename,
           fileSizeBytes: kind === 'file_size' ? picked.sizeBytes : null,
           kind,
+          monthlyLimit: monthlyLimitOnRedirect(redirectUrl, kind),
         });
         setZoneState('limitReached');
         return;
@@ -1955,6 +1974,7 @@ function UploadForm({
       filename: firstFile?.name ?? null,
       fileSizeBytes: kind === 'file_size' ? (firstFile?.size ?? null) : null,
       kind,
+      monthlyLimit: monthlyLimitOnRedirect(redirectUrl, kind),
     });
     setZoneState('limitReached');
     return true;
@@ -3646,21 +3666,32 @@ function UploadForm({
   const renderLimitState = () => {
     const isFileSize = limitInfo?.kind === 'file_size';
     const cardsUsed = cardUsage?.cards_used ?? 0;
+    const monthlyLimit =
+      isFileSize || showSignInPrompt ? null : limitInfo?.monthlyLimit;
+    const monthlyCopy =
+      monthlyLimit == null
+        ? null
+        : monthlyLimitCopy(t, i18n.language, monthlyLimit);
     let title: string;
     if (isFileSize) {
       title = t('upload.limit.fileTooBig', { limit: '100 MB' });
+    } else if (monthlyCopy != null) {
+      title = monthlyCopy.title;
     } else if (cardsUsed >= 100) {
       title = t('upload.limit.allCardsUsed', { limit: 100 });
     } else {
       title = t('upload.limit.overFreeLimit', { limit: 100 });
     }
     const limitContext = showSignInPrompt ? 'anonymous' : 'logged_in';
-    const description = t(
-      getLimitDescriptionKey(
-        isFileSize ? 'file_size' : 'card_count',
-        limitContext
-      )
-    );
+    const description =
+      monthlyCopy == null
+        ? t(
+            getLimitDescriptionKey(
+              isFileSize ? 'file_size' : 'card_count',
+              limitContext
+            )
+          )
+        : `${monthlyCopy.usage} ${monthlyCopy.plan}`;
     const displayedFilename = decodeFilename(limitInfo?.filename ?? null);
 
     return (

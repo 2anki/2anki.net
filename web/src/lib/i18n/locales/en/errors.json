@@ -39,7 +39,13 @@
     },
     "monthlyLimit": {
       "title": "You've reached your monthly limit.",
-      "detail": "Upgrade your plan to convert more decks this month."
+      "detail": "Upgrade your plan to convert more decks this month.",
+      "usedTitle_one": "You've used your {{count}} free card this month.",
+      "usedTitle_other": "You've used your {{count}} free cards this month.",
+      "overTitle_one": "This deck would go past your {{count}} free card this month.",
+      "overTitle_other": "This deck would go past your {{count}} free cards this month.",
+      "usage": "You've made {{used}} of {{limit}}. The limit resets on {{date}}.",
+      "plan": "A plan lets you convert more now."
     },
     "fallback": {
       "title": "Something went wrong.",

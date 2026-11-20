@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-20-monthly-limit-used-and-reset",
+  "date": "2026-11-20",
+  "type": "fix",
+  "title": "The monthly limit message shows how many free cards you've used and the date they reset"
+}

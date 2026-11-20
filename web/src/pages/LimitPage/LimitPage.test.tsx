@@ -126,6 +126,34 @@ describe('LimitPage', () => {
     ).toBeTruthy();
   });
 
+  it('says how many cards were made and when the limit resets when the refusal carried them', () => {
+    renderPage([
+      '/limit?kind=card_count&used=100&limit=100&reset_on=2026-12-01T00%3A00%3A00.000Z',
+    ]);
+
+    expect(screen.getByText("You've reached your monthly limit")).toBeTruthy();
+    expect(
+      screen.getByText(
+        "You've made 100 of 100. The limit resets on 1 December 2026. Your monthly limit: 100 cards. Get a pass to keep converting now."
+      )
+    ).toBeTruthy();
+  });
+
+  it.each([
+    ['/limit?kind=card_count'],
+    ['/limit?ref=upload-limit-wall'],
+    ['/limit?kind=card_count&used=100&limit=100&reset_on=never'],
+  ])('keeps the plain subheading for %s', (path) => {
+    renderPage([path]);
+
+    expect(
+      screen.getByText(
+        'Your monthly limit: 100 cards. Get a pass to keep converting now.'
+      )
+    ).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/undefined|NaN/);
+  });
+
   it('sells Pro in one line', () => {
     renderPage();
     expect(

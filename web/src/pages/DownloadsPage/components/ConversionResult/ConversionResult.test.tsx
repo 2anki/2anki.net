@@ -547,6 +547,25 @@ describe('ConversionResult — failed variant', () => {
     ).toHaveAttribute('href', '/pricing?source=downloads-limit');
   });
 
+  it('says how many cards were made and when the limit resets when the refusal carried them', () => {
+    renderOffer({
+      kind: 'limit',
+      limit: 100,
+      monthlyLimit: {
+        cardsUsed: 100,
+        limit: 100,
+        resetOn: '2026-12-01T00:00:00.000Z',
+      },
+    });
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      "You've used your 100 free cards this month. You've made 100 of 100. The limit resets on 1 December 2026. Upgrade to Pro"
+    );
+    expect(
+      screen.getByRole('link', { name: 'Upgrade to Pro' })
+    ).toHaveAttribute('href', '/pricing?source=downloads-limit');
+  });
+
   it.each([
     [{ kind: 'oneAtATime' } as const, 'Free plan converts one page at a time.'],
     [{ kind: 'alreadyRunning' } as const, 'This page is already converting.'],

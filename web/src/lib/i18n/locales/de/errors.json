@@ -39,7 +39,13 @@
     },
     "monthlyLimit": {
       "title": "Du hast dein monatliches Limit erreicht.",
-      "detail": "Führe ein Upgrade durch, um diesen Monat mehr Stapel zu konvertieren."
+      "detail": "Führe ein Upgrade durch, um diesen Monat mehr Stapel zu konvertieren.",
+      "usedTitle_one": "Du hast diesen Monat deine {{count}} kostenlose Karte genutzt.",
+      "usedTitle_other": "Du hast diesen Monat deine {{count}} kostenlosen Karten genutzt.",
+      "overTitle_one": "Dieser Stapel würde diesen Monat über deine {{count}} kostenlose Karte gehen.",
+      "overTitle_other": "Dieser Stapel würde diesen Monat über deine {{count}} kostenlosen Karten gehen.",
+      "usage": "Du hast {{used}} von {{limit}} erstellt. Das Limit wird am {{date}} zurückgesetzt.",
+      "plan": "Mit einem Tarif kannst du jetzt mehr konvertieren."
     },
     "fallback": {
       "title": "Etwas ist schiefgelaufen.",

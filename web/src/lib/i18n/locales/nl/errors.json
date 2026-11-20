@@ -39,7 +39,13 @@
     },
     "monthlyLimit": {
       "title": "Je hebt je maandlimiet bereikt.",
-      "detail": "Upgrade je abonnement om deze maand meer decks om te zetten."
+      "detail": "Upgrade je abonnement om deze maand meer decks om te zetten.",
+      "usedTitle_one": "Je hebt deze maand je {{count}} gratis kaart gebruikt.",
+      "usedTitle_other": "Je hebt deze maand je {{count}} gratis kaarten gebruikt.",
+      "overTitle_one": "Dit deck gaat deze maand over je {{count}} gratis kaart.",
+      "overTitle_other": "Dit deck gaat deze maand over je {{count}} gratis kaarten.",
+      "usage": "Je hebt er {{used}} van de {{limit}} gemaakt. De limiet wordt op {{date}} gereset.",
+      "plan": "Met een abonnement kun je nu meer converteren."
     },
     "fallback": {
       "title": "Er is iets misgegaan.",

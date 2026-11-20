@@ -28,6 +28,7 @@ interface LimitWallProps {
   notice?: ReactNode;
   featureSemester?: boolean;
   passPrices?: PassPriceDisplay;
+  usageLine?: string | null;
 }
 
 export function LimitWall({
@@ -40,6 +41,7 @@ export function LimitWall({
   notice,
   featureSemester = false,
   passPrices,
+  usageLine = null,
 }: Readonly<LimitWallProps>) {
   const { t } = useTranslation('accountx');
   const errorRef = useRef<HTMLParagraphElement>(null);
@@ -59,6 +61,7 @@ export function LimitWall({
       <header className={styles.header}>
         <h1 className={styles.heading}>{t('limit.headline')}</h1>
         <p className={styles.subheading}>
+          {usageLine == null ? '' : `${usageLine} `}
           {t('limit.subheading', { limit: FREE_MONTHLY_CARDS })}
         </p>
       </header>

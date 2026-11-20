@@ -5853,6 +5853,135 @@ describe('limit state', () => {
     );
   });
 
+  describe('when the refusal carries the usage', () => {
+    const RESET = '2026-12-01T00%3A00%3A00.000Z';
+
+    function limitTexts(container: HTMLElement) {
+      return {
+        title: container.querySelector('[class*="limitTitle"]')?.textContent,
+        description: container.querySelector('[class*="limitDescription"]')
+          ?.textContent,
+      };
+    }
+
+    afterEach(async () => {
+      await i18n.changeLanguage('en');
+    });
+
+    it('says the cards are used up, how many were made, and the reset date', async () => {
+      setUserLocals(loggedInData);
+      stubLimitFetch(`card_count&used=100&limit=100&reset_on=${RESET}`);
+
+      const container = await submitAndReachLimit();
+
+      expect(limitTexts(container)).toEqual({
+        title: "You've used your 100 free cards this month.",
+        description:
+          "You've made 100 of 100. The limit resets on 1 December 2026. A plan lets you convert more now.",
+      });
+    });
+
+    it('says the deck would go past the limit when cards are left', async () => {
+      setUserLocals(loggedInData);
+      stubLimitFetch(`card_count&used=80&limit=100&reset_on=${RESET}`);
+
+      const container = await submitAndReachLimit();
+
+      expect(limitTexts(container)).toEqual({
+        title: 'This deck would go past your 100 free cards this month.',
+        description:
+          "You've made 80 of 100. The limit resets on 1 December 2026. A plan lets you convert more now.",
+      });
+    });
+
+    it('takes the usage from the refusal, not the cached counter', async () => {
+      setUserLocals(loggedInData);
+      mockUseCardUsage.mockReturnValue({
+        cards_used: 0,
+        cards_limit: 100,
+        unlimited: false,
+        loading: false,
+      });
+      stubLimitFetch(`card_count&used=100&limit=100&reset_on=${RESET}`);
+
+      const container = await submitAndReachLimit();
+
+      expect(limitTexts(container).title).toBe(
+        "You've used your 100 free cards this month."
+      );
+    });
+
+    it('writes the wall and the date in German for a German reader', async () => {
+      await i18n.changeLanguage('de');
+      setUserLocals(loggedInData);
+      stubLimitFetch(`card_count&used=100&limit=100&reset_on=${RESET}`);
+
+      const container = await submitAndReachLimit();
+
+      expect(limitTexts(container)).toEqual({
+        title: 'Du hast diesen Monat deine 100 kostenlosen Karten genutzt.',
+        description:
+          'Du hast 100 von 100 erstellt. Das Limit wird am 1. Dezember 2026 zurückgesetzt. Mit einem Tarif kannst du jetzt mehr konvertieren.',
+      });
+    });
+
+    it.each([
+      ['no usage', 'card_count'],
+      ['no reset date', 'card_count&used=100&limit=100'],
+      [
+        'a reset date that is not a date',
+        'card_count&used=100&limit=100&reset_on=soon',
+      ],
+      [
+        'a count that is not a number',
+        `card_count&used=lots&limit=100&reset_on=${RESET}`,
+      ],
+    ])(
+      'falls back to the generic wall when the refusal has %s',
+      async (_label, kind) => {
+        setUserLocals(loggedInData);
+        stubLimitFetch(kind);
+
+        const container = await submitAndReachLimit();
+
+        const { title, description } = limitTexts(container);
+        expect(title).toBe(
+          'This conversion is over your free limit of 100 cards a month'
+        );
+        expect(description).toBe(
+          'Upgrade for no monthly cap, or wait until next month.'
+        );
+        expect(container.textContent).not.toMatch(/undefined|NaN/);
+      }
+    );
+
+    it('keeps the sign-up copy for a signed-out visitor', async () => {
+      setUserLocals(anonymousData);
+      stubLimitFetch(`card_count&used=100&limit=100&reset_on=${RESET}`);
+
+      const container = await submitAndReachLimit();
+
+      expect(limitTexts(container).description).toBe(
+        'Create a free account to start converting, or upgrade for no monthly cap.'
+      );
+    });
+
+    it('keeps the plans link and the passes on the wall', async () => {
+      setUserLocals(loggedInData);
+      stubLimitFetch(`card_count&used=100&limit=100&reset_on=${RESET}`);
+
+      const container = await submitAndReachLimit();
+
+      expect(
+        container.querySelector('a[href*="/limit?ref=upload-limit-wall"]')
+          ?.textContent
+      ).toContain('See plans');
+      expect(
+        screen.getByRole('button', { name: /Get Day Pass/ })
+      ).toBeInTheDocument();
+    });
+  });
+
   it('offers both passes on the over-the-limit wall, Day Pass first, with plans and a different file', async () => {
     setUserLocals(loggedInData);
     mockUseCardUsage.mockReturnValue({
@@ -12122,6 +12251,35 @@ describe('claiming a held deck after sign-in', () => {
   beforeEach(() => {
     mockReportClientError.mockClear();
   });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it.each([
+    [
+      'with the usage the refusal carried',
+      { cardsUsed: 100, limit: 100, resetOn: '2026-12-01T00:00:00.000Z' },
+      '/limit?kind=card_count&used=100&limit=100&reset_on=2026-12-01T00%3A00%3A00.000Z',
+    ],
+    ['without usage on an older refusal', undefined, '/limit?kind=card_count'],
+  ])(
+    'leaves for the card limit wall %s when the month cannot take the deck',
+    async (_label, monthlyLimit, wall) => {
+      signIn();
+      mockClaim({
+        status: 409,
+        error: null,
+        ...(monthlyLimit == null ? {} : { monthlyLimit }),
+      } as Parameters<typeof mockClaim>[0]);
+      const locationStub = { href: '', origin: 'http://localhost' } as Location;
+      vi.stubGlobal('location', locationStub);
+
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+
+      await waitFor(() => expect(locationStub.href).toBe(wall));
+    }
+  );
 
   it('shows the empty-deck help when the owner conversion has no cards', async () => {
     signIn();

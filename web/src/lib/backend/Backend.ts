@@ -32,6 +32,10 @@ import { AnkifyStats } from '../../pages/AnkifyPage/stats/types';
 import { del, get, getLoginURL, patch, post, redirectToLogin } from './api';
 import { getResourceUrl } from './getResourceUrl';
 import { getStoredPassToken } from '../anonymousPass';
+import {
+  monthlyLimitRefusalFromBody,
+  type MonthlyLimitRefusal,
+} from '../limits/monthlyLimitRefusal';
 import { clearAiPreviewCheckout } from '../../components/AiPreviewGate/aiPreviewCheckout';
 import {
   BAD_GATEWAY,
@@ -151,6 +155,7 @@ export interface ClaimHeldDeckResult {
   alsoClaimed?: number;
   // Lines with no answer the card limit left out of the claimed deck.
   cardsLeftOut?: number;
+  monthlyLimit?: MonthlyLimitRefusal;
 }
 
 function toClaimError(body: unknown): UploadErrorBody | null {
@@ -617,6 +622,7 @@ export class Backend {
       };
     }
     const failure: unknown = await response.json().catch(() => null);
+    const monthlyLimit = monthlyLimitRefusalFromBody(failure);
     return {
       status: response.status,
       downloadKey: null,
@@ -624,6 +630,7 @@ export class Backend {
       deckName: null,
       kind: null,
       error: toClaimError(failure),
+      ...(monthlyLimit == null ? {} : { monthlyLimit }),
     };
   }
 

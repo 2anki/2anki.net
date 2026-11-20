@@ -23,6 +23,28 @@ describe('rescueStatusFromResponse', () => {
     ).toEqual({ kind: 'limit', limit: 100 });
   });
 
+  it('keeps the usage and reset date the limit refusal carries', async () => {
+    expect(
+      await rescueStatusFromResponse(
+        json(402, {
+          reason: 'monthly_limit',
+          code: 'monthly_limit',
+          cards_used: 100,
+          limit: 100,
+          reset_on: '2026-12-01T00:00:00.000Z',
+        })
+      )
+    ).toEqual({
+      kind: 'limit',
+      limit: 100,
+      monthlyLimit: {
+        cardsUsed: 100,
+        limit: 100,
+        resetOn: '2026-12-01T00:00:00.000Z',
+      },
+    });
+  });
+
   it('reads the free one-at-a-time limit as its own line', async () => {
     expect(
       await rescueStatusFromResponse(

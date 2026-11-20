@@ -176,6 +176,51 @@ describe('SearchObjectEntry convert button', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('on a monthly limit 402: says how many cards were made and when the limit resets', async () => {
+    mockConvert.mockResolvedValue({
+      status: 402,
+      json: async () => ({
+        reason: 'monthly_limit',
+        code: 'monthly_limit',
+        cards_used: 100,
+        limit: 100,
+        reset_on: '2026-12-01T00:00:00.000Z',
+      }),
+    });
+
+    renderEntry();
+    fireEvent.click(screen.getByRole('button', { name: 'Convert to Anki' }));
+
+    const status = await screen.findByText(
+      /You've used your 100 free cards this month\./
+    );
+    expect(status).toHaveTextContent(
+      "You've used your 100 free cards this month. You've made 100 of 100. The limit resets on 1 December 2026. See plans"
+    );
+    expect(screen.getByRole('link', { name: 'See plans' })).toHaveAttribute(
+      'href',
+      '/pricing'
+    );
+    expect(
+      screen.queryByText(/one conversion at a time/)
+    ).not.toBeInTheDocument();
+  });
+
+  it('on a monthly limit 402 without usage: keeps the paywall copy', async () => {
+    mockConvert.mockResolvedValue({
+      status: 402,
+      json: async () => ({ reason: 'monthly_limit', code: 'monthly_limit' }),
+    });
+
+    renderEntry();
+    fireEvent.click(screen.getByRole('button', { name: 'Convert to Anki' }));
+
+    expect(
+      await screen.findByText(/Free plan — one conversion at a time\./)
+    ).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/undefined|NaN/);
+  });
+
   it('on 409: shows already-converting copy', async () => {
     mockConvert.mockResolvedValue({
       status: 409,

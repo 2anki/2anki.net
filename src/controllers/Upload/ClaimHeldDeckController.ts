@@ -9,6 +9,7 @@ import { MonthlyLimitError } from '../../usecases/users/CheckMonthlyCardLimitUse
 import { EmptyDeckError } from '../../usecases/jobs/EmptyDeckError';
 import type { UploadErrorBody } from '../../types/UploadErrorBody';
 import { getOwner } from '../../lib/User/getOwner';
+import { monthlyLimitRefusalBody } from '../../lib/User/monthlyLimitRefusal';
 import { isPaying } from '../../lib/isPaying';
 import { track } from '../../services/events/track';
 import { anonIdCookie } from './anonIdCookie';
@@ -85,7 +86,7 @@ export class ClaimHeldDeckController {
         return res.status(410).json({ code: 'held_deck_expired' });
       }
       if (err instanceof MonthlyLimitError) {
-        return res.status(409).json({ code: 'monthly_limit' });
+        return res.status(409).json(monthlyLimitRefusalBody(err));
       }
       if (err instanceof EmptyDeckError) {
         const body: UploadErrorBody = {

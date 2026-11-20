@@ -39,7 +39,13 @@
     },
     "monthlyLimit": {
       "title": "Hai raggiunto il limite mensile.",
-      "detail": "Fai l'upgrade del tuo piano per convertire più mazzi questo mese."
+      "detail": "Fai l'upgrade del tuo piano per convertire più mazzi questo mese.",
+      "usedTitle_one": "Hai usato la tua {{count}} carta gratuita di questo mese.",
+      "usedTitle_other": "Hai usato le tue {{count}} carte gratuite di questo mese.",
+      "overTitle_one": "Questo mazzo supererebbe la tua {{count}} carta gratuita di questo mese.",
+      "overTitle_other": "Questo mazzo supererebbe le tue {{count}} carte gratuite di questo mese.",
+      "usage": "Ne hai create {{used}} su {{limit}}. Il limite si azzera il {{date}}.",
+      "plan": "Con un piano puoi convertirne di più adesso."
     },
     "fallback": {
       "title": "Qualcosa è andato storto.",

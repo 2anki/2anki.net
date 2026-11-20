@@ -190,6 +190,13 @@ const MockGeneratePackagesUseCase = GeneratePackagesUseCase as MockedClass<
   typeof GeneratePackagesUseCase
 >;
 
+const cardLimitWall = (used: number) =>
+  expect.stringMatching(
+    new RegExp(
+      `^/limit\\?kind=card_count&used=${used}&limit=100&reset_on=\\d{4}-\\d{2}-01T00%3A00%3A00\\.000Z$`
+    )
+  );
+
 beforeEach(() => {
   mockGetFeatureFlag.mockClear();
   mockGetFeatureFlag.mockResolvedValue(false);
@@ -2464,7 +2471,7 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     expect(successCall?.[1].props).not.toHaveProperty('entry');
   });
 
-  it('redirects a logged-in free user over the monthly limit to /limit?kind=card_count and does not send the deck', async () => {
+  it('redirects a logged-in free user over the monthly limit to the card limit wall with their usage and does not send the deck', async () => {
     mockPackages([{ name: 'deck', cardCount: 30 }]);
     const usersRepo = buildUsersRepo({
       getCardUsage: vi
@@ -2483,9 +2490,13 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     const { res, capturedSend, redirectedTo } = responseWithRedirect();
     (res.locals as Record<string, unknown>).owner = 42;
 
-    await service.handleUpload(req, res);
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-20T09:00:00Z'));
+    await service.handleUpload(req, res).finally(() => vi.useRealTimers());
 
-    expect(redirectedTo()).toBe('/limit?kind=card_count');
+    expect(redirectedTo()).toBe(
+      '/limit?kind=card_count&used=80&limit=100&reset_on=2026-12-01T00%3A00%3A00.000Z'
+    );
     expect(capturedSend()).toBeNull();
     expect(incrementSpy).not.toHaveBeenCalled();
     expect(trackMock).toHaveBeenCalledWith(
@@ -2743,7 +2754,7 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
       {
         reason: 'monthly_limit',
         kind: 'card_count',
-        wall: '/limit?kind=card_count',
+        wall: cardLimitWall(90),
       },
     ],
     [
@@ -2755,7 +2766,7 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
       {
         reason: 'monthly_limit',
         kind: 'card_count',
-        wall: '/limit?kind=card_count',
+        wall: cardLimitWall(90),
       },
     ],
     [
@@ -2839,7 +2850,7 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
 
       await service.handleUpload(req, res);
 
-      expect(redirectedTo()).toBe(wall);
+      expect(redirectedTo()).toEqual(wall);
       expect(trackMock).toHaveBeenCalledWith(
         'conversion_failed',
         expect.objectContaining({
@@ -6227,7 +6238,7 @@ describe('UploadService.handleUpload — claude flag does not bypass the card li
 
     expect(create).not.toHaveBeenCalled();
     expect(built.capturedStatus()).not.toBe(202);
-    expect(redirectedTo).toBe('/limit?kind=card_count');
+    expect(redirectedTo).toEqual(cardLimitWall(80));
     expect(incrementSpy).not.toHaveBeenCalled();
   });
 
@@ -10616,7 +10627,7 @@ describe('UploadService.handleSyncUpload — signed-in monthly partial delivery'
 
     await serviceUnderTest(usersRepo).handleUpload(req, res);
 
-    expect(redirectedTo()).toBe('/limit?kind=card_count');
+    expect(redirectedTo()).toEqual(cardLimitWall(90));
     expect(capturedSend()).toBeNull();
     expect(usersRepo.incrementCardUsage).not.toHaveBeenCalled();
   });
@@ -10631,7 +10642,7 @@ describe('UploadService.handleSyncUpload — signed-in monthly partial delivery'
     await serviceUnderTest(usersRepo).handleUpload(req, res);
 
     expect(execute.mock.calls[0][6]).not.toHaveProperty('cardLimit');
-    expect(redirectedTo()).toBe('/limit?kind=card_count');
+    expect(redirectedTo()).toEqual(cardLimitWall(100));
     expect(capturedSend()).toBeNull();
     expect(usersRepo.incrementCardUsage).not.toHaveBeenCalled();
     expect(trackMock).toHaveBeenCalledWith(
@@ -10674,7 +10685,7 @@ describe('UploadService.handleSyncUpload — signed-in monthly partial delivery'
       await serviceUnderTest(usersRepo).handleUpload(req, res);
 
       expect(execute.mock.calls[0][6]).not.toHaveProperty('cardLimit');
-      expect(redirectedTo()).toBe('/limit?kind=card_count');
+      expect(redirectedTo()).toEqual(cardLimitWall(90));
     }
   );
 

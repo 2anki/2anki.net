@@ -11,6 +11,11 @@ import {
   suggestDeckName,
 } from '../../lib/chat/templates';
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
+import {
+  monthlyLimitCopy,
+  monthlyLimitRefusalFromBody,
+  type MonthlyLimitRefusal,
+} from '../../lib/limits/monthlyLimitRefusal';
 import { BuyCreditsButton } from '../BuyCreditsButton/BuyCreditsButton';
 import { isPayingUser } from '../NavigationBar/helpers/getPlanLabel';
 import { aiCreditsExhaustedCopyKey } from './aiCreditsExhaustedCopy';
@@ -153,6 +158,13 @@ export async function consumeSseEvents(
   }
 }
 
+class DeckRefusedAtMonthlyLimit extends Error {
+  constructor(readonly refusal: MonthlyLimitRefusal) {
+    super('Deck refused at the monthly card limit');
+    this.name = 'DeckRefusedAtMonthlyLimit';
+  }
+}
+
 async function downloadDeck(
   cards: ChatCard[],
   deckName: string,
@@ -163,6 +175,13 @@ async function downloadDeck(
     deckName,
     templateSlug,
   });
+  if (response.status === 402) {
+    const body: unknown = await response.json().catch(() => null);
+    const refusal = monthlyLimitRefusalFromBody(body);
+    if (refusal != null) {
+      throw new DeckRefusedAtMonthlyLimit(refusal);
+    }
+  }
   if (!response.ok) {
     throw new Error('Failed to generate deck');
   }
@@ -633,7 +652,7 @@ export default function ChatPanel({
   onConversationNotFound,
   onTemplateChange,
 }: ChatPanelProps) {
-  const { t } = useTranslation('chat');
+  const { t, i18n } = useTranslation('chat');
   const { data: userLocals, refetch: refetchUserLocals } = useUserLocals();
   const paying = userLocals == null || isPayingUser(userLocals.locals);
   const hasConsented = userLocals?.user?.chat_consent_at != null;
@@ -943,8 +962,13 @@ export default function ChatPanel({
     const templateForCards = effectiveTemplateForCards(cards, activeTemplate);
     try {
       await downloadDeck(cards, deckName, templateForCards);
-    } catch {
-      setNetworkError(t('errors.deckGenerate'));
+    } catch (error) {
+      if (error instanceof DeckRefusedAtMonthlyLimit) {
+        const copy = monthlyLimitCopy(t, i18n.language, error.refusal);
+        setNetworkError(`${copy.title} ${copy.usage} ${copy.plan}`);
+      } else {
+        setNetworkError(t('errors.deckGenerate'));
+      }
       throw new Error('Deck generation failed');
     }
   }

@@ -25,6 +25,7 @@ import { getMaxUploadCount } from '../../lib/misc/getMaxUploadCount';
 import { isLimitError } from '../../lib/misc/isLimitError';
 import { uploadFieldTooLongBody } from '../../lib/upload/fieldTooLongMessage';
 import { handleUploadLimitError } from './helpers/handleUploadLimitError';
+import { monthlyLimitWallPath } from '../../lib/User/monthlyLimitRefusal';
 import { handleDropbox } from './helpers/handleDropbox';
 import { handleGoogleDrive } from './helpers/handleGoogleDrive';
 import { GetDropboxUploadsUseCase } from '../../usecases/uploads/GetDropboxUploadsUseCase';
@@ -99,7 +100,9 @@ const RETRY_PDF_GLOBAL_MAX = 500;
 
 function limitWallUrl(outcome: RetryPdfLimitReached): string {
   if (outcome.limitReached === 'card_count') {
-    return '/limit?kind=card_count';
+    return outcome.monthlyUsage == null
+      ? '/limit?kind=card_count'
+      : monthlyLimitWallPath(outcome.monthlyUsage);
   }
   return `/limit?kind=anonymous&cards=${outcome.cardCount}`;
 }

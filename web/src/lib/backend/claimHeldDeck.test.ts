@@ -121,4 +121,44 @@ describe('Backend.claimHeldDeck cut', () => {
       cutAt: expected,
     });
   });
+
+  it('reads the usage a monthly limit refusal carries', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        jsonResponse(409, {
+          code: 'monthly_limit',
+          cards_used: 100,
+          limit: 100,
+          reset_on: '2026-12-01T00:00:00.000Z',
+        })
+      )
+    );
+
+    await expect(new Backend().claimHeldDeck()).resolves.toEqual({
+      status: 409,
+      downloadKey: null,
+      cardCount: null,
+      deckName: null,
+      kind: null,
+      error: null,
+      monthlyLimit: {
+        cardsUsed: 100,
+        limit: 100,
+        resetOn: '2026-12-01T00:00:00.000Z',
+      },
+    });
+  });
+
+  it('leaves the usage out of an older monthly limit refusal', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(jsonResponse(409, { code: 'monthly_limit' }))
+    );
+
+    const result = await new Backend().claimHeldDeck();
+
+    expect(result.status).toBe(409);
+    expect(result).not.toHaveProperty('monthlyLimit');
+  });
 });

@@ -116,6 +116,7 @@ import {
 } from '../lib/zip/damagedZipMessage';
 import { censusUploadedFile } from '../infrastracture/adapters/fileConversion/documentStructureCensus';
 import { formatDeckName } from '../lib/formatDeckName';
+import { monthlyLimitWallPath } from '../lib/User/monthlyLimitRefusal';
 import {
   CheckMonthlyCardLimitUseCase,
   MonthlyLimitError,
@@ -1455,7 +1456,7 @@ class UploadService {
         ) {
           res.set('X-Cards-Over-Limit', err.candidate.toString());
         }
-        return res.redirect('/limit?kind=card_count');
+        return res.redirect(monthlyLimitWallPath(err));
       } else if (err instanceof AnonymousCardCapError) {
         const owner = getOwner(res);
         const userId = owner != null ? Number(owner) : null;

@@ -39,7 +39,13 @@
     },
     "monthlyLimit": {
       "title": "Você atingiu seu limite mensal.",
-      "detail": "Faça upgrade do seu plano para converter mais baralhos neste mês."
+      "detail": "Faça upgrade do seu plano para converter mais baralhos neste mês.",
+      "usedTitle_one": "Você usou seu {{count}} cartão grátis deste mês.",
+      "usedTitle_other": "Você usou seus {{count}} cartões grátis deste mês.",
+      "overTitle_one": "Este baralho passaria do seu {{count}} cartão grátis deste mês.",
+      "overTitle_other": "Este baralho passaria dos seus {{count}} cartões grátis deste mês.",
+      "usage": "Você criou {{used}} de {{limit}}. O limite reinicia em {{date}}.",
+      "plan": "Com um plano você converte mais agora."
     },
     "fallback": {
       "title": "Algo deu errado.",

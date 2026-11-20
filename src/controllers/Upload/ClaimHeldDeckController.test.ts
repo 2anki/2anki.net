@@ -332,7 +332,9 @@ describe('ClaimHeldDeckController', () => {
     const converter: HeldDeckConverter = {
       convertHeldFileForOwner: vi
         .fn()
-        .mockRejectedValue(new MonthlyLimitError(100, 100, 21, '2026-10-01')),
+        .mockRejectedValue(
+          new MonthlyLimitError(100, 100, 21, '2026-10-01T00:00:00.000Z')
+        ),
     };
     const controller = new ClaimHeldDeckController(
       new ClaimHeldDeckUseCase(repo, store, converter)
@@ -342,7 +344,12 @@ describe('ClaimHeldDeckController', () => {
     await controller.claim(buildRequest(ANON), res);
 
     expect(capturedStatus()).toBe(409);
-    expect(capturedJson()).toEqual({ code: 'monthly_limit' });
+    expect(capturedJson()).toEqual({
+      code: 'monthly_limit',
+      cards_used: 100,
+      limit: 100,
+      reset_on: '2026-10-01T00:00:00.000Z',
+    });
     expect(trackMock).not.toHaveBeenCalledWith(
       'anonymous_partial_claimed',
       expect.anything()

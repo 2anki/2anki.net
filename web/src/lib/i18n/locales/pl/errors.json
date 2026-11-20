@@ -39,7 +39,17 @@
     },
     "monthlyLimit": {
       "title": "Osiągnąłeś miesięczny limit.",
-      "detail": "Ulepsz plan, aby konwertować więcej talii w tym miesiącu."
+      "detail": "Ulepsz plan, aby konwertować więcej talii w tym miesiącu.",
+      "usedTitle_one": "Wykorzystano limit {{count}} darmowej karty w tym miesiącu.",
+      "usedTitle_few": "Wykorzystano limit {{count}} darmowych kart w tym miesiącu.",
+      "usedTitle_many": "Wykorzystano limit {{count}} darmowych kart w tym miesiącu.",
+      "usedTitle_other": "Wykorzystano limit {{count}} darmowej karty w tym miesiącu.",
+      "overTitle_one": "Ta talia przekroczyłaby limit {{count}} darmowej karty w tym miesiącu.",
+      "overTitle_few": "Ta talia przekroczyłaby limit {{count}} darmowych kart w tym miesiącu.",
+      "overTitle_many": "Ta talia przekroczyłaby limit {{count}} darmowych kart w tym miesiącu.",
+      "overTitle_other": "Ta talia przekroczyłaby limit {{count}} darmowej karty w tym miesiącu.",
+      "usage": "Wykorzystano {{used}} z {{limit}}. Limit odnowi się {{date}}.",
+      "plan": "Z planem możesz konwertować więcej już teraz."
     },
     "fallback": {
       "title": "Coś poszło nie tak.",

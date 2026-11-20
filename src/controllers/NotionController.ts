@@ -58,6 +58,7 @@ import sendErrorResponse from '../lib/sendErrorResponse';
 import { toNotionUploadError } from '../lib/notion/toNotionUploadError';
 import { isPaying } from '../lib/isPaying';
 import { MONTHLY_CARD_LIMIT } from '../lib/limits';
+import { startOfNextMonthUtc } from '../lib/User/startOfMonthUtc';
 import ParserRules from '../lib/parser/ParserRules';
 import { GetDatabasePreviewUseCase } from '../usecases/notion/GetDatabasePreviewUseCase';
 import {
@@ -394,6 +395,7 @@ class NotionController {
             code: 'monthly_limit',
             cards_used,
             limit: MONTHLY_CARD_LIMIT,
+            reset_on: startOfNextMonthUtc(new Date()).toISOString(),
           });
         }
       }

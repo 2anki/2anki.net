@@ -20,6 +20,10 @@ import {
   type PassKind,
 } from './LimitWall';
 import { useUnlimitedMonthlyPrice } from './useUnlimitedMonthlyPrice';
+import {
+  monthlyLimitCopy,
+  monthlyLimitRefusalFromSearch,
+} from '../../lib/limits/monthlyLimitRefusal';
 import styles from './LimitPage.module.css';
 
 const MAX_SHOWN_CARDS = 10000;
@@ -325,6 +329,7 @@ function AnonymousLimit({
 
 export function LimitPage() {
   const { t, i18n } = useTranslation('accountx');
+  const [searchParams] = useSearchParams();
   const { data: userLocals, isLoading } = useUserLocals();
   const isLoggedIn = userLocals?.user?.id != null;
   const [pendingPass, setPendingPass] = useState<PassKind | null>(null);
@@ -391,6 +396,12 @@ export function LimitPage() {
     ? `/pricing?source=${REF}`
     : `/login?redirect=/pricing&ref=${REF}`;
 
+  const monthlyLimit = monthlyLimitRefusalFromSearch(searchParams);
+  const usageLine =
+    monthlyLimit == null
+      ? null
+      : monthlyLimitCopy(t, i18n.language, monthlyLimit).usage;
+
   const handleUnlimitedClick = async (event: MouseEvent<HTMLAnchorElement>) => {
     track('paywall_upgrade_clicked', { surface: REF, plan: 'unlimited' });
     if (!isLoggedIn) {
@@ -409,6 +420,7 @@ export function LimitPage() {
       unlimitedHref={unlimitedLink}
       unlimitedPrice={unlimitedPrice}
       passPrices={passPrices}
+      usageLine={usageLine}
       onUnlimitedClick={handleUnlimitedClick}
       notice={
         isLoggedIn ? (
