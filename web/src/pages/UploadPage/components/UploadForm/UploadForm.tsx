@@ -1527,6 +1527,7 @@ function UploadForm({
   const readAccountAgain = async (): Promise<{
     confirmed: boolean;
     accountId: number | null;
+    paying: boolean;
   }> => {
     let stopCap = () => {};
     const capped = new Promise<undefined>((resolve) => {
@@ -1536,9 +1537,17 @@ function UploadForm({
     try {
       const reread = await Promise.race([refetchUserLocals(), capped]);
       if (reread?.status !== 'success') {
-        return { confirmed: false, accountId: currentOwnerId };
+        return {
+          confirmed: false,
+          accountId: currentOwnerId,
+          paying: isPaying,
+        };
       }
-      return { confirmed: true, accountId: reread.data?.user?.id ?? null };
+      return {
+        confirmed: true,
+        accountId: reread.data?.user?.id ?? null,
+        paying: isPayingUser(reread.data?.locals),
+      };
     } finally {
       stopCap();
     }
@@ -2263,34 +2272,53 @@ function UploadForm({
     return recoveryTokenRef.current;
   };
 
-  const uploadFileLimitBytes = (): number => {
-    const knownToBeFree =
-      userLocals != null &&
-      !userLocalsFailed &&
-      !isPaying &&
-      getStoredPassToken() == null;
-    return knownToBeFree
-      ? UPLOAD_FILE_FREE_MAX_BYTES
-      : UPLOAD_FILE_PAYING_MAX_BYTES;
+  const pageSeesFreeAccount = (): boolean =>
+    userLocals != null &&
+    !userLocalsFailed &&
+    !isPaying &&
+    getStoredPassToken() == null;
+
+  const freshReadSaysFree = async (): Promise<boolean> => {
+    const account = await readAccountAgain();
+    return (
+      account.confirmed &&
+      !account.paying &&
+      getStoredPassToken() == null &&
+      !returnedFromCheckout
+    );
   };
 
-  const refuseOversizedUpload = (uploadedFiles: File[]): boolean => {
-    const limitBytes = uploadFileLimitBytes();
-    const oversized = findOversizedFile(uploadedFiles, limitBytes);
-    if (oversized == null) return false;
-    if (limitBytes === UPLOAD_FILE_FREE_MAX_BYTES) {
-      setLimitInfo({
-        filename: oversized.name,
-        fileSizeBytes: oversized.size,
-        kind: 'file_size',
-        monthlyLimit: null,
-      });
-      setZoneState('limitReached');
-    } else {
+  const refuseOversizedUpload = async (
+    uploadedFiles: File[]
+  ): Promise<boolean> => {
+    if (
+      findOversizedFile(uploadedFiles, UPLOAD_FILE_PAYING_MAX_BYTES) != null
+    ) {
       setNetworkRetryFiles(null);
       setLocalError(FILE_TOO_LARGE);
       setZoneState('error');
+      return true;
     }
+    const overFree = findOversizedFile(
+      uploadedFiles,
+      UPLOAD_FILE_FREE_MAX_BYTES
+    );
+    if (overFree == null || !pageSeesFreeAccount()) return false;
+    const checkedOn = screenEpochRef.current;
+    setZoneState('converting');
+    setProgressWidth(10);
+    const stillFree = await freshReadSaysFree();
+    if (unmountedRef.current || checkedOn !== screenEpochRef.current) {
+      return true;
+    }
+    if (!stillFree) return false;
+    setLimitInfo({
+      filename: overFree.name,
+      fileSizeBytes: overFree.size,
+      kind: 'file_size',
+      monthlyLimit: null,
+    });
+    setZoneState('limitReached');
     return true;
   };
 
@@ -2300,7 +2328,7 @@ function UploadForm({
     isRetry: boolean,
     trigger: UploadTrigger
   ): Promise<boolean> => {
-    if (refuseOversizedUpload(uploadedFiles)) return false;
+    if (await refuseOversizedUpload(uploadedFiles)) return false;
     // A PDF with no readable text is the one thing the server will not guess
     // about: it asks which cards to make, unless this device already said.
     if (

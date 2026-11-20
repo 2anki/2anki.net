@@ -87,17 +87,21 @@ const paying = {
   features: {},
 } as unknown as Locals;
 
+const freshRead = (data: Locals) => ({ status: 'success', data });
+
 function setLocals(
   data: Locals,
-  state: { isLoading?: boolean; isError?: boolean } = {}
-) {
+  state: { isLoading?: boolean; isError?: boolean; refetch?: Mock } = {}
+): Mock {
+  const refetch = state.refetch ?? vi.fn().mockResolvedValue(freshRead(data));
   vi.mocked(useUserLocals).mockReturnValue({
     data,
     isLoading: state.isLoading ?? false,
     error: null,
     isError: state.isError ?? false,
-    refetch: vi.fn(),
+    refetch,
   } as unknown as ReturnType<typeof useUserLocals>);
+  return refetch;
 }
 
 function fileOfSize(name: string, size: number): File {
@@ -201,8 +205,8 @@ afterEach(() => {
 });
 
 describe('UploadForm refuses a file over the upload limit before sending it', () => {
-  it('does not send a file one byte over the free limit and shows the file size limit', async () => {
-    setLocals(signedInFree);
+  it('does not send a file one byte over the free limit when a fresh account read still says free', async () => {
+    const refetch = setLocals(signedInFree);
     const fetchMock = stubServer();
     const { container } = renderForm();
 
@@ -214,10 +218,11 @@ describe('UploadForm refuses a file over the upload limit before sending it', ()
     expect(screen.getByText(/lecture\.pdf/)).toBeInTheDocument();
     await settle();
     expect(uploadsSent(fetchMock)).toEqual([]);
+    expect(refetch).toHaveBeenCalledTimes(1);
   });
 
-  it('sends a file exactly at the free limit', async () => {
-    setLocals(signedInFree);
+  it('sends a file exactly at the free limit without reading the account again', async () => {
+    const refetch = setLocals(signedInFree);
     const fetchMock = stubServer();
     const { container } = renderForm();
 
@@ -227,6 +232,7 @@ describe('UploadForm refuses a file over the upload limit before sending it', ()
 
     await waitFor(() => expect(uploadsSent(fetchMock)).toHaveLength(1));
     expect(screen.queryByText(OVER_FREE_TITLE)).toBeNull();
+    expect(refetch).not.toHaveBeenCalled();
   });
 
   it('tells a signed-out visitor the limit without sending the file', async () => {
@@ -346,6 +352,120 @@ describe('UploadForm refuses a file over the upload limit before sending it', ()
     ).toBeInTheDocument();
     await settle();
     expect(uploadsSent(fetchMock)).toEqual([]);
+  });
+});
+
+describe('UploadForm reads the account again before refusing a file over the free limit', () => {
+  const MEGABYTE = 1024 * 1024;
+  const fileOver = () => fileOfSize('lecture.pdf', 150 * MEGABYTE);
+
+  function returnFromPassCheckout() {
+    vi.stubGlobal('location', {
+      search: '?from=pass&session_id=cs_test_paid',
+      href: 'http://localhost/upload?from=pass&session_id=cs_test_paid',
+      origin: 'http://localhost',
+      pathname: '/upload',
+    });
+  }
+
+  it.each([
+    ['', () => {}],
+    [' back from a pass checkout', returnFromPassCheckout],
+  ])(
+    'sends the file when the fresh read says paying%s',
+    async (_where, arrange) => {
+      arrange();
+      const refetch = setLocals(signedInFree, {
+        refetch: vi.fn().mockResolvedValue(freshRead(paying)),
+      });
+      const fetchMock = stubServer();
+      const { container } = renderForm();
+
+      await pickAndSubmit(container, [fileOver()]);
+
+      await waitFor(() => expect(uploadsSent(fetchMock)).toHaveLength(1));
+      expect(refetch).toHaveBeenCalledTimes(1);
+      expect(screen.queryByText(OVER_FREE_TITLE)).toBeNull();
+    }
+  );
+
+  it('sends the file back from a pass checkout while the fresh read still says free', async () => {
+    returnFromPassCheckout();
+    setLocals(signedInFree);
+    const fetchMock = stubServer();
+    const { container } = renderForm();
+
+    await pickAndSubmit(container, [fileOver()]);
+
+    await waitFor(() => expect(uploadsSent(fetchMock)).toHaveLength(1));
+    expect(screen.queryByText(OVER_FREE_TITLE)).toBeNull();
+  });
+
+  it('sends the file when the fresh read fails', async () => {
+    setLocals(signedInFree, {
+      refetch: vi.fn().mockResolvedValue({ status: 'error', data: undefined }),
+    });
+    const fetchMock = stubServer();
+    const { container } = renderForm();
+
+    await pickAndSubmit(container, [fileOver()]);
+
+    await waitFor(() => expect(uploadsSent(fetchMock)).toHaveLength(1));
+  });
+
+  it('sends the file when a pass token was stored while the account was read', async () => {
+    setLocals(signedInFree, {
+      refetch: vi.fn(async () => {
+        storePassToken('cs_bought_meanwhile');
+        return freshRead(signedInFree);
+      }),
+    });
+    const fetchMock = stubServer();
+    const { container } = renderForm();
+
+    await pickAndSubmit(container, [fileOver()]);
+
+    await waitFor(() => expect(uploadsSent(fetchMock)).toHaveLength(1));
+  });
+
+  it('shows the upload in progress while the account is read', async () => {
+    setLocals(signedInFree, {
+      refetch: vi.fn(() => new Promise(() => {})),
+    });
+    stubServer();
+    const { container } = renderForm();
+
+    await pickAndSubmit(container, [fileOver()]);
+
+    expect(container.querySelector('[class*="progressTrack"]')).not.toBeNull();
+    expect(screen.queryByText(OVER_FREE_TITLE)).toBeNull();
+  });
+
+  describe('when the read does not answer in time', () => {
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('sends the file once the read cap passes', async () => {
+      setLocals(signedInFree, {
+        refetch: vi.fn(() => new Promise(() => {})),
+      });
+      const fetchMock = stubServer();
+      const { container } = renderForm();
+
+      await pickAndSubmit(container, [fileOver()]);
+      expect(uploadsSent(fetchMock)).toEqual([]);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2000);
+      });
+
+      expect(uploadsSent(fetchMock)).toHaveLength(1);
+    });
   });
 });
 
