@@ -104,6 +104,17 @@ function setLocals(
   return refetch;
 }
 
+function controlledRead() {
+  let answer: (value: unknown) => void = () => {};
+  const refetch = vi.fn(
+    () =>
+      new Promise((resolve) => {
+        answer = resolve;
+      })
+  );
+  return { refetch, answer: (value: unknown) => answer(value) };
+}
+
 function fileOfSize(name: string, size: number): File {
   const file = new File(['x'], name, { type: 'application/pdf' });
   Object.defineProperty(file, 'size', { value: size });
@@ -465,6 +476,170 @@ describe('UploadForm reads the account again before refusing a file over the fre
       });
 
       expect(uploadsSent(fetchMock)).toHaveLength(1);
+    });
+
+    it('does not send the file again or show the wall when the account answers after the cap', async () => {
+      const read = controlledRead();
+      setLocals(signedInFree, { refetch: read.refetch });
+      const fetchMock = stubServer();
+      const { container } = renderForm();
+
+      await pickAndSubmit(container, [fileOver()]);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2000);
+      });
+      await act(async () => {
+        read.answer(freshRead(signedInFree));
+        await vi.advanceTimersByTimeAsync(0);
+      });
+
+      expect(uploadsSent(fetchMock)).toHaveLength(1);
+      expect(screen.queryByText(OVER_FREE_TITLE)).toBeNull();
+    });
+  });
+
+  it('sends the file back from a subscription checkout while the fresh read still says free', async () => {
+    vi.stubGlobal('location', {
+      search: '?checkout=success',
+      href: 'http://localhost/upload?checkout=success',
+      origin: 'http://localhost',
+      pathname: '/upload',
+    });
+    setLocals(signedInFree);
+    const fetchMock = stubServer();
+    const { container } = renderForm();
+
+    await pickAndSubmit(container, [fileOver()]);
+
+    await waitFor(() => expect(uploadsSent(fetchMock)).toHaveLength(1));
+    expect(screen.queryByText(OVER_FREE_TITLE)).toBeNull();
+  });
+
+  describe('when something happens while the account is read', () => {
+    const progressBar = (container: HTMLElement) =>
+      container.querySelector('[class*="progressTrack"]');
+
+    it.each([
+      ['a file it would take', () => fileOfSize('notes.pdf', 1024)],
+      ['a file its checks turn away', () => fileOfSize('shortcut.lnk', 1024)],
+    ])(
+      'ignores a second drop of %s and shows the wall for the first file',
+      async (_kind, secondFile) => {
+        const read = controlledRead();
+        setLocals(signedInFree, { refetch: read.refetch });
+        const fetchMock = stubServer();
+        const { container } = renderForm();
+
+        await drop(container, [fileOver()]);
+        await waitFor(() => expect(read.refetch).toHaveBeenCalledTimes(1));
+        await drop(container, [secondFile()]);
+        await act(async () => {
+          read.answer(freshRead(signedInFree));
+        });
+
+        expect(await screen.findByText(OVER_FREE_TITLE)).toBeInTheDocument();
+        expect(screen.getByText(/lecture\.pdf/)).toBeInTheDocument();
+        expect(progressBar(container)).toBeNull();
+        await settle();
+        expect(uploadsSent(fetchMock)).toEqual([]);
+        expect(read.refetch).toHaveBeenCalledTimes(1);
+      }
+    );
+
+    it('sends only the first file when a second drop comes in and the read says paying', async () => {
+      const read = controlledRead();
+      setLocals(signedInFree, { refetch: read.refetch });
+      const fetchMock = stubServer();
+      const { container } = renderForm();
+
+      await drop(container, [fileOver()]);
+      await waitFor(() => expect(read.refetch).toHaveBeenCalledTimes(1));
+      await drop(container, [fileOfSize('notes.pdf', 1024)]);
+      await act(async () => {
+        read.answer(freshRead(paying));
+      });
+
+      await waitFor(() => expect(uploadsSent(fetchMock)).toHaveLength(1));
+      expect(vi.mocked(track)).toHaveBeenCalledWith(
+        'upload_submitted',
+        expect.objectContaining({ input_format: 'pdf' })
+      );
+    });
+
+    it('drops the first file and sends a folder dropped during the read, with no wall', async () => {
+      const read = controlledRead();
+      setLocals(signedInFree, { refetch: read.refetch });
+      const fetchMock = stubServer();
+      const { container } = renderForm();
+
+      class FakeDataTransfer {
+        files: File[] = [];
+        items = { add: (file: File) => this.files.push(file) };
+      }
+      vi.stubGlobal('DataTransfer', FakeDataTransfer);
+      await drop(container, [fileOver()]);
+      await waitFor(() => expect(read.refetch).toHaveBeenCalledTimes(1));
+      const page = {
+        isFile: true,
+        isDirectory: false,
+        name: 'notes.html',
+        fullPath: '/notes/notes.html',
+        file: (resolve: (file: File) => void) =>
+          resolve(new File(['<p>Krebs</p>'], 'notes.html')),
+      };
+      const folder = {
+        isFile: false,
+        isDirectory: true,
+        name: 'notes',
+        fullPath: '/notes',
+        createReader: () => {
+          const batches: unknown[][] = [[page], []];
+          return {
+            readEntries: (resolve: (batch: unknown[]) => void) =>
+              resolve(batches.shift() ?? []),
+          };
+        },
+      };
+      const folderDrop = new Event('drop', { bubbles: true, cancelable: true });
+      Object.defineProperty(folderDrop, 'dataTransfer', {
+        value: { items: [{ webkitGetAsEntry: () => folder }], files: [] },
+      });
+      await act(async () => {
+        document.body.dispatchEvent(folderDrop);
+      });
+      await act(async () => {
+        read.answer(freshRead(signedInFree));
+      });
+
+      await waitFor(() => expect(uploadsSent(fetchMock)).toHaveLength(1));
+      const submitted = vi
+        .mocked(track)
+        .mock.calls.filter(([name]) => name === 'upload_submitted');
+      expect(submitted).toEqual([
+        ['upload_submitted', expect.objectContaining({ input_format: 'zip' })],
+      ]);
+      expect(screen.queryByText(OVER_FREE_TITLE)).toBeNull();
+    });
+
+    it('sends nothing and logs no error when the page goes away during the read', async () => {
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
+      const read = controlledRead();
+      setLocals(signedInFree, { refetch: read.refetch });
+      const fetchMock = stubServer();
+      const { container, unmount } = renderForm();
+
+      await pickAndSubmit(container, [fileOver()]);
+      unmount();
+      await act(async () => {
+        read.answer(freshRead(paying));
+      });
+      await settle();
+
+      expect(uploadsSent(fetchMock)).toEqual([]);
+      expect(consoleError).not.toHaveBeenCalled();
+      consoleError.mockRestore();
     });
   });
 });

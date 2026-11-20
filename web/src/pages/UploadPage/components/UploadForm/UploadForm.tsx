@@ -1374,6 +1374,10 @@ function UploadForm({
         return;
       }
       if (dataTransfer && dataTransfer.files.length > 0) {
+        if (zoneStateRef.current === 'converting') {
+          event.preventDefault();
+          return;
+        }
         const { files } = dataTransfer;
         moveScreenOn();
         fileInputRef.current!.files = files;
@@ -2272,6 +2276,8 @@ function UploadForm({
     return recoveryTokenRef.current;
   };
 
+  const uploadAttemptRef = useRef(0);
+
   const pageSeesFreeAccount = (): boolean =>
     userLocals != null &&
     !userLocalsFailed &&
@@ -2305,10 +2311,16 @@ function UploadForm({
     );
     if (overFree == null || !pageSeesFreeAccount()) return false;
     const checkedOn = screenEpochRef.current;
+    const attempt = uploadAttemptRef.current;
     setZoneState('converting');
     setProgressWidth(10);
     const stillFree = await freshReadSaysFree();
-    if (unmountedRef.current || checkedOn !== screenEpochRef.current) {
+    if (unmountedRef.current) return true;
+    if (checkedOn !== screenEpochRef.current) {
+      const nothingElseStarted = attempt === uploadAttemptRef.current;
+      if (nothingElseStarted && zoneStateRef.current === 'converting') {
+        setZoneState('idle');
+      }
       return true;
     }
     if (!stillFree) return false;
@@ -2328,6 +2340,7 @@ function UploadForm({
     isRetry: boolean,
     trigger: UploadTrigger
   ): Promise<boolean> => {
+    uploadAttemptRef.current += 1;
     if (await refuseOversizedUpload(uploadedFiles)) return false;
     // A PDF with no readable text is the one thing the server will not guess
     // about: it asks which cards to make, unless this device already said.
