@@ -7,6 +7,7 @@ import type {
 import type { StructureRescueRule } from '../../../../DownloadsPage/helpers/parseStructureRescuedPayload';
 import type { UploadSource } from '../UploadSourceChips';
 import type { EmptyBackSource } from '../../../../DownloadsPage/components/EmptyBackNotice';
+import type { MonthlyLimitRefusal } from '../../../../../lib/limits/monthlyLimitRefusal';
 
 export type ZoneState =
   | 'idle'
@@ -72,6 +73,7 @@ export interface LimitInfo {
   filename: string | null;
   fileSizeBytes: number | null;
   kind: 'file_size' | 'card_count';
+  monthlyLimit?: MonthlyLimitRefusal | null;
 }
 
 export function useUploadFormState(onReset: () => void) {

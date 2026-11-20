@@ -19,6 +19,7 @@ import { startUnlimitedUpgrade } from '../../../../lib/backend/startUnlimitedUpg
 import { track } from '../../../../lib/analytics/track';
 import { formatResetDate } from './formatResetDate';
 import type { RescueStatus } from '../../helpers/rescueStatus';
+import { monthlyLimitCopy } from '../../../../lib/limits/monthlyLimitRefusal';
 import { formatCount } from '../../../UploadPage/helpers/describeEmptyReading';
 import type {
   RescueCandidate,
@@ -248,14 +249,20 @@ const RESCUE_STATUS_KEYS: Record<
 function RescueStatusLine({
   status,
 }: Readonly<{ status: RescueStatus | null }>) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   if (status == null) {
     return null;
   }
   if (status.kind === 'limit') {
+    const monthlyCopy =
+      status.monthlyLimit == null
+        ? null
+        : monthlyLimitCopy(t, i18n.language, status.monthlyLimit);
     return (
       <>
-        {t('conversionResult.rescueLimitReached', { limit: status.limit })}{' '}
+        {monthlyCopy == null
+          ? t('conversionResult.rescueLimitReached', { limit: status.limit })
+          : `${monthlyCopy.title} ${monthlyCopy.usage}`}{' '}
         <Link to={UNLIMITED_PRICING_HREF}>
           {t('conversionResult.paywall.upgradeUnlimited')}
         </Link>

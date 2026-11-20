@@ -1,6 +1,11 @@
+import {
+  monthlyLimitRefusalFromBody,
+  type MonthlyLimitRefusal,
+} from '../../../lib/limits/monthlyLimitRefusal';
+
 export type RescueStatus =
   | { kind: 'building' }
-  | { kind: 'limit'; limit: number }
+  | { kind: 'limit'; limit: number; monthlyLimit?: MonthlyLimitRefusal }
   | { kind: 'oneAtATime' }
   | { kind: 'alreadyRunning' }
   | { kind: 'failed' };
@@ -11,6 +16,7 @@ const PAYMENT_REQUIRED = 402;
 async function readReason(response: Response): Promise<{
   reason?: unknown;
   limit?: unknown;
+  code?: unknown;
 }> {
   try {
     const body: unknown = await response.json();
@@ -35,7 +41,12 @@ export async function rescueStatusFromResponse(
   if (response.status === PAYMENT_REQUIRED) {
     const body = await readReason(response);
     if (body.reason === 'monthly_limit' && typeof body.limit === 'number') {
-      return { kind: 'limit', limit: body.limit };
+      const monthlyLimit = monthlyLimitRefusalFromBody(body);
+      return {
+        kind: 'limit',
+        limit: body.limit,
+        ...(monthlyLimit == null ? {} : { monthlyLimit }),
+      };
     }
     return { kind: 'oneAtATime' };
   }

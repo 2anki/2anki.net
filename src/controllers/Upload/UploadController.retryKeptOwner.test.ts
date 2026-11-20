@@ -322,15 +322,20 @@ describe('the card limits on a password unlock', () => {
     } as Awaited<ReturnType<typeof PrepareDeck>>);
   }
 
-  it('sends a free account over its monthly allowance to the limit page and counts nothing', async () => {
+  it('sends a free account over its monthly allowance to the limit page with its usage and counts nothing', async () => {
     cardUsage.cardsUsed = 95;
     deckOf(10);
 
-    const response = await unlockWithoutFollowing(signedIn);
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-20T09:00:00Z'));
+    const response = await unlockWithoutFollowing(signedIn).finally(() =>
+      vi.useRealTimers()
+    );
 
     expect(response).toEqual({
       status: 302,
-      location: '/limit?kind=card_count',
+      location:
+        '/limit?kind=card_count&used=95&limit=100&reset_on=2026-12-01T00%3A00%3A00.000Z',
     });
     expect(cardUsage.incrementCardUsage).not.toHaveBeenCalled();
   });

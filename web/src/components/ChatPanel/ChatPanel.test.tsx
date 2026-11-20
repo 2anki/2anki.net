@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { MemoryRouter } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ChatPanel, { consumeSseEvents } from './ChatPanel';
 
 window.HTMLElement.prototype.scrollIntoView = vi.fn();
@@ -287,6 +287,57 @@ describe('ChatPanel — per-turn deck download and naming', () => {
       createObjectURL: vi.fn(() => 'blob:test'),
       revokeObjectURL: vi.fn(),
     });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function saveDeckWith(response: unknown) {
+    mockPost.mockResolvedValueOnce(response);
+    renderChatPanel({
+      initialMessages: [
+        {
+          role: 'assistant',
+          content: '',
+          cards: [{ front: 'Q1', back: 'A1' }],
+        },
+      ],
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Download deck' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+  }
+
+  it('says how many cards were made and when the limit resets when the month is used up', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-20T09:00:00.000Z'));
+    saveDeckWith({
+      ok: false,
+      status: 402,
+      json: () =>
+        Promise.resolve({
+          code: 'monthly_limit',
+          cards_used: 95,
+          limit: 100,
+          reset_on: '2026-12-01T00:00:00.000Z',
+        }),
+    });
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      "This deck would go past your 100 free cards this month. You've made 95 of 100. The limit resets on 1 December 2026. A plan lets you convert more now."
+    );
+  });
+
+  it('keeps the generic deck error when a refusal carries no usage', async () => {
+    saveDeckWith({
+      ok: false,
+      status: 402,
+      json: () => Promise.resolve({ code: 'monthly_limit' }),
+    });
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent("Couldn't generate the deck. Try again.");
+    expect(alert.textContent).not.toMatch(/undefined|NaN/);
   });
 
   it('downloads an MCQ turn as mcq even when the selector defaults to Basic', async () => {

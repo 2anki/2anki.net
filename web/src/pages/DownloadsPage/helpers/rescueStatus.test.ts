@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { rescueStatusFromResponse } from './rescueStatus';
 
 function json(status: number, body: unknown): Response {
@@ -9,6 +9,10 @@ function json(status: number, body: unknown): Response {
 }
 
 describe('rescueStatusFromResponse', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('says nothing once the re-run has started', async () => {
     expect(
       await rescueStatusFromResponse(json(202, { jobId: 1, restarted: true }))
@@ -21,6 +25,30 @@ describe('rescueStatusFromResponse', () => {
         json(402, { reason: 'monthly_limit', cards_used: 100, limit: 100 })
       )
     ).toEqual({ kind: 'limit', limit: 100 });
+  });
+
+  it('keeps the usage and reset date the limit refusal carries', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-20T09:00:00.000Z'));
+    expect(
+      await rescueStatusFromResponse(
+        json(402, {
+          reason: 'monthly_limit',
+          code: 'monthly_limit',
+          cards_used: 100,
+          limit: 100,
+          reset_on: '2026-12-01T00:00:00.000Z',
+        })
+      )
+    ).toEqual({
+      kind: 'limit',
+      limit: 100,
+      monthlyLimit: {
+        cardsUsed: 100,
+        limit: 100,
+        resetOn: '2026-12-01T00:00:00.000Z',
+      },
+    });
   });
 
   it('reads the free one-at-a-time limit as its own line', async () => {

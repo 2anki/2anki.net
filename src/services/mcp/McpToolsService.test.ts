@@ -692,6 +692,34 @@ describe('McpToolsService.convertToDeck', () => {
     expect(persist).not.toHaveBeenCalled();
   });
 
+  it('returns the same paywall result when the card limit redirect carries the usage', async () => {
+    const plainEntry: UploadEntrypoint = (_req, res) => {
+      res.redirect('/limit?kind=card_count');
+    };
+    const usageEntry: UploadEntrypoint = (_req, res) => {
+      res.redirect(
+        '/limit?kind=card_count&used=100&limit=100&reset_on=2026-11-01T00%3A00%3A00.000Z'
+      );
+    };
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-18T12:00:00Z'));
+    let plain: unknown;
+    let withUsage: unknown;
+    try {
+      plain = await makeService({
+        uploadEntry: plainEntry,
+      }).service.convertToDeck({ text: 'x' }, 'owner', {});
+      withUsage = await makeService({
+        uploadEntry: usageEntry,
+      }).service.convertToDeck({ text: 'x' }, 'owner', {});
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(withUsage).toMatchObject({ kind: 'error', code: 'monthly_limit' });
+    expect(withUsage).toEqual(plain);
+  });
+
   it('returns the paywall message when the upload redirects to the card limit', async () => {
     const uploadEntry: UploadEntrypoint = (_req, res) => {
       res.redirect('/limit?kind=card_count');

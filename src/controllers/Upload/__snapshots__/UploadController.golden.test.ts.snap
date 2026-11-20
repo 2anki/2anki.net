@@ -134,12 +134,12 @@ exports[`what each population gets back from /api/upload/file > signed-in free w
 exports[`what each population gets back from /api/upload/file > signed-in free with the monthly limit used up 1`] = `
 {
   "body": {
-    "text": "Found. Redirecting to /limit?kind=card_count",
+    "text": "Found. Redirecting to /limit?kind=card_count&used=100&limit=100&reset_on=<next-month>",
   },
   "cardsCharged": [],
   "contentType": "text/plain",
   "headers": {
-    "location": "/limit?kind=card_count",
+    "location": "/limit?kind=card_count&used=100&limit=100&reset_on=<next-month>",
   },
   "status": 302,
   "storedObjects": [],

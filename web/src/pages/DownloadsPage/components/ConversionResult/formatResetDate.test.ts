@@ -17,4 +17,16 @@ describe('formatResetDate', () => {
   it('returns null for an unparseable string', () => {
     expect(formatResetDate('not-a-date')).toBeNull();
   });
+
+  it.each([
+    ['en', '1 December 2026'],
+    ['en-US', '1 December 2026'],
+    ['de', '1. Dezember 2026'],
+    ['es', '1 de diciembre de 2026'],
+    ['ja', '2026年12月1日'],
+  ])('writes the date for a %s reader as %s', (language, expected) => {
+    expect(formatResetDate('2026-12-01T00:00:00.000Z', language)).toBe(
+      expected
+    );
+  });
 });

@@ -7,6 +7,11 @@ import EyeIcon from '../../../../components/icons/EyeIcon';
 import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
 import { redirectToLogin } from '../../../../lib/backend/api';
 import NotionObject from '../../../../lib/interfaces/NotionObject';
+import {
+  monthlyLimitCopy,
+  monthlyLimitRefusalFromBody,
+  type MonthlyLimitRefusal,
+} from '../../../../lib/limits/monthlyLimitRefusal';
 import { BlockIcon } from '../BlockIcon';
 import styles from './SearchObjectEntry.module.css';
 
@@ -38,11 +43,18 @@ const getType = (data: string | { object: string }): string | null => {
 
 function SearchObjectEntry(props: Readonly<Props>) {
   const { title, icon, url, id, type, setError } = props;
-  const { t } = useTranslation('search');
+  const { t, i18n } = useTranslation('search');
   const navigate = useNavigate();
   const location = useLocation();
   const [status, setStatus] = useState<ConvertStatus>('idle');
   const [restarted, setRestarted] = useState(false);
+  const [monthlyLimit, setMonthlyLimit] = useState<MonthlyLimitRefusal | null>(
+    null
+  );
+  const monthlyCopy =
+    monthlyLimit == null
+      ? null
+      : monthlyLimitCopy(t, i18n.language, monthlyLimit);
 
   const openRules = () => {
     const params = new URLSearchParams();
@@ -70,6 +82,8 @@ function SearchObjectEntry(props: Readonly<Props>) {
         } else if (response.status === 409) {
           setStatus('conflict');
         } else if (response.status === 402) {
+          const body: unknown = await response.json().catch(() => null);
+          setMonthlyLimit(monthlyLimitRefusalFromBody(body));
           setStatus('paywall');
         } else if (response.status === 401) {
           setStatus('idle');
@@ -100,7 +114,15 @@ function SearchObjectEntry(props: Readonly<Props>) {
             <Link to="/downloads">{t('entry.view')}</Link>
           </span>
         )}
-        {status === 'paywall' && (
+        {status === 'paywall' && monthlyCopy != null && (
+          <span
+            className={`${styles.convertStatus} ${styles.convertStatusWrap}`}
+          >
+            {monthlyCopy.title} {monthlyCopy.usage}{' '}
+            <Link to="/pricing">{t('entry.upgrade')}</Link>
+          </span>
+        )}
+        {status === 'paywall' && monthlyCopy == null && (
           <span className={styles.convertStatus}>
             {t('entry.paywallText')}{' '}
             <Link to="/pricing">{t('entry.upgrade')}</Link>

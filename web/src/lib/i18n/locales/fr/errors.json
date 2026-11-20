@@ -39,7 +39,13 @@
     },
     "monthlyLimit": {
       "title": "Tu as atteint ta limite mensuelle.",
-      "detail": "Passe à une offre supérieure pour convertir plus de paquets ce mois-ci."
+      "detail": "Passe à une offre supérieure pour convertir plus de paquets ce mois-ci.",
+      "usedTitle_one": "Tu as utilisé ta {{count}} carte gratuite ce mois-ci.",
+      "usedTitle_other": "Tu as utilisé tes {{count}} cartes gratuites ce mois-ci.",
+      "overTitle_one": "Ce paquet dépasserait ta {{count}} carte gratuite ce mois-ci.",
+      "overTitle_other": "Ce paquet dépasserait tes {{count}} cartes gratuites ce mois-ci.",
+      "usage": "Tu en as créé {{used}} sur {{limit}}. La limite se réinitialise le {{date}}.",
+      "plan": "Une offre te permet d'en convertir plus dès maintenant."
     },
     "fallback": {
       "title": "Une erreur est survenue.",

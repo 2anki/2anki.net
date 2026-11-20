@@ -921,6 +921,12 @@ const CLIENT_HEADERS = [
   'access-control-expose-headers',
 ];
 
+const RESET_ON_PARAM = /reset_on=\d{4}-\d{2}-01T00%3A00%3A00\.000Z/;
+
+function withoutResetDate(text: string): string {
+  return text.replace(RESET_ON_PARAM, 'reset_on=<next-month>');
+}
+
 function clientHeaders(response: Response): Record<string, string> {
   const picked: Record<string, string> = {};
   response.headers.forEach((value, name) => {
@@ -928,7 +934,8 @@ function clientHeaders(response: Response): Record<string, string> {
       (name.startsWith('x-') && name !== 'x-powered-by') ||
       CLIENT_HEADERS.includes(name);
     if (userFacing) {
-      picked[name] = name === 'x-download-key' ? '<download-key>' : value;
+      picked[name] =
+        name === 'x-download-key' ? '<download-key>' : withoutResetDate(value);
     }
   });
   return Object.fromEntries(
@@ -947,7 +954,7 @@ async function clientBody(response: Response): Promise<unknown> {
   if (response.headers.get('content-disposition')?.startsWith('attachment')) {
     return { apkg: await response.text() };
   }
-  return { text: await response.text() };
+  return { text: withoutResetDate(await response.text()) };
 }
 
 let population: Population = signedOut;
@@ -2262,7 +2269,10 @@ describe('the connector at the monthly card limit', () => {
     const result = await upload('large', { ...signedInFree, cardsUsed: 100 });
 
     expect(result.status).toBe(302);
-    expect(result.headers).toEqual({ location: '/limit?kind=card_count' });
+    expect(result.headers).toEqual({
+      location:
+        '/limit?kind=card_count&used=100&limit=100&reset_on=<next-month>',
+    });
     expect(heldDecks.rows).toHaveLength(0);
   }, 20_000);
 
@@ -2279,7 +2289,8 @@ describe('the connector at the monthly card limit', () => {
       });
 
       expect(result.headers).toEqual({
-        location: '/limit?kind=card_count',
+        location:
+          '/limit?kind=card_count&used=100&limit=100&reset_on=<next-month>',
         ...extraHeaders,
       });
       expect(heldDecks.rows).toHaveLength(0);

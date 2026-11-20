@@ -20,6 +20,8 @@ import {
   ANONYMOUS_CARD_CAP,
   MONTHLY_CARD_LIMIT,
 } from '../users/CheckMonthlyCardLimitUseCase';
+import { startOfNextMonthUtc } from '../../lib/User/startOfMonthUtc';
+import type { MonthlyLimitUsage } from '../../lib/User/monthlyLimitRefusal';
 
 export interface RetryPdfResult {
   apkg: Buffer;
@@ -35,7 +37,10 @@ export interface RetryPdfNeedsCredential {
 export interface RetryPdfLimitReached {
   limitReached: 'card_count' | 'anonymous';
   cardCount: number;
+  monthlyUsage?: MonthlyLimitUsage;
 }
+
+type FreeLimitReached = Omit<RetryPdfLimitReached, 'cardCount'>;
 
 export interface RetryPdfUnreadable {
   unreadable: string;
@@ -140,7 +145,7 @@ export class RetryPdfWithCredentialUseCase {
           result.cardCount
         );
         if (limitReached != null) {
-          return { limitReached, cardCount: result.cardCount };
+          return { ...limitReached, cardCount: result.cardCount };
         }
       }
 
@@ -180,16 +185,25 @@ export class RetryPdfWithCredentialUseCase {
   private async checkFreeLimits(
     userId: number | null,
     cardCount: number
-  ): Promise<RetryPdfLimitReached['limitReached'] | null> {
+  ): Promise<FreeLimitReached | null> {
     if (userId == null) {
-      return cardCount > ANONYMOUS_CARD_CAP ? 'anonymous' : null;
+      return cardCount > ANONYMOUS_CARD_CAP
+        ? { limitReached: 'anonymous' }
+        : null;
     }
     if (this.cardUsage == null) {
-      return 'card_count';
+      return { limitReached: 'card_count' };
     }
     const { cards_used } = await this.cardUsage.getCardUsage(userId);
     if (cards_used + cardCount > MONTHLY_CARD_LIMIT) {
-      return 'card_count';
+      return {
+        limitReached: 'card_count',
+        monthlyUsage: {
+          cards_used,
+          limit: MONTHLY_CARD_LIMIT,
+          reset_on: startOfNextMonthUtc(new Date()).toISOString(),
+        },
+      };
     }
     await this.cardUsage.incrementCardUsage(userId, cardCount);
     return null;

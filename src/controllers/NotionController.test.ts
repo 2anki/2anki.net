@@ -455,6 +455,28 @@ describe('NotionController', () => {
       expect(runConversion).not.toHaveBeenCalled();
     });
 
+    it('tells a free user over the limit how many cards they used and when the month resets', async () => {
+      setupConvertMocks();
+      vi.spyOn(UsersRepository.prototype, 'getCardUsage').mockResolvedValue({
+        cards_used: 104,
+        month_started_at: new Date(),
+      });
+
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-11-20T09:00:00Z'));
+      await controller
+        .convert(req as express.Request, res as express.Response)
+        .finally(() => vi.useRealTimers());
+
+      expect(res.json).toHaveBeenCalledWith({
+        reason: 'monthly_limit',
+        code: 'monthly_limit',
+        cards_used: 104,
+        limit: 100,
+        reset_on: '2026-12-01T00:00:00.000Z',
+      });
+    });
+
     it.each(['page', 'database'])(
       'tracks a Notion %s conversion over the limit as conversion_failed from notion',
       async (type) => {
