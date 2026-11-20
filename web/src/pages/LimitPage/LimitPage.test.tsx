@@ -145,6 +145,70 @@ describe('LimitPage', () => {
     ).toBeTruthy();
   });
 
+  it('says this deck would go past the free cards when the cards made are below the limit', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-20T09:00:00.000Z'));
+    renderPage([
+      '/limit?kind=card_count&used=80&limit=100&reset_on=2026-12-01T00%3A00%3A00.000Z',
+    ]);
+
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    expect(
+      screen.getByRole('heading', {
+        level: 1,
+        name: 'This deck would go past your 100 free cards this month.',
+      })
+    ).toBeInTheDocument();
+    expect(screen.queryByText("You've reached your monthly limit")).toBeNull();
+    expect(
+      screen.getByText(
+        "You've made 80 of 100. The limit resets on 1 December 2026. Your monthly limit: 100 cards. Get a pass to keep converting now."
+      )
+    ).toBeInTheDocument();
+  });
+
+  it.each([
+    [
+      'the cards made equal the limit',
+      '/limit?kind=card_count&used=100&limit=100&reset_on=2026-12-01T00%3A00%3A00.000Z',
+    ],
+    [
+      'the cards made pass the limit',
+      '/limit?kind=card_count&used=140&limit=100&reset_on=2026-12-01T00%3A00%3A00.000Z',
+    ],
+    ['the refusal fields are absent', '/limit?kind=card_count'],
+    ['the wall came without a kind', '/limit'],
+    [
+      'the kind is not card_count',
+      '/limit?kind=file_size&used=80&limit=100&reset_on=2026-12-01',
+    ],
+    [
+      'the reset date is crafted',
+      '/limit?kind=card_count&used=80&limit=100&reset_on=2031-12-01',
+    ],
+    [
+      'the count is crafted',
+      '/limit?kind=card_count&used=-80&limit=100&reset_on=2026-12-01',
+    ],
+    [
+      'the limit is crafted',
+      '/limit?kind=card_count&used=80&limit=999999999&reset_on=2026-12-01',
+    ],
+  ])('keeps the monthly limit heading when %s', (_case, path) => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-20T09:00:00.000Z'));
+    renderPage([path]);
+
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    expect(
+      screen.getByRole('heading', {
+        level: 1,
+        name: "You've reached your monthly limit",
+      })
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/would go past your/)).toBeNull();
+  });
+
   it.each([
     ['/limit?kind=card_count'],
     ['/limit?ref=upload-limit-wall'],

@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-20-limit-page-deck-past-free-cards",
+  "date": "2026-11-20",
+  "type": "fix",
+  "title": "The limit page says when a single deck would go past your free cards for the month"
+}
