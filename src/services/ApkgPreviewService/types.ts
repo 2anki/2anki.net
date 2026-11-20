@@ -69,6 +69,7 @@ export interface EditableRenderedCard extends RenderedCard {
     front: EditableFieldValue | null;
     back: EditableFieldValue | null;
   };
+  noteHasOtherCards: boolean;
 }
 
 export interface DeckMeta {

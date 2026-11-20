@@ -149,6 +149,7 @@
     "back": "tył",
     "restoreCard": "Przywróć kartę",
     "deleteCard": "Pomiń tę kartę w pobieranym pliku. Karta, która już jest w twojej kolekcji Anki, tam zostaje.",
+    "deleteCardOfMultiCardNote": "Pomiń tę kartę w pobieranym pliku. Anki może dodać ją z powrotem jako nową kartę, bo jej notatka tworzy więcej niż jedną kartę. Karta, która już jest w twojej kolekcji Anki, tam zostaje.",
     "restore": "Przywróć",
     "delete": "Usuń",
     "showFront": "Pokaż przód",

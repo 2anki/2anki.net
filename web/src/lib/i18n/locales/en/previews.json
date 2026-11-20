@@ -127,6 +127,7 @@
     "back": "back",
     "restoreCard": "Restore card",
     "deleteCard": "Leave this card out of the download. A card already in your Anki collection stays there.",
+    "deleteCardOfMultiCardNote": "Leave this card out of the download. Anki may add it back as a new card, because its note makes more than one card. A card already in your Anki collection stays there.",
     "restore": "Restore",
     "delete": "Delete",
     "showFront": "Show front",

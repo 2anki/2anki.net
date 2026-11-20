@@ -127,6 +127,7 @@
     "back": "verso",
     "restoreCard": "Restaurer la carte",
     "deleteCard": "Retire cette carte du téléchargement. Une carte déjà dans ta collection Anki y reste.",
+    "deleteCardOfMultiCardNote": "Retire cette carte du téléchargement. Anki peut la rajouter comme nouvelle carte, car sa note crée plus d'une carte. Une carte déjà dans ta collection Anki y reste.",
     "restore": "Restaurer",
     "delete": "Supprimer",
     "showFront": "Afficher le recto",

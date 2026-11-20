@@ -651,6 +651,41 @@ describe('ApkgPreviewService.getEditableCardsPage', () => {
     ]);
   });
 
+  function withSecondCardOnNote10(): NormalizedCollection {
+    const collection = basicTwoDeckCollection();
+    collection.cards.push({ id: 102, nid: 10, did: 3, ord: 1 });
+    return collection;
+  }
+
+  it('says whether the note of each card makes other cards in the deck', () => {
+    const { cards } = service.getEditableCardsPage(
+      makeParsed(withSecondCardOnNote10()),
+      0,
+      10,
+      ''
+    );
+
+    expect(cards.map((card) => [card.id, card.noteHasOtherCards])).toEqual([
+      [100, true],
+      [101, false],
+      [102, true],
+    ]);
+  });
+
+  it('counts a card of the same note in another deck under a deck filter', () => {
+    const { cards } = service.getEditableCardsPage(
+      makeParsed(withSecondCardOnNote10()),
+      0,
+      10,
+      '',
+      2
+    );
+
+    expect(cards.map((card) => [card.id, card.noteHasOtherCards])).toEqual([
+      [100, true],
+    ]);
+  });
+
   it('offers no editable field on an Image Occlusion card', () => {
     const { cards } = service.getEditableCardsPage(
       makeParsed(makeIoCollection()),

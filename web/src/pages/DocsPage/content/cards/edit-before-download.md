@@ -25,3 +25,7 @@ The "Restore all" button reverts every edit and deletion in the current session.
 ## Edits don't persist
 
 Edits live in the page until you close or reload the tab. If you have unsaved edits and try to leave, your browser will warn you. After you download, the original source file on 2anki is unchanged — re-open the preview to start fresh or try different edits.
+
+## Importing the edited deck into Anki
+
+Anki updates a note from the download only when the downloaded note is newer than the copy in your collection, and then it replaces every field of that note. So if you changed a note in Anki at or after the moment you downloaded your edits here, Anki keeps its own copy and skips yours; its import summary lists it as an up-to-date copy already in your collection. If your edit here is newer, it replaces the whole note, including a field you changed only in Anki. When a deleted card's note makes more than one card, Anki may add that card back as a new card later, for example when you run Check Database or edit the note in Anki; deleting every card of a note leaves the note out of the download.

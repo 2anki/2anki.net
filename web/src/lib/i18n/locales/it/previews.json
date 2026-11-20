@@ -127,6 +127,7 @@
     "back": "retro",
     "restoreCard": "Ripristina scheda",
     "deleteCard": "Lascia questa scheda fuori dal download. Una scheda già presente nella tua collezione Anki resta lì.",
+    "deleteCardOfMultiCardNote": "Lascia questa scheda fuori dal download. Anki può aggiungerla di nuovo come scheda nuova, perché la sua nota crea più di una scheda. Una scheda già presente nella tua collezione Anki resta lì.",
     "restore": "Ripristina",
     "delete": "Elimina",
     "showFront": "Mostra fronte",
