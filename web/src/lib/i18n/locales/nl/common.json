@@ -252,7 +252,6 @@
       "liveEmptyDeck": "Conversie voltooid, maar er zijn geen kaarten gevonden.",
       "liveImageOnly": "Dit lijken afbeeldingen. Probeer Foto naar deck om er kaarten van te maken.",
       "liveError": "Conversie mislukt.",
-      "liveLimitReached": "Je hebt je maandlimiet bereikt.",
       "liveLockedPdf": "Deze PDF is met een wachtwoord beveiligd. Voer het wachtwoord in om door te gaan.",
       "pdfPasswordAria": "PDF-wachtwoord",
       "changeSourceAria": "Uploadbron wijzigen",

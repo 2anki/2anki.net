@@ -3738,7 +3738,7 @@ function UploadForm({
     }
   };
 
-  const renderLimitState = () => {
+  const limitWallCopy = () => {
     const isFileSize = limitInfo?.kind === 'file_size';
     const cardsUsed = cardUsage?.cards_used ?? 0;
     const monthlyLimit =
@@ -3759,6 +3759,11 @@ function UploadForm({
     } else {
       title = t('upload.limit.overFreeLimit', { limit: 100 });
     }
+    return { isFileSize, monthlyCopy, title };
+  };
+
+  const renderLimitState = () => {
+    const { isFileSize, monthlyCopy, title } = limitWallCopy();
     const limitContext = showSignInPrompt ? 'anonymous' : 'logged_in';
     const description =
       monthlyCopy == null
@@ -4704,7 +4709,6 @@ function UploadForm({
     imageOnly: 'upload.form.liveImageOnly',
     choosePdfMode: pdfChoiceCopy.title,
     error: 'upload.form.liveError',
-    limitReached: 'upload.form.liveLimitReached',
     lockedPdf: 'upload.form.liveLockedPdf',
     claimingHeld: 'anonymousPartial:preparing',
   };
@@ -4717,6 +4721,9 @@ function UploadForm({
   const screenLiveStatus = (): string => {
     const staticKey = staticLiveStatusKeys[zoneState];
     if (staticKey != null) return t(staticKey);
+    if (zoneState === 'limitReached' && limitInfo) {
+      return limitWallCopy().title;
+    }
     if (zoneState === 'success' || zoneState === 'heldReady') {
       return deckReadyLiveStatus();
     }

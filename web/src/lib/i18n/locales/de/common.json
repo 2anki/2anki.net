@@ -252,7 +252,6 @@
       "liveEmptyDeck": "Konvertierung abgeschlossen, aber es wurden keine Karten gefunden.",
       "liveImageOnly": "Das sehen nach Bildern aus. Probiere Foto zu Stapel, um daraus Karten zu machen.",
       "liveError": "Konvertierung fehlgeschlagen.",
-      "liveLimitReached": "Du hast dein monatliches Limit erreicht.",
       "liveLockedPdf": "Dieses PDF ist passwortgeschützt. Gib das Passwort ein, um fortzufahren.",
       "pdfPasswordAria": "PDF-Passwort",
       "changeSourceAria": "Upload-Quelle ändern",

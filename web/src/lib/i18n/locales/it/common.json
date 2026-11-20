@@ -252,7 +252,6 @@
       "liveEmptyDeck": "Conversione completata, ma non è stata trovata nessuna carta.",
       "liveImageOnly": "Sembrano immagini. Prova Da foto a mazzo per trasformarle in carte.",
       "liveError": "Conversione non riuscita.",
-      "liveLimitReached": "Hai raggiunto il limite mensile.",
       "liveLockedPdf": "Questo PDF è protetto da password. Inserisci la password per continuare.",
       "pdfPasswordAria": "Password del PDF",
       "changeSourceAria": "Cambia sorgente di caricamento",
