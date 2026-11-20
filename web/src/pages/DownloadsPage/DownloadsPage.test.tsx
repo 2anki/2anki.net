@@ -5,6 +5,7 @@ import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { DownloadsPage, renderJobStatusCell } from './DownloadsPage';
+import { forgetShownEmptyBackNotices } from './components/EmptyBackNotice';
 import i18n from '../../lib/i18n';
 import type JobResponse from '@server/types/JobResponse';
 import type { JobsId } from '@server/data_layer/public/Jobs';
@@ -1944,6 +1945,7 @@ describe('DownloadsPage empty-back notice event', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-11-20T12:00:00Z'));
     trackedEvents = [];
+    forgetShownEmptyBackNotices();
     (globalThis as AnalyticsGlobals).hj = vi.fn();
     (globalThis as AnalyticsGlobals).gtag = vi.fn();
     globalThis.fetch = vi
@@ -2027,5 +2029,55 @@ describe('DownloadsPage empty-back notice event', () => {
     render(page());
 
     expect(emptyBackEvents()).toEqual([{ empty_back_count: 2 }]);
+  });
+
+  const notionConversion = (
+    uploadId: number,
+    overrides: Partial<JobResponse> = {}
+  ) =>
+    buildJob({
+      id: 9202 as JobsId,
+      status: 'done',
+      type: 'page',
+      download_key: `deck-${uploadId}.apkg`,
+      upload_id: uploadId,
+      card_count: 20,
+      empty_back_count: 2,
+      ...overrides,
+    });
+
+  it('tracks the notice again when the same Notion page is converted again', () => {
+    mockUploads = [];
+    mockJobs = [notionConversion(501)];
+    const { rerender } = render(page());
+
+    mockJobs = [
+      notionConversion(501, { status: 'started', download_key: null }),
+    ];
+    rerender(page());
+    mockJobs = [notionConversion(502)];
+    rerender(page());
+
+    expect(emptyBackEvents()).toEqual([
+      { empty_back_count: 2 },
+      { empty_back_count: 2 },
+    ]);
+  });
+
+  it('tracks a mounted Notion row once when its count changes, and again for a new conversion', () => {
+    mockUploads = [];
+    mockJobs = [notionConversion(601)];
+    const { rerender } = render(page());
+
+    mockJobs = [notionConversion(601, { empty_back_count: 4 })];
+    rerender(page());
+    expect(emptyBackEvents()).toEqual([{ empty_back_count: 2 }]);
+
+    mockJobs = [notionConversion(602, { empty_back_count: 4 })];
+    rerender(page());
+    expect(emptyBackEvents()).toEqual([
+      { empty_back_count: 2 },
+      { empty_back_count: 4 },
+    ]);
   });
 });

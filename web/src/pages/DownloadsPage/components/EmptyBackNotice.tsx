@@ -14,6 +14,10 @@ interface EmptyBackNoticeProps {
 
 const shownThisLoad = new Set<string>();
 
+export function forgetShownEmptyBackNotices(): void {
+  shownThisLoad.clear();
+}
+
 function alreadyShownThisLoad(
   noticeKey: string | undefined,
   source: EmptyBackSource

@@ -930,7 +930,7 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                       <EmptyBackNotice
                                         count={row.job.empty_back_count ?? 0}
                                         source="notion"
-                                        noticeKey={`job:${row.job.id}`}
+                                        noticeKey={`job:${row.job.id}:${row.job.upload_id ?? 'none'}`}
                                       />
                                     </td>
                                   </tr>
