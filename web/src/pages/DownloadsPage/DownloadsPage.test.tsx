@@ -1922,3 +1922,110 @@ describe('DownloadsPage Notion row partial and dropped-asset notices', () => {
     ).not.toBeInTheDocument();
   });
 });
+
+describe('DownloadsPage empty-back notice event', () => {
+  let trackedEvents: { name: string; props: Record<string, unknown> }[] = [];
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  const page = () => (
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={['/downloads']}>
+        <DownloadsPage setError={vi.fn()} />
+      </MemoryRouter>
+    </QueryClientProvider>
+  );
+  const emptyBackEvents = () =>
+    trackedEvents
+      .filter((event) => event.name === 'empty_back_notice_shown')
+      .map((event) => event.props);
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-11-20T12:00:00Z'));
+    trackedEvents = [];
+    (globalThis as AnalyticsGlobals).hj = vi.fn();
+    (globalThis as AnalyticsGlobals).gtag = vi.fn();
+    globalThis.fetch = vi
+      .fn()
+      .mockImplementation((url: string, init?: RequestInit) => {
+        if (url === '/api/events/track') {
+          trackedEvents.push(JSON.parse((init?.body as string) ?? '{}'));
+        }
+        return Promise.resolve(new Response(null, { status: 200 }));
+      });
+    mockJobs = [];
+    mockDropboxUploads = [];
+    mockGoogleDriveUploads = [];
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+    delete (globalThis as AnalyticsGlobals).hj;
+    delete (globalThis as AnalyticsGlobals).gtag;
+  });
+
+  const uploadWithEmptyBacks = (key: string) => ({
+    id: `id-${key}`,
+    size_mb: 1,
+    owner: 1,
+    key,
+    filename: 'notes.csv',
+    object_id: '',
+    created_at: '2026-11-20T10:00:00Z',
+    source: null,
+    dropped_image_count: null,
+    image_drop_reason: null,
+    empty_back_count: 3,
+  });
+
+  it('tracks an upload row notice once across polls, filter changes and a revisit', () => {
+    mockUploads = [uploadWithEmptyBacks('poll-revisit.apkg')];
+    const { rerender, unmount } = render(page());
+
+    mockUploads = mockUploads.map((upload) => ({ ...upload }));
+    rerender(page());
+    fireEvent.click(screen.getByRole('button', { name: 'In progress' }));
+    fireEvent.click(screen.getByRole('button', { name: 'All' }));
+    unmount();
+    render(page());
+
+    expect(screen.getByText(/3 cards had no answer/)).toBeInTheDocument();
+    expect(emptyBackEvents()).toEqual([
+      { empty_back_count: 3, surface: 'downloads_row' },
+    ]);
+  });
+
+  it('tracks each upload row that shows the notice', () => {
+    mockUploads = [
+      uploadWithEmptyBacks('first-row.apkg'),
+      uploadWithEmptyBacks('second-row.apkg'),
+    ];
+    render(page());
+
+    expect(emptyBackEvents()).toHaveLength(2);
+  });
+
+  it('tracks a Notion row notice once across a filter change and a revisit', () => {
+    mockUploads = [];
+    mockJobs = [
+      buildJob({
+        id: 9101 as JobsId,
+        status: 'done',
+        type: 'page',
+        download_key: 'deck.apkg',
+        card_count: 20,
+        empty_back_count: 2,
+      }),
+    ];
+    const { unmount } = render(page());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Failed' }));
+    fireEvent.click(screen.getByRole('button', { name: 'All' }));
+    unmount();
+    render(page());
+
+    expect(emptyBackEvents()).toEqual([{ empty_back_count: 2 }]);
+  });
+});

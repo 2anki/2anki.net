@@ -74,6 +74,35 @@ describe('EmptyBackNotice', () => {
     });
   });
 
+  it('tracks a keyed notice once when it remounts in the same page load', () => {
+    const { unmount } = render(
+      <EmptyBackNotice count={5} noticeKey="upload:remount.apkg" />
+    );
+    unmount();
+    render(<EmptyBackNotice count={5} noticeKey="upload:remount.apkg" />);
+
+    expect(track).toHaveBeenCalledTimes(1);
+  });
+
+  it('tracks the notice again for a different upload', () => {
+    render(<EmptyBackNotice count={5} noticeKey="upload:first.apkg" />);
+    render(<EmptyBackNotice count={5} noticeKey="upload:second.apkg" />);
+
+    expect(track).toHaveBeenCalledTimes(2);
+  });
+
+  it('tracks each kind of notice about the same upload', () => {
+    render(<EmptyBackNotice count={5} noticeKey="upload:both.apkg" />);
+    render(
+      <EmptyBackNotice count={2} source="blank" noticeKey="upload:both.apkg" />
+    );
+
+    expect(track).toHaveBeenNthCalledWith(2, 'empty_back_notice_shown', {
+      empty_back_count: 2,
+      kind: 'blank_back',
+    });
+  });
+
   it('tags the event when the notice sits on a My decks upload row', () => {
     render(<EmptyBackNotice count={4} surface="downloads_row" />);
     expect(track).toHaveBeenCalledWith('empty_back_notice_shown', {
