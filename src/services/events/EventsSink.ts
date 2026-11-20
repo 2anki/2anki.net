@@ -33,6 +33,8 @@ export class EventsSink {
 
   private readonly pendingDurable = new Set<Promise<void>>();
 
+  private readonly inFlightFlushes = new Set<Promise<void>>();
+
   constructor(
     private readonly repository: IEventsRepository,
     private readonly options: {
@@ -93,14 +95,25 @@ export class EventsSink {
   }
 
   // Stop the timer and settle everything in flight so a shutdown drain does not
-  // lose the buffered funnel events or an in-flight durable usage write.
+  // lose the buffered funnel events, a batch an earlier interval or threshold
+  // flush is still writing, or an in-flight durable usage write. The caller
+  // destroys the DB pool next, which aborts any write still waiting on it.
   async drain(): Promise<void> {
     this.stop();
     await this.flush();
+    await Promise.allSettled([...this.inFlightFlushes]);
     await this.flushDurable();
   }
 
-  async flush(): Promise<void> {
+  flush(): Promise<void> {
+    const flushing = this.writeBuffered().finally(() =>
+      this.inFlightFlushes.delete(flushing)
+    );
+    this.inFlightFlushes.add(flushing);
+    return flushing;
+  }
+
+  private async writeBuffered(): Promise<void> {
     const rows = this.buffer;
     this.buffer = [];
     if (rows.length === 0) return;

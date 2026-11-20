@@ -184,6 +184,118 @@ describe('EventsSink', () => {
     expect(inserted).toHaveLength(1);
   });
 
+  describe('draining before the DB pool closes', () => {
+    const KNEX_ACQUIRE_TIMEOUT_MS = 60_000;
+    const CONNECT_LATENCY_MS = 50;
+
+    class PoolDestroyedError extends Error {}
+    class AcquireTimeoutError extends Error {}
+
+    function makePoolBackedRepository() {
+      const { repo, inserted } = makeFakeRepository();
+      const waiting = new Set<(error?: Error) => void>();
+      let reachable = true;
+      const acquire = () =>
+        new Promise<void>((resolve, reject) => {
+          const settle = (error?: Error) => {
+            if (!waiting.delete(settle)) return;
+            if (error == null) resolve();
+            else reject(error);
+          };
+          waiting.add(settle);
+          if (reachable) setTimeout(() => settle(), CONNECT_LATENCY_MS);
+          setTimeout(
+            () => settle(new AcquireTimeoutError()),
+            KNEX_ACQUIRE_TIMEOUT_MS
+          );
+        });
+      const pool = {
+        goDown: () => {
+          reachable = false;
+        },
+        destroy: vi.fn(async () => {
+          for (const settle of [...waiting]) settle(new PoolDestroyedError());
+        }),
+      };
+      (repo.insertEvents as Mock).mockImplementation(
+        async (rows: EventRow[]) => {
+          await acquire();
+          inserted.push([...rows]);
+        }
+      );
+      return { repo, inserted, pool };
+    }
+
+    async function drainThenDestroy(
+      sink: EventsSink,
+      pool: { destroy: () => Promise<void> }
+    ) {
+      try {
+        await sink.drain();
+      } finally {
+        await pool.destroy();
+      }
+    }
+
+    beforeEach(() => {
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('lands events an interval flush was writing when the drain began', async () => {
+      const { repo, inserted, pool } = makePoolBackedRepository();
+      const sink = new EventsSink(repo, { flushIntervalMs: 1000 });
+      sink.start();
+      sink.record(baseRow);
+      sink.record({ ...baseRow, name: 'upload_started' });
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(repo.insertEvents).toHaveBeenCalledTimes(1);
+
+      const drained = drainThenDestroy(sink, pool);
+      await vi.advanceTimersByTimeAsync(CONNECT_LATENCY_MS);
+      await drained;
+
+      expect(inserted.flat().map((row) => row.name)).toEqual([
+        'conversion_succeeded',
+        'upload_started',
+      ]);
+      expect(pool.destroy).toHaveBeenCalledTimes(1);
+    });
+
+    it('lands events a threshold flush was writing when the drain began', async () => {
+      const { repo, inserted, pool } = makePoolBackedRepository();
+      const sink = new EventsSink(repo, { flushThreshold: 2 });
+      sink.record(baseRow);
+      sink.record({ ...baseRow, name: 'upload_started' });
+      await vi.advanceTimersByTimeAsync(0);
+      expect(repo.insertEvents).toHaveBeenCalledTimes(1);
+
+      const drained = drainThenDestroy(sink, pool);
+      await vi.advanceTimersByTimeAsync(CONNECT_LATENCY_MS);
+      await drained;
+
+      expect(inserted.flat()).toHaveLength(2);
+    });
+
+    it('still closes the pool once the in-flight write times out with the database down', async () => {
+      const { repo, inserted, pool } = makePoolBackedRepository();
+      pool.goDown();
+      const sink = new EventsSink(repo, { flushThreshold: 2 });
+      sink.record(baseRow);
+      sink.record({ ...baseRow, name: 'upload_started' });
+
+      const drained = drainThenDestroy(sink, pool);
+      await vi.advanceTimersByTimeAsync(KNEX_ACQUIRE_TIMEOUT_MS);
+      await drained;
+
+      expect(inserted).toHaveLength(0);
+      expect(pool.destroy).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it('start is idempotent — a second start adds no second timer', () => {
     // This test previously called start twice and stop once with no assertion,
     // so it passed no matter what start() did. A leaked second interval would
