@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-20-oversized-upload-refused-at-once",
+  "date": "2026-11-20",
+  "type": "fix",
+  "title": "A file over the upload size limit is refused right away instead of failing after a long upload"
+}

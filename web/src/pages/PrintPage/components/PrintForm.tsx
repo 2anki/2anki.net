@@ -20,6 +20,7 @@ import {
   readHandoffFile,
   stripDeckExtension,
 } from '../../../lib/deckUpload/deckUploadAnswer';
+import { APKG_TOOL_MAX_BYTES } from '../../../lib/upload/uploadSizeLimits';
 
 type PrintState =
   | 'idle'
@@ -337,6 +338,11 @@ export default function PrintForm() {
   const handleFile = async (file: File) => {
     if (!isDeckUploadName(file.name)) {
       setPickError(messages.wrongType);
+      setState('idle');
+      return;
+    }
+    if (file.size > APKG_TOOL_MAX_BYTES) {
+      setPickError(messages.tooLarge);
       setState('idle');
       return;
     }

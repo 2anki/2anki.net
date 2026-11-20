@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MemoryRouter } from 'react-router-dom';
 import ApkgCsvExportForm from './ApkgCsvExportForm';
+import { APKG_TOOL_MAX_BYTES } from '../../lib/upload/uploadSizeLimits';
 
 const mockTrack = vi.fn();
 
@@ -54,6 +55,48 @@ describe('ApkgCsvExportForm', () => {
     fireEvent.submit(input.closest('form')!);
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent(/isn’t an \.apkg/i);
+    });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('sends a deck exactly at the upload limit', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(null, { status: 500 }));
+    render(
+      <MemoryRouter>
+        <ApkgCsvExportForm />
+      </MemoryRouter>
+    );
+    const input = screen.getByLabelText(
+      /Choose \.apkg file/i
+    ) as HTMLInputElement;
+    const deck = makeApkgFile();
+    Object.defineProperty(deck, 'size', { value: APKG_TOOL_MAX_BYTES });
+    fireEvent.change(input, { target: { files: [deck] } });
+    fireEvent.submit(input.closest('form')!);
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
+    expect(fetchSpy.mock.calls[0][0]).toBe('/api/apkg/csv');
+  });
+
+  it('does not send a deck one byte over the upload limit and says why', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    render(
+      <MemoryRouter>
+        <ApkgCsvExportForm />
+      </MemoryRouter>
+    );
+    const input = screen.getByLabelText(
+      /Choose \.apkg file/i
+    ) as HTMLInputElement;
+    const deck = makeApkgFile();
+    Object.defineProperty(deck, 'size', { value: APKG_TOOL_MAX_BYTES + 1 });
+    fireEvent.change(input, { target: { files: [deck] } });
+    fireEvent.submit(input.closest('form')!);
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'This file is over the 100 MB upload limit.'
+      );
     });
     expect(fetchSpy).not.toHaveBeenCalled();
   });

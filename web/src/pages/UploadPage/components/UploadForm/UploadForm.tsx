@@ -157,6 +157,13 @@ import {
   withinStorableSize,
   type PendingUpload,
 } from '../../../../lib/upload/pendingUpload';
+import {
+  PDF_UNLOCK_MAX_BYTES,
+  UPLOAD_FILE_FREE_MAX_BYTES,
+  UPLOAD_FILE_PAYING_MAX_BYTES,
+  findOversizedFile,
+  megabytesLabel,
+} from '../../../../lib/upload/uploadSizeLimits';
 
 import type {
   ZoneState,
@@ -358,6 +365,11 @@ function findLockedPdf(files: File[], lockedName: unknown): File | undefined {
   if (files.some((file) => /\.zip$/i.test(file.name))) return undefined;
   return files.find((file) => /\.pdf$/i.test(file.name));
 }
+
+const FILE_TOO_LARGE: UploadErrorBody = {
+  code: 'too_large',
+  message: 'This file is too large to convert in one go.',
+};
 
 function zoneStateForUploadError(
   message: UploadErrorBody
@@ -2251,12 +2263,44 @@ function UploadForm({
     return recoveryTokenRef.current;
   };
 
+  const uploadFileLimitBytes = (): number => {
+    const knownToBeFree =
+      userLocals != null &&
+      !userLocalsFailed &&
+      !isPaying &&
+      getStoredPassToken() == null;
+    return knownToBeFree
+      ? UPLOAD_FILE_FREE_MAX_BYTES
+      : UPLOAD_FILE_PAYING_MAX_BYTES;
+  };
+
+  const refuseOversizedUpload = (uploadedFiles: File[]): boolean => {
+    const limitBytes = uploadFileLimitBytes();
+    const oversized = findOversizedFile(uploadedFiles, limitBytes);
+    if (oversized == null) return false;
+    if (limitBytes === UPLOAD_FILE_FREE_MAX_BYTES) {
+      setLimitInfo({
+        filename: oversized.name,
+        fileSizeBytes: oversized.size,
+        kind: 'file_size',
+        monthlyLimit: null,
+      });
+      setZoneState('limitReached');
+    } else {
+      setNetworkRetryFiles(null);
+      setLocalError(FILE_TOO_LARGE);
+      setZoneState('error');
+    }
+    return true;
+  };
+
   const runFileUpload = async (
     formData: FormData,
     uploadedFiles: File[],
     isRetry: boolean,
     trigger: UploadTrigger
   ): Promise<boolean> => {
+    if (refuseOversizedUpload(uploadedFiles)) return false;
     // A PDF with no readable text is the one thing the server will not guess
     // about: it asks which cards to make, unless this device already said.
     if (
@@ -3674,7 +3718,9 @@ function UploadForm({
         : monthlyLimitCopy(t, i18n.language, monthlyLimit);
     let title: string;
     if (isFileSize) {
-      title = t('upload.limit.fileTooBig', { limit: '100 MB' });
+      title = t('upload.limit.fileTooBig', {
+        limit: megabytesLabel(UPLOAD_FILE_FREE_MAX_BYTES),
+      });
     } else if (monthlyCopy != null) {
       title = monthlyCopy.title;
     } else if (cardsUsed >= 100) {
@@ -4082,6 +4128,12 @@ function UploadForm({
     if (!credential) return;
     if (rescueFilesOwner === undefined) {
       holdForUnknownSender();
+      return;
+    }
+    if (lockedPdfInfo.file.size > PDF_UNLOCK_MAX_BYTES) {
+      setLockedPdfInfo(null);
+      setLocalError(FILE_TOO_LARGE);
+      setZoneState('error');
       return;
     }
 

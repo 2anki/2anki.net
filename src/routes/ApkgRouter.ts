@@ -22,6 +22,7 @@ import { ErrorEventRepository } from '../data_layer/ErrorEventRepository';
 import { makeServerErrorRecorder } from './middleware/ErrorCaptureMiddleware';
 import { writeFallbackError } from '../lib/errorFallback';
 import { getRelease } from '../lib/release';
+import { APKG_TOOL_MAX_UPLOAD_BYTES } from '../lib/upload/uploadSizeLimits';
 
 const ApkgRouter = () => {
   const database = getDatabase();
@@ -255,7 +256,7 @@ const ApkgRouter = () => {
 
   const pdfUpload = multer({
     dest: process.env.UPLOAD_BASE ?? '/tmp',
-    limits: { fileSize: 100 * 1024 * 1024 },
+    limits: { fileSize: APKG_TOOL_MAX_UPLOAD_BYTES },
   });
 
   router.post(
@@ -270,7 +271,7 @@ const ApkgRouter = () => {
 
   const previewUpload = multer({
     dest: process.env.UPLOAD_BASE ?? '/tmp',
-    limits: { fileSize: 100 * 1024 * 1024 },
+    limits: { fileSize: APKG_TOOL_MAX_UPLOAD_BYTES },
   });
 
   // Bound the free preview, since it launches a fresh Chrome per request
@@ -298,7 +299,7 @@ const ApkgRouter = () => {
 
   const csvUpload = multer({
     dest: process.env.UPLOAD_BASE ?? '/tmp',
-    limits: { fileSize: 100 * 1024 * 1024 },
+    limits: { fileSize: APKG_TOOL_MAX_UPLOAD_BYTES },
   });
 
   // No RequireAuthentication: anonymous visitors get a capped export. This is
