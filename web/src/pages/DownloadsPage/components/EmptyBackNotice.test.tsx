@@ -1,7 +1,10 @@
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { EmptyBackNotice } from './EmptyBackNotice';
+import {
+  EmptyBackNotice,
+  forgetShownEmptyBackNotices,
+} from './EmptyBackNotice';
 import { track } from '../../../lib/analytics/track';
 
 vi.mock('../../../lib/analytics/track', () => ({
@@ -11,6 +14,7 @@ vi.mock('../../../lib/analytics/track', () => ({
 describe('EmptyBackNotice', () => {
   beforeEach(() => {
     vi.mocked(track).mockClear();
+    forgetShownEmptyBackNotices();
   });
 
   it('uses singular copy for one skipped card', () => {
@@ -71,6 +75,35 @@ describe('EmptyBackNotice', () => {
     render(<EmptyBackNotice count={2} />);
     expect(track).toHaveBeenCalledWith('empty_back_notice_shown', {
       empty_back_count: 2,
+    });
+  });
+
+  it('tracks a keyed notice once when it remounts in the same page load', () => {
+    const { unmount } = render(
+      <EmptyBackNotice count={5} noticeKey="upload:remount.apkg" />
+    );
+    unmount();
+    render(<EmptyBackNotice count={5} noticeKey="upload:remount.apkg" />);
+
+    expect(track).toHaveBeenCalledTimes(1);
+  });
+
+  it('tracks the notice again for a different upload', () => {
+    render(<EmptyBackNotice count={5} noticeKey="upload:first.apkg" />);
+    render(<EmptyBackNotice count={5} noticeKey="upload:second.apkg" />);
+
+    expect(track).toHaveBeenCalledTimes(2);
+  });
+
+  it('tracks each kind of notice about the same upload', () => {
+    render(<EmptyBackNotice count={5} noticeKey="upload:both.apkg" />);
+    render(
+      <EmptyBackNotice count={2} source="blank" noticeKey="upload:both.apkg" />
+    );
+
+    expect(track).toHaveBeenNthCalledWith(2, 'empty_back_notice_shown', {
+      empty_back_count: 2,
+      kind: 'blank_back',
     });
   });
 
