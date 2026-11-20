@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { track } from '../../../lib/analytics/track';
+import { trackNoticeOncePerLoad } from '../../../lib/analytics/trackNoticeOncePerLoad';
 
 export type EmptyBackSource = 'upload' | 'notion' | 'blank' | 'leftOut';
 
@@ -10,23 +10,6 @@ interface EmptyBackNoticeProps {
   source?: EmptyBackSource;
   surface?: 'downloads_row';
   noticeKey?: string;
-}
-
-const shownThisLoad = new Set<string>();
-
-export function forgetShownEmptyBackNotices(): void {
-  shownThisLoad.clear();
-}
-
-function alreadyShownThisLoad(
-  noticeKey: string | undefined,
-  source: EmptyBackSource
-): boolean {
-  if (noticeKey == null) return false;
-  const key = `${noticeKey}:${source}`;
-  if (shownThisLoad.has(key)) return true;
-  shownThisLoad.add(key);
-  return false;
 }
 
 export function EmptyBackNotice({
@@ -39,8 +22,8 @@ export function EmptyBackNotice({
   const { t } = useTranslation('downloadsx');
 
   useEffect(() => {
-    if (alreadyShownThisLoad(noticeKey, source)) return;
-    track('empty_back_notice_shown', {
+    const kindKey = noticeKey == null ? undefined : `${noticeKey}:${source}`;
+    trackNoticeOncePerLoad('empty_back_notice_shown', kindKey, {
       empty_back_count: count,
       ...(surface != null ? { surface } : {}),
       ...(source === 'blank' ? { kind: 'blank_back' } : {}),

@@ -699,6 +699,7 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                             : 0;
                           const isTruncatedRow =
                             isNotionDoneRow && hasTruncationSignal(row.job);
+                          const conversionNoticeKey = `job:${row.job.id}:${row.job.upload_id ?? 'none'}`;
                           const isMonthlyLimitRow =
                             isFailed &&
                             parseMonthlyLimitPayload(
@@ -912,6 +913,7 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                         onSeeReport={() =>
                                           setReportModalJob(row.job)
                                         }
+                                        noticeKey={conversionNoticeKey}
                                       />
                                     </td>
                                   </tr>
@@ -930,7 +932,7 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                       <EmptyBackNotice
                                         count={row.job.empty_back_count ?? 0}
                                         source="notion"
-                                        noticeKey={`job:${row.job.id}:${row.job.upload_id ?? 'none'}`}
+                                        noticeKey={conversionNoticeKey}
                                       />
                                     </td>
                                   </tr>
@@ -946,6 +948,7 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                         count={
                                           row.job.cherry_skipped_count ?? 0
                                         }
+                                        noticeKey={conversionNoticeKey}
                                       />
                                     </td>
                                   </tr>
@@ -974,6 +977,7 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                       count={droppedAssetCount}
                                       source="notionAsset"
                                       surface="downloads_row"
+                                      noticeKey={conversionNoticeKey}
                                     />
                                   </td>
                                 </tr>
@@ -1164,6 +1168,7 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                             : 'notionHtml'
                                         }
                                         surface="downloads_row"
+                                        noticeKey={`upload:${u.key}`}
                                       />
                                     </td>
                                   </tr>

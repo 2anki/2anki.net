@@ -1,22 +1,27 @@
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { track } from '../../../lib/analytics/track';
+import { trackNoticeOncePerLoad } from '../../../lib/analytics/trackNoticeOncePerLoad';
 
 interface CherrySkippedNoticeProps {
   count: number;
   returnTo?: '/downloads' | '/upload';
+  noticeKey?: string;
 }
 
 export function CherrySkippedNotice({
   count,
   returnTo = '/downloads',
+  noticeKey,
 }: Readonly<CherrySkippedNoticeProps>) {
   const { t } = useTranslation('downloadsx');
 
   useEffect(() => {
-    track('cherry_skipped_notice_shown', { skipped: count, returnTo });
-  }, [count, returnTo]);
+    trackNoticeOncePerLoad('cherry_skipped_notice_shown', noticeKey, {
+      skipped: count,
+      returnTo,
+    });
+  }, [count, returnTo, noticeKey]);
 
   return (
     <p>
