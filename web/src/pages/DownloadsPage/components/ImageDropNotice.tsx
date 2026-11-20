@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { track } from '../../../lib/analytics/track';
+import { trackNoticeOncePerLoad } from '../../../lib/analytics/trackNoticeOncePerLoad';
 
 type ImageDropSource =
   | 'notion'
@@ -24,6 +24,7 @@ interface ImageDropNoticeProps {
   multipleDecks?: boolean;
   expiredCount?: number;
   surface?: ImageDropSurface;
+  noticeKey?: string;
 }
 
 function resolveImageDropKey(
@@ -48,19 +49,20 @@ export function ImageDropNotice({
   multipleDecks = false,
   expiredCount,
   surface = 'upload_form',
+  noticeKey,
 }: Readonly<ImageDropNoticeProps>) {
   const { t } = useTranslation('downloadsx');
   const expired = expiredCount ?? 0;
 
   useEffect(() => {
-    track('image_drop_notice_shown', {
+    trackNoticeOncePerLoad('image_drop_notice_shown', noticeKey, {
       dropped_count: count,
       source,
       expired_count: expired,
       surface,
       reason: reasonForImageDropSource(source),
     });
-  }, [count, source, expired, surface]);
+  }, [count, source, expired, surface, noticeKey]);
 
   const expiredNoticeKey = multipleDecks
     ? 'imageDrop.notionExportExpiredMultiDeck'

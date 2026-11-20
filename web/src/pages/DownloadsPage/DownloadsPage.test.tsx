@@ -5,7 +5,7 @@ import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { DownloadsPage, renderJobStatusCell } from './DownloadsPage';
-import { forgetShownEmptyBackNotices } from './components/EmptyBackNotice';
+import { forgetNoticesShownThisLoad } from '../../lib/analytics/trackNoticeOncePerLoad';
 import i18n from '../../lib/i18n';
 import type JobResponse from '@server/types/JobResponse';
 import type { JobsId } from '@server/data_layer/public/Jobs';
@@ -1945,7 +1945,7 @@ describe('DownloadsPage empty-back notice event', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-11-20T12:00:00Z'));
     trackedEvents = [];
-    forgetShownEmptyBackNotices();
+    forgetNoticesShownThisLoad();
     (globalThis as AnalyticsGlobals).hj = vi.fn();
     (globalThis as AnalyticsGlobals).gtag = vi.fn();
     globalThis.fetch = vi
@@ -2079,5 +2079,206 @@ describe('DownloadsPage empty-back notice event', () => {
       { empty_back_count: 2 },
       { empty_back_count: 4 },
     ]);
+  });
+});
+
+describe('DownloadsPage image-drop, thin-deck and cherry-skipped notice events', () => {
+  let trackedEvents: { name: string; props: Record<string, unknown> }[] = [];
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  const page = () => (
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={['/downloads']}>
+        <DownloadsPage setError={vi.fn()} />
+      </MemoryRouter>
+    </QueryClientProvider>
+  );
+  const eventsNamed = (name: string) =>
+    trackedEvents
+      .filter((event) => event.name === name)
+      .map((event) => event.props);
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-11-20T12:00:00Z'));
+    trackedEvents = [];
+    forgetNoticesShownThisLoad();
+    (globalThis as AnalyticsGlobals).hj = vi.fn();
+    (globalThis as AnalyticsGlobals).gtag = vi.fn();
+    globalThis.fetch = vi
+      .fn()
+      .mockImplementation((url: string, init?: RequestInit) => {
+        if (url === '/api/events/track') {
+          trackedEvents.push(JSON.parse((init?.body as string) ?? '{}'));
+        }
+        return Promise.resolve(new Response(null, { status: 200 }));
+      });
+    mockJobs = [];
+    mockUploads = [];
+    mockDropboxUploads = [];
+    mockGoogleDriveUploads = [];
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+    delete (globalThis as AnalyticsGlobals).hj;
+    delete (globalThis as AnalyticsGlobals).gtag;
+  });
+
+  const remountAcrossFilterAndRevisit = () => {
+    const { unmount } = render(page());
+    fireEvent.click(screen.getByRole('button', { name: 'Failed' }));
+    fireEvent.click(screen.getByRole('button', { name: 'All' }));
+    unmount();
+    render(page());
+  };
+
+  const notionConversion = (
+    uploadId: number,
+    overrides: Partial<JobResponse> = {}
+  ) =>
+    buildJob({
+      id: 9303 as JobsId,
+      status: 'done',
+      type: 'page',
+      download_key: `deck-${uploadId}.apkg`,
+      upload_id: uploadId,
+      card_count: 20,
+      ...overrides,
+    });
+
+  const droppedAssets = (count: number) =>
+    JSON.stringify({ code: 'notion_assets_dropped', dropped_assets: count });
+
+  it('tracks an upload row image-drop notice once across a filter change and a revisit', () => {
+    mockUploads = [
+      {
+        id: 'id-images.apkg',
+        size_mb: 1,
+        owner: 1,
+        key: 'images.apkg',
+        filename: 'notes.html',
+        object_id: '',
+        created_at: '2026-11-20T10:00:00Z',
+        source: null,
+        dropped_image_count: 2,
+        image_drop_reason: 'notion_html_no_folder',
+        empty_back_count: null,
+      },
+    ];
+
+    remountAcrossFilterAndRevisit();
+
+    expect(eventsNamed('image_drop_notice_shown')).toEqual([
+      {
+        dropped_count: 2,
+        source: 'notionHtml',
+        expired_count: 0,
+        surface: 'downloads_row',
+        reason: 'notion_html_no_folder',
+      },
+    ]);
+  });
+
+  it('tracks the image-drop and empty-back notices on the same upload row once each', () => {
+    mockUploads = [
+      {
+        id: 'id-both.apkg',
+        size_mb: 1,
+        owner: 1,
+        key: 'both.apkg',
+        filename: 'notes.txt',
+        object_id: '',
+        created_at: '2026-11-20T10:00:00Z',
+        source: null,
+        dropped_image_count: 1,
+        image_drop_reason: 'plain_text_fallback',
+        empty_back_count: 3,
+      },
+    ];
+
+    remountAcrossFilterAndRevisit();
+
+    expect(eventsNamed('image_drop_notice_shown')).toHaveLength(1);
+    expect(eventsNamed('empty_back_notice_shown')).toHaveLength(1);
+  });
+
+  it('tracks a Notion row image-drop notice once across a filter change and a revisit', () => {
+    mockJobs = [
+      notionConversion(701, { job_reason_failure: droppedAssets(3) }),
+    ];
+
+    remountAcrossFilterAndRevisit();
+
+    expect(eventsNamed('image_drop_notice_shown')).toEqual([
+      {
+        dropped_count: 3,
+        source: 'notionAsset',
+        expired_count: 0,
+        surface: 'downloads_row',
+        reason: null,
+      },
+    ]);
+  });
+
+  it('tracks a Notion row thin-deck notice once across a filter change and a revisit', () => {
+    mockJobs = [notionConversion(702, { card_count: 3, empty_back_count: 5 })];
+
+    remountAcrossFilterAndRevisit();
+
+    expect(eventsNamed('thin_deck_notice_shown')).toEqual([
+      { reason: 'emptyToggles', cards: 3, skipped: 5, surface: 'downloads' },
+    ]);
+  });
+
+  it('tracks a Notion row cherry-skipped notice once across a filter change and a revisit', () => {
+    mockJobs = [notionConversion(703, { cherry_skipped_count: 4 })];
+
+    remountAcrossFilterAndRevisit();
+
+    expect(eventsNamed('cherry_skipped_notice_shown')).toEqual([
+      { skipped: 4, returnTo: '/downloads' },
+    ]);
+  });
+
+  it('tracks each different notice on the same Notion row once', () => {
+    mockJobs = [
+      notionConversion(704, {
+        empty_back_count: 2,
+        cherry_skipped_count: 4,
+        job_reason_failure: droppedAssets(3),
+      }),
+    ];
+
+    remountAcrossFilterAndRevisit();
+
+    expect(eventsNamed('empty_back_notice_shown')).toHaveLength(1);
+    expect(eventsNamed('cherry_skipped_notice_shown')).toHaveLength(1);
+    expect(eventsNamed('image_drop_notice_shown')).toHaveLength(1);
+  });
+
+  it('tracks the thin-deck, cherry-skipped and image-drop notices again when the same Notion page is converted again', () => {
+    const conversion = (uploadId: number) =>
+      notionConversion(uploadId, {
+        card_count: 3,
+        empty_back_count: 5,
+        cherry_skipped_count: 4,
+        job_reason_failure: droppedAssets(3),
+      });
+    mockJobs = [conversion(801)];
+    const { rerender } = render(page());
+
+    mockJobs = [
+      notionConversion(801, { status: 'started', download_key: null }),
+    ];
+    rerender(page());
+    mockJobs = [conversion(802)];
+    rerender(page());
+
+    expect(eventsNamed('thin_deck_notice_shown')).toHaveLength(2);
+    expect(eventsNamed('cherry_skipped_notice_shown')).toHaveLength(2);
+    expect(eventsNamed('image_drop_notice_shown')).toHaveLength(2);
   });
 });

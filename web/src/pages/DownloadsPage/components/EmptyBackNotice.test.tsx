@@ -1,11 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  EmptyBackNotice,
-  forgetShownEmptyBackNotices,
-} from './EmptyBackNotice';
+import { EmptyBackNotice } from './EmptyBackNotice';
 import { track } from '../../../lib/analytics/track';
+import { forgetNoticesShownThisLoad } from '../../../lib/analytics/trackNoticeOncePerLoad';
 
 vi.mock('../../../lib/analytics/track', () => ({
   track: vi.fn(),
@@ -14,7 +12,7 @@ vi.mock('../../../lib/analytics/track', () => ({
 describe('EmptyBackNotice', () => {
   beforeEach(() => {
     vi.mocked(track).mockClear();
-    forgetShownEmptyBackNotices();
+    forgetNoticesShownThisLoad();
   });
 
   it('uses singular copy for one skipped card', () => {

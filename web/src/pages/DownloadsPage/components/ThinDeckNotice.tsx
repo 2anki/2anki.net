@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { track } from '../../../lib/analytics/track';
+import { trackNoticeOncePerLoad } from '../../../lib/analytics/trackNoticeOncePerLoad';
 import styles from '../DownloadsPage.module.css';
 import { ThinDeckReason } from '../helpers/getThinDeckSignal';
 
@@ -12,6 +12,7 @@ interface ThinDeckNoticeProps {
   skipped: number;
   surface?: ThinDeckSurface;
   onSeeReport?: () => void;
+  noticeKey?: string;
 }
 
 export function ThinDeckNotice({
@@ -20,12 +21,18 @@ export function ThinDeckNotice({
   skipped,
   surface = 'downloads',
   onSeeReport,
+  noticeKey,
 }: Readonly<ThinDeckNoticeProps>) {
   const { t } = useTranslation('downloadsx');
 
   useEffect(() => {
-    track('thin_deck_notice_shown', { reason, cards, skipped, surface });
-  }, [reason, cards, skipped, surface]);
+    trackNoticeOncePerLoad('thin_deck_notice_shown', noticeKey, {
+      reason,
+      cards,
+      skipped,
+      surface,
+    });
+  }, [reason, cards, skipped, surface, noticeKey]);
 
   const message = t(`thinDeck.${reason}`, { count: cards, skipped });
 
