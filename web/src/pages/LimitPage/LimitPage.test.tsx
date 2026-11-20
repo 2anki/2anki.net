@@ -156,7 +156,7 @@ describe('LimitPage', () => {
     expect(
       screen.getByRole('heading', {
         level: 1,
-        name: 'This deck would go past your 100 free cards this month.',
+        name: 'This deck would go past your 100 free cards this month',
       })
     ).toBeInTheDocument();
     expect(screen.queryByText("You've reached your monthly limit")).toBeNull();

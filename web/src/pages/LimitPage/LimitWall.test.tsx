@@ -57,13 +57,13 @@ describe('LimitWall', () => {
 
   it('heads the wall with the given heading in place of the monthly limit', () => {
     renderWall({
-      heading: 'This deck would go past your 100 free cards this month.',
+      heading: 'This deck would go past your 100 free cards this month',
     });
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
     expect(
       screen.getByRole('heading', {
         level: 1,
-        name: 'This deck would go past your 100 free cards this month.',
+        name: 'This deck would go past your 100 free cards this month',
       })
     ).toBeInTheDocument();
     expect(screen.queryByText("You've reached your monthly limit")).toBeNull();

@@ -404,7 +404,7 @@ export function LimitPage() {
   const deckWouldGoPastLimit =
     monthlyLimit != null && monthlyLimit.cardsUsed < monthlyLimit.limit;
   const heading = deckWouldGoPastLimit
-    ? (monthlyLimitText?.title ?? null)
+    ? (monthlyLimitText?.title.replace(/[.。]$/, '') ?? null)
     : null;
 
   const handleUnlimitedClick = async (event: MouseEvent<HTMLAnchorElement>) => {

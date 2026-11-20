@@ -84,7 +84,7 @@ describe('LimitPage in Russian for a signed-in account', () => {
     ]);
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-      'Эта колода превысит лимит в 100 бесплатных карт на этот месяц.'
+      'Эта колода превысит лимит в 100 бесплатных карт на этот месяц'
     );
     expect(
       screen.getByText(/^Использовано 80 из 100\. Лимит обновится .*2026/)
