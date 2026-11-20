@@ -9,6 +9,14 @@ import {
   type UploadRequestState,
 } from '../../usecases/uploads/ensureUploadBytes';
 import { UploadedFile } from '../storage/types';
+import {
+  countFileStarted,
+  pipeCountingBodyBytes,
+} from './uploadStreamProgress';
+
+type MulterOptionsWithStreamHandler = multer.Options & {
+  streamHandler: (req: express.Request, busboy: NodeJS.WritableStream) => void;
+};
 
 type UploadHandler = (
   req: express.Request,
@@ -81,7 +89,8 @@ export class MixedUploadFieldsError extends Error {
 
 function oneUploadFieldPerRequest(): NonNullable<multer.Options['fileFilter']> {
   let firstField: string | null = null;
-  return (_req, file, decide) => {
+  return (req, file, decide) => {
+    countFileStarted(req);
     firstField ??= file.fieldname;
     if (file.fieldname === firstField) {
       decide(null, true);
@@ -108,11 +117,13 @@ export const getUploadHandler = (res: express.Response): UploadHandler => {
   const paying = isPaying(res.locals);
   const maxUploadCount = getMaxUploadCount(paying);
 
-  const handler = multer({
+  const options: MulterOptionsWithStreamHandler = {
     limits: getUploadLimits(paying),
     dest: process.env.UPLOAD_BASE,
     fileFilter: oneUploadFieldPerRequest(),
-  }).fields(
+    streamHandler: pipeCountingBodyBytes,
+  };
+  const handler = multer(options).fields(
     ACCEPTED_UPLOAD_FIELDS.map((name) => ({ name, maxCount: maxUploadCount }))
   );
 
