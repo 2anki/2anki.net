@@ -397,10 +397,15 @@ export function LimitPage() {
     : `/login?redirect=/pricing&ref=${REF}`;
 
   const monthlyLimit = monthlyLimitRefusalFromSearch(searchParams);
-  const usageLine =
+  const monthlyLimitText =
     monthlyLimit == null
       ? null
-      : monthlyLimitCopy(t, i18n.language, monthlyLimit).usage;
+      : monthlyLimitCopy(t, i18n.language, monthlyLimit);
+  const deckWouldGoPastLimit =
+    monthlyLimit != null && monthlyLimit.cardsUsed < monthlyLimit.limit;
+  const heading = deckWouldGoPastLimit
+    ? (monthlyLimitText?.title.replace(/[.。]$/, '') ?? null)
+    : null;
 
   const handleUnlimitedClick = async (event: MouseEvent<HTMLAnchorElement>) => {
     track('paywall_upgrade_clicked', { surface: REF, plan: 'unlimited' });
@@ -420,7 +425,8 @@ export function LimitPage() {
       unlimitedHref={unlimitedLink}
       unlimitedPrice={unlimitedPrice}
       passPrices={passPrices}
-      usageLine={usageLine}
+      usageLine={monthlyLimitText?.usage ?? null}
+      heading={heading}
       onUnlimitedClick={handleUnlimitedClick}
       notice={
         isLoggedIn ? (

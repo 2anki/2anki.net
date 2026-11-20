@@ -29,6 +29,7 @@ interface LimitWallProps {
   featureSemester?: boolean;
   passPrices?: PassPriceDisplay;
   usageLine?: string | null;
+  heading?: string | null;
 }
 
 export function LimitWall({
@@ -42,6 +43,7 @@ export function LimitWall({
   featureSemester = false,
   passPrices,
   usageLine = null,
+  heading = null,
 }: Readonly<LimitWallProps>) {
   const { t } = useTranslation('accountx');
   const errorRef = useRef<HTMLParagraphElement>(null);
@@ -59,7 +61,7 @@ export function LimitWall({
       </Helmet>
 
       <header className={styles.header}>
-        <h1 className={styles.heading}>{t('limit.headline')}</h1>
+        <h1 className={styles.heading}>{heading ?? t('limit.headline')}</h1>
         <p className={styles.subheading}>
           {usageLine == null ? '' : `${usageLine} `}
           {t('limit.subheading', { limit: FREE_MONTHLY_CARDS })}

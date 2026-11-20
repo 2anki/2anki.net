@@ -11,6 +11,7 @@ interface WallOverrides {
   unlimitedPrice?: string;
   notice?: React.ReactNode;
   onUnlimitedClick?: () => void;
+  heading?: string | null;
 }
 
 function renderWall(overrides: WallOverrides = {}) {
@@ -25,6 +26,7 @@ function renderWall(overrides: WallOverrides = {}) {
           unlimitedPrice={overrides.unlimitedPrice}
           onUnlimitedClick={overrides.onUnlimitedClick ?? vi.fn()}
           notice={overrides.notice}
+          heading={overrides.heading}
         />
       </MemoryRouter>
     </HelmetProvider>
@@ -51,6 +53,20 @@ describe('LimitWall', () => {
         'Your monthly limit: 100 cards. Get a pass to keep converting now.'
       )
     ).toBeTruthy();
+  });
+
+  it('heads the wall with the given heading in place of the monthly limit', () => {
+    renderWall({
+      heading: 'This deck would go past your 100 free cards this month',
+    });
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    expect(
+      screen.getByRole('heading', {
+        level: 1,
+        name: 'This deck would go past your 100 free cards this month',
+      })
+    ).toBeInTheDocument();
+    expect(screen.queryByText("You've reached your monthly limit")).toBeNull();
   });
 
   it('leads with the passes and puts Pro after them', () => {

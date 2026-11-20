@@ -62,6 +62,46 @@ describe('LimitPage in German', () => {
   });
 });
 
+describe('LimitPage in Russian for a signed-in account', () => {
+  beforeEach(async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-20T09:00:00.000Z'));
+    vi.mocked(useUserLocals).mockReturnValue({
+      data: { user: { id: 1, email: 'reader@example.com' } },
+      isLoading: false,
+    } as ReturnType<typeof useUserLocals>);
+    await i18n.changeLanguage('ru');
+  });
+
+  afterEach(async () => {
+    vi.useRealTimers();
+    await i18n.changeLanguage('en');
+  });
+
+  it('agrees the noun with the limit when this deck would go past it', () => {
+    renderLimitPage([
+      '/limit?kind=card_count&used=80&limit=100&reset_on=2026-12-01T00%3A00%3A00.000Z',
+    ]);
+
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+      'Эта колода превысит лимит в 100 бесплатных карт на этот месяц'
+    );
+    expect(
+      screen.getByText(/^Использовано 80 из 100\. Лимит обновится .*2026/)
+    ).toBeInTheDocument();
+  });
+
+  it('keeps the monthly limit headline when the limit is used up', () => {
+    renderLimitPage([
+      '/limit?kind=card_count&used=100&limit=100&reset_on=2026-12-01T00%3A00%3A00.000Z',
+    ]);
+
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+      'Ты достиг месячного лимита'
+    );
+  });
+});
+
 describe('LimitPage in Russian', () => {
   beforeEach(async () => {
     vi.mocked(useUserLocals).mockReturnValue({
