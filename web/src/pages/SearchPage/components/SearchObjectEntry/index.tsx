@@ -119,7 +119,7 @@ function SearchObjectEntry(props: Readonly<Props>) {
             className={`${styles.convertStatus} ${styles.convertStatusWrap}`}
           >
             {monthlyCopy.title} {monthlyCopy.usage}{' '}
-            <Link to="/pricing">{t('limit.seePlans')}</Link>
+            <Link to="/pricing">{t('entry.upgrade')}</Link>
           </span>
         )}
         {status === 'paywall' && monthlyCopy == null && (

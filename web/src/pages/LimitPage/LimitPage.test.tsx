@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   act,
   render,
@@ -116,6 +116,10 @@ describe('LimitPage', () => {
     asLoggedIn();
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('shows the monthly limit message', () => {
     renderPage();
     expect(screen.getByText("You've reached your monthly limit")).toBeTruthy();
@@ -127,6 +131,8 @@ describe('LimitPage', () => {
   });
 
   it('says how many cards were made and when the limit resets when the refusal carried them', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-20T09:00:00.000Z'));
     renderPage([
       '/limit?kind=card_count&used=100&limit=100&reset_on=2026-12-01T00%3A00%3A00.000Z',
     ]);
@@ -143,7 +149,17 @@ describe('LimitPage', () => {
     ['/limit?kind=card_count'],
     ['/limit?ref=upload-limit-wall'],
     ['/limit?kind=card_count&used=100&limit=100&reset_on=never'],
+    [
+      '/limit?kind=card_count&used=99999999999999999999999&limit=100&reset_on=2026-12-01',
+    ],
+    ['/limit?kind=card_count&used=100&limit=999999999&reset_on=2026-12-01'],
+    ['/limit?kind=card_count&used=100&limit=100&reset_on=2026-02-30'],
+    ['/limit?kind=card_count&used=100&limit=100&reset_on=2020-12-01'],
+    ['/limit?kind=card_count&used=100&limit=100&reset_on=2031-12-01'],
+    ['/limit?kind=card_count&used=100&limit=100&reset_on=-000001-01-01'],
   ])('keeps the plain subheading for %s', (path) => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-20T09:00:00.000Z'));
     renderPage([path]);
 
     expect(
@@ -151,7 +167,9 @@ describe('LimitPage', () => {
         'Your monthly limit: 100 cards. Get a pass to keep converting now.'
       )
     ).toBeTruthy();
-    expect(document.body.textContent).not.toMatch(/undefined|NaN/);
+    expect(document.body.textContent).not.toMatch(
+      /undefined|NaN|Invalid Date|\de\+/
+    );
   });
 
   it('sells Pro in one line', () => {

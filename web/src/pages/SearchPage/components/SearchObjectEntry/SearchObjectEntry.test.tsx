@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { afterEach, describe, expect, it, vi, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 
 import SearchObjectEntry from './index';
@@ -176,49 +176,94 @@ describe('SearchObjectEntry convert button', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('on a monthly limit 402: says how many cards were made and when the limit resets', async () => {
-    mockConvert.mockResolvedValue({
-      status: 402,
-      json: async () => ({
-        reason: 'monthly_limit',
-        code: 'monthly_limit',
-        cards_used: 100,
-        limit: 100,
-        reset_on: '2026-12-01T00:00:00.000Z',
-      }),
+  describe('at the monthly limit', () => {
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-11-20T09:00:00.000Z'));
     });
 
-    renderEntry();
-    fireEvent.click(screen.getByRole('button', { name: 'Convert to Anki' }));
-
-    const status = await screen.findByText(
-      /You've used your 100 free cards this month\./
-    );
-    expect(status).toHaveTextContent(
-      "You've used your 100 free cards this month. You've made 100 of 100. The limit resets on 1 December 2026. See plans"
-    );
-    expect(screen.getByRole('link', { name: 'See plans' })).toHaveAttribute(
-      'href',
-      '/pricing'
-    );
-    expect(
-      screen.queryByText(/one conversion at a time/)
-    ).not.toBeInTheDocument();
-  });
-
-  it('on a monthly limit 402 without usage: keeps the paywall copy', async () => {
-    mockConvert.mockResolvedValue({
-      status: 402,
-      json: async () => ({ reason: 'monthly_limit', code: 'monthly_limit' }),
+    afterEach(() => {
+      vi.useRealTimers();
     });
 
-    renderEntry();
-    fireEvent.click(screen.getByRole('button', { name: 'Convert to Anki' }));
+    it('on a monthly limit 402: says how many cards were made and when the limit resets', async () => {
+      mockConvert.mockResolvedValue({
+        status: 402,
+        json: async () => ({
+          reason: 'monthly_limit',
+          code: 'monthly_limit',
+          cards_used: 100,
+          limit: 100,
+          reset_on: '2026-12-01T00:00:00.000Z',
+        }),
+      });
 
-    expect(
-      await screen.findByText(/Free plan — one conversion at a time\./)
-    ).toBeInTheDocument();
-    expect(document.body.textContent).not.toMatch(/undefined|NaN/);
+      renderEntry();
+      fireEvent.click(screen.getByRole('button', { name: 'Convert to Anki' }));
+
+      const status = await screen.findByText(
+        /You've used your 100 free cards this month\./
+      );
+      expect(status).toHaveTextContent(
+        "You've used your 100 free cards this month. You've made 100 of 100. The limit resets on 1 December 2026. Upgrade"
+      );
+      expect(screen.getByRole('link', { name: 'Upgrade' })).toHaveAttribute(
+        'href',
+        '/pricing'
+      );
+      expect(
+        screen.queryByText(/one conversion at a time/)
+      ).not.toBeInTheDocument();
+    });
+
+    it('on a monthly limit 402 without usage: keeps the paywall copy', async () => {
+      mockConvert.mockResolvedValue({
+        status: 402,
+        json: async () => ({ reason: 'monthly_limit', code: 'monthly_limit' }),
+      });
+
+      renderEntry();
+      fireEvent.click(screen.getByRole('button', { name: 'Convert to Anki' }));
+
+      expect(
+        await screen.findByText(/Free plan — one conversion at a time\./)
+      ).toBeInTheDocument();
+      expect(document.body.textContent).not.toMatch(/undefined|NaN/);
+    });
+
+    it.each([
+      ['a reset date years in the past', { reset_on: '2020-12-01' }],
+      ['a reset date that does not exist', { reset_on: '2026-02-30' }],
+      ['a count past the safe integers', { cards_used: 1e23 }],
+      ['a limit over 100000', { limit: 999999999 }],
+    ])(
+      'on a monthly limit 402 with %s: keeps the paywall copy',
+      async (_label, fields) => {
+        mockConvert.mockResolvedValue({
+          status: 402,
+          json: async () => ({
+            reason: 'monthly_limit',
+            code: 'monthly_limit',
+            cards_used: 100,
+            limit: 100,
+            reset_on: '2026-12-01T00:00:00.000Z',
+            ...fields,
+          }),
+        });
+
+        renderEntry();
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Convert to Anki' })
+        );
+
+        expect(
+          await screen.findByText(/Free plan — one conversion at a time\./)
+        ).toBeInTheDocument();
+        expect(document.body.textContent).not.toMatch(
+          /undefined|NaN|Invalid Date|e\+/
+        );
+      }
+    );
   });
 
   it('on 409: shows already-converting copy', async () => {

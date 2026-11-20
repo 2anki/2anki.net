@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { MemoryRouter } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ChatPanel, { consumeSseEvents } from './ChatPanel';
 
 window.HTMLElement.prototype.scrollIntoView = vi.fn();
@@ -289,6 +289,10 @@ describe('ChatPanel — per-turn deck download and naming', () => {
     });
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   function saveDeckWith(response: unknown) {
     mockPost.mockResolvedValueOnce(response);
     renderChatPanel({
@@ -305,6 +309,8 @@ describe('ChatPanel — per-turn deck download and naming', () => {
   }
 
   it('says how many cards were made and when the limit resets when the month is used up', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-20T09:00:00.000Z'));
     saveDeckWith({
       ok: false,
       status: 402,

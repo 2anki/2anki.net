@@ -2074,6 +2074,8 @@ describe('UploadForm Google Drive picker interaction', () => {
   });
 
   it('says how many cards were made and when the limit resets when a signed-in Drive import hits the card limit', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-20T09:00:00.000Z'));
     mockUseUserLocals.mockReturnValue({
       data: {
         user: { id: 7, email: 'test@example.com' },
@@ -2118,6 +2120,7 @@ describe('UploadForm Google Drive picker interaction', () => {
         )
       ).toBeInTheDocument();
     } finally {
+      vi.useRealTimers();
       mockUseUserLocals.mockReturnValue({
         data: undefined,
         isLoading: false,
@@ -5919,7 +5922,13 @@ describe('limit state', () => {
       };
     }
 
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-11-20T09:00:00.000Z'));
+    });
+
     afterEach(async () => {
+      vi.useRealTimers();
       await i18n.changeLanguage('en');
     });
 
@@ -5991,6 +6000,38 @@ describe('limit state', () => {
         'a count that is not a number',
         `card_count&used=lots&limit=100&reset_on=${RESET}`,
       ],
+      [
+        'a count past the safe integers',
+        `card_count&used=99999999999999999999999&limit=100&reset_on=${RESET}`,
+      ],
+      [
+        'a limit over 100000',
+        `card_count&used=100&limit=999999999&reset_on=${RESET}`,
+      ],
+      [
+        'a count in exponent notation',
+        `card_count&used=1e2&limit=100&reset_on=${RESET}`,
+      ],
+      [
+        'a day that does not exist',
+        'card_count&used=100&limit=100&reset_on=2026-02-30',
+      ],
+      [
+        'a reset date years in the past',
+        'card_count&used=100&limit=100&reset_on=2020-12-01',
+      ],
+      [
+        'a reset date years ahead',
+        'card_count&used=100&limit=100&reset_on=2031-12-01',
+      ],
+      [
+        'a written reset date',
+        'card_count&used=100&limit=100&reset_on=Dec%2025%202026',
+      ],
+      [
+        'a reset date with an offset',
+        'card_count&used=100&limit=100&reset_on=2026-12-01T00%3A00%3A00%2B14%3A00',
+      ],
     ])(
       'falls back to the generic wall when the refusal has %s',
       async (_label, kind) => {
@@ -6006,7 +6047,9 @@ describe('limit state', () => {
         expect(description).toBe(
           'Upgrade for no monthly cap, or wait until next month.'
         );
-        expect(container.textContent).not.toMatch(/undefined|NaN/);
+        expect(container.textContent).not.toMatch(
+          /undefined|NaN|Invalid Date|\de\+/
+        );
       }
     );
 

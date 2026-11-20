@@ -93,6 +93,7 @@ describe('Backend.claimHeldDeck', () => {
 describe('Backend.claimHeldDeck cut', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.useRealTimers();
   });
 
   it.each([
@@ -123,6 +124,8 @@ describe('Backend.claimHeldDeck cut', () => {
   });
 
   it('reads the usage a monthly limit refusal carries', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-20T09:00:00.000Z'));
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
