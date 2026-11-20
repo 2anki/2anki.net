@@ -13,6 +13,7 @@ import {
   readHandoffFile,
   stripDeckExtension,
 } from '../../lib/deckUpload/deckUploadAnswer';
+import { APKG_TOOL_MAX_BYTES } from '../../lib/upload/uploadSizeLimits';
 
 type FormState =
   | { kind: 'idle' }
@@ -121,6 +122,10 @@ function ApkgCsvExportForm() {
         kind: 'error',
         message: t('apkgCsv.notApkg'),
       });
+      return;
+    }
+    if (file.size > APKG_TOOL_MAX_BYTES) {
+      setState({ kind: 'error', message: t('apkgCsv.tooBig') });
       return;
     }
     setState({ kind: 'uploading' });

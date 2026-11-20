@@ -49,6 +49,7 @@ import {
   UNAUTHORIZED,
 } from './http';
 import { landingCampaignParams } from '../adClick';
+import { THIN_DECK_PREVIEW_MAX_BYTES } from '../upload/uploadSizeLimits';
 import {
   CheckoutConflict,
   readCheckoutConflict,
@@ -1008,6 +1009,9 @@ export class Backend {
   // Samples the cards Claude would write from a file. Only called from the
   // preview button: the consent field is the server's proof of the tap.
   async previewThinDeckAi(file: File): Promise<ThinDeckPreviewResult> {
+    if (file.size > THIN_DECK_PREVIEW_MAX_BYTES) {
+      return { kind: 'unavailable' };
+    }
     const form = new FormData();
     form.append('consent', 'claude');
     form.append('file', file, file.name);

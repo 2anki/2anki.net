@@ -63,6 +63,10 @@ import { ThinDeckAiPreviewController } from '../controllers/Upload/ThinDeckAiPre
 import { SampleUploadController } from '../controllers/Upload/SampleUploadController';
 import { ConvertSampleDeckUseCase } from '../usecases/uploads/ConvertSampleDeckUseCase';
 import { getAiBudgetStatus } from '../lib/claude/aiSpendGuard';
+import {
+  PDF_UNLOCK_MAX_UPLOAD_BYTES,
+  THIN_DECK_PREVIEW_MAX_UPLOAD_BYTES,
+} from '../lib/upload/uploadSizeLimits';
 
 const UploadRouter = () => {
   const router = express.Router();
@@ -467,7 +471,7 @@ const UploadRouter = () => {
     thinDeckAiPreviewController.guard,
     multer({
       storage: multer.memoryStorage(),
-      limits: { fileSize: 50 * 1024 * 1024, files: 1 },
+      limits: { fileSize: THIN_DECK_PREVIEW_MAX_UPLOAD_BYTES, files: 1 },
     }).single('file'),
     normalizeUploadFilenames,
     thinDeckAiPreviewController.bodyReceived,
@@ -482,7 +486,7 @@ const UploadRouter = () => {
       multer({
         dest: '/tmp',
         limits: {
-          fileSize: 50 * 1024 * 1024,
+          fileSize: PDF_UNLOCK_MAX_UPLOAD_BYTES,
           fieldSize: fieldSizeForPlan(res),
         },
         fileFilter: (_req, file, cb) => {

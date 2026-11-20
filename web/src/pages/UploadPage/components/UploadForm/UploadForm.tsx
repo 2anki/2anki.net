@@ -157,6 +157,13 @@ import {
   withinStorableSize,
   type PendingUpload,
 } from '../../../../lib/upload/pendingUpload';
+import {
+  PDF_UNLOCK_MAX_BYTES,
+  UPLOAD_FILE_FREE_MAX_BYTES,
+  UPLOAD_FILE_PAYING_MAX_BYTES,
+  findOversizedFile,
+  megabytesLabel,
+} from '../../../../lib/upload/uploadSizeLimits';
 
 import type {
   ZoneState,
@@ -358,6 +365,11 @@ function findLockedPdf(files: File[], lockedName: unknown): File | undefined {
   if (files.some((file) => /\.zip$/i.test(file.name))) return undefined;
   return files.find((file) => /\.pdf$/i.test(file.name));
 }
+
+const FILE_TOO_LARGE: UploadErrorBody = {
+  code: 'too_large',
+  message: 'This file is too large to convert in one go.',
+};
 
 function zoneStateForUploadError(
   message: UploadErrorBody
@@ -1362,6 +1374,10 @@ function UploadForm({
         return;
       }
       if (dataTransfer && dataTransfer.files.length > 0) {
+        if (zoneStateRef.current === 'converting') {
+          event.preventDefault();
+          return;
+        }
         const { files } = dataTransfer;
         moveScreenOn();
         fileInputRef.current!.files = files;
@@ -1515,6 +1531,7 @@ function UploadForm({
   const readAccountAgain = async (): Promise<{
     confirmed: boolean;
     accountId: number | null;
+    paying: boolean;
   }> => {
     let stopCap = () => {};
     const capped = new Promise<undefined>((resolve) => {
@@ -1524,9 +1541,17 @@ function UploadForm({
     try {
       const reread = await Promise.race([refetchUserLocals(), capped]);
       if (reread?.status !== 'success') {
-        return { confirmed: false, accountId: currentOwnerId };
+        return {
+          confirmed: false,
+          accountId: currentOwnerId,
+          paying: isPaying,
+        };
       }
-      return { confirmed: true, accountId: reread.data?.user?.id ?? null };
+      return {
+        confirmed: true,
+        accountId: reread.data?.user?.id ?? null,
+        paying: isPayingUser(reread.data?.locals),
+      };
     } finally {
       stopCap();
     }
@@ -2251,12 +2276,62 @@ function UploadForm({
     return recoveryTokenRef.current;
   };
 
+  const pageSeesFreeAccount = (): boolean =>
+    userLocals != null &&
+    !userLocalsFailed &&
+    !isPaying &&
+    getStoredPassToken() == null;
+
+  const freshReadSaysFree = async (): Promise<boolean> => {
+    const account = await readAccountAgain();
+    return (
+      account.confirmed &&
+      !account.paying &&
+      getStoredPassToken() == null &&
+      !returnedFromCheckout
+    );
+  };
+
+  const refuseOversizedUpload = async (
+    uploadedFiles: File[]
+  ): Promise<boolean> => {
+    if (
+      findOversizedFile(uploadedFiles, UPLOAD_FILE_PAYING_MAX_BYTES) != null
+    ) {
+      setNetworkRetryFiles(null);
+      setLocalError(FILE_TOO_LARGE);
+      setZoneState('error');
+      return true;
+    }
+    const overFree = findOversizedFile(
+      uploadedFiles,
+      UPLOAD_FILE_FREE_MAX_BYTES
+    );
+    if (overFree == null || !pageSeesFreeAccount()) return false;
+    const checkedOn = screenEpochRef.current;
+    setZoneState('converting');
+    setProgressWidth(10);
+    const stillFree = await freshReadSaysFree();
+    if (unmountedRef.current) return true;
+    if (checkedOn !== screenEpochRef.current) return true;
+    if (!stillFree) return false;
+    setLimitInfo({
+      filename: overFree.name,
+      fileSizeBytes: overFree.size,
+      kind: 'file_size',
+      monthlyLimit: null,
+    });
+    setZoneState('limitReached');
+    return true;
+  };
+
   const runFileUpload = async (
     formData: FormData,
     uploadedFiles: File[],
     isRetry: boolean,
     trigger: UploadTrigger
   ): Promise<boolean> => {
+    if (await refuseOversizedUpload(uploadedFiles)) return false;
     // A PDF with no readable text is the one thing the server will not guess
     // about: it asks which cards to make, unless this device already said.
     if (
@@ -3674,7 +3749,9 @@ function UploadForm({
         : monthlyLimitCopy(t, i18n.language, monthlyLimit);
     let title: string;
     if (isFileSize) {
-      title = t('upload.limit.fileTooBig', { limit: '100 MB' });
+      title = t('upload.limit.fileTooBig', {
+        limit: megabytesLabel(UPLOAD_FILE_FREE_MAX_BYTES),
+      });
     } else if (monthlyCopy != null) {
       title = monthlyCopy.title;
     } else if (cardsUsed >= 100) {
@@ -4082,6 +4159,12 @@ function UploadForm({
     if (!credential) return;
     if (rescueFilesOwner === undefined) {
       holdForUnknownSender();
+      return;
+    }
+    if (lockedPdfInfo.file.size > PDF_UNLOCK_MAX_BYTES) {
+      setLockedPdfInfo(null);
+      setLocalError(FILE_TOO_LARGE);
+      setZoneState('error');
       return;
     }
 

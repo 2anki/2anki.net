@@ -15,6 +15,7 @@ import {
   getLastDeckStore,
   resetLastDeckStoreForTests,
 } from '../upload/lastDeck';
+import { THIN_DECK_PREVIEW_MAX_BYTES } from '../upload/uploadSizeLimits';
 
 // Mock the api module
 vi.mock('./api', () => ({
@@ -62,6 +63,53 @@ describe('Backend', () => {
   beforeEach(() => {
     backend = new Backend();
     vi.clearAllMocks();
+  });
+
+  describe('previewThinDeckAi', () => {
+    const fileOfSize = (size: number) => {
+      const file = new File(['x'], 'notes.pdf', { type: 'application/pdf' });
+      Object.defineProperty(file, 'size', { value: size });
+      return file;
+    };
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it('does not send a file one byte over the preview limit', async () => {
+      const fetchMock = vi.fn();
+      vi.stubGlobal('fetch', fetchMock);
+
+      const result = await backend.previewThinDeckAi(
+        fileOfSize(THIN_DECK_PREVIEW_MAX_BYTES + 1)
+      );
+
+      expect(result).toEqual({ kind: 'unavailable' });
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('sends a file exactly at the preview limit', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            kind: 'preview',
+            cards: [{ front: 'Q', back: 'A' }],
+          }),
+          { status: 200 }
+        )
+      );
+      vi.stubGlobal('fetch', fetchMock);
+
+      const result = await backend.previewThinDeckAi(
+        fileOfSize(THIN_DECK_PREVIEW_MAX_BYTES)
+      );
+
+      expect(result).toEqual({
+        kind: 'preview',
+        cards: [{ front: 'Q', back: 'A' }],
+      });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('deleteJob', () => {

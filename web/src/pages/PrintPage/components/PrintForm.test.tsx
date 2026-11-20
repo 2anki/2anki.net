@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import PrintForm from './PrintForm';
+import { APKG_TOOL_MAX_BYTES } from '../../../lib/upload/uploadSizeLimits';
 
 const { localsHolder, trackMock, refetchMock } = vi.hoisted(() => ({
   localsHolder: {
@@ -312,6 +313,68 @@ describe('PrintForm', () => {
       ).toBeInTheDocument();
     });
     expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  const deckOfSize = (size: number) => {
+    const file = new File(['fake'], 'deck.apkg', {
+      type: 'application/octet-stream',
+    });
+    Object.defineProperty(file, 'size', { value: size });
+    return file;
+  };
+
+  const TOO_LARGE_TO_PRINT = /This deck is too large to print\./;
+
+  test('says a picked deck over the upload limit is too large without sending it', async () => {
+    renderForm();
+    const input = screen.getByLabelText(/Drop an Anki deck/i, {
+      selector: 'input[type="file"]',
+    }) as HTMLInputElement;
+
+    fireEvent.change(input, {
+      target: { files: [deckOfSize(APKG_TOOL_MAX_BYTES + 1)] },
+    });
+
+    expect(await screen.findByText(TOO_LARGE_TO_PRINT)).toBeInTheDocument();
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  test('says a dropped deck over the upload limit is too large without sending it', async () => {
+    renderForm();
+    const zone = screen.getByText(/Drop an Anki deck/i).closest('label');
+
+    fireEvent.drop(zone!, {
+      dataTransfer: { files: [deckOfSize(APKG_TOOL_MAX_BYTES + 1)] },
+    });
+
+    expect(await screen.findByText(TOO_LARGE_TO_PRINT)).toBeInTheDocument();
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  test('previews a deck exactly at the upload limit', async () => {
+    routeFetch({
+      preview: jsonResponse(200, {
+        image: 'data:image/png;base64,AAA',
+        totalCards: 5,
+        previewedCards: 3,
+      }),
+    });
+    renderForm();
+    const input = screen.getByLabelText(/Drop an Anki deck/i, {
+      selector: 'input[type="file"]',
+    }) as HTMLInputElement;
+
+    fireEvent.change(input, {
+      target: { files: [deckOfSize(APKG_TOOL_MAX_BYTES)] },
+    });
+
+    await waitFor(() => {
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        '/api/apkg/pdf/preview',
+        expect.objectContaining({ method: 'POST' })
+      );
+    });
+    expect(screen.queryByText(TOO_LARGE_TO_PRINT)).toBeNull();
   });
 });
 
