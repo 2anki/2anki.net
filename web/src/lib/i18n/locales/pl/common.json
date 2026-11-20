@@ -260,7 +260,6 @@
       "liveEmptyDeck": "Konwersja zakończona, ale nie znaleziono kart.",
       "liveImageOnly": "To wygląda na obrazy. Wypróbuj Zdjęcie na talię, aby zmienić je w karty.",
       "liveError": "Konwersja nie powiodła się.",
-      "liveLimitReached": "Osiągnąłeś miesięczny limit.",
       "liveLockedPdf": "Ten PDF jest chroniony hasłem. Wprowadź hasło, aby kontynuować.",
       "pdfPasswordAria": "Hasło do PDF",
       "changeSourceAria": "Zmień źródło przesyłania",

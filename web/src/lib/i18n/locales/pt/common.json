@@ -252,7 +252,6 @@
       "liveEmptyDeck": "Conversão concluída, mas nenhum cartão foi encontrado.",
       "liveImageOnly": "Isto parece ser imagens. Use Foto para baralho para transformá-las em cartões.",
       "liveError": "A conversão falhou.",
-      "liveLimitReached": "Você atingiu seu limite mensal.",
       "liveLockedPdf": "Este PDF está protegido por senha. Digite a senha para continuar.",
       "pdfPasswordAria": "Senha do PDF",
       "changeSourceAria": "Trocar fonte de upload",

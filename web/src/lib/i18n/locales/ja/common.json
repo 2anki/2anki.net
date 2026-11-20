@@ -248,7 +248,6 @@
       "liveEmptyDeck": "変換は完了しましたが、カードは見つかりませんでした。",
       "liveImageOnly": "これらは画像のようです。写真からデッキでカードに変換してみてください。",
       "liveError": "変換に失敗しました。",
-      "liveLimitReached": "今月の上限に達しました。",
       "liveLockedPdf": "この PDF はパスワードで保護されています。続けるにはパスワードを入力してください。",
       "pdfPasswordAria": "PDF のパスワード",
       "changeSourceAria": "アップロード元を変更",

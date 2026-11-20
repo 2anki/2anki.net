@@ -225,11 +225,30 @@ describe('UploadForm refuses a file over the upload limit before sending it', ()
       fileOfSize('lecture.pdf', UPLOAD_FILE_FREE_MAX_BYTES + 1),
     ]);
 
-    expect(await screen.findByText(OVER_FREE_TITLE)).toBeInTheDocument();
+    expect(
+      await screen.findByText(OVER_FREE_TITLE, { selector: 'p' })
+    ).toBeInTheDocument();
     expect(screen.getByText(/lecture\.pdf/)).toBeInTheDocument();
     await settle();
     expect(uploadsSent(fetchMock)).toEqual([]);
     expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('announces the title the wall shows when it refuses the file', async () => {
+    setLocals(signedInFree);
+    stubServer();
+    const { container } = renderForm();
+
+    await pickAndSubmit(container, [
+      fileOfSize('lecture.pdf', UPLOAD_FILE_FREE_MAX_BYTES + 1),
+    ]);
+    await screen.findByText(OVER_FREE_TITLE, { selector: 'p' });
+
+    expect({
+      title: container.querySelector('[class*="limitTitle"]')?.textContent,
+      announced: container.querySelector('output[aria-live="polite"]')
+        ?.textContent,
+    }).toEqual({ title: OVER_FREE_TITLE, announced: OVER_FREE_TITLE });
   });
 
   it('sends a file exactly at the free limit without reading the account again', async () => {
@@ -255,7 +274,9 @@ describe('UploadForm refuses a file over the upload limit before sending it', ()
       fileOfSize('lecture.pdf', UPLOAD_FILE_FREE_MAX_BYTES + 1),
     ]);
 
-    expect(await screen.findByText(OVER_FREE_TITLE)).toBeInTheDocument();
+    expect(
+      await screen.findByText(OVER_FREE_TITLE, { selector: 'p' })
+    ).toBeInTheDocument();
     expect(
       screen.getByText(/Files over 100 MB need a paid plan\./)
     ).toBeInTheDocument();
@@ -273,7 +294,9 @@ describe('UploadForm refuses a file over the upload limit before sending it', ()
       fileOfSize('scans.pdf', UPLOAD_FILE_FREE_MAX_BYTES + 1),
     ]);
 
-    expect(await screen.findByText(OVER_FREE_TITLE)).toBeInTheDocument();
+    expect(
+      await screen.findByText(OVER_FREE_TITLE, { selector: 'p' })
+    ).toBeInTheDocument();
     expect(screen.getByText(/scans\.pdf/)).toBeInTheDocument();
     expect(screen.queryByText(/notes\.pdf/)).toBeNull();
     await settle();
@@ -300,7 +323,9 @@ describe('UploadForm refuses a file over the upload limit before sending it', ()
 
     renderForm([{ pathname: '/upload', state: { handoffFile: notes } }]);
 
-    expect(await screen.findByText(OVER_FREE_TITLE)).toBeInTheDocument();
+    expect(
+      await screen.findByText(OVER_FREE_TITLE, { selector: 'p' })
+    ).toBeInTheDocument();
     await settle();
     expect(uploadsSent(fetchMock)).toEqual([]);
   });
@@ -313,7 +338,7 @@ describe('UploadForm refuses a file over the upload limit before sending it', ()
     await pickAndSubmit(container, [
       fileOfSize('lecture.pdf', UPLOAD_FILE_FREE_MAX_BYTES + 1),
     ]);
-    await screen.findByText(OVER_FREE_TITLE);
+    await screen.findByText(OVER_FREE_TITLE, { selector: 'p' });
 
     const names = vi.mocked(track).mock.calls.map(([name]) => name);
     expect(names).not.toContain('upload_submitted');
@@ -537,7 +562,9 @@ describe('UploadForm reads the account again before refusing a file over the fre
           read.answer(freshRead(signedInFree));
         });
 
-        expect(await screen.findByText(OVER_FREE_TITLE)).toBeInTheDocument();
+        expect(
+          await screen.findByText(OVER_FREE_TITLE, { selector: 'p' })
+        ).toBeInTheDocument();
         expect(screen.getByText(/lecture\.pdf/)).toBeInTheDocument();
         expect(progressBar(container)).toBeNull();
         await settle();

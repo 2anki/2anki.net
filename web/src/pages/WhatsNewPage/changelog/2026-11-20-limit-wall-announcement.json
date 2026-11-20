@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-20-limit-wall-announcement",
+  "date": "2026-11-20",
+  "type": "fix",
+  "title": "Screen readers read out the same limit message the upload page shows, including the file size limit"
+}

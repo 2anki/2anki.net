@@ -252,7 +252,6 @@
       "liveEmptyDeck": "Conversion finished, but no cards were found.",
       "liveImageOnly": "These look like images. Try Photo to Deck to turn them into cards.",
       "liveError": "Conversion failed.",
-      "liveLimitReached": "You've reached your monthly limit.",
       "liveLockedPdf": "This PDF is password-protected. Enter the password to continue.",
       "pdfPasswordAria": "PDF password",
       "changeSourceAria": "Change upload source",

@@ -2112,7 +2112,9 @@ describe('UploadForm Google Drive picker interaction', () => {
       );
 
       expect(
-        await screen.findByText("You've used your 100 free cards this month.")
+        await screen.findByText("You've used your 100 free cards this month.", {
+          selector: 'p',
+        })
       ).toBeInTheDocument();
       expect(
         screen.getByText(
@@ -6078,6 +6080,172 @@ describe('limit state', () => {
         screen.getByRole('button', { name: /Get Day Pass/ })
       ).toBeInTheDocument();
     });
+  });
+
+  describe('announces the title the wall shows', () => {
+    const RESET = '2026-12-01T00%3A00%3A00.000Z';
+
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-11-20T09:00:00.000Z'));
+    });
+
+    afterEach(async () => {
+      vi.useRealTimers();
+      await i18n.changeLanguage('en');
+    });
+
+    function titleAndAnnouncement(container: HTMLElement) {
+      return {
+        title: container.querySelector('[class*="limitTitle"]')?.textContent,
+        announced: container.querySelector('output[aria-live="polite"]')
+          ?.textContent,
+      };
+    }
+
+    const usedUp = () =>
+      mockUseCardUsage.mockReturnValue({
+        cards_used: 100,
+        cards_limit: 100,
+        unlimited: false,
+        loading: false,
+      });
+    const cardsLeft = () =>
+      mockUseCardUsage.mockReturnValue({
+        cards_used: 0,
+        cards_limit: 100,
+        unlimited: false,
+        loading: false,
+      });
+    const signedIn = () => setUserLocals(loggedInData);
+    const signedOut = () => setUserLocals(anonymousData);
+
+    it.each([
+      [
+        'a signed-in file over the size limit',
+        'en',
+        signedIn,
+        'file_size',
+        'This file is over the 100 MB limit',
+      ],
+      [
+        'a signed-in file over the size limit',
+        'de',
+        signedIn,
+        'file_size',
+        'Diese Datei überschreitet das Limit von 100 MB',
+      ],
+      [
+        'a signed-out file over the size limit',
+        'en',
+        signedOut,
+        'file_size',
+        'This file is over the 100 MB limit',
+      ],
+      [
+        'a signed-out file over the size limit',
+        'de',
+        signedOut,
+        'file_size',
+        'Diese Datei überschreitet das Limit von 100 MB',
+      ],
+      [
+        'a monthly limit used up, from the refusal',
+        'en',
+        signedIn,
+        `card_count&used=100&limit=100&reset_on=${RESET}`,
+        "You've used your 100 free cards this month.",
+      ],
+      [
+        'a monthly limit used up, from the refusal',
+        'de',
+        signedIn,
+        `card_count&used=100&limit=100&reset_on=${RESET}`,
+        'Du hast diesen Monat deine 100 kostenlosen Karten genutzt.',
+      ],
+      [
+        'a deck that would go past the monthly limit, from the refusal',
+        'en',
+        signedIn,
+        `card_count&used=80&limit=100&reset_on=${RESET}`,
+        'This deck would go past your 100 free cards this month.',
+      ],
+      [
+        'a deck that would go past the monthly limit, from the refusal',
+        'de',
+        signedIn,
+        `card_count&used=80&limit=100&reset_on=${RESET}`,
+        'Dieser Stapel würde diesen Monat über deine 100 kostenlosen Karten gehen.',
+      ],
+      [
+        'a monthly limit used up, from the card counter',
+        'en',
+        () => {
+          signedIn();
+          usedUp();
+        },
+        'card_count',
+        "You've used all 100 cards this month",
+      ],
+      [
+        'a monthly limit used up, from the card counter',
+        'de',
+        () => {
+          signedIn();
+          usedUp();
+        },
+        'card_count',
+        'Du hast diesen Monat alle 100 Karten genutzt',
+      ],
+      [
+        'a conversion over the free limit with cards left',
+        'en',
+        () => {
+          signedIn();
+          cardsLeft();
+        },
+        'card_count',
+        'This conversion is over your free limit of 100 cards a month',
+      ],
+      [
+        'a conversion over the free limit with cards left',
+        'de',
+        () => {
+          signedIn();
+          cardsLeft();
+        },
+        'card_count',
+        'Diese Konvertierung überschreitet dein kostenloses Limit von 100 Karten pro Monat',
+      ],
+      [
+        'a signed-out card limit',
+        'en',
+        signedOut,
+        `card_count&used=100&limit=100&reset_on=${RESET}`,
+        'This conversion is over your free limit of 100 cards a month',
+      ],
+      [
+        'a signed-out card limit',
+        'de',
+        signedOut,
+        `card_count&used=100&limit=100&reset_on=${RESET}`,
+        'Diese Konvertierung überschreitet dein kostenloses Limit von 100 Karten pro Monat',
+      ],
+    ])(
+      'for %s in %s',
+      async (_wall, language, arrange, kind, expectedTitle) => {
+        await i18n.changeLanguage(language);
+        arrange();
+        stubLimitFetch(kind);
+
+        const container = await submitAndReachLimit();
+
+        expect(titleAndAnnouncement(container)).toEqual({
+          title: expectedTitle,
+          announced: expectedTitle,
+        });
+      }
+    );
   });
 
   it('offers both passes on the over-the-limit wall, Day Pass first, with plans and a different file', async () => {
