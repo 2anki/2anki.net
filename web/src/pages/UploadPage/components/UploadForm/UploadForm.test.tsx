@@ -2073,6 +2073,61 @@ describe('UploadForm Google Drive picker interaction', () => {
     }
   });
 
+  it('says how many cards were made and when the limit resets when a signed-in Drive import hits the card limit', async () => {
+    mockUseUserLocals.mockReturnValue({
+      data: {
+        user: { id: 7, email: 'test@example.com' },
+        locals: { owner: 7 },
+        features: { kiUI: false },
+      },
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useUserLocals>);
+    stubGoogleDrivePicked();
+    vi.stubGlobal('scrollTo', vi.fn());
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        redirected: true,
+        url: 'http://localhost/limit?kind=card_count&used=100&limit=100&reset_on=2026-12-01T00%3A00%3A00.000Z',
+        status: 200,
+        headers: new Headers({}),
+        blob: () => Promise.resolve(new Blob([])),
+      })
+    );
+
+    try {
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} />
+      );
+      fireEvent.click(
+        within(container).getByRole('button', { name: 'Google Drive' })
+      );
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'Choose from Google Drive' })
+      );
+
+      expect(
+        await screen.findByText("You've used your 100 free cards this month.")
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "You've made 100 of 100. The limit resets on 1 December 2026. A plan lets you convert more now."
+        )
+      ).toBeInTheDocument();
+    } finally {
+      mockUseUserLocals.mockReturnValue({
+        data: undefined,
+        isLoading: false,
+        error: null,
+        isError: false,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useUserLocals>);
+    }
+  });
+
   it('sends AI off on a signed-out Drive upload despite a leftover localStorage key', async () => {
     globalThis.localStorage.setItem('claude-ai-flashcards', 'true');
     stubGoogleDrivePicked();
