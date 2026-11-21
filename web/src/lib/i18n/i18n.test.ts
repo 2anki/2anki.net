@@ -44,3 +44,11 @@ describe('i18n language detection', () => {
     expect(await detectLanguage()).toBe('de');
   });
 });
+
+describe('i18n empty translations', () => {
+  it('renders an empty translation as empty instead of the English fallback', async () => {
+    const instance = i18next.createInstance();
+    await instance.init({ ...i18nInitOptions, lng: 'ja' });
+    expect(instance.t('ankify:subscriptions.zeroScannedPrefix')).toBe('');
+  });
+});

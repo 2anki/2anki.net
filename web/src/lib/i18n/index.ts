@@ -66,6 +66,7 @@ export const i18nInitOptions: InitOptions = {
   supportedLngs: [...SUPPORTED_LANGUAGES],
   nonExplicitSupportedLngs: true,
   load: 'languageOnly',
+  returnEmptyString: true,
   detection: {
     order: ['localStorage', 'navigator'],
     lookupLocalStorage: LANGUAGE_STORAGE_KEY,
