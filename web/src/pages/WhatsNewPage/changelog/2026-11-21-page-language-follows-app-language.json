@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-21-page-language-follows-app-language",
+  "date": "2026-11-21",
+  "type": "fix",
+  "title": "Screen readers and browsers are told which language the page is in when you use 2anki in another language"
+}
