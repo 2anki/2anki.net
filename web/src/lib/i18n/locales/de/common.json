@@ -479,6 +479,8 @@
       "emailLink": "Anmeldelink per E-Mail senden",
       "magicLinkSuppressed": "Wir können diese Adresse nicht anschreiben — sie ist zurückgekommen oder wurde abgemeldet. Schreib an support@2anki.net, um sie freizuschalten, oder verwende unten dein Passwort.",
       "magicLinkError": "Wir konnten deinen Anmeldelink gerade nicht senden. Versuch es in einer Minute erneut oder verwende unten dein Passwort.",
+      "wrongCredentials": "Falsche E-Mail oder falsches Passwort. Versuch es erneut oder setz dein Passwort zurück.",
+      "googleAccountHint": "Dieses Konto nutzt die Anmeldung mit Google — verwende „Sign in with Google“ oder lass dir einen Anmeldelink senden.",
       "usePassword": "Stattdessen Passwort verwenden",
       "forgotPassword": "Passwort vergessen?",
       "orUseProvider": "Oder einen Anbieter verwenden",

@@ -479,6 +479,8 @@
       "emailLink": "M'envoyer un lien de connexion",
       "magicLinkSuppressed": "Nous ne pouvons pas écrire à cette adresse — elle a rebondi ou s'est désabonnée précédemment. Contacte support@2anki.net pour la rétablir, ou utilise ton mot de passe ci-dessous.",
       "magicLinkError": "Nous n'avons pas pu envoyer ton lien de connexion pour le moment. Réessaie dans une minute, ou utilise ton mot de passe ci-dessous.",
+      "wrongCredentials": "E-mail ou mot de passe incorrect. Réessaie ou réinitialise ton mot de passe.",
+      "googleAccountHint": "Ce compte utilise la connexion avec Google — utilise « Sign in with Google » ou envoie un lien de connexion.",
       "usePassword": "Utiliser le mot de passe à la place",
       "forgotPassword": "Mot de passe oublié ?",
       "orUseProvider": "Ou utilise un fournisseur",

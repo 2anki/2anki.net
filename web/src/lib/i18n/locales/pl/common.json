@@ -527,6 +527,8 @@
       "emailLink": "Wyślij mi link do logowania",
       "magicLinkSuppressed": "Nie możemy wysłać e-maila na ten adres — wcześniej odbił się lub został wypisany. Napisz na support@2anki.net, aby go przywrócić, albo użyj hasła poniżej.",
       "magicLinkError": "Nie udało się teraz wysłać linku do logowania. Spróbuj za minutę albo użyj hasła poniżej.",
+      "wrongCredentials": "Nieprawidłowy e-mail lub hasło. Spróbuj ponownie albo zresetuj hasło.",
+      "googleAccountHint": "To konto korzysta z logowania przez Google — użyj „Sign in with Google” albo wyślij link do logowania.",
       "usePassword": "Użyj hasła",
       "forgotPassword": "Nie pamiętasz hasła?",
       "orUseProvider": "Albo użyj dostawcy",

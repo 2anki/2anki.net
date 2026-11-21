@@ -479,6 +479,8 @@
       "emailLink": "Mail me een inloglink",
       "magicLinkSuppressed": "We kunnen dit adres niet e-mailen — het is eerder gebounced of afgemeld. Neem contact op met support@2anki.net om het te herstellen, of gebruik hieronder je wachtwoord.",
       "magicLinkError": "We konden je inloglink nu niet versturen. Probeer het over een minuut opnieuw, of gebruik hieronder je wachtwoord.",
+      "wrongCredentials": "E-mail of wachtwoord onjuist. Probeer het opnieuw of stel je wachtwoord opnieuw in.",
+      "googleAccountHint": "Dit account gebruikt inloggen met Google — gebruik \"Sign in with Google\" of stuur een inloglink.",
       "usePassword": "Gebruik in plaats daarvan een wachtwoord",
       "forgotPassword": "Wachtwoord vergeten?",
       "orUseProvider": "Of gebruik een provider",

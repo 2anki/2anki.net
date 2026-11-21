@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-21-login-errors-in-your-language",
+  "date": "2026-11-21",
+  "type": "fix",
+  "title": "Login error messages for a wrong email or password appear in your language"
+}
