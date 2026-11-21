@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   render,
   screen,
@@ -10,6 +10,7 @@ import {
 import { createElement, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { applyTheme } from '../../lib/theme';
 
 const mockSetNodes = vi.fn();
 const mockSetEdges = vi.fn();
@@ -30,8 +31,18 @@ vi.mock('./useMindmap', () => ({
 }));
 
 vi.mock('@xyflow/react', () => ({
-  ReactFlow: ({ children }: { children?: ReactNode }) =>
-    createElement('div', { 'data-testid': 'react-flow' }, children),
+  ReactFlow: ({
+    children,
+    forceColorMode,
+  }: {
+    children?: ReactNode;
+    forceColorMode?: string;
+  }) =>
+    createElement(
+      'div',
+      { 'data-testid': 'react-flow', 'data-force-color-mode': forceColorMode },
+      children
+    ),
   Controls: () => null,
   Background: () => null,
   useNodesState: () => [[], mockSetNodes, vi.fn()],
@@ -117,6 +128,49 @@ describe('MindmapEditor', () => {
     const { MindmapEditor } = await import('./MindmapEditor');
     render(createElement(MindmapEditor), { wrapper });
     expect(screen.getByTestId('react-flow')).toBeDefined();
+  });
+
+  describe('canvas colour mode', () => {
+    afterEach(() => {
+      applyTheme('light');
+    });
+
+    it.each([
+      ['light', 'light'],
+      ['dark', 'dark'],
+      ['gold', 'light'],
+      ['purple', 'light'],
+      ['hotpink', 'light'],
+    ] as const)(
+      'forces the %s app theme onto the canvas as %s',
+      async (theme, expectedMode) => {
+        applyTheme(theme);
+        const { MindmapEditor } = await import('./MindmapEditor');
+        render(createElement(MindmapEditor), { wrapper });
+        expect(screen.getByTestId('react-flow')).toHaveAttribute(
+          'data-force-color-mode',
+          expectedMode
+        );
+      }
+    );
+
+    it('follows a theme switch without a reload', async () => {
+      applyTheme('light');
+      const { MindmapEditor } = await import('./MindmapEditor');
+      render(createElement(MindmapEditor), { wrapper });
+
+      act(() => applyTheme('dark'));
+      expect(screen.getByTestId('react-flow')).toHaveAttribute(
+        'data-force-color-mode',
+        'dark'
+      );
+
+      act(() => applyTheme('gold'));
+      expect(screen.getByTestId('react-flow')).toHaveAttribute(
+        'data-force-color-mode',
+        'light'
+      );
+    });
   });
 
   it('seeds nodes with an array on first load, then uses a functional updater on re-fetch', async () => {
