@@ -16,10 +16,10 @@ describe('metascraper composition', () => {
       path.join(__dirname, 'useMetadata.ts'),
       'utf8'
     );
-    const requires = source.match(/require\('metascraper-[a-z-]+'\)\(?\)?/g);
+    const requires = source.match(/require\('metascraper-[a-z-]+'\)\(?/g);
     expect(requires?.length).toBeGreaterThanOrEqual(5);
     for (const call of requires ?? []) {
-      expect(call.endsWith(')()')).toBe(true);
+      expect(call.endsWith(')(')).toBe(true);
     }
   });
 

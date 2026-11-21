@@ -1,4 +1,5 @@
 import instrumentedAxios from '../../../../../observability/instrumentedAxios';
+import { resolveIconThroughSharedClient } from './resolveIconThroughSharedClient';
 
 // Every metascraper-* package exports a rule FACTORY — it must be called.
 // Passing the factory itself makes metascraper treat the module's attached
@@ -7,7 +8,10 @@ import instrumentedAxios from '../../../../../observability/instrumentedAxios';
 const metascraper = require('metascraper')([
   require('metascraper-description')(),
   require('metascraper-image')(),
-  require('metascraper-logo-favicon')(),
+  require('metascraper-logo-favicon')({
+    google: false,
+    resolveFaviconUrl: resolveIconThroughSharedClient,
+  }),
   require('metascraper-title')(),
   require('metascraper-url')(),
 ]);
