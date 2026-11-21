@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -436,36 +442,49 @@ describe('ChatPage — mobile conversation drawer', () => {
     mockGet.mockResolvedValue({ used: 0, limit: 20 });
   });
 
+  function getPastChats() {
+    return screen.getByText('Past chats', { selector: 'button' });
+  }
+
+  function queryDrawerScrim() {
+    return screen.queryByLabelText('Close conversations', {
+      selector: 'button',
+    });
+  }
+
   it('exposes Past chats and New chat in the mobile bar', () => {
     renderChatPage();
+    const mobileBar = getPastChats().parentElement as HTMLElement;
     expect(
-      screen.getByRole('button', { name: 'Past chats' })
+      within(mobileBar).getByText('New chat', { selector: 'button' })
     ).toBeInTheDocument();
+  });
+
+  it('hides the mobile bar at desktop width, leaving the sidebar New chat', () => {
+    renderChatPage();
+    const mobileBar = getPastChats().parentElement as HTMLElement;
+    expect(getPastChats()).not.toBeVisible();
     expect(
-      screen.getAllByRole('button', { name: 'New chat' }).length
-    ).toBeGreaterThanOrEqual(1);
+      within(mobileBar).getByText('New chat', { selector: 'button' })
+    ).not.toBeVisible();
+    expect(screen.getByRole('button', { name: 'New chat' })).toBeVisible();
   });
 
   it('opens the conversation drawer when Past chats is tapped', () => {
     renderChatPage();
-    expect(
-      screen.queryByRole('button', { name: 'Close conversations' })
-    ).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Past chats' }));
-    expect(
-      screen.getByRole('button', { name: 'Close conversations' })
-    ).toBeInTheDocument();
+    expect(queryDrawerScrim()).not.toBeInTheDocument();
+    fireEvent.click(getPastChats());
+    expect(getPastChats()).toHaveAttribute('aria-expanded', 'true');
+    expect(queryDrawerScrim()).toBeInTheDocument();
   });
 
   it('closes the drawer when the scrim is tapped', () => {
     renderChatPage();
-    fireEvent.click(screen.getByRole('button', { name: 'Past chats' }));
+    fireEvent.click(getPastChats());
     fireEvent.click(
-      screen.getByRole('button', { name: 'Close conversations' })
+      screen.getByLabelText('Close conversations', { selector: 'button' })
     );
-    expect(
-      screen.queryByRole('button', { name: 'Close conversations' })
-    ).not.toBeInTheDocument();
+    expect(queryDrawerScrim()).not.toBeInTheDocument();
   });
 
   it('closes the drawer after selecting a conversation', async () => {
@@ -500,17 +519,13 @@ describe('ChatPage — mobile conversation drawer', () => {
       expect(screen.getByText('Krebs cycle')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Past chats' }));
-    expect(
-      screen.getByRole('button', { name: 'Close conversations' })
-    ).toBeInTheDocument();
+    fireEvent.click(getPastChats());
+    expect(queryDrawerScrim()).toBeInTheDocument();
 
     fireEvent.click(screen.getByText('Krebs cycle'));
 
     await waitFor(() => {
-      expect(
-        screen.queryByRole('button', { name: 'Close conversations' })
-      ).not.toBeInTheDocument();
+      expect(queryDrawerScrim()).not.toBeInTheDocument();
     });
   });
 });

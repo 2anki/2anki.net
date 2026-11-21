@@ -26,6 +26,10 @@ function renderLayout() {
   );
 }
 
+function getMobileBurger() {
+  return screen.getByLabelText('Open navigation', { selector: 'button' });
+}
+
 describe('SidebarLayout drawer', () => {
   it('renders the page content next to the sidebar', () => {
     renderLayout();
@@ -35,12 +39,15 @@ describe('SidebarLayout drawer', () => {
     ).toBeInTheDocument();
   });
 
+  it('hides the burger at desktop width, where the sidebar is always shown', () => {
+    renderLayout();
+    expect(getMobileBurger()).not.toBeVisible();
+    expect(screen.getByRole('link', { name: 'Make flashcards' })).toBeVisible();
+  });
+
   it('exposes a burger that toggles the drawer aria-hidden state', () => {
     renderLayout();
-    const burger = screen.getByRole('button', {
-      name: /open navigation/i,
-      hidden: true,
-    });
+    const burger = getMobileBurger();
     expect(burger).toHaveAttribute('aria-expanded', 'false');
     fireEvent.click(burger);
     expect(burger).toHaveAttribute('aria-expanded', 'true');
@@ -48,10 +55,7 @@ describe('SidebarLayout drawer', () => {
 
   it('closes the drawer when the backdrop is clicked', () => {
     renderLayout();
-    const burger = screen.getByRole('button', {
-      name: /open navigation/i,
-      hidden: true,
-    });
+    const burger = getMobileBurger();
     fireEvent.click(burger);
     expect(burger).toHaveAttribute('aria-expanded', 'true');
     fireEvent.click(screen.getByTestId('sidebar-backdrop'));
@@ -60,10 +64,7 @@ describe('SidebarLayout drawer', () => {
 
   it('closes the drawer when Escape is pressed', () => {
     renderLayout();
-    const burger = screen.getByRole('button', {
-      name: /open navigation/i,
-      hidden: true,
-    });
+    const burger = getMobileBurger();
     fireEvent.click(burger);
     expect(burger).toHaveAttribute('aria-expanded', 'true');
     fireEvent.keyDown(document, { key: 'Escape' });

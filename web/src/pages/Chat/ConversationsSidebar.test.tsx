@@ -29,6 +29,10 @@ function renderSidebar(
   return props;
 }
 
+function queryScrim() {
+  return screen.queryByLabelText('Close conversations', { selector: 'button' });
+}
+
 describe('ConversationsSidebar', () => {
   it('renders the conversation list', () => {
     renderSidebar();
@@ -38,22 +42,24 @@ describe('ConversationsSidebar', () => {
 
   it('does not render the scrim when closed', () => {
     renderSidebar({ isOpen: false });
-    expect(
-      screen.queryByRole('button', { name: 'Close conversations' })
-    ).not.toBeInTheDocument();
+    expect(queryScrim()).not.toBeInTheDocument();
   });
 
   it('renders the scrim when open', () => {
     renderSidebar({ isOpen: true });
-    expect(
-      screen.getByRole('button', { name: 'Close conversations' })
-    ).toBeInTheDocument();
+    expect(queryScrim()).toBeInTheDocument();
+  });
+
+  it('keeps the open scrim hidden at desktop width, where the list sits beside the chat', () => {
+    renderSidebar({ isOpen: true });
+    expect(queryScrim()).not.toBeVisible();
+    expect(screen.getByText('Photosynthesis')).toBeVisible();
   });
 
   it('calls onClose when the scrim is clicked', () => {
     const props = renderSidebar({ isOpen: true });
     fireEvent.click(
-      screen.getByRole('button', { name: 'Close conversations' })
+      screen.getByLabelText('Close conversations', { selector: 'button' })
     );
     expect(props.onClose).toHaveBeenCalledTimes(1);
   });

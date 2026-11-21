@@ -44,31 +44,44 @@ function renderTopBar(overrides: Partial<Parameters<typeof TopBar>[0]> = {}) {
   return props;
 }
 
+function getMobileBurger() {
+  return screen.getByLabelText('Open navigation', { selector: 'button' });
+}
+
+function getMobileLogo() {
+  return screen.getByLabelText('2anki home', { selector: 'a' });
+}
+
 describe('TopBar', () => {
   it('renders the burger, the home logo and the account menu trigger', () => {
     renderTopBar();
-    expect(
-      screen.getByRole('button', { name: 'Open navigation' })
-    ).toHaveAttribute('aria-controls', 'app-sidebar-drawer');
-    expect(screen.getByRole('link', { name: '2anki home' })).toHaveAttribute(
-      'href',
-      '/'
+    expect(getMobileBurger()).toHaveAttribute(
+      'aria-controls',
+      'app-sidebar-drawer'
     );
+    expect(getMobileLogo()).toHaveAttribute('href', '/');
     expect(
       screen.getByRole('button', { name: /^Account menu/ })
     ).toBeInTheDocument();
   });
 
+  it('hides the mobile burger and logo at desktop width, keeping the account menu', () => {
+    renderTopBar();
+    expect(getMobileBurger()).not.toBeVisible();
+    expect(getMobileLogo()).not.toBeVisible();
+    expect(screen.getByRole('button', { name: /^Account menu/ })).toBeVisible();
+  });
+
   it('opens the drawer when closed and closes it when open', () => {
     const closed = renderTopBar();
-    fireEvent.click(screen.getByRole('button', { name: 'Open navigation' }));
+    fireEvent.click(getMobileBurger());
     expect(closed.onOpenDrawer).toHaveBeenCalledTimes(1);
     expect(closed.onCloseDrawer).not.toHaveBeenCalled();
   });
 
   it('reports the drawer state on the burger and closes an open drawer', () => {
     const open = renderTopBar({ isDrawerOpen: true });
-    const burger = screen.getByRole('button', { name: 'Open navigation' });
+    const burger = getMobileBurger();
     expect(burger).toHaveAttribute('aria-expanded', 'true');
     fireEvent.click(burger);
     expect(open.onCloseDrawer).toHaveBeenCalledTimes(1);
