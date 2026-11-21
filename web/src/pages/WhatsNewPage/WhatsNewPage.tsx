@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { FeedbackWidget } from '../../components/FeedbackWidget/FeedbackWidget';
+import { useAppLanguage } from '../../lib/i18n/useAppLanguage';
 import { changelog, ChangelogEntry } from './changelog/index';
 import sharedStyles from '../../styles/shared.module.css';
 import styles from './WhatsNewPage.module.css';
@@ -18,7 +19,7 @@ const TYPE_LABEL_KEYS: Record<string, string> = {
   style: 'whatsNew.badgeDesign',
 };
 
-function groupByDate(entries: ChangelogEntry[]): DateGroup[] {
+function groupByDate(entries: ChangelogEntry[], language: string): DateGroup[] {
   const map = new Map<string, ChangelogEntry[]>();
   for (const entry of entries) {
     const group = map.get(entry.date);
@@ -32,17 +33,17 @@ function groupByDate(entries: ChangelogEntry[]): DateGroup[] {
     .sort(([a], [b]) => b.localeCompare(a))
     .map(([date, items]) => ({
       date,
-      label: formatGroupDate(date),
+      label: formatGroupDate(date, language),
       entries: items
         .slice()
         .sort((a, b) => (TYPE_ORDER[a.type] ?? 3) - (TYPE_ORDER[b.type] ?? 3)),
     }));
 }
 
-const formatGroupDate = (dateStr: string): string => {
+const formatGroupDate = (dateStr: string, language: string): string => {
   const date = new Date(dateStr + 'T00:00:00');
   if (Number.isNaN(date.getTime())) return dateStr;
-  return date.toLocaleDateString(undefined, {
+  return date.toLocaleDateString(language, {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
@@ -52,7 +53,8 @@ const formatGroupDate = (dateStr: string): string => {
 
 export default function WhatsNewPage() {
   const { t } = useTranslation('chrome');
-  const shipped = groupByDate(changelog);
+  const language = useAppLanguage();
+  const shipped = groupByDate(changelog, language);
 
   return (
     <div className={sharedStyles.page}>
