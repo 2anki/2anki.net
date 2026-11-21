@@ -4,6 +4,7 @@ import axios, {
   InternalAxiosRequestConfig,
 } from 'axios';
 import dns from 'node:dns';
+import net from 'node:net';
 
 import { ObservabilitySink } from './ObservabilitySink';
 import { getObservabilitySink } from './observabilitySinkInstance';
@@ -88,21 +89,82 @@ const stripIpv6Brackets = (value: string): string => {
   return value;
 };
 
-const isIpv4Mapped = (lowered: string): boolean =>
-  lowered.includes('::ffff:') || lowered.startsWith('::ffff:');
-
-const extractMappedIpv4 = (lowered: string): string | null => {
-  const idx = lowered.lastIndexOf(':');
-  if (idx < 0) return null;
-  const candidate = lowered.slice(idx + 1);
-  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(candidate)) {
-    return candidate;
-  }
-  return null;
-};
+const stripTrailingDot = (value: string): string =>
+  value.endsWith('.') ? value.slice(0, -1) : value;
 
 const isPrivateIpv4 = (address: string): boolean =>
   PRIVATE_IPV4_PATTERNS.some((pattern) => pattern.test(address));
+
+type Subnet = readonly [network: string, prefixLength: number];
+
+const NON_PUBLIC_IPV4_SUBNETS: readonly Subnet[] = [
+  ['0.0.0.0', 8],
+  ['10.0.0.0', 8],
+  ['100.64.0.0', 10],
+  ['127.0.0.0', 8],
+  ['169.254.0.0', 16],
+  ['172.16.0.0', 12],
+  ['192.0.0.0', 24],
+  ['192.0.2.0', 24],
+  ['192.88.99.0', 24],
+  ['192.168.0.0', 16],
+  ['198.18.0.0', 15],
+  ['198.51.100.0', 24],
+  ['203.0.113.0', 24],
+  ['224.0.0.0', 4],
+  ['240.0.0.0', 4],
+];
+
+const IPV6_OUTSIDE_GLOBAL_UNICAST: readonly Subnet[] = [
+  ['::', 3],
+  ['4000::', 2],
+  ['8000::', 1],
+];
+
+const IPV6_SPECIAL_PURPOSE_INSIDE_GLOBAL_UNICAST: readonly Subnet[] = [
+  ['2001::', 23],
+  ['2001:db8::', 32],
+  ['2002::', 16],
+  ['3fff::', 20],
+];
+
+const buildBlockList = (
+  subnets: readonly Subnet[],
+  family: 'ipv4' | 'ipv6'
+): net.BlockList => {
+  const list = new net.BlockList();
+  for (const [network, prefixLength] of subnets) {
+    list.addSubnet(network, prefixLength, family);
+  }
+  return list;
+};
+
+const NON_PUBLIC_IPV4 = buildBlockList(NON_PUBLIC_IPV4_SUBNETS, 'ipv4');
+const NON_PUBLIC_IPV6 = buildBlockList(
+  [
+    ...IPV6_OUTSIDE_GLOBAL_UNICAST,
+    ...IPV6_SPECIAL_PURPOSE_INSIDE_GLOBAL_UNICAST,
+  ],
+  'ipv6'
+);
+
+const withoutZoneIdentifier = (address: string): string =>
+  address.split('%', 1)[0];
+
+const isIpLiteral = (value: string): boolean =>
+  net.isIP(withoutZoneIdentifier(value)) !== 0;
+
+const isNonPublicAddress = (address: string): boolean => {
+  const bare = withoutZoneIdentifier(address);
+  switch (net.isIP(bare)) {
+    case 4:
+      return NON_PUBLIC_IPV4.check(bare, 'ipv4');
+    case 6:
+      return NON_PUBLIC_IPV6.check(bare, 'ipv6');
+    default:
+      return true;
+  }
+};
 
 const PRIVATE_IPV6_PREFIXES: string[] = [
   'fc',
@@ -120,34 +182,14 @@ const PRIVATE_IPV6_PREFIXES: string[] = [
   'ff',
 ];
 
-const isPrivateIpv6Address = (address: string): boolean => {
-  const lowered = address.toLowerCase();
-  if (lowered === '::1' || lowered === '::') return true;
-  if (isIpv4Mapped(lowered)) {
-    const embedded = extractMappedIpv4(lowered);
-    if (embedded != null) {
-      return isPrivateIpv4(embedded);
-    }
-    return true;
-  }
-  return PRIVATE_IPV6_PREFIXES.some((prefix) => lowered.startsWith(prefix));
-};
-
 const isPrivateOrLoopbackHost = (host: string): boolean => {
-  const lowered = stripIpv6Brackets(host.toLowerCase());
+  const lowered = stripTrailingDot(stripIpv6Brackets(host.toLowerCase()));
   if (lowered === 'localhost' || lowered.endsWith('.localhost')) return true;
-  if (lowered === '::1' || lowered === '::') return true;
-  if (isIpv4Mapped(lowered)) return true;
+  if (isIpLiteral(lowered)) return isNonPublicAddress(lowered);
   if (PRIVATE_IPV6_PREFIXES.some((prefix) => lowered.startsWith(prefix))) {
     return true;
   }
   return isPrivateIpv4(lowered);
-};
-
-const isPrivateResolvedAddress = (address: string, family: number): boolean => {
-  if (family === 4) return isPrivateIpv4(address);
-  if (family === 6) return isPrivateIpv6Address(address);
-  return true;
 };
 
 interface ParsedRequestUrl {
@@ -203,7 +245,7 @@ const resolveHostnameSafely = async (
     );
   }
   for (const entry of entries) {
-    if (isPrivateResolvedAddress(entry.address, entry.family)) {
+    if (isNonPublicAddress(entry.address)) {
       throw new Error(
         `[observability] resolved IP ${entry.address} for "${hostname}" is private/loopback/link-local`
       );
