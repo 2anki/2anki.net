@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useAppLanguage } from '../../lib/i18n/useAppLanguage';
 import { Link } from 'react-router-dom';
 import {
   CONSENT_CHANGE_EVENT,
@@ -15,6 +16,7 @@ import styles from './CookieBanner.module.css';
  */
 export function CookieBanner() {
   const { t } = useTranslation('consent');
+  const appLanguage = useAppLanguage();
   const [open, setOpen] = useState<boolean>(() => needsBanner());
 
   useEffect(() => {
@@ -33,6 +35,7 @@ export function CookieBanner() {
       role="region"
       aria-label={t('title')}
       data-testid="cookie-banner"
+      lang={appLanguage}
     >
       <div className={styles.text}>
         <p className={styles.title}>{t('title')}</p>

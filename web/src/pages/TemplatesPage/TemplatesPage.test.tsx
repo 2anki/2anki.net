@@ -5,6 +5,7 @@ import '@testing-library/jest-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import TemplatesPage from './TemplatesPage';
+import i18n from '../../lib/i18n';
 import * as templatesApi from '../../lib/backend/templates';
 import { NoteTypeStarter } from '../../lib/backend/templates';
 
@@ -107,6 +108,22 @@ describe('TemplatesPage', () => {
       await screen.findByRole('heading', { level: 1, name: /note types/i })
     ).toBeInTheDocument();
     expect(screen.getByText(/starter anki note types/i)).toBeInTheDocument();
+  });
+
+  it('marks the English starter name and description from the server as English', async () => {
+    getDefaults.mockResolvedValue([sampleStarter]);
+    await i18n.changeLanguage('ja');
+    try {
+      renderPage();
+
+      const name = await screen.findByRole('button', { name: 'Clean Basic' });
+      expect(name.closest('[lang]')).toHaveAttribute('lang', 'en');
+      expect(
+        screen.getByText(sampleStarter.description).closest('[lang]')
+      ).toHaveAttribute('lang', 'en');
+    } finally {
+      await i18n.changeLanguage('en');
+    }
   });
 
   it('lists every starter returned by the API', async () => {

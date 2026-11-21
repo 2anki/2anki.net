@@ -16,6 +16,7 @@ import { DomRecoveryBoundary } from './components/DomRecoveryBoundary/DomRecover
 import { getErrorMessage } from './components/errors/helpers/getErrorMessage';
 import { SkeletonPage } from './components/Skeleton/Skeleton';
 import { HeldDeckClaimRedirect } from './components/HeldDeckClaimRedirect/HeldDeckClaimRedirect';
+import { RouteDocumentLanguage } from './components/RouteDocumentLanguage/RouteDocumentLanguage';
 import {
   clearReloadingFlag,
   isReloadingForFreshChunks,
@@ -409,6 +410,7 @@ function AppContent({
 
   return (
     <BrowserRouter>
+      <RouteDocumentLanguage />
       <AppShell
         error={error}
         isLoggedIn={isLoggedIn}

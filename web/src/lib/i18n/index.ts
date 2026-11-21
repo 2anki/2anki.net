@@ -1,6 +1,16 @@
-import i18n, { type InitOptions, type Resource } from 'i18next';
+import i18n, {
+  type i18n as I18n,
+  type InitOptions,
+  type Resource,
+} from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
+import {
+  FALLBACK_LANGUAGE,
+  followAppLanguage,
+  setRouteDocumentLanguage,
+} from './documentLanguage';
+import { routeDocumentLanguage } from './routeLanguage';
 
 export const SUPPORTED_LANGUAGES = [
   'en',
@@ -77,14 +87,21 @@ export const i18nInitOptions: InitOptions = {
   },
 };
 
-export function initI18n() {
-  if (i18n.isInitialized) {
-    return i18n;
+export function initI18n(instance: I18n = i18n) {
+  if (instance.isInitialized) {
+    return instance;
   }
 
-  i18n.use(LanguageDetector).use(initReactI18next).init(i18nInitOptions);
+  instance.use(LanguageDetector).use(initReactI18next).init(i18nInitOptions);
+  setRouteDocumentLanguage(
+    routeDocumentLanguage(
+      globalThis.location?.pathname ?? '/',
+      instance.resolvedLanguage ?? FALLBACK_LANGUAGE
+    )
+  );
+  followAppLanguage(instance);
 
-  return i18n;
+  return instance;
 }
 
 export default i18n;

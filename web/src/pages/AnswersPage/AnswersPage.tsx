@@ -8,6 +8,7 @@ import { ErrorHandlerType } from '../../components/errors/helpers/getErrorMessag
 import { track } from '../../lib/analytics/track';
 import { landingViewProps } from '../../lib/adClick';
 import { canonicalUrl } from '../../lib/seo/canonicalUrl';
+import { useAppLanguage } from '../../lib/i18n/useAppLanguage';
 import { AnswerFigure } from './AnswerFigures';
 import { ANSWERS_PAGES } from './answersConfig';
 import styles from './AnswersPage.module.css';
@@ -20,7 +21,10 @@ interface Props {
 }
 
 function AnswersPage({ setErrorMessage }: Readonly<Props>) {
-  const { t } = useTranslation('landing');
+  const { t, i18n } = useTranslation('landing');
+  const appLanguage = useAppLanguage();
+  const languageOfKey = (key: string) =>
+    i18n.getResource(appLanguage, 'landing', key) == null ? 'en' : appLanguage;
   const { slug } = useParams<{ slug: string }>();
   const config = slug == null ? undefined : ANSWERS_PAGES.get(slug);
 
@@ -52,22 +56,30 @@ function AnswersPage({ setErrorMessage }: Readonly<Props>) {
         {faqJsonLd && <script type="application/ld+json">{faqJsonLd}</script>}
       </Helmet>
 
-      <h1 className={styles.h1}>
+      <h1
+        className={styles.h1}
+        lang={languageOfKey(`answers.${config.slug}.h1`)}
+      >
         {t(`answers.${config.slug}.h1`, { defaultValue: config.h1 })}
       </h1>
-      <p className={styles.intro}>
+      <p
+        className={styles.intro}
+        lang={languageOfKey(`answers.${config.slug}.intro`)}
+      >
         {t(`answers.${config.slug}.intro`, { defaultValue: config.intro })}
       </p>
 
       {config.uploadPrompt != null && (
         <section className={styles.upload}>
-          <h2 className={styles.sectionHeading}>{config.uploadPrompt}</h2>
+          <h2 className={styles.sectionHeading} lang="en">
+            {config.uploadPrompt}
+          </h2>
           <UploadForm setErrorMessage={setErrorMessage} />
         </section>
       )}
 
       {config.sections.map((section) => (
-        <div key={section.heading} className={styles.section}>
+        <div key={section.heading} className={styles.section} lang="en">
           <h2 className={styles.sectionHeading}>{section.heading}</h2>
           <p className={styles.sectionBody}>{section.body}</p>
           {section.figure && (
@@ -87,7 +99,7 @@ function AnswersPage({ setErrorMessage }: Readonly<Props>) {
             })}
           </h2>
           {config.faqs.map((faq) => (
-            <div key={faq.q}>
+            <div key={faq.q} lang="en">
               <h3 className={styles.sectionHeading}>{faq.q}</h3>
               <p className={styles.sectionBody}>{faq.a}</p>
             </div>
@@ -102,7 +114,7 @@ function AnswersPage({ setErrorMessage }: Readonly<Props>) {
         <p className={styles.relatedHeading}>
           {t('sections.related', { defaultValue: 'Related' })}
         </p>
-        <ul className={styles.relatedList}>
+        <ul className={styles.relatedList} lang="en">
           {config.relatedLinks.map((link) => (
             <li key={link.href}>
               <a href={link.href} className={styles.relatedLink}>

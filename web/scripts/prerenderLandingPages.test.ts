@@ -331,6 +331,19 @@ describe('emitLandingPages German hreflang twin', () => {
     expect(html).not.toContain('<meta property="og:locale" content="de_DE">');
   });
 
+  it('marks the English section headings inside the German page as English', () => {
+    const html = readGerman();
+    const body = html.slice(html.indexOf('<div id="root">'));
+    expect(body).toMatch(/<h2 lang="en"[^>]*>Common questions<\/h2>/);
+    expect(body).not.toMatch(/<h2 style="[^"]*">Common questions<\/h2>/);
+  });
+
+  it('leaves the section headings of the English page unmarked', () => {
+    const html = readEnglish();
+    const body = html.slice(html.indexOf('<div id="root">'));
+    expect(body).toMatch(/<h2 style="[^"]*">Common questions<\/h2>/);
+  });
+
   it('renders the German med-exam framing in the crawlable body', () => {
     const html = readGerman();
     const body = html.slice(html.indexOf('<div id="root">'));

@@ -96,7 +96,9 @@ export default function WhatsNewPage() {
                           ? t(TYPE_LABEL_KEYS[entry.type])
                           : entry.type}
                       </span>
-                      <span className={styles.commitText}>{entry.title}</span>
+                      <span className={styles.commitText} lang="en">
+                        {entry.title}
+                      </span>
                     </li>
                   ))}
                 </ul>

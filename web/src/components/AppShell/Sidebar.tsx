@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../lib/hooks/useTheme';
+import { useAppLanguage } from '../../lib/i18n/useAppLanguage';
 import ArrowLeftIcon from '../icons/ArrowLeftIcon';
 import ArrowRightIcon from '../icons/ArrowRightIcon';
 import ArrowUpTrayIcon from '../icons/ArrowUpTrayIcon';
@@ -181,6 +182,7 @@ export function Sidebar({
 }: Readonly<SidebarProps>) {
   const { pathname } = useLocation();
   const { t } = useTranslation();
+  const appLanguage = useAppLanguage();
   const theme = useTheme();
   const { collapsed, onToggleClick } = useSidebarCollapseState();
   const logoSrc = getLogoSrc(collapsed, theme);
@@ -205,6 +207,7 @@ export function Sidebar({
         aria-label={t('chrome:nav.sidebarLabel')}
         data-testid="app-sidebar"
         data-collapsed={collapsed ? 'true' : 'false'}
+        lang={appLanguage}
       >
         <div className={styles.sidebarHeader}>
           <Link

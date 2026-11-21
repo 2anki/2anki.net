@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useAppLanguage } from '../../lib/i18n/useAppLanguage';
 
 import { useTheme } from '../../lib/hooks/useTheme';
 import styles from './NavigationBar.module.css';
@@ -11,6 +12,7 @@ interface NavigationBarProps {
 
 function NavigationBar({ isLoggedIn }: Readonly<NavigationBarProps>) {
   const { t } = useTranslation('chrome');
+  const appLanguage = useAppLanguage();
   const [active, setActive] = useState(false);
   const path = globalThis.location.pathname;
   const theme = useTheme();
@@ -21,7 +23,11 @@ function NavigationBar({ isLoggedIn }: Readonly<NavigationBarProps>) {
   const isResolved = isLoggedIn !== undefined;
 
   return (
-    <nav className={styles.navbar} aria-label={t('nav.mainNavigation')}>
+    <nav
+      className={styles.navbar}
+      aria-label={t('nav.mainNavigation')}
+      lang={appLanguage}
+    >
       <div className={styles.brand}>
         <a className={styles.logoLink} href="/">
           <img

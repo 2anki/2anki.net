@@ -92,26 +92,28 @@ const FEATURES = [
   { href: '/print', tKey: 'print', Icon: PrinterIcon },
 ];
 
-const WALKTHROUGHS: ReadonlyArray<[string, string]> = [
-  ['jpR_grXWTTw', 'PDF to Anki in Seconds — No Plugins, No Manual Work'],
+const WALKTHROUGHS: ReadonlyArray<[string, string, string]> = [
+  ['jpR_grXWTTw', 'PDF to Anki in Seconds — No Plugins, No Manual Work', 'en'],
   [
     'roQ3awaVa2E',
     'Image Occlusion Comes to 2anki.net — Anatomy Flashcards in Seconds',
+    'en',
   ],
-  ['UnTo_fN1jpc', 'How I use Notion to Anki as a medical student'],
-  ['NLUfAWA2LJI', 'Turn any website into Anki flashcards'],
-  ['r9pPNl8Mx_Q', 'How to use cloze deletions'],
-  ['lpC7C9wJoTA', 'Use Notion to Anki for learning languages'],
-  ['vINpYLMW9AE', 'Best Notion hack for medical students'],
-  ['E51yLIIS3bk', 'Notion2Anki — Perfekter Workflow fürs Lernen'],
-  ['57dW_buqtGM', 'Notion to Anki — Tutorial en Español'],
-  ['RHReYOKywZc', 'Créer des flashcards Anki avec Notion'],
+  ['UnTo_fN1jpc', 'How I use Notion to Anki as a medical student', 'en'],
+  ['NLUfAWA2LJI', 'Turn any website into Anki flashcards', 'en'],
+  ['r9pPNl8Mx_Q', 'How to use cloze deletions', 'en'],
+  ['lpC7C9wJoTA', 'Use Notion to Anki for learning languages', 'en'],
+  ['vINpYLMW9AE', 'Best Notion hack for medical students', 'en'],
+  ['E51yLIIS3bk', 'Notion2Anki — Perfekter Workflow fürs Lernen', 'de'],
+  ['57dW_buqtGM', 'Notion to Anki — Tutorial en Español', 'es'],
+  ['RHReYOKywZc', 'Créer des flashcards Anki avec Notion', 'fr'],
 ];
 
 function VideoCard({
   embedId,
   title,
-}: Readonly<{ embedId: string; title: string }>) {
+  titleLanguage,
+}: Readonly<{ embedId: string; title: string; titleLanguage: string }>) {
   const { t } = useTranslation();
   const [playing, setPlaying] = useState(false);
 
@@ -150,7 +152,9 @@ function VideoCard({
           </svg>
         </span>
       </div>
-      <p className={styles.walkCardTitle}>{title}</p>
+      <p className={styles.walkCardTitle} lang={titleLanguage}>
+        {title}
+      </p>
     </button>
   );
 }
@@ -272,8 +276,13 @@ export function HomePage({
           {(showAll
             ? WALKTHROUGHS
             : WALKTHROUGHS.filter(([id]) => FEATURED_WALKTHROUGH_IDS.has(id))
-          ).map(([embedId, title]) => (
-            <VideoCard key={embedId} embedId={embedId} title={title} />
+          ).map(([embedId, title, titleLanguage]) => (
+            <VideoCard
+              key={embedId}
+              embedId={embedId}
+              title={title}
+              titleLanguage={titleLanguage}
+            />
           ))}
           {showAll && (
             <a href="/contact/" className={styles.walkCard}>

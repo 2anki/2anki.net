@@ -9,6 +9,7 @@ import {
   tokenize,
   type SearchResult,
 } from './search';
+import { useAppLanguage } from '../../lib/i18n/useAppLanguage';
 import styles from './DocsPage.module.css';
 
 interface DocsSearchProps {
@@ -40,6 +41,7 @@ function Highlighted({
 
 export function DocsSearch({ isOpen, onClose }: Readonly<DocsSearchProps>) {
   const { t } = useTranslation('docs');
+  const appLanguage = useAppLanguage();
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState(0);
@@ -124,6 +126,7 @@ export function DocsSearch({ isOpen, onClose }: Readonly<DocsSearchProps>) {
       role="dialog"
       aria-modal="true"
       aria-label={t('search.dialogLabel')}
+      lang={appLanguage}
     >
       <button
         type="button"
@@ -207,6 +210,7 @@ export function DocsSearch({ isOpen, onClose }: Readonly<DocsSearchProps>) {
                 key={result.slug}
                 id={`docs-search-option-${index}`}
                 role="option"
+                lang="en"
                 href={`/documentation/${result.slug}`}
                 tabIndex={-1}
                 aria-selected={index === selected}

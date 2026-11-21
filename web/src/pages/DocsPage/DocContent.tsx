@@ -15,6 +15,7 @@ import { findAdjacent, redirects } from './sidebar';
 import { CalloutVariant } from './Callout';
 import { CodeBlock } from './CodeBlock';
 import { OverlappingClozePreview } from '../../components/CardOptionsForm/OverlappingClozePreview';
+import { useAppLanguage } from '../../lib/i18n/useAppLanguage';
 import styles from './DocsPage.module.css';
 
 interface DocContentProps {
@@ -152,6 +153,7 @@ const EDIT_BASE = 'https://github.com/2anki/server/edit/main/';
 
 export function DocContent({ slug }: Readonly<DocContentProps>) {
   const { t, i18n } = useTranslation('docs');
+  const appLanguage = useAppLanguage();
   const doc = loadDoc(slug, i18n.resolvedLanguage);
   const { hash } = useLocation();
   const resolvedSlug = resolveSlug(slug);
@@ -214,7 +216,7 @@ export function DocContent({ slug }: Readonly<DocContentProps>) {
         </ReactMarkdown>
       </div>
 
-      <div className={styles.editFooter}>
+      <div className={styles.editFooter} lang={appLanguage}>
         <a
           href={editUrl}
           target="_blank"
@@ -228,16 +230,24 @@ export function DocContent({ slug }: Readonly<DocContentProps>) {
       <nav className={styles.pager} aria-label={t('content.pagerLabel')}>
         {prev ? (
           <Link to={`/documentation/${prev.slug}`} className={styles.pagerPrev}>
-            <span className={styles.pagerLabel}>{t('content.previous')}</span>
-            <span className={styles.pagerTitle}>{prev.label}</span>
+            <span className={styles.pagerLabel} lang={appLanguage}>
+              {t('content.previous')}
+            </span>
+            <span className={styles.pagerTitle} lang="en">
+              {prev.label}
+            </span>
           </Link>
         ) : (
           <span />
         )}
         {next ? (
           <Link to={`/documentation/${next.slug}`} className={styles.pagerNext}>
-            <span className={styles.pagerLabel}>{t('content.next')}</span>
-            <span className={styles.pagerTitle}>{next.label}</span>
+            <span className={styles.pagerLabel} lang={appLanguage}>
+              {t('content.next')}
+            </span>
+            <span className={styles.pagerTitle} lang="en">
+              {next.label}
+            </span>
           </Link>
         ) : (
           <span />

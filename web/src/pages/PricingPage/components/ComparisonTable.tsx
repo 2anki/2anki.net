@@ -185,7 +185,9 @@ export function ComparisonTable({
               </th>
               {PLANS.map((plan, i) => (
                 <th key={plan} scope="col" className={styles.planCell}>
-                  <span className={styles.planName}>{plan}</span>
+                  <span className={styles.planName} lang="en">
+                    {plan}
+                  </span>
                   <span className={styles.planPrice}>{planPrices[i]}</span>
                 </th>
               ))}

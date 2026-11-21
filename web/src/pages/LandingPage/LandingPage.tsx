@@ -11,6 +11,7 @@ import { saveValueInLocalStorage } from '../../lib/data_layer/saveValueInLocalSt
 import { landingViewProps } from '../../lib/adClick';
 import { persistSignupOrigin } from '../../lib/signupOrigin';
 import { canonicalUrl } from '../../lib/seo/canonicalUrl';
+import { useAppLanguage } from '../../lib/i18n/useAppLanguage';
 import { usePassPrices } from '../../lib/hooks/usePassPrices';
 import { TrustNote } from '../../components/TrustNote/TrustNote';
 import { LandingPassPrices } from '../../components/LandingPassPrices/LandingPassPrices';
@@ -58,6 +59,7 @@ interface HeroActionProps {
   heroSlot?: ReactNode;
   ctaHref?: string;
   ctaLabel?: string;
+  copyLanguage: string;
   setErrorMessage: ErrorHandlerType;
   registerHref: string;
   dayPassPrice: string;
@@ -73,6 +75,7 @@ function renderHeroAction({
   heroSlot,
   ctaHref,
   ctaLabel,
+  copyLanguage,
   setErrorMessage,
   registerHref,
   dayPassPrice,
@@ -89,7 +92,11 @@ function renderHeroAction({
   if (ctaHref != null) {
     return (
       <div className={styles.uploadWrapper}>
-        <a href={ctaHref} className={sharedStyles.btnPrimary}>
+        <a
+          href={ctaHref}
+          className={sharedStyles.btnPrimary}
+          lang={copyLanguage}
+        >
           {ctaLabel}
         </a>
         <p className={styles.secondaryLink}>
@@ -132,7 +139,13 @@ function LandingPage({
   setErrorMessage,
   heroSlot,
 }: Readonly<LandingPageProps>) {
-  const { t } = useTranslation('landing');
+  const { t, i18n } = useTranslation('landing');
+  const appLanguage = useAppLanguage();
+  const copyLanguage = copy.htmlLang ?? 'en';
+  const languageOfKey = (key: string) =>
+    i18n.getResource(appLanguage, 'landing', key) == null
+      ? copyLanguage
+      : appLanguage;
   const passPrices = usePassPrices();
   const { data: userLocals, isLoading: userLocalsLoading } = useUserLocals();
   const isSignedIn = userLocals?.user?.id != null;
@@ -172,7 +185,7 @@ function LandingPage({
   const faqJsonLd = buildFaqJsonLd(copy.faqs);
 
   return (
-    <div className={styles.landing}>
+    <div className={styles.landing} lang={appLanguage}>
       <Helmet>
         <title>{copy.title}</title>
         <meta name="description" content={copy.description} />
@@ -196,10 +209,16 @@ function LandingPage({
           {copy.homeHero === true && (
             <img src="/mascot/Notion 1.png" alt="" className={styles.mascot} />
           )}
-          <h1 className={styles.heroTitle}>
+          <h1
+            className={styles.heroTitle}
+            lang={languageOfKey(`pages.${pageKey}.h1`)}
+          >
             {t(`pages.${pageKey}.h1`, { defaultValue: copy.h1 })}
           </h1>
-          <p className={styles.heroSubhead}>
+          <p
+            className={styles.heroSubhead}
+            lang={languageOfKey(`pages.${pageKey}.subhead`)}
+          >
             {t(`pages.${pageKey}.subhead`, { defaultValue: copy.subhead })}
           </p>
           {copy.galleryBadge === true && (
@@ -224,6 +243,7 @@ function LandingPage({
             heroSlot,
             ctaHref: copy.ctaHref,
             ctaLabel: copy.ctaLabel,
+            copyLanguage,
             setErrorMessage,
             registerHref,
             dayPassPrice: passPrices['24h'],
@@ -247,7 +267,11 @@ function LandingPage({
           <div className={styles.stepsGrid}>
             {copy.steps != null
               ? copy.steps.map((step, idx) => (
-                  <div key={step.title} className={styles.step}>
+                  <div
+                    key={step.title}
+                    className={styles.step}
+                    lang={copyLanguage}
+                  >
                     <span className={styles.stepNumber}>{idx + 1}</span>
                     <p className={styles.stepTitle}>{step.title}</p>
                     <p className={styles.stepBody}>{step.body}</p>
@@ -278,7 +302,10 @@ function LandingPage({
             defaultValue: 'Supported formats',
           })}
         </h2>
-        <ul className={styles.formatsList}>
+        <ul
+          className={styles.formatsList}
+          lang={copy.formats == null ? undefined : copyLanguage}
+        >
           {(copy.formats ?? FORMATS).map((format) => (
             <li key={format} className={styles.formatTag}>
               {format}
@@ -294,7 +321,7 @@ function LandingPage({
               defaultValue: 'What you actually get in Anki',
             })}
           </h2>
-          <dl className={styles.stepsGrid}>
+          <dl className={styles.stepsGrid} lang={copyLanguage}>
             {copy.whatComesAcross.map((item) => (
               <div key={item.title} className={styles.step}>
                 <p className={styles.stepTitle}>{item.title}</p>
@@ -309,7 +336,7 @@ function LandingPage({
         <h2 className={styles.sectionLabel}>
           {t('sections.commonQuestions', { defaultValue: 'Common questions' })}
         </h2>
-        <div className={styles.faqList}>
+        <div className={styles.faqList} lang={copyLanguage}>
           {copy.faqs.map((faq) => (
             <details key={faq.q} className={styles.faqItem}>
               <summary className={styles.faqSummary}>{faq.q}</summary>
@@ -327,7 +354,7 @@ function LandingPage({
           <h2 className={styles.relatedHeading}>
             {t('sections.related', { defaultValue: 'Related' })}
           </h2>
-          <ul className={styles.relatedList}>
+          <ul className={styles.relatedList} lang={copyLanguage}>
             {copy.relatedLinks.map((link) => (
               <li key={link.href}>
                 <a href={link.href} className={styles.relatedLink}>

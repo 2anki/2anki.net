@@ -47,7 +47,7 @@ function ConvertHubPage() {
               defaultValue: group.heading,
             })}
           </h2>
-          <ul className={styles.list}>
+          <ul className={styles.list} lang="en">
             {group.entries.map((entry) => (
               <li key={entry.slug} className={styles.item}>
                 <a href={entry.href} className={styles.itemLink}>

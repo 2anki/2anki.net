@@ -84,16 +84,25 @@ const SECTION_LABEL_STYLE =
 const BODY_TEXT_STYLE =
   'color:var(--color-text-secondary);line-height:var(--leading-relaxed);margin:0 0 1rem;';
 
-function sectionFragment(heading: string, inner: string): string {
+function sectionFragment(
+  heading: string,
+  inner: string,
+  headingLang?: string
+): string {
+  const langAttribute =
+    headingLang == null ? '' : ` lang="${escapeHtml(headingLang)}"`;
   return [
     `<section style="${SECTION_STYLE}">`,
-    `<h2 style="${SECTION_LABEL_STYLE}">${escapeHtml(heading)}</h2>`,
+    `<h2${langAttribute} style="${SECTION_LABEL_STYLE}">${escapeHtml(heading)}</h2>`,
     inner,
     '</section>',
   ].join('');
 }
 
-function faqFragment(faqs: ReadonlyArray<{ q: string; a: string }>): string {
+function faqFragment(
+  faqs: ReadonlyArray<{ q: string; a: string }>,
+  headingLang?: string
+): string {
   if (faqs.length === 0) return '';
   const items = faqs
     .map(
@@ -103,10 +112,11 @@ function faqFragment(faqs: ReadonlyArray<{ q: string; a: string }>): string {
         )}</summary><p style="${BODY_TEXT_STYLE}">${escapeHtml(faq.a)}</p></details>`
     )
     .join('');
-  return sectionFragment('Common questions', items);
+  return sectionFragment('Common questions', items, headingLang);
 }
 
 function buildBodyFragment(copy: LandingCopy): string {
+  const headingLang = copy.htmlLang == null ? undefined : 'en';
   const steps = (copy.steps ?? DEFAULT_LANDING_STEPS)
     .map(
       (step, idx) =>
@@ -135,7 +145,8 @@ function buildBodyFragment(copy: LandingCopy): string {
                   item.title
                 )}</p><p style="${BODY_TEXT_STYLE}">${escapeHtml(item.body)}</p></div>`
             )
-            .join('')
+            .join(''),
+          headingLang
         );
 
   const related =
@@ -148,18 +159,20 @@ function buildBodyFragment(copy: LandingCopy): string {
               (link) =>
                 `<li><a href="${escapeHtml(link.href)}">${escapeHtml(link.label)}</a></li>`
             )
-            .join('')}</ul>`
+            .join('')}</ul>`,
+          headingLang
         );
 
   return [
     buildHeroFragment(copy),
-    sectionFragment('How it works', steps),
+    sectionFragment('How it works', steps, headingLang),
     sectionFragment(
       'Supported formats',
-      `<ul style="list-style:none;padding:0;margin:0;">${formats}</ul>`
+      `<ul style="list-style:none;padding:0;margin:0;">${formats}</ul>`,
+      headingLang
     ),
     whatComesAcross,
-    faqFragment(copy.faqs),
+    faqFragment(copy.faqs, headingLang),
     related,
   ].join('');
 }

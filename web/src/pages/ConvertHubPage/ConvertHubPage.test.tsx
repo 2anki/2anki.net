@@ -4,6 +4,7 @@ import { HelmetProvider } from 'react-helmet-async';
 import { MemoryRouter } from 'react-router-dom';
 import { CONVERT_LANDING_PAGES } from '../ConvertLandingPage/convertLandingConfig';
 import ConvertHubPage from './ConvertHubPage';
+import i18n from '../../lib/i18n';
 
 function renderHub() {
   return render(
@@ -24,6 +25,17 @@ describe('ConvertHubPage', () => {
         name: /convert anything to anki/i,
       })
     ).toBeInTheDocument();
+  });
+
+  it('marks the English converter names and blurbs as English under another app language', async () => {
+    await i18n.changeLanguage('ja');
+    try {
+      renderHub();
+      const firstList = document.querySelector('ul');
+      expect(firstList).toHaveAttribute('lang', 'en');
+    } finally {
+      await i18n.changeLanguage('en');
+    }
   });
 
   it('links to every converter in CONVERT_LANDING_PAGES', () => {
