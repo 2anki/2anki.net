@@ -406,7 +406,16 @@ describe('PhotoToFlashcardsPage', () => {
 
   it('renders the "Take a photo" button', () => {
     renderPage();
-    expect(screen.getByRole('button', { name: 'Take a photo' })).toBeTruthy();
+    expect(
+      screen.getByText('Take a photo', { selector: 'button' })
+    ).toBeInTheDocument();
+  });
+
+  it('hides "Take a photo" on a device with a fine hover pointer', () => {
+    renderPage();
+    expect(
+      screen.getByText('Take a photo', { selector: 'button' })
+    ).not.toBeVisible();
   });
 
   it('fires photo_upload_started with source: library when converting via dropzone input', async () => {
