@@ -76,7 +76,7 @@ function NoteTypeCard({
         />
       </div>
       <div className={styles.body}>
-        <h2 className={styles.name}>
+        <h2 className={styles.name} lang="en">
           <button
             type="button"
             className={styles.nameButton}
@@ -85,7 +85,9 @@ function NoteTypeCard({
             {starter.name}
           </button>
         </h2>
-        <p className={styles.description}>{starter.description}</p>
+        <p className={styles.description} lang="en">
+          {starter.description}
+        </p>
         <div className={styles.actions}>
           <button
             type="button"

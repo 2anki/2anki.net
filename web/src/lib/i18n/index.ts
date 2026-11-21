@@ -5,7 +5,12 @@ import i18n, {
 } from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
-import { followAppLanguage } from './documentLanguage';
+import {
+  FALLBACK_LANGUAGE,
+  followAppLanguage,
+  setRouteDocumentLanguage,
+} from './documentLanguage';
+import { routeDocumentLanguage } from './routeLanguage';
 
 export const SUPPORTED_LANGUAGES = [
   'en',
@@ -88,6 +93,12 @@ export function initI18n(instance: I18n = i18n) {
   }
 
   instance.use(LanguageDetector).use(initReactI18next).init(i18nInitOptions);
+  setRouteDocumentLanguage(
+    routeDocumentLanguage(
+      globalThis.location?.pathname ?? '/',
+      instance.resolvedLanguage ?? FALLBACK_LANGUAGE
+    )
+  );
   followAppLanguage(instance);
 
   return instance;

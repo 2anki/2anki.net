@@ -1,13 +1,15 @@
 import { useTranslation } from 'react-i18next';
+import { useAppLanguage } from '../lib/i18n/useAppLanguage';
 
 import styles from './Footer.module.css';
 import { STRIPE_CUSTOMER_PORTAL_URL } from '../lib/stripePortal';
 
 function Footer() {
   const { t } = useTranslation('marketing');
+  const appLanguage = useAppLanguage();
   const currentYear = new Date().getFullYear();
   return (
-    <footer className={styles.footer}>
+    <footer className={styles.footer} lang={appLanguage}>
       <div className={styles.inner}>
         <div className={styles.brand}>
           <span className={styles.brandName}>2anki</span>

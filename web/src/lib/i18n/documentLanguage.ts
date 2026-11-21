@@ -1,15 +1,23 @@
 import type { i18n as I18n } from 'i18next';
 
-const FALLBACK_LANGUAGE = 'en';
+export const FALLBACK_LANGUAGE = 'en';
+
+interface Pin {
+  language: string;
+}
 
 let appLanguage = FALLBACK_LANGUAGE;
-let pinnedLanguage: string | null = null;
+let routeLanguage: string | null = null;
+const pins: Pin[] = [];
+let writtenLanguage: string | null = null;
 
 function applyDocumentLanguage() {
   if (typeof document === 'undefined') {
     return;
   }
-  document.documentElement.lang = pinnedLanguage ?? appLanguage;
+  const language = pins.at(-1)?.language ?? routeLanguage ?? appLanguage;
+  document.documentElement.lang = language;
+  writtenLanguage = language;
 }
 
 export function followAppLanguage(instance: I18n) {
@@ -21,11 +29,24 @@ export function followAppLanguage(instance: I18n) {
   update();
 }
 
+export function setRouteDocumentLanguage(language: string | null) {
+  routeLanguage = language;
+  applyDocumentLanguage();
+}
+
 export function pinDocumentLanguage(language: string): () => void {
-  pinnedLanguage = language;
+  const pin: Pin = { language };
+  pins.push(pin);
   applyDocumentLanguage();
   return () => {
-    pinnedLanguage = null;
+    const index = pins.indexOf(pin);
+    if (index !== -1) {
+      pins.splice(index, 1);
+    }
     applyDocumentLanguage();
   };
+}
+
+export function documentLanguageWeSet(): string | null {
+  return writtenLanguage;
 }

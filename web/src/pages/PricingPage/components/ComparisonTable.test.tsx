@@ -14,6 +14,13 @@ describe('ComparisonTable', () => {
     }
   });
 
+  it('marks the English plan names as English', () => {
+    render(<ComparisonTable unlimitedMonthlyPrice="$7.99" />);
+    for (const plan of ['Free', 'Day / Week pass', 'Pro']) {
+      expect(screen.getByText(plan)).toHaveAttribute('lang', 'en');
+    }
+  });
+
   it('no longer offers a Lifetime column', () => {
     render(<ComparisonTable unlimitedMonthlyPrice="$7.99" />);
     expect(

@@ -122,6 +122,7 @@ function PresetPicker({
                 type="button"
                 className={editorStyles.presetCard}
                 onClick={() => onPick(preset)}
+                lang="en"
               >
                 <span className={editorStyles.presetName}>{preset.name}</span>
                 <span className={editorStyles.presetDescription}>

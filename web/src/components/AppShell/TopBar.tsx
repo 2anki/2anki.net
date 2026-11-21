@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { useAppLanguage } from '../../lib/i18n/useAppLanguage';
 import { useTheme } from '../../lib/hooks/useTheme';
 import { AccountMenu } from './AccountMenu';
 import type { SidebarLocals } from './Sidebar';
@@ -23,12 +24,13 @@ export function TopBar({
   onCloseDrawer,
 }: Readonly<TopBarProps>) {
   const { t } = useTranslation('chrome');
+  const appLanguage = useAppLanguage();
   const onBurgerClick = isDrawerOpen ? onCloseDrawer : onOpenDrawer;
   const theme = useTheme();
   const logoSrc =
     theme === 'light' ? '/mascot/navbar-logo.png' : '/mascot/Notion 1.png';
   return (
-    <header className={styles.topBar}>
+    <header className={styles.topBar} lang={appLanguage}>
       <button
         type="button"
         className={styles.mobileBurger}

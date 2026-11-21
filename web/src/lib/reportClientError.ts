@@ -2,6 +2,7 @@ import { UserNotice } from './errors/UserNotice';
 import { isChunkLoadError } from './chunkReload';
 import { isDomManipulationError } from './isDomManipulationError';
 import { getClientRelease } from './release';
+import { documentLanguageWeSet } from './i18n/documentLanguage';
 
 const ENDPOINT = '/api/events/errors';
 
@@ -103,9 +104,11 @@ export function reportClientError(
     const release = getClientRelease();
     const root = document.documentElement;
     const lang = root.lang || navigator.language || null;
+    const languageWeSet = documentLanguageWeSet();
     const translated =
       root.classList.contains('translated-ltr') ||
-      root.classList.contains('translated-rtl');
+      root.classList.contains('translated-rtl') ||
+      (languageWeSet != null && root.lang !== languageWeSet);
 
     const payload: Record<string, unknown> = {
       message,

@@ -21,10 +21,13 @@ export interface DocFrontmatter {
   template?: string;
 }
 
+export type DocLanguage = 'en' | 'de';
+
 export interface LoadedDoc {
   frontmatter: DocFrontmatter;
   body: string;
   sourcePath: string;
+  language: DocLanguage;
 }
 
 function unquote(value: string): string {
@@ -82,7 +85,9 @@ function splitLines(input: string): string[] {
   return lines;
 }
 
-function parseFrontmatter(raw: string, sourcePath: string): LoadedDoc {
+type ParsedDoc = Omit<LoadedDoc, 'language'>;
+
+function parseFrontmatter(raw: string, sourcePath: string): ParsedDoc {
   let offset: number;
   if (raw.startsWith('---\n')) offset = 4;
   else if (raw.startsWith('---\r\n')) offset = 5;
@@ -124,7 +129,8 @@ const SOURCE_ROOT = 'web/src/pages/DocsPage/';
 
 function buildDocs(
   entries: Record<string, string>,
-  prefix: string
+  prefix: string,
+  language: DocLanguage
 ): Record<string, LoadedDoc> {
   const result: Record<string, LoadedDoc> = {};
   for (const [path, raw] of Object.entries(entries)) {
@@ -136,13 +142,14 @@ function buildDocs(
       frontmatter: parsed.frontmatter,
       body: rewriteAssetPaths(parsed.body),
       sourcePath,
+      language,
     };
   }
   return result;
 }
 
-const docs = buildDocs(modules, './content/');
-const germanDocs = buildDocs(germanModules, './content/de/');
+const docs = buildDocs(modules, './content/', 'en');
+const germanDocs = buildDocs(germanModules, './content/de/', 'de');
 
 export function resolveSlug(slug: string): string {
   return Object.hasOwn(redirects, slug) ? redirects[slug] : slug;

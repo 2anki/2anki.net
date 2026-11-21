@@ -1,6 +1,11 @@
 import { NavLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { findGroupForSlug, localizeGroupLabel, sidebar } from './sidebar';
+import {
+  findGroupForSlug,
+  groupLabelLanguage,
+  localizeGroupLabel,
+  sidebar,
+} from './sidebar';
 import { loadDoc } from './loader';
 import { DocsSearchTrigger } from './DocsSearchTrigger';
 import styles from './DocsPage.module.css';
@@ -24,9 +29,13 @@ export function DocsSidebar({
     ? findGroupForSlug(activeSlug)?.label
     : undefined;
 
-  const itemLabel = (slug: string, fallback: string) =>
-    (language === 'de' ? loadDoc(slug, 'de')?.frontmatter.title : undefined) ??
-    fallback;
+  const itemLabel = (slug: string, fallback: string) => {
+    const doc = language === 'de' ? loadDoc(slug, 'de') : null;
+    const title = doc?.frontmatter.title;
+    return title == null
+      ? { text: fallback, lang: 'en' }
+      : { text: title, lang: doc?.language ?? 'en' };
+  };
 
   return (
     <nav
@@ -38,7 +47,10 @@ export function DocsSidebar({
         const isActiveGroup = group.label === activeGroupLabel;
         return (
           <div key={group.label} className={styles.sidebarGroup}>
-            <div className={styles.sidebarGroupLabel}>
+            <div
+              className={styles.sidebarGroupLabel}
+              lang={groupLabelLanguage(group.label, language)}
+            >
               {localizeGroupLabel(group.label, language)}
             </div>
             <ul
@@ -46,33 +58,38 @@ export function DocsSidebar({
                 isActiveGroup ? styles.sidebarListActive : ''
               }`}
             >
-              {group.items.map((item) => (
-                <li key={item.slug}>
-                  {item.href ? (
-                    <a
-                      href={item.href}
-                      className={styles.sidebarLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {itemLabel(item.slug, item.label)}
-                    </a>
-                  ) : (
-                    <NavLink
-                      to={`/documentation/${item.slug}`}
-                      className={({ isActive }) =>
-                        `${styles.sidebarLink} ${
-                          isActive ? styles.sidebarLinkActive : ''
-                        }`
-                      }
-                      onClick={onNavigate}
-                      end
-                    >
-                      {itemLabel(item.slug, item.label)}
-                    </NavLink>
-                  )}
-                </li>
-              ))}
+              {group.items.map((item) => {
+                const label = itemLabel(item.slug, item.label);
+                return (
+                  <li key={item.slug}>
+                    {item.href ? (
+                      <a
+                        href={item.href}
+                        className={styles.sidebarLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        lang={label.lang}
+                      >
+                        {label.text}
+                      </a>
+                    ) : (
+                      <NavLink
+                        to={`/documentation/${item.slug}`}
+                        className={({ isActive }) =>
+                          `${styles.sidebarLink} ${
+                            isActive ? styles.sidebarLinkActive : ''
+                          }`
+                        }
+                        onClick={onNavigate}
+                        end
+                        lang={label.lang}
+                      >
+                        {label.text}
+                      </NavLink>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </div>
         );

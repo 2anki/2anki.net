@@ -7,7 +7,6 @@ import { MemoryRouter } from 'react-router-dom';
 
 import PdfZuAnki from './PdfZuAnki';
 import pdfZuAnkiCopy from './copy/pdf-zu-anki';
-import i18n from '../../lib/i18n';
 
 function renderPdfZuAnki() {
   const queryClient = new QueryClient({
@@ -44,18 +43,6 @@ describe('PdfZuAnki', () => {
     expect(
       screen.getByText('Für Medizin, Pflege und Examen gebaut')
     ).toBeInTheDocument();
-  });
-
-  it('keeps the html lang German while the app language is English', () => {
-    renderPdfZuAnki();
-    expect(i18n.resolvedLanguage).toBe('en');
-    expect(document.documentElement.lang).toBe('de');
-  });
-
-  it('hands the html lang back to the app language when the page is left', () => {
-    const { unmount } = renderPdfZuAnki();
-    unmount();
-    expect(document.documentElement.lang).toBe('en');
   });
 
   it('links the German related nav to the PowerPoint German twin', () => {

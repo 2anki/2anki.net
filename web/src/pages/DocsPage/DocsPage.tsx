@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useTranslation } from 'react-i18next';
@@ -12,6 +12,8 @@ import { loadDoc, resolveSlug } from './loader';
 import { buildDocDescription, buildDocTitle } from './docMeta';
 import { canonicalUrl } from '../../lib/seo/canonicalUrl';
 import { useCanonicalLink } from '../../lib/seo/useCanonicalLink';
+import { pinDocumentLanguage } from '../../lib/i18n/documentLanguage';
+import { useAppLanguage } from '../../lib/i18n/useAppLanguage';
 import styles from './DocsPage.module.css';
 
 function stripTrailingSlashes(value: string): string {
@@ -37,6 +39,7 @@ function isTypingTarget(target: EventTarget | null): boolean {
 export default function DocsPage() {
   const params = useParams();
   const { i18n } = useTranslation();
+  const appLanguage = useAppLanguage();
   const slug = stripTrailingSlashes(params['*'] ?? '');
   const [searchOpen, setSearchOpen] = useState(false);
 
@@ -45,6 +48,12 @@ export default function DocsPage() {
   const metaDescription =
     doc != null ? buildDocDescription(doc.frontmatter, doc.body) : undefined;
   useCanonicalLink(docCanonical(slug, doc != null));
+  const contentLanguage = doc?.language ?? appLanguage;
+
+  useLayoutEffect(() => {
+    if (!slug) return;
+    return pinDocumentLanguage(contentLanguage);
+  }, [slug, contentLanguage]);
 
   const openSearch = useCallback(() => setSearchOpen(true), []);
   const closeSearch = useCallback(() => setSearchOpen(false), []);

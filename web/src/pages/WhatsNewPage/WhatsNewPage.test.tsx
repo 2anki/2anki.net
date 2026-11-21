@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
+import i18n from '../../lib/i18n';
 
 vi.mock('../../components/FeedbackWidget/FeedbackWidget', () => ({
   FeedbackWidget: () => null,
@@ -38,6 +39,19 @@ describe('WhatsNewPage', () => {
     await renderPage();
     expect(screen.getByText('Shipped one')).toBeInTheDocument();
     expect(screen.getByText('Shipped two')).toBeInTheDocument();
+  });
+
+  it('marks the English entry titles as English beside translated badges', async () => {
+    await i18n.changeLanguage('ja');
+    try {
+      await renderPage();
+      expect(document.documentElement.lang).toBe('ja');
+      expect(screen.getByText('Shipped one')).toHaveAttribute('lang', 'en');
+      const badge = screen.getByText('Shipped one').previousElementSibling;
+      expect(badge?.closest('[lang]')).toBe(document.documentElement);
+    } finally {
+      await i18n.changeLanguage('en');
+    }
   });
 
   it('does not render In progress or Backlog columns', async () => {

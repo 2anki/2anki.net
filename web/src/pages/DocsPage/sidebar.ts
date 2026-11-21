@@ -170,3 +170,7 @@ export function localizeGroupLabel(label: string, language?: string): string {
   }
   return label;
 }
+
+export function groupLabelLanguage(label: string, language?: string): string {
+  return language === 'de' && Object.hasOwn(groupLabelDe, label) ? 'de' : 'en';
+}

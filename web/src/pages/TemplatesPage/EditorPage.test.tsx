@@ -5,6 +5,7 @@ import '@testing-library/jest-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import EditorPage from './EditorPage';
+import i18n from '../../lib/i18n';
 import * as templatesApi from '../../lib/backend/templates';
 import { NoteTypeStarter } from '../../lib/backend/templates';
 
@@ -95,6 +96,22 @@ describe('EditorPage (new)', () => {
     expect(
       screen.getByRole('button', { name: /blank cloze/i })
     ).toBeInTheDocument();
+  });
+
+  it('marks the English starter presets from the server as English', async () => {
+    vi.spyOn(templatesApi, 'getDefaultNoteTypes').mockResolvedValue([
+      sampleStarter,
+    ]);
+    await i18n.changeLanguage('ja');
+    try {
+      renderEditor('new', '/templates/new');
+      const preset = await screen.findByRole('button', {
+        name: /Clean Basic/,
+      });
+      expect(preset).toHaveAttribute('lang', 'en');
+    } finally {
+      await i18n.changeLanguage('en');
+    }
   });
 
   it('opens the editor with My Basic when Blank Basic is picked', async () => {

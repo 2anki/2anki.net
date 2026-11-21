@@ -79,7 +79,7 @@ export function DocsHome() {
 
       <section className={styles.docsHomeSection}>
         <h2 className={styles.docsHomeSectionTitle}>{t('home.startHere')}</h2>
-        <div className={styles.homeGrid}>
+        <div className={styles.homeGrid} lang="en">
           {startHereCards.map((card) => (
             <Link key={card.to} to={card.to} className={styles.homeCard}>
               <p className={styles.homeCardTitle}>{card.title}</p>
@@ -91,7 +91,7 @@ export function DocsHome() {
 
       <section className={styles.docsHomeSection}>
         <h2 className={styles.docsHomeSectionTitle}>{t('home.popular')}</h2>
-        <ul className={styles.popularList}>
+        <ul className={styles.popularList} lang="en">
           {popularPages.map((page) => (
             <li key={page.to}>
               <Link to={page.to}>{page.title}</Link>

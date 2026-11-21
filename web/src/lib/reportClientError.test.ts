@@ -6,6 +6,7 @@ import {
 } from './reportClientError';
 import { UserNotice } from './errors/UserNotice';
 import { getClientRelease } from './release';
+import i18n from './i18n';
 
 vi.mock('./release', () => ({
   getClientRelease: vi.fn(),
@@ -93,6 +94,30 @@ describe('reportClientError', () => {
       expect(context.translated).toBe(true);
     } finally {
       document.documentElement.classList.remove('translated-ltr');
+    }
+  });
+
+  it('does not flag translated when the page is in the language the app chose', async () => {
+    await i18n.changeLanguage('ja');
+    try {
+      reportClientError(new Error('app in japanese'));
+      const [, init] = getLastCall();
+      const body = JSON.parse(init.body as string) as Record<string, unknown>;
+      expect(body.context).toMatchObject({ lang: 'ja', translated: false });
+    } finally {
+      await i18n.changeLanguage('en');
+    }
+  });
+
+  it('flags translated when the html lang differs from the one the app set', () => {
+    document.documentElement.lang = 'ja';
+    try {
+      reportClientError(new Error('browser rewrote lang'));
+      const [, init] = getLastCall();
+      const body = JSON.parse(init.body as string) as Record<string, unknown>;
+      expect(body.context).toMatchObject({ lang: 'ja', translated: true });
+    } finally {
+      document.documentElement.lang = 'en';
     }
   });
 

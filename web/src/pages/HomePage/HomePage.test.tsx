@@ -230,4 +230,19 @@ describe('HomePage (anonymous)', () => {
     const playButtons = screen.getAllByRole('button', { name: /play:/i });
     expect(playButtons.length).toBe(10);
   });
+
+  it.each([
+    ['How to use cloze deletions', 'en'],
+    ['Notion2Anki — Perfekter Workflow fürs Lernen', 'de'],
+    ['Notion to Anki — Tutorial en Español', 'es'],
+    ['Créer des flashcards Anki avec Notion', 'fr'],
+  ])('marks the walkthrough title %s as %s', (title, language) => {
+    renderHome();
+    fireEvent.click(
+      screen.getByRole('button', { name: /show all 10 videos/i })
+    );
+    expect(
+      screen.getByText(title, { selector: 'p' }).closest('[lang]')
+    ).toHaveAttribute('lang', language);
+  });
 });
