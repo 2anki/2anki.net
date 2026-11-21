@@ -479,6 +479,8 @@
       "emailLink": "Email me a sign-in link",
       "magicLinkSuppressed": "We can't email this address — it bounced or was unsubscribed earlier. Contact support@2anki.net to restore it, or use your password below.",
       "magicLinkError": "We couldn't send your sign-in link right now. Try again in a minute, or use your password below.",
+      "wrongCredentials": "Wrong email or password. Try again or reset your password.",
+      "googleAccountHint": "This account uses Google sign-in — use \"Sign in with Google\" or send a login link.",
       "usePassword": "Use password instead",
       "forgotPassword": "Forgot your password?",
       "orUseProvider": "Or use a provider",

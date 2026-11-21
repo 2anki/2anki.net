@@ -5,6 +5,7 @@ import React, {
   useState,
 } from 'react';
 import { useCookies } from 'react-cookie';
+import { useTranslation } from 'react-i18next';
 import {
   ErrorHandlerType,
   getErrorMessage,
@@ -31,6 +32,7 @@ const getUrlRedirect = (): string | undefined => {
 };
 
 export const useHandleLoginSubmit = (onError: ErrorHandlerType): LoginState => {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [, setCookie] = useCookies(['token']);
   const [email, setEmail] = useState(localStorage.getItem('email') ?? '');
@@ -53,19 +55,14 @@ export const useHandleLoginSubmit = (onError: ErrorHandlerType): LoginState => {
           message?: string;
           hint?: string;
         };
-        const base =
-          'Wrong email or password. Try again or reset your password.';
-        const detail =
+        const wrongCredentials = t('auth.login.wrongCredentials');
+        const message =
           data.hint === 'google'
-            ? ' This account uses Google sign-in — use "Sign in with Google" or send a login link.'
-            : '';
-        onError(new Error(base + detail));
+            ? `${wrongCredentials} ${t('auth.login.googleAccountHint')}`
+            : wrongCredentials;
+        onError(new Error(message));
       } else {
-        onError(
-          new Error(
-            'Wrong email or password. Try again or reset your password.'
-          )
-        );
+        onError(new Error(t('auth.login.wrongCredentials')));
       }
       setLoading(false);
     } catch (error) {

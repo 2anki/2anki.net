@@ -479,6 +479,8 @@
       "emailLink": "Inviami un link di accesso",
       "magicLinkSuppressed": "Non possiamo scrivere a questo indirizzo — ha rimbalzato o è stato disiscritto. Contatta support@2anki.net per ripristinarlo, oppure usa la password qui sotto.",
       "magicLinkError": "Non siamo riusciti a inviare il link di accesso ora. Riprova tra un minuto, oppure usa la password qui sotto.",
+      "wrongCredentials": "Email o password errate. Riprova oppure reimposta la password.",
+      "googleAccountHint": "Questo account usa l'accesso con Google — usa \"Sign in with Google\" oppure invia un link di accesso.",
       "usePassword": "Usa la password invece",
       "forgotPassword": "Hai dimenticato la password?",
       "orUseProvider": "Oppure usa un provider",
