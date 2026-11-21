@@ -93,7 +93,9 @@ describe('DocsPage document language', () => {
     await useAppLanguage('ja');
     renderAt('/documentation');
     expect(document.documentElement.lang).toBe('ja');
-    const card = screen.getByRole('link', { name: /Upload a file/ });
+    const card = within(screen.getByRole('main')).getByRole('link', {
+      name: /Upload a file/,
+    });
     expect(card.closest('[lang]')).toHaveAttribute('lang', 'en');
   });
 });
