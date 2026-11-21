@@ -1,6 +1,7 @@
 import { vi, type Mock, type Mocked } from 'vitest';
 import axios, { AxiosError, type AxiosRequestConfig } from 'axios';
 import dns from 'dns';
+import net from 'node:net';
 import { inspect } from 'node:util';
 
 import {
@@ -772,6 +773,67 @@ describe('instrumentedAxios', () => {
     ).resolves.toEqual({ status: 200, data: 'ok' });
   });
 
+  it('treats an address listed in a mixed DNS answer as non-public when any entry is non-public', async () => {
+    const client = makeInstrumentedAxios(new ObservabilitySink(new FakeRepo()));
+    mockedLookup.mockImplementation(async () => [
+      { address: '8.8.8.8', family: 4 },
+      { address: '64:ff9b::a9fe:a9fe', family: 6 },
+    ]);
+
+    await expect(
+      client.get('notion', 'https://mixed.example/x')
+    ).rejects.toThrow(/resolved IP 64:ff9b::a9fe:a9fe .* private/i);
+    expect(mockedAxios.get).not.toHaveBeenCalled();
+  });
+
+  it('pins the first address when every entry of a mixed-family DNS answer is public', async () => {
+    const client = makeInstrumentedAxios(new ObservabilitySink(new FakeRepo()));
+    mockedLookup.mockImplementation(async () => [
+      { address: '2606:4700:4700::1111', family: 6 },
+      { address: '8.8.8.8', family: 4 },
+    ]);
+    mockedAxios.get.mockResolvedValueOnce({ status: 200, data: 'ok' });
+
+    await client.get('notion', 'https://dual.example/x');
+
+    const opts = mockedAxios.get.mock.calls[0][1] as { lookup: Function };
+    const cb = vi.fn();
+    opts.lookup('dual.example', {}, cb as never);
+    expect(cb).toHaveBeenCalledWith(null, '2606:4700:4700::1111', 6);
+  });
+
+  it.each([
+    'https://[64:ff9b::a9fe:a9fe]/latest',
+    'https://[::7f00:1]/internal',
+    'https://198.18.0.1/internal',
+  ])('treats a redirect hop to %s as non-public', async (location) => {
+    const client = makeInstrumentedAxios(new ObservabilitySink(new FakeRepo()));
+    mockedAxios.get.mockResolvedValueOnce(makeRedirect(location));
+    mockPublicLookup();
+
+    await expect(
+      client.get('notion', 'https://api.notion.com/v1/pages/abc')
+    ).rejects.toThrow(/private\/loopback address/i);
+    expect(mockedAxios.get).toHaveBeenCalledTimes(1);
+  });
+
+  it('treats a redirect hop to a name resolving into the NAT64 prefix as non-public', async () => {
+    const client = makeInstrumentedAxios(new ObservabilitySink(new FakeRepo()));
+    mockedAxios.get.mockResolvedValueOnce(
+      makeRedirect('https://translated.example/x')
+    );
+    mockedLookup.mockImplementation(async (host: string) =>
+      host === 'translated.example'
+        ? [{ address: '64:ff9b::7f00:1', family: 6 }]
+        : [{ address: '13.224.0.1', family: 4 }]
+    );
+
+    await expect(
+      client.get('notion', 'https://api.notion.com/v1/pages/abc')
+    ).rejects.toThrow(/resolved IP .* private\/loopback\/link-local/i);
+    expect(mockedAxios.get).toHaveBeenCalledTimes(1);
+  });
+
   it('does not throw when sink itself rejects (instrumentation must never break the caller)', async () => {
     const sink = {
       recordOutboundCall: () => {
@@ -789,6 +851,204 @@ describe('instrumentedAxios', () => {
     ).resolves.toEqual({ status: 200, data: 'ok' });
     errSpy.mockRestore();
   });
+});
+
+const echoLiteralLookup = () => {
+  mockedLookup.mockImplementation(async (host: string) => {
+    const family = net.isIP(host);
+    if (family !== 0) return [{ address: host, family }];
+    return [{ address: '13.224.0.1', family: 4 }];
+  });
+};
+
+const REFUSED = 'refused';
+const ALLOWED = 'allowed';
+
+const ADDRESS_CASES: Array<[string, string, typeof REFUSED | typeof ALLOWED]> =
+  [
+    ['0.0.0.0/8 (this network)', '0.1.2.3', REFUSED],
+    ['10.0.0.0/8 (private)', '10.0.0.1', REFUSED],
+    ['100.64.0.0/10 (shared address space)', '100.127.255.254', REFUSED],
+    ['127.0.0.0/8 (loopback)', '127.255.255.254', REFUSED],
+    ['169.254.0.0/16 (link-local)', '169.254.169.254', REFUSED],
+    ['172.16.0.0/12 (private)', '172.31.255.254', REFUSED],
+    ['192.0.0.0/24 (IETF protocol assignments)', '192.0.0.1', REFUSED],
+    ['192.0.2.0/24 (documentation)', '192.0.2.1', REFUSED],
+    ['192.88.99.0/24 (6to4 relay anycast)', '192.88.99.1', REFUSED],
+    ['192.168.0.0/16 (private)', '192.168.1.1', REFUSED],
+    ['198.18.0.0/15 (benchmarking)', '198.19.255.254', REFUSED],
+    ['198.51.100.0/24 (documentation)', '198.51.100.1', REFUSED],
+    ['203.0.113.0/24 (documentation)', '203.0.113.1', REFUSED],
+    ['224.0.0.0/4 (multicast)', '239.255.255.250', REFUSED],
+    ['240.0.0.0/4 (reserved)', '240.0.0.1', REFUSED],
+    ['255.255.255.255 (broadcast)', '255.255.255.255', REFUSED],
+    ['an ordinary public IPv4 address', '8.8.8.8', ALLOWED],
+    [':: (unspecified)', '::', REFUSED],
+    ['::1 (loopback)', '::1', REFUSED],
+    ['::/96 embedding a private address', '::7f00:1', REFUSED],
+    ['::/96 embedding a public address', '::808:808', REFUSED],
+    ['::ffff:0:0/96 embedding a private address', '::ffff:7f00:1', REFUSED],
+    ['::ffff:0:0/96 embedding a public address', '::ffff:808:808', REFUSED],
+    ['::ffff:0:0:0/96 embedding a private address', '::ffff:0:7f00:1', REFUSED],
+    ['::ffff:0:0:0/96 embedding a public address', '::ffff:0:808:808', REFUSED],
+    ['64:ff9b::/96 embedding a private address', '64:ff9b::a9fe:a9fe', REFUSED],
+    ['64:ff9b::/96 embedding a public address', '64:ff9b::808:808', REFUSED],
+    ['64:ff9b:1::/48 (local-use translation)', '64:ff9b:1::1', REFUSED],
+    ['100::/64 (discard)', '100::1', REFUSED],
+    ['2001::/32 (Teredo)', '2001:0:4136:e378:8000:63bf:3fff:fdd2', REFUSED],
+    ['2001:db8::/32 (documentation)', '2001:db8::1', REFUSED],
+    ['2002::/16 embedding a private address', '2002:7f00:1::1', REFUSED],
+    ['2002::/16 embedding a public address', '2002:808:808::1', REFUSED],
+    ['3fff::/20 (documentation)', '3fff::1', REFUSED],
+    ['fc00::/7 (unique local)', 'fd12:3456::1', REFUSED],
+    ['fe80::/10 (link-local)', 'febf::1', REFUSED],
+    ['fec0::/10 (site-local)', 'feff::1', REFUSED],
+    ['ff00::/8 (multicast)', 'ff02::1', REFUSED],
+    ['an ordinary public IPv6 address', '2606:4700:4700::1111', ALLOWED],
+    [
+      'another ordinary public IPv6 address',
+      '2a00:1450:4001:80b::200e',
+      ALLOWED,
+    ],
+    ['upper-case NAT64', '64:FF9B::A9FE:A9FE', REFUSED],
+    ['upper-case IPv4-compatible', '::7F00:1', REFUSED],
+    ['upper-case link-local', 'FE80::1', REFUSED],
+    [
+      'zero-expanded loopback',
+      '0000:0000:0000:0000:0000:0000:0000:0001',
+      REFUSED,
+    ],
+    ['zero-expanded unspecified', '0:0:0:0:0:0:0:0', REFUSED],
+    ['zero-expanded NAT64', '0064:ff9b:0000:0000:0000:0000:a9fe:a9fe', REFUSED],
+    ['zero-expanded unique local', '00fc::1', REFUSED],
+    ['dotted-quad IPv4-mapped', '::ffff:127.0.0.1', REFUSED],
+    ['dotted-quad IPv4-mapped public', '::ffff:8.8.8.8', REFUSED],
+    ['dotted-quad NAT64', '64:ff9b::127.0.0.1', REFUSED],
+    ['dotted-quad IPv4-compatible', '::127.0.0.1', REFUSED],
+  ];
+
+const urlForAddress = (address: string): string =>
+  net.isIP(address) === 6
+    ? `https://[${address}]/internal`
+    : `https://${address}/internal`;
+
+describe('instrumentedAxios non-public address ranges', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    echoLiteralLookup();
+    mockedAxios.get.mockResolvedValue({ status: 200, data: 'ok' });
+  });
+
+  const client = () =>
+    makeInstrumentedAxios(new ObservabilitySink(new FakeRepo()));
+
+  it.each(ADDRESS_CASES)(
+    'treats %s (%s) as %s when it is the URL host',
+    async (_range, address, expected) => {
+      const request = client().get('mcp', urlForAddress(address));
+      if (expected === REFUSED) {
+        await expect(request).rejects.toThrow(/private\/loopback address/i);
+        expect(mockedAxios.get).not.toHaveBeenCalled();
+      } else {
+        await expect(request).resolves.toEqual({ status: 200, data: 'ok' });
+      }
+    }
+  );
+
+  it.each([
+    ...ADDRESS_CASES,
+    ['a link-local address with a zone identifier', 'fe80::1%eth0', REFUSED],
+  ] as Array<[string, string, typeof REFUSED | typeof ALLOWED]>)(
+    'treats %s (%s) as %s when it is a DNS answer',
+    async (_range, address, expected) => {
+      mockedLookup.mockImplementation(async () => [
+        { address, family: net.isIP(address.split('%')[0]) },
+      ]);
+      const request = client().get('mcp', 'https://resolves.example/x');
+      if (expected === REFUSED) {
+        await expect(request).rejects.toThrow(
+          /resolved IP .* private\/loopback\/link-local/i
+        );
+        expect(mockedAxios.get).not.toHaveBeenCalled();
+      } else {
+        await expect(request).resolves.toEqual({ status: 200, data: 'ok' });
+      }
+    }
+  );
+
+  it.each([
+    ['decimal', 'https://2130706433/internal'],
+    ['hexadecimal', 'https://0x7f000001/internal'],
+    ['octal', 'https://0177.0.0.1/internal'],
+    ['short', 'https://127.1/internal'],
+    ['short hexadecimal', 'https://0x7f.1/internal'],
+    ['trailing-dot', 'https://127.0.0.1./internal'],
+    ['single-number zero', 'https://0/internal'],
+  ])(
+    'treats a %s IPv4 literal for a non-public address as non-public',
+    async (_form, url) => {
+      await expect(client().get('mcp', url)).rejects.toThrow(
+        /private\/loopback address/i
+      );
+      expect(mockedLookup).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each(['https://localhost./internal', 'https://app.localhost./internal'])(
+    'treats %s with a trailing dot as non-public before any DNS lookup',
+    async (url) => {
+      await expect(client().get('mcp', url)).rejects.toThrow(
+        /private\/loopback address/i
+      );
+      expect(mockedLookup).not.toHaveBeenCalled();
+    }
+  );
+
+  it('refuses a URL host carrying a zone identifier as an invalid URL', async () => {
+    await expect(
+      client().get('mcp', 'https://[fe80::1%25eth0]/internal')
+    ).rejects.toThrow(/invalid url/i);
+    expect(mockedAxios.get).not.toHaveBeenCalled();
+  });
+
+  it('still reaches a public hostname written with a trailing dot', async () => {
+    await expect(
+      client().get('mcp', 'https://example.com./page')
+    ).resolves.toEqual({ status: 200, data: 'ok' });
+  });
+
+  it.each([
+    ['notion', 'https://api.notion.com/v1/oauth/token'],
+    ['notion', 'https://file.notion.so/f/f/abc/image.png'],
+    ['notion', 'https://prod-files-secure.s3.us-west-2.amazonaws.com/a/b'],
+    ['claude', 'https://api.anthropic.com/v1/messages'],
+    ['dropbox', 'https://uc8.dl.dropboxusercontent.com/cd/0/get/abc'],
+    ['google_drive', 'https://www.googleapis.com/drive/v3/files/abc'],
+    ['google_drive', 'https://oauth2.googleapis.com/token'],
+    ['patreon', 'https://www.patreon.com/api/oauth2/v2/identity'],
+    ['patreon', 'https://api.patreon.com/oauth2/token'],
+    ['microsoft_login', 'https://login.microsoftonline.com/common/keys'],
+    ['apple_login', 'https://appleid.apple.com/auth/keys'],
+    ['pexels', 'https://api.pexels.com/v1/search'],
+    ['pexels', 'https://images.pexels.com/photos/1/a.jpeg'],
+    ['wikimedia', 'https://commons.wikimedia.org/w/api.php'],
+    ['wikimedia', 'https://en.wikipedia.org/w/api.php'],
+    ['wikimedia', 'https://upload.wikimedia.org/a/b.png'],
+    ['mcp', 'https://example.com/notes.md'],
+  ] as Array<[Parameters<ReturnType<typeof client>['get']>[0], string]>)(
+    'still reaches %s at %s when DNS answers with public IPv4 and IPv6 addresses',
+    async (service, url) => {
+      mockedLookup.mockImplementation(async () => [
+        { address: '2602:f79a::1', family: 6 },
+        { address: '13.224.0.1', family: 4 },
+      ]);
+
+      await expect(client().get(service, url)).resolves.toEqual({
+        status: 200,
+        data: 'ok',
+      });
+    }
+  );
 });
 
 describe('instrumentedAxios error redaction', () => {
