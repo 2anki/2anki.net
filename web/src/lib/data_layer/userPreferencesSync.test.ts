@@ -257,4 +257,22 @@ describe('userPreferencesSync — hydrate (authenticated)', () => {
     expect(localStorage.getItem('2anki-language')).toBe('de');
     await vi.waitFor(() => expect(i18n.resolvedLanguage).toBe('de'));
   });
+
+  it('sets the html lang to the language the account saved', async () => {
+    fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          cardOptions: null,
+          theme: null,
+          language: 'ru',
+          ankiWebAcknowledgedAt: null,
+        }),
+        { status: 200 }
+      )
+    );
+
+    await hydrateFromServer();
+
+    await vi.waitFor(() => expect(document.documentElement.lang).toBe('ru'));
+  });
 });

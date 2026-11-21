@@ -48,6 +48,11 @@ describe('LandingPage in German', () => {
     expect(screen.getByText("So funktioniert's")).toBeInTheDocument();
   });
 
+  it('leaves the html lang on the app language for a page without its own language', () => {
+    renderLandingPage();
+    expect(document.documentElement.lang).toBe('de');
+  });
+
   it('translates the secondary sign-up link', () => {
     renderLandingPage();
     expect(
