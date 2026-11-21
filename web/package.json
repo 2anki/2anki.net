@@ -46,7 +46,7 @@
     "react-cookie": "^8.1.2",
     "react-dom": "^19.2.8",
     "react-helmet-async": "^3.0.0",
-    "react-i18next": "^17.0.10",
+    "react-i18next": "^18.0.2",
     "react-markdown": "^10.1.0",
     "react-router-dom": "^7.18.2",
     "recharts": "^3.8.1",
