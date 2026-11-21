@@ -315,4 +315,190 @@ describe('useMetadata', () => {
     expect(httpGet).not.toHaveBeenCalled();
     expect(httpsGet).not.toHaveBeenCalled();
   });
+
+  describe('limits', () => {
+    const neverSettles = () => new Promise<FakeResponse>(() => undefined);
+
+    const afterMs = (ms: number, outcome: () => FakeResponse) =>
+      new Promise<FakeResponse>((resolve, reject) => {
+        setTimeout(() => {
+          try {
+            resolve(outcome());
+          } catch (error) {
+            reject(error);
+          }
+        }, ms);
+      });
+
+    const settledFlag = (pending: Promise<unknown>) => {
+      const state = { settled: false };
+      void pending.then(() => {
+        state.settled = true;
+      });
+      return state;
+    };
+
+    const iconRequests = (pageUrl: string) =>
+      requestedUrls().filter((url) => url !== pageUrl);
+
+    const bookmarkIconWarnings = () =>
+      (console.warn as unknown as Mock).mock.calls.filter(([line]) =>
+        String(line).startsWith('[bookmark-icon]')
+      );
+
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('bounds the page fetch with a deadline and an HTML size cap', async () => {
+      serve({ 'https://bounded-page.com/article': htmlPage('') });
+
+      await useMetadata('https://bounded-page.com/article');
+
+      expect(mockedAxios.get).toHaveBeenCalledWith(
+        'https://bounded-page.com/article',
+        expect.objectContaining({
+          maxContentLength: 5 * 1024 * 1024,
+          signal: expect.any(AbortSignal),
+        })
+      );
+    });
+
+    it('returns the hostname fallback when the page does not finish within 10 s', async () => {
+      mockedAxios.get.mockImplementation(neverSettles);
+
+      const pending = useMetadata('https://slow-page.com/article');
+      const state = settledFlag(pending);
+      await vi.advanceTimersByTimeAsync(9999);
+      expect(state.settled).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+
+      await expect(pending).resolves.toEqual({
+        description: '',
+        title: 'slow-page.com',
+        logo: '',
+        image: '',
+      });
+    });
+
+    it('ends a slow icon fetch at its 5 s deadline and leaves the icon out', async () => {
+      const pageUrl = 'https://drip-site.com/article';
+      let dripSignal: AbortSignal | undefined;
+      mockedAxios.get.mockImplementation(async (url: string, config) => {
+        if (url === pageUrl) {
+          return htmlPage('<link rel="icon" href="/drip.png">');
+        }
+        if (url === 'https://drip-site.com/drip.png') {
+          dripSignal = config?.signal as AbortSignal;
+          return neverSettles();
+        }
+        throw notFound(url);
+      });
+
+      const pending = useMetadata(pageUrl);
+      const state = settledFlag(pending);
+      await vi.advanceTimersByTimeAsync(4999);
+      expect(state.settled).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+      const result = await pending;
+
+      expect(result).toMatchObject({ title: 'Spaced repetition', logo: null });
+      expect(dripSignal?.aborted).toBe(true);
+    });
+
+    it('probes at most the ten preferred candidates plus two favicon fallbacks', async () => {
+      const pageUrl = 'https://many-icons.com/article';
+      const links = Array.from(
+        { length: 200 },
+        (_, i) =>
+          `<link rel="icon" href="/icon-${i + 1}.png" sizes="${i + 1}x${i + 1}">`
+      ).join('');
+      serve({ [pageUrl]: htmlPage(links) });
+
+      const result = await useMetadata(pageUrl);
+
+      expect(result.title).toBe('Spaced repetition');
+      expect(iconRequests(pageUrl)).toEqual([
+        ...Array.from(
+          { length: 10 },
+          (_, i) => `https://many-icons.com/icon-${200 - i}.png`
+        ),
+        'https://many-icons.com/favicon.ico',
+        'https://many-icons.com/favicon.png',
+      ]);
+    });
+
+    it('logs refused icon URLs once per bookmark with a count', async () => {
+      const pageUrl = 'https://many-refused.com/article';
+      const links = Array.from(
+        { length: 200 },
+        (_, i) =>
+          `<link rel="icon" href="https://10.0.${Math.floor(i / 200)}.${i + 1}/icon.png">`
+      ).join('');
+      serve({ [pageUrl]: htmlPage(links) });
+
+      const result = await useMetadata(pageUrl);
+
+      expect(result.logo).toBeNull();
+      expect(iconRequests(pageUrl)).toEqual([
+        'https://many-refused.com/favicon.ico',
+        'https://many-refused.com/favicon.png',
+      ]);
+      expect(bookmarkIconWarnings()).toEqual([
+        ['[bookmark-icon] shared client refused 10 icon URLs'],
+      ]);
+    });
+
+    it('returns the preview without an icon when the whole lookup passes 10 s', async () => {
+      const pageUrl = 'https://slow-icons.com/article';
+      mockedAxios.get.mockImplementation(async (url: string) => {
+        if (url === pageUrl) {
+          return htmlPage(
+            [1, 2, 3, 4]
+              .map((n) => `<link rel="icon" href="/slow-${n}.png">`)
+              .join('')
+          );
+        }
+        return afterMs(4000, () => {
+          throw notFound(url);
+        });
+      });
+
+      const pending = useMetadata(pageUrl);
+      const state = settledFlag(pending);
+      await vi.advanceTimersByTimeAsync(9999);
+      expect(state.settled).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+      const result = await pending;
+
+      expect(result).toMatchObject({
+        title: 'Spaced repetition',
+        description: 'A learning technique',
+        logo: null,
+      });
+      expect(iconRequests(pageUrl)).toHaveLength(3);
+    });
+  });
+
+  it.each([
+    ['a host on an unrecognised TLD', 'https://notes.example.test/page'],
+  ])(
+    'falls back to the hostname when the scraper rejects %s',
+    async (_label, url) => {
+      serve({ [url]: htmlPage('') });
+
+      const result = await useMetadata(url);
+
+      expect(result).toEqual({
+        description: '',
+        title: new URL(url).hostname,
+        logo: '',
+        image: '',
+      });
+    }
+  );
 });
