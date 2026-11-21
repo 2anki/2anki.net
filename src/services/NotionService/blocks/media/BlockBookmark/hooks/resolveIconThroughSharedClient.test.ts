@@ -1,8 +1,8 @@
 import { vi, type Mock, type Mocked } from 'vitest';
-import axios, { type AxiosStatic } from 'axios';
+import axios, { AxiosError, type AxiosStatic } from 'axios';
 import dns from 'dns';
 import http from 'node:http';
-import type { AddressInfo } from 'node:net';
+import type { AddressInfo, Socket } from 'node:net';
 
 import { resolveIconThroughSharedClient } from './resolveIconThroughSharedClient';
 
@@ -17,6 +17,7 @@ vi.mock('axios', async () => {
       delete: vi.fn(),
       isAxiosError: actual.isAxiosError,
     },
+    AxiosError: actual.AxiosError,
   };
 });
 
@@ -86,44 +87,65 @@ describe('resolveIconThroughSharedClient', () => {
     }
   });
 
-  describe('against a local server that ignores the range header', () => {
-    const ICON_BYTES = 900 * 1024;
+  describe('against a local server that ignores the range header and never ends the body', () => {
+    const ICON_CAP = 64 * 1024;
+    const ONE_SOCKET_READ = 64 * 1024;
+    const FRAMING_SLACK = 8 * 1024;
     let server: http.Server;
-    let port: number;
-    let bytesSent: number;
-    let closedEarly: Promise<boolean>;
+    let clientDisconnected: Promise<void>;
+    let clientSockets: Socket[];
+    let clientError: unknown;
+
+    const streamWithoutEnd = (res: http.ServerResponse) => {
+      const chunk = Buffer.alloc(16 * 1024, 0x89);
+      const writeUntilBackpressure = () => {
+        while (!res.destroyed) {
+          if (!res.write(chunk)) {
+            res.once('drain', writeUntilBackpressure);
+            return;
+          }
+        }
+      };
+      writeUntilBackpressure();
+    };
 
     beforeEach(async () => {
-      bytesSent = 0;
-      server = http.createServer((_req, res) => {
-        closedEarly = new Promise((resolve) => {
-          res.on('close', () => resolve(!res.writableFinished));
+      clientSockets = [];
+      clientError = undefined;
+      clientDisconnected = new Promise((resolve) => {
+        server = http.createServer((_req, res) => {
+          res.on('close', () => resolve());
+          res.writeHead(200, { 'content-type': 'image/png' });
+          streamWithoutEnd(res);
         });
-        res.writeHead(200, { 'content-type': 'image/png' });
-        const chunk = Buffer.alloc(16 * 1024, 0x89);
-        const writeMore = () => {
-          while (bytesSent < ICON_BYTES && !res.destroyed) {
-            bytesSent += chunk.length;
-            if (!res.write(chunk)) {
-              res.once('drain', writeMore);
-              return;
-            }
-          }
-          res.end();
-        };
-        writeMore();
       });
       await new Promise<void>((resolve) =>
         server.listen(0, '127.0.0.1', resolve)
       );
-      port = (server.address() as AddressInfo).port;
+      const { port } = server.address() as AddressInfo;
+      const countingAgent = new http.Agent({ keepAlive: false });
+      const createConnection =
+        countingAgent.createConnection.bind(countingAgent);
+      countingAgent.createConnection = (options, callback) => {
+        const socket = createConnection(options, callback) as Socket;
+        clientSockets.push(socket);
+        return socket;
+      };
       const { default: realAxios } = await vi.importActual<{
         default: AxiosStatic;
       }>('axios');
       mockedAxios.get.mockImplementation((url, config) => {
         const { lookup: _lookup, ...rest } = config ?? {};
         const { pathname } = new URL(url);
-        return realAxios.get(`http://127.0.0.1:${port}${pathname}`, rest);
+        return realAxios
+          .get(`http://127.0.0.1:${port}${pathname}`, {
+            ...rest,
+            httpAgent: countingAgent,
+          })
+          .catch((error: unknown) => {
+            clientError = error;
+            throw error;
+          });
       });
     });
 
@@ -132,12 +154,21 @@ describe('resolveIconThroughSharedClient', () => {
       await new Promise((resolve) => server.close(resolve));
     });
 
-    it('cuts the body off at the 64 KB cap and leaves the icon out', async () => {
+    it('stops reading at the 64 KB cap, disconnects, and leaves the icon out', async () => {
       const result = await resolveIconThroughSharedClient(ICON_URL, PNG_TYPES);
 
       expect(result).toBeUndefined();
-      await expect(closedEarly).resolves.toBe(true);
-      expect(bytesSent).toBeLessThan(ICON_BYTES);
+      expect(clientError).toBeInstanceOf(AxiosError);
+      expect((clientError as AxiosError).code).toBe(
+        AxiosError.ERR_BAD_RESPONSE
+      );
+      expect((clientError as AxiosError).response).toBeUndefined();
+      await clientDisconnected;
+      expect(clientSockets).toHaveLength(1);
+      expect(clientSockets[0].bytesRead).toBeGreaterThan(ICON_CAP);
+      expect(clientSockets[0].bytesRead).toBeLessThanOrEqual(
+        ICON_CAP + ONE_SOCKET_READ + FRAMING_SLACK
+      );
     });
   });
 
