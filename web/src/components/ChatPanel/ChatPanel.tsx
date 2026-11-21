@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { Link } from 'react-router-dom';
 import { track } from '../../lib/analytics/track';
 import { patch, post, postMultipart } from '../../lib/backend/api';
@@ -601,7 +602,7 @@ function ComposerPill({
 function resolveOutgoingContent(
   rawContent: string,
   fileCount: number,
-  t: (key: string, opts?: Record<string, unknown>) => string
+  t: TFunction<'chat'>
 ): string {
   if (rawContent.trim().length > 0) return rawContent;
   return t('composer.fileOnlyPrompt', { count: fileCount });

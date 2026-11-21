@@ -28,7 +28,7 @@ export function PricingFaq({
               <span className={styles.icon} aria-hidden="true" />
             </summary>
             <p className={styles.answer}>
-              {t(item.answerKey, item.answerValues)}
+              {t(item.answerKey, item.answerValues ?? {})}
             </p>
           </details>
         ))}

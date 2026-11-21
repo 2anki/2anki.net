@@ -1,6 +1,7 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { useCardUsage } from '../../lib/hooks/useCardUsage';
 import {
   useAiCredits,
@@ -23,10 +24,7 @@ import styles from './AppShell.module.css';
 const NEAR_LIMIT_RATIO = 0.8;
 const LOW_CREDITS_THRESHOLD = 25;
 
-function describeRing(
-  ring: BalanceRing | null,
-  t: (key: string, options?: Record<string, unknown>) => string
-): string | null {
+function describeRing(ring: BalanceRing | null, t: TFunction): string | null {
   if (ring == null) return null;
   if (ring.kind === 'cards') {
     return t('nav.accountMenu.cardsLeft', {

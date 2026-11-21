@@ -84,6 +84,7 @@ export function initTestI18n() {
     nonExplicitSupportedLngs: true,
     load: 'languageOnly',
     partialBundledLanguages: true,
+    returnEmptyString: true,
     detection: {
       order: ['localStorage', 'navigator'],
       lookupLocalStorage: LANGUAGE_STORAGE_KEY,
