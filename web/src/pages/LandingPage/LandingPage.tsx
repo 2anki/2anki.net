@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Trans, useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
@@ -11,6 +17,7 @@ import { saveValueInLocalStorage } from '../../lib/data_layer/saveValueInLocalSt
 import { landingViewProps } from '../../lib/adClick';
 import { persistSignupOrigin } from '../../lib/signupOrigin';
 import { canonicalUrl } from '../../lib/seo/canonicalUrl';
+import { pinDocumentLanguage } from '../../lib/i18n/documentLanguage';
 import { usePassPrices } from '../../lib/hooks/usePassPrices';
 import { TrustNote } from '../../components/TrustNote/TrustNote';
 import { LandingPassPrices } from '../../components/LandingPassPrices/LandingPassPrices';
@@ -154,6 +161,11 @@ function LandingPage({
     });
   };
   const landingViewedRef = useRef(false);
+  useLayoutEffect(() => {
+    if (copy.htmlLang == null) return;
+    return pinDocumentLanguage(copy.htmlLang);
+  }, [copy.htmlLang]);
+
   useEffect(() => {
     persistSignupOrigin(copy.pathname, globalThis.sessionStorage ?? null);
   }, [copy.pathname]);

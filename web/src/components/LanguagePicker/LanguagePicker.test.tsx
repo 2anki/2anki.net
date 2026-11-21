@@ -44,6 +44,23 @@ describe('LanguagePicker', () => {
     await waitFor(() => expect(i18n.language).toBe('de'));
   });
 
+  it('tells the browser the page is now in the chosen language', async () => {
+    render(<LanguagePicker />);
+    fireEvent.change(screen.getByRole('combobox', { name: 'Language' }), {
+      target: { value: 'ja' },
+    });
+    await waitFor(() => expect(document.documentElement.lang).toBe('ja'));
+  });
+
+  it('tells the browser the page is English again after switching back', async () => {
+    render(<LanguagePicker />);
+    const picker = screen.getByRole('combobox', { name: 'Language' });
+    fireEvent.change(picker, { target: { value: 'de' } });
+    await waitFor(() => expect(document.documentElement.lang).toBe('de'));
+    fireEvent.change(picker, { target: { value: 'en' } });
+    await waitFor(() => expect(document.documentElement.lang).toBe('en'));
+  });
+
   it('fires the language_changed event with the chosen language', () => {
     render(<LanguagePicker />);
     fireEvent.change(screen.getByRole('combobox', { name: 'Language' }), {
