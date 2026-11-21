@@ -2,6 +2,7 @@ import '@xyflow/react/dist/style.css';
 import {
   addEdge,
   Background,
+  type ColorMode,
   type Connection,
   ConnectionMode,
   Controls,
@@ -19,6 +20,8 @@ import { Link, useParams } from 'react-router-dom';
 import PencilIcon from '../../components/icons/PencilIcon';
 import { track } from '../../lib/analytics/track';
 import { useDialogFocus } from '../../lib/hooks/useDialogFocus';
+import { useTheme } from '../../lib/hooks/useTheme';
+import type { Theme } from '../../lib/theme';
 import shared from '../../styles/shared.module.css';
 import { layoutGraph, NODE_HEIGHT } from './layoutGraph';
 import styles from './MindmapEditor.module.css';
@@ -35,6 +38,10 @@ import {
 } from './useMindmap';
 
 const FREE_NODE_LIMIT = 50;
+
+function canvasColorModeFor(theme: Theme): ColorMode {
+  return theme === 'dark' ? 'dark' : 'light';
+}
 const NODE_STYLE = {
   borderRadius: 'var(--radius-md)',
   border: '1px solid var(--color-border)',
@@ -269,6 +276,7 @@ export function MindmapEditor() {
   const { data: mindmapList } = useMindmapList();
   const nodeLimit = mindmapList?.access.maxNodesPerMap ?? FREE_NODE_LIMIT;
   const updateMindmap = useUpdateMindmap(id ?? '');
+  const canvasColorMode = canvasColorModeFor(useTheme());
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
@@ -1287,6 +1295,7 @@ export function MindmapEditor() {
             });
           }}
           proOptions={{ hideAttribution: true }}
+          forceColorMode={canvasColorMode}
           connectionMode={ConnectionMode.Loose}
           snapToGrid
           snapGrid={[20, 20]}
