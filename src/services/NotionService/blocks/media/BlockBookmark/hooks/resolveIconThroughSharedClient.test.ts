@@ -1,6 +1,8 @@
 import { vi, type Mock, type Mocked } from 'vitest';
-import axios from 'axios';
+import axios, { type AxiosStatic } from 'axios';
 import dns from 'dns';
+import http from 'node:http';
+import type { AddressInfo } from 'node:net';
 
 import { resolveIconThroughSharedClient } from './resolveIconThroughSharedClient';
 
@@ -49,7 +51,7 @@ describe('resolveIconThroughSharedClient', () => {
     vi.restoreAllMocks();
   });
 
-  it('asks the shared client for the first byte only, with a timeout and a size cap', async () => {
+  it('asks the shared client for the first byte, with a deadline signal and a 64 KB cap', async () => {
     respondWith({ 'content-type': 'image/png' }, Buffer.from([0x89]));
 
     await resolveIconThroughSharedClient(ICON_URL, PNG_TYPES);
@@ -58,11 +60,85 @@ describe('resolveIconThroughSharedClient', () => {
       ICON_URL,
       expect.objectContaining({
         headers: { Range: 'bytes=0-0' },
-        timeout: 5000,
-        maxContentLength: 1024 * 1024,
+        maxContentLength: 64 * 1024,
+        signal: expect.any(AbortSignal),
         lookup: expect.any(Function),
       })
     );
+  });
+
+  it('ends a fetch that is still running at 5 s and leaves the icon out', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      let signal: AbortSignal | undefined;
+      mockedAxios.get.mockImplementationOnce((_url, config) => {
+        signal = config?.signal as AbortSignal;
+        return new Promise(() => undefined);
+      });
+
+      const pending = resolveIconThroughSharedClient(ICON_URL, PNG_TYPES);
+      await vi.advanceTimersByTimeAsync(5000);
+
+      await expect(pending).resolves.toBeUndefined();
+      expect(signal?.aborted).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  describe('against a local server that ignores the range header', () => {
+    const ICON_BYTES = 900 * 1024;
+    let server: http.Server;
+    let port: number;
+    let bytesSent: number;
+    let closedEarly: Promise<boolean>;
+
+    beforeEach(async () => {
+      bytesSent = 0;
+      server = http.createServer((_req, res) => {
+        closedEarly = new Promise((resolve) => {
+          res.on('close', () => resolve(!res.writableFinished));
+        });
+        res.writeHead(200, { 'content-type': 'image/png' });
+        const chunk = Buffer.alloc(16 * 1024, 0x89);
+        const writeMore = () => {
+          while (bytesSent < ICON_BYTES && !res.destroyed) {
+            bytesSent += chunk.length;
+            if (!res.write(chunk)) {
+              res.once('drain', writeMore);
+              return;
+            }
+          }
+          res.end();
+        };
+        writeMore();
+      });
+      await new Promise<void>((resolve) =>
+        server.listen(0, '127.0.0.1', resolve)
+      );
+      port = (server.address() as AddressInfo).port;
+      const { default: realAxios } = await vi.importActual<{
+        default: AxiosStatic;
+      }>('axios');
+      mockedAxios.get.mockImplementation((url, config) => {
+        const { lookup: _lookup, ...rest } = config ?? {};
+        const { pathname } = new URL(url);
+        return realAxios.get(`http://127.0.0.1:${port}${pathname}`, rest);
+      });
+    });
+
+    afterEach(async () => {
+      server.closeAllConnections();
+      await new Promise((resolve) => server.close(resolve));
+    });
+
+    it('cuts the body off at the 64 KB cap and leaves the icon out', async () => {
+      const result = await resolveIconThroughSharedClient(ICON_URL, PNG_TYPES);
+
+      expect(result).toBeUndefined();
+      await expect(closedEarly).resolves.toBe(true);
+      expect(bytesSent).toBeLessThan(ICON_BYTES);
+    });
   });
 
   it.each([
@@ -98,7 +174,7 @@ describe('resolveIconThroughSharedClient', () => {
     expect(result).toBeUndefined();
     expect(mockedAxios.get).not.toHaveBeenCalled();
     expect(warn).toHaveBeenCalledWith(
-      '[bookmark-icon] shared client refused an icon URL'
+      '[bookmark-icon] shared client refused 1 icon URL'
     );
   });
 
