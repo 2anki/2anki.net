@@ -92,6 +92,7 @@ const allowedIdentical = new Set<string>([
   'marketing:status.database',
   'marketing:contact.errorSuffix',
   'marketing:contact.emailLabel',
+  'marketing:footer.tokushoho',
   'search:page.titleConnected',
   'search:results.scopeWorkspace',
   'search:results.emptyBodySuffix',

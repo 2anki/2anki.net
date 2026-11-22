@@ -4,6 +4,8 @@ const GERMAN_ROUTES: ReadonlySet<string> = new Set([
   '/powerpoint-zu-anki',
 ]);
 
+const JAPANESE_ROUTES: ReadonlySet<string> = new Set(['/tokushoho']);
+
 const LEGAL_ROUTES: ReadonlySet<string> = new Set([
   '/documentation/reference/privacy',
   '/documentation/reference/terms',
@@ -32,6 +34,7 @@ export function routeDocumentLanguage(
 ): string | null {
   const path = withoutTrailingSlash(pathname);
   if (GERMAN_ROUTES.has(path)) return 'de';
+  if (JAPANESE_ROUTES.has(path)) return 'ja';
   if (LEGAL_ROUTES.has(path)) return 'en';
   if (UNTRANSLATED_SECTIONS.some((section) => isInSection(path, section))) {
     return 'en';
