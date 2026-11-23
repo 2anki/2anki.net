@@ -1779,6 +1779,7 @@ describe('UploadForm Google Drive picker interaction', () => {
         )
       ).toHaveLength(1)
     );
+    await act(async () => {});
     const folder = {
       isFile: false,
       isDirectory: true,
