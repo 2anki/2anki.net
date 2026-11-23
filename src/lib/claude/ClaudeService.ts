@@ -500,7 +500,6 @@ export function getAnthropicClient(): Anthropic {
   if (!_anthropicClient) {
     _anthropicClient = new Anthropic({
       apiKey: process.env.ANTHROPIC_API_KEY,
-      defaultHeaders: { 'anthropic-beta': 'prompt-caching-2024-07-31' },
     });
     console.log('[Claude] Client initialised', {
       apiKeySet: !!process.env.ANTHROPIC_API_KEY,
