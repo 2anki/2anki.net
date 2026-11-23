@@ -48,6 +48,15 @@ describe('RouteDocumentLanguage', () => {
     expect(document.documentElement.lang).toBe('en');
   });
 
+  it('holds the seller disclosure at ja under a German app and hands back on leaving', async () => {
+    await act(() => i18n.changeLanguage('de'));
+    renderAt('/tokushoho', '/pricing');
+    expect(document.documentElement.lang).toBe('ja');
+
+    fireEvent.click(screen.getByRole('button', { name: '/pricing' }));
+    expect(document.documentElement.lang).toBe('de');
+  });
+
   it('follows a language switch made on a docs page', async () => {
     await act(() => i18n.changeLanguage('ja'));
     renderAt('/documentation/start-here/upload-a-file', '/');

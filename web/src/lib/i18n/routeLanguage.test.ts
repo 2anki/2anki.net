@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { LandingCopy } from '../../pages/LandingPage/types';
+import { TOKUSHOHO_PATH } from '../../pages/TokushohoPage/tokushohoContent';
 import { routeDocumentLanguage } from './routeLanguage';
 
 const landingCopies = import.meta.glob<{ default: LandingCopy }>(
@@ -12,6 +13,10 @@ describe('routeDocumentLanguage', () => {
     ['/pdf-zu-anki', 'en', 'de'],
     ['/notion-zu-anki/', 'ja', 'de'],
     ['/powerpoint-zu-anki', 'de', 'de'],
+    ['/tokushoho', 'en', 'ja'],
+    ['/tokushoho/', 'de', 'ja'],
+    ['/tokushoho', 'ja', 'ja'],
+    ['/tokushohox', 'ja', null],
     ['/documentation/reference/terms', 'de', 'en'],
     ['/documentation/reference/privacy/', 'ja', 'en'],
     ['/documentation/misc/terms-of-service', 'de', 'en'],
@@ -27,6 +32,10 @@ describe('routeDocumentLanguage', () => {
     ['/', 'de', null],
   ])('maps %s under %s to %s', (pathname, appLanguage, expected) => {
     expect(routeDocumentLanguage(pathname, appLanguage)).toBe(expected);
+  });
+
+  it('holds the seller disclosure page at ja', () => {
+    expect(routeDocumentLanguage(TOKUSHOHO_PATH, 'en')).toBe('ja');
   });
 
   it('holds every landing page that declares its own language', () => {
