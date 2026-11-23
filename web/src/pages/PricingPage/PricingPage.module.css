@@ -160,7 +160,7 @@
 }
 
 .legalNote a {
-  color: var(--color-text-tertiary);
+  color: var(--color-text-tertiary-accessible);
 }
 
 .reassurance {
