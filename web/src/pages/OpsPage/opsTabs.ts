@@ -50,4 +50,19 @@ export const OPS_TABS: OpsTab[] = [
     label: 'Commands',
     match: childRoute('/ops/commands'),
   },
+  {
+    to: '/ops/users',
+    label: 'Users',
+    match: childRoute('/ops/users'),
+  },
+  {
+    to: '/ops/flags',
+    label: 'Flags',
+    match: childRoute('/ops/flags'),
+  },
+  {
+    to: '/ops/showcase',
+    label: 'Showcase',
+    match: childRoute('/ops/showcase'),
+  },
 ];
