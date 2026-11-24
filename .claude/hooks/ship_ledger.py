@@ -48,11 +48,13 @@ does; the marker hook cannot read it without a network call).
 `head_violation` is the one check, used by `check-ship-review-ledger.py` when
 a marker is posted and by `check-merge-status.py` at merge time.
 """
+import contextlib
 import datetime
 import os
 import re
 import subprocess
 import sys
+import time
 
 HOOKS_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HOOKS_DIR)
@@ -81,6 +83,7 @@ VERBATIM_MIN_GIT = (2, 39)
 NO_PATCH_ID = "-"
 BASE_REF = "origin/main"
 GIT_TIMEOUT_SECONDS = 30
+CHECK_BUDGET_SECONDS = 15
 USAGE = (
     "usage: python3 .claude/hooks/ship_ledger.py record <pr> <full sha> <pass|block> "
     "<engineering|security|migration|reach>"
@@ -108,14 +111,37 @@ class Entry:
         return patch_id is not None and self.patch_id == patch_id
 
 
+class Budget:
+    deadline = None
+
+
+def seconds_left(cap):
+    if Budget.deadline is None:
+        return cap
+    return min(cap, Budget.deadline - time.monotonic())
+
+
+@contextlib.contextmanager
+def check_budget(seconds):
+    previous = Budget.deadline
+    Budget.deadline = time.monotonic() + seconds
+    try:
+        yield
+    finally:
+        Budget.deadline = previous
+
+
 def run_git(args, cwd, stdin=None):
+    timeout = seconds_left(GIT_TIMEOUT_SECONDS)
+    if timeout <= 0:
+        return None
     try:
         result = subprocess.run(
             ["git", *args],
             cwd=cwd,
             input=stdin,
             capture_output=True,
-            timeout=GIT_TIMEOUT_SECONDS,
+            timeout=timeout,
         )
     except (subprocess.TimeoutExpired, OSError):
         return None
@@ -179,8 +205,11 @@ def patch_id(sha, cwd):
 
 
 def changed_names(base, sha, cwd):
-    names = run_git(["-c", "core.quotePath=false", "diff", "--no-renames", "--name-only", base, sha], cwd)
-    return None if names is None else text(names).splitlines()
+    """Every path changed between `base` and `sha`, byte-exact: NUL-separated, never stripped or C-quoted."""
+    names = run_git(["-c", "core.quotePath=false", "diff", "--no-renames", "--name-only", "-z", base, sha], cwd)
+    if names is None:
+        return None
+    return [os.fsdecode(name) for name in names.split(b"\0") if name]
 
 
 def commit_subjects(base, sha, cwd):
@@ -246,7 +275,11 @@ def reverted_commit(sha, cwd):
 
 def forward_patch_ids(paths, cwd):
     """Verbatim patch-ids of every first-parent commit on origin/main touching `paths`, or None on any git failure."""
-    log_args = ["git", *RELAND_LOG_ARGS, BASE_REF, "--", *paths]
+    budget = seconds_left(RELAND_TIMEOUT_SECONDS)
+    if budget <= 0:
+        return None
+    deadline = time.monotonic() + budget
+    log_args = ["git", "--literal-pathspecs", *RELAND_LOG_ARGS, BASE_REF, "--", *paths]
     try:
         log = subprocess.Popen(log_args, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     except OSError:
@@ -262,12 +295,13 @@ def forward_patch_ids(paths, cwd):
         return None
     log.stdout.close()
     try:
-        output, _ = ids.communicate(timeout=RELAND_TIMEOUT_SECONDS)
-        log.wait(timeout=RELAND_TIMEOUT_SECONDS)
+        output, _ = ids.communicate(timeout=max(0.0, deadline - time.monotonic()))
+        log.wait(timeout=max(0.0, deadline - time.monotonic()))
     except subprocess.TimeoutExpired:
         for process in (log, ids):
             process.kill()
             process.wait()
+        ids.stdout.close()
         return None
     if log.returncode != 0 or ids.returncode != 0:
         return None
@@ -358,21 +392,23 @@ def head_violation(pr, sha, cwd, extra_subjects=()):
     """None when the ledger backs a pass for PR `pr` at `sha` (the marker hook and the merge gate share this).
 
     `extra_subjects` are subjects the squash commit may take that are not commits (the PR title, at merge time).
+    Every git call shares one CHECK_BUDGET_SECONDS deadline; a call that runs out fails toward more review.
     """
-    path = ledger_path(cwd)
-    if path is None:
-        return "could not find this checkout's git dir to read the review ledger"
-    try:
-        entries = read_entries(path)
-    except LedgerError as error:
-        return unparsable_reason(error)
-    patch = patch_id(sha, cwd)
-    reason = marker_violation(entries, pr, sha, patch, required_scopes(sha, cwd, extra_subjects))
-    if reason is None:
-        return None
-    if reverted_commit(sha, cwd) is not None:
-        return marker_violation(entries, pr, sha, patch, ())
-    return reason
+    with check_budget(CHECK_BUDGET_SECONDS):
+        path = ledger_path(cwd)
+        if path is None:
+            return "could not find this checkout's git dir to read the review ledger"
+        try:
+            entries = read_entries(path)
+        except LedgerError as error:
+            return unparsable_reason(error)
+        patch = patch_id(sha, cwd)
+        reason = marker_violation(entries, pr, sha, patch, required_scopes(sha, cwd, extra_subjects))
+        if reason is None:
+            return None
+        if reverted_commit(sha, cwd) is not None:
+            return marker_violation(entries, pr, sha, patch, ())
+        return reason
 
 
 def normalise_scope(scope):

@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from unittest import mock
 
@@ -628,6 +629,151 @@ class ExactRevertTest(LedgerTestCase):
         revert = self.repo.revert_branch("revert-cards", landed)
         self.repo.record(8, revert, "block", "engineering")
         self.assertIn("`engineering` block", self.head_violation(revert))
+
+
+AWKWARD_CHARACTERS = (
+    ("double quote", b'"', "middle"),
+    ("backslash", b"\\", "middle"),
+    ("tab", b"\t", "middle"),
+    ("newline", b"\n", "middle"),
+    ("leading space", b" ", "leading"),
+    ("trailing space", b" ", "trailing"),
+    ("leading colon", b":", "leading"),
+    ("asterisk", b"*", "middle"),
+    ("non-UTF-8 byte", b"\xff", "middle"),
+)
+
+
+def awkward_name(directory, character, position):
+    stem, ext = b"x", b".js"
+    if position == "leading":
+        return directory + character + stem + ext
+    if position == "trailing":
+        return directory + stem + ext + character
+    return directory + stem + character + b"y" + ext
+
+
+class PlumbingRepo(Repo):
+    def git_bytes(self, *args, stdin=None, index=None):
+        env = test_env()
+        if index is not None:
+            env["GIT_INDEX_FILE"] = index
+        return subprocess.run(
+            ["git", *args], cwd=self.path, env=env, input=stdin, capture_output=True, check=True
+        ).stdout.strip()
+
+    def tree_of(self, commit):
+        return self.git_bytes("rev-parse", commit + "^{tree}").decode()
+
+    def tree_with(self, base_tree, path, content):
+        index = os.path.join(self.path, ".git", "plumbing-index")
+        self.git_bytes("read-tree", base_tree, index=index)
+        if content is None:
+            self.git_bytes("update-index", "--force-remove", "--", path, index=index)
+        else:
+            blob = self.git_bytes("hash-object", "-w", "--stdin", stdin=content).decode()
+            self.git_bytes("update-index", "--add", "--cacheinfo", f"100644,{blob},".encode() + path, index=index)
+        return self.git_bytes("write-tree", index=index).decode()
+
+    def commit_tree(self, tree, parent, message):
+        return self.git_bytes("commit-tree", tree, "-p", parent, "-m", message).decode()
+
+    def land_on_main(self, tree, message):
+        self.main = self.commit_tree(tree, self.main, message)
+        self.git("update-ref", "refs/remotes/origin/main", self.main)
+        return self.main
+
+
+class AwkwardPathTest(unittest.TestCase):
+    def setUp(self):
+        self.repo = PlumbingRepo()
+        self.addCleanup(self.repo.cleanup)
+
+    def scenario(self, directory, character, position):
+        path = awkward_name(directory, character, position)
+        base_tree = self.repo.tree_of(self.repo.main)
+        with_file = self.repo.tree_with(base_tree, path, b"exports.up = () => {};\n")
+        return path, base_tree, with_file
+
+    def test_changed_names_returns_each_path_byte_exact(self):
+        for label, character, position in AWKWARD_CHARACTERS:
+            path, base_tree, with_file = self.scenario(b"migrations/", character, position)
+            head = self.repo.commit_tree(with_file, self.repo.main, "chore: add")
+            self.assertEqual(
+                [os.fsencode(name) for name in ship_ledger.changed_names(self.repo.main, head, self.repo.path)],
+                [path],
+                label,
+            )
+
+    def test_required_scopes_keep_security_and_migration_for_a_migration_path(self):
+        for label, character, position in AWKWARD_CHARACTERS:
+            _, _, with_file = self.scenario(b"migrations/", character, position)
+            head = self.repo.commit_tree(with_file, self.repo.main, "chore: add")
+            self.assertEqual(
+                ship_ledger.required_scopes(head, self.repo.path), ("engineering", "security", "migration"), label
+            )
+
+    def test_an_exact_revert_of_a_migration_path_is_not_exempt(self):
+        for label, character, position in AWKWARD_CHARACTERS:
+            _, base_tree, with_file = self.scenario(b"migrations/", character, position)
+            landed_tree = with_file
+            self.repo.land_on_main(landed_tree, "feat: table " + label)
+            revert = self.repo.commit_tree(base_tree, self.repo.main, "revert: table")
+            self.assertIsNone(ship_ledger.reverted_commit(revert, self.repo.path), label)
+            self.assertIn("no `engineering` pass", ship_ledger.head_violation("8", revert, self.repo.path), label)
+            self.repo.land_on_main(base_tree, "chore: reset " + label)
+
+    def test_a_re_land_of_an_awkward_path_is_detected(self):
+        for label, character, position in AWKWARD_CHARACTERS:
+            _, base_tree, with_file = self.scenario(b"", character, position)
+            self.repo.land_on_main(with_file, "chore: surface " + label)
+            self.repo.land_on_main(base_tree, "revert: surface " + label)
+            re_land = self.repo.commit_tree(with_file, self.repo.main, "revert: revert surface")
+            self.assertIsNone(ship_ledger.reverted_commit(re_land, self.repo.path), label)
+            self.assertIn("no `engineering` pass", ship_ledger.head_violation("8", re_land, self.repo.path), label)
+
+    def test_a_plain_exact_revert_of_an_awkward_path_is_still_exempt(self):
+        for label, character, position in AWKWARD_CHARACTERS:
+            _, base_tree, with_file = self.scenario(b"", character, position)
+            landed = self.repo.land_on_main(with_file, "chore: newest " + label)
+            revert = self.repo.commit_tree(base_tree, self.repo.main, "revert: newest")
+            self.assertEqual(ship_ledger.reverted_commit(revert, self.repo.path), landed, label)
+            self.repo.land_on_main(base_tree, "chore: reset " + label)
+
+
+class SlowGitTest(unittest.TestCase):
+    def setUp(self):
+        self.repo = Repo()
+        self.addCleanup(self.repo.cleanup)
+        self.head = self.repo.commit("src/lib/cards.ts", "export const x = 1;\n", "chore: cards")
+        fake_bin = tempfile.mkdtemp(prefix="slow-git-")
+        self.addCleanup(shutil.rmtree, fake_bin, True)
+        fake_git = os.path.join(fake_bin, "git")
+        with open(fake_git, "w", encoding="utf-8") as handle:
+            handle.write("#!/bin/sh\nexec sleep 30\n")
+        os.chmod(fake_git, 0o755)
+        self.slow_path = fake_bin + os.pathsep + os.environ.get("PATH", "")
+
+    def test_the_whole_check_is_bounded_well_under_the_hook_timeout(self):
+        self.assertLessEqual(ship_ledger.CHECK_BUDGET_SECONDS, 20)
+
+    def test_a_slow_git_makes_the_re_land_scan_return_re_land_within_the_budget(self):
+        with mock.patch.dict(os.environ, {"PATH": self.slow_path}), \
+                mock.patch.object(ship_ledger, "CHECK_BUDGET_SECONDS", 2), \
+                ship_ledger.check_budget(2):
+            start = time.monotonic()
+            self.assertTrue(ship_ledger.relands_a_commit("e" * 40, ["src/lib/cards.ts"], self.repo.path))
+            self.assertLess(time.monotonic() - start, 4)
+
+    def test_a_slow_git_makes_the_whole_check_refuse_within_the_budget(self):
+        self.repo.passes(5, self.head, "engineering")
+        with mock.patch.dict(os.environ, {"PATH": self.slow_path}), \
+                mock.patch.object(ship_ledger, "CHECK_BUDGET_SECONDS", 2):
+            start = time.monotonic()
+            reason = ship_ledger.head_violation("5", self.head, self.repo.path)
+            elapsed = time.monotonic() - start
+        self.assertIsNotNone(reason)
+        self.assertLess(elapsed, 4)
 
 
 class DependabotTest(LedgerTestCase):
