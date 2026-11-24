@@ -201,6 +201,32 @@ describe('EmailService conversion emails name the deck and count', () => {
     expect(msg.text).toContain('Your deck is ready: Biochemistry, 1 card');
   });
 
+  it.each(['attachment', 'link'] as const)(
+    'keeps dollar signs in the deck name literal in the %s email subject',
+    async (kind) => {
+      const service = getDefaultEmailService();
+      const deckName = "Costs $& and $' in 2026";
+
+      if (kind === 'attachment') {
+        await service.sendConversionEmail(
+          'learner@example.com',
+          deckName,
+          Buffer.from('apkg'),
+          3
+        );
+      } else {
+        await service.sendConversionLinkEmail(
+          'learner@example.com',
+          deckName,
+          'https://2anki.net/api/download/u/key-1',
+          3
+        );
+      }
+
+      expect(lastMessage().subject).toContain(deckName);
+    }
+  );
+
   it('omits the count clause when card count is absent', async () => {
     const service = getDefaultEmailService();
 

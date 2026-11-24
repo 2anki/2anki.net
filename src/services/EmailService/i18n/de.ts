@@ -62,7 +62,7 @@ export const de: DeepPartial<EmailStrings> = {
     subjectWithConversion: 'Deine Stapel auf 2anki sind noch da',
     subjectNoConversion: 'Dein 2anki-Konto ist noch da',
     bodyWithConversion:
-      'Dein letzter Stapel auf 2anki war {{deckName}}. Steht eine weitere Prüfung oder ein neues Kapitel an? Dein Konto ist bereit. Füge einen Notion-Link ein oder lade eine Datei hoch, und du hast in unter einer Minute einen Stapel.',
+      'Dein letzter Stapel auf 2anki war {{deckName}}. Dein Konto ist bereit für die nächste Prüfung oder das nächste Kapitel. Füge einen Notion-Link ein oder lade eine Datei hoch, und du hast in unter einer Minute einen Stapel.',
     bodyNoConversion:
       'Du hast dich bei 2anki angemeldet, aber noch keinen Stapel erstellt. Wenn du so weit bist, füge einen Notion-Link ein oder lade eine Datei auf 2anki.net hoch. In unter einer Minute hast du einen Anki-Stapel.',
     passLine:

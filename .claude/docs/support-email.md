@@ -6,7 +6,7 @@
 
 **Greeting: open every hand-written support reply with `Hei <name>,`** in English and every other language except German (German keeps `Guten Tag <full name>,` above). Use the name they signed with, exactly as written; if unsure, use the full name from the From line. No name at all: `Hei,`. Never "Dear", "Hi" or "Hello". This covers hand-written replies only; product templates under `src/services/EmailService/templates/` keep their own greeting. (2026-11-01: Alexander changed a drafted "Dear" to "Hei" before sending.)
 
-Additional rule (scope: hand-written support replies; product templates follow the same no-dash rule, see `.claude/docs/email-templates.md`): **never use dashes (em-dash or hyphen) in support emails.** Dashes split focus and make complex ideas feel fragmented. Use periods and new sentences instead. Example: "Notion changed their export format. Page emoji now lives in a `data-emoji` attribute." not "Notion changed their export format — page emoji now lives in a `data-emoji` attribute."
+Additional rule (scope: hand-written support replies; product templates follow the em and en dash rule in `.claude/docs/email-templates.md`, which allows hyphens inside words): **never use dashes (em-dash or hyphen) in support emails.** Dashes split focus and make complex ideas feel fragmented. Use periods and new sentences instead. Example: "Notion changed their export format. Page emoji now lives in a `data-emoji` attribute." not "Notion changed their export format — page emoji now lives in a `data-emoji` attribute."
 
 ## Sending
 

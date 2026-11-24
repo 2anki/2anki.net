@@ -370,7 +370,7 @@ export class EmailService implements IEmailService {
     const msg = {
       to: email,
       from: DEFAULT_SENDER,
-      subject: strings.subject.replace('{{filename}}', filename),
+      subject: strings.subject.replace('{{filename}}', () => filename),
       text: `${deckReadyText(deckName, cardCount, strings)}${strings.textAttached}`,
       html: markup,
       replyTo: 'support@2anki.net',
@@ -404,7 +404,7 @@ export class EmailService implements IEmailService {
     const msg = {
       to: email,
       from: DEFAULT_SENDER,
-      subject: strings.subject.replace('{{filename}}', filename),
+      subject: strings.subject.replace('{{filename}}', () => filename),
       text: `${deckReadyText(deckName, cardCount, strings)}. Download it here: ${link}`,
       html: markup,
       replyTo: 'support@2anki.net',

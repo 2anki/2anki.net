@@ -24,7 +24,7 @@ import { de } from './i18n/de';
 import { en } from './i18n/en';
 
 const EM_OR_EN_DASH = /[–—]/;
-const DASH_TELLS = /[–—]| - /;
+const DASH_TELLS = /[–—]| - |&(?:m|n)dash;|&#821[12];|&#x201[34];/i;
 const FOOTER = [
   '<a href="https://2anki.net" style="color: #9ca3af; text-decoration: none;">2anki.net</a><br />',
   'Turn what you study into Anki flashcards.',

@@ -59,9 +59,9 @@ export const en: EmailStrings = {
     subjectWithConversion: 'Your decks on 2anki are still here',
     subjectNoConversion: 'Your 2anki account is still here',
     bodyWithConversion:
-      "Your last deck on 2anki was {{deckName}}. Another exam or chapter coming up? Your account is ready. Paste a Notion link or drop a file and you'll have a deck in under a minute.",
+      "Your last deck on 2anki was {{deckName}}. Your account is ready for the next exam or chapter. Paste a Notion link or drop in a file and you'll have a deck in under a minute.",
     bodyNoConversion:
-      "You signed up for 2anki but haven't made a deck yet. When you're ready, paste a Notion link or drop a file at 2anki.net. You'll have an Anki deck in under a minute.",
+      "You signed up for 2anki but haven't made a deck yet. When you're ready, paste a Notion link or drop in a file at 2anki.net. You'll have an Anki deck in under a minute.",
     passLine:
       'Only need it for one push? A Day Pass covers a full day of converting and a Week Pass covers a week. Pay once, no subscription.',
     cta: 'Open 2anki',
