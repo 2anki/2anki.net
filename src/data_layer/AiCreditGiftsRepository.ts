@@ -5,12 +5,9 @@ import {
   AI_GIFT_MAX_CLAIMS_PER_IP,
   giftBudgetHasRoom,
 } from '../lib/claude/aiCredits/gift/giftTerms';
+import { JOB_LOCK_KEYS } from './JobLockRepository';
 
 const AI_USAGE_EVENT = 'ai_usage_recorded';
-
-// One constant key for pg_advisory_xact_lock: every claim takes it inside its
-// transaction, so two claims never read the same exposure and both insert.
-export const AI_GIFT_CLAIM_LOCK_KEY = 726_100_412;
 
 export interface AiGiftClaimInput {
   userId: number;
@@ -34,6 +31,7 @@ export interface IAiCreditGiftsRepository {
   giftCostSince(giftId: number, userId: number, since: Date): Promise<number>;
   exposureCredits(now: Date): Promise<number>;
   claim(input: AiGiftClaimInput): Promise<AiGiftClaimOutcome>;
+  recordFeedbackAnswer(userId: number, at: Date): Promise<boolean>;
 }
 
 interface GiftRow {
@@ -42,7 +40,17 @@ interface GiftRow {
   credits: number | string;
   claimed_at: Date | string;
   expires_at: Date | string;
+  feedback_answered_at?: Date | string | null;
 }
+
+const GIFT_COLUMNS = [
+  'id',
+  'user_id',
+  'credits',
+  'claimed_at',
+  'expires_at',
+  'feedback_answered_at',
+];
 
 function toGrant(row: GiftRow): AiGiftGrant {
   return {
@@ -51,6 +59,10 @@ function toGrant(row: GiftRow): AiGiftGrant {
     credits: Number(row.credits),
     claimedAt: new Date(row.claimed_at),
     expiresAt: new Date(row.expires_at),
+    feedbackAnsweredAt:
+      row.feedback_answered_at == null
+        ? null
+        : new Date(row.feedback_answered_at),
   };
 }
 
@@ -62,7 +74,7 @@ export class AiCreditGiftsRepository implements IAiCreditGiftsRepository {
   buildFindGrantQuery(userId: number, db: Knex = this.database) {
     return db(this.table)
       .where('user_id', userId)
-      .first('id', 'user_id', 'credits', 'claimed_at', 'expires_at');
+      .first(...GIFT_COLUMNS);
   }
 
   async findGrant(userId: number): Promise<AiGiftGrant | null> {
@@ -70,8 +82,9 @@ export class AiCreditGiftsRepository implements IAiCreditGiftsRepository {
     return row == null ? null : toGrant(row);
   }
 
-  // What the grant's owner is charged: calls the guard admitted on this
-  // grant, stamped with its id, minus refusals Claude answered with nothing.
+  // What the grant's owner is charged: every call the guard admitted on this
+  // grant, stamped with its id. Refusals count too: they still cost input
+  // tokens, and the exposure query counts them the same way.
   buildGiftCostQuery(
     giftId: number,
     userId: number,
@@ -82,7 +95,6 @@ export class AiCreditGiftsRepository implements IAiCreditGiftsRepository {
       .where('user_id', userId)
       .where('created_at', '>=', since)
       .whereRaw("props->>'gift_id' = ?", [String(giftId)])
-      .whereRaw("props->>'billable' is distinct from 'false'")
       .select(
         this.database.raw(
           "coalesce(sum((props->>'cost_usd')::numeric), 0) as cost_usd"
@@ -147,7 +159,7 @@ export class AiCreditGiftsRepository implements IAiCreditGiftsRepository {
   async claim(input: AiGiftClaimInput): Promise<AiGiftClaimOutcome> {
     return this.database.transaction(async (trx) => {
       await trx.raw('select pg_advisory_xact_lock(?)', [
-        AI_GIFT_CLAIM_LOCK_KEY,
+        JOB_LOCK_KEYS.aiGiftClaims,
       ]);
       const existing = (await this.buildFindGrantQuery(input.userId, trx)) as
         | GiftRow
@@ -177,15 +189,27 @@ export class AiCreditGiftsRepository implements IAiCreditGiftsRepository {
           expires_at: input.expiresAt,
           ip_hash: input.ipHash,
         })
-        .returning([
-          'id',
-          'user_id',
-          'credits',
-          'claimed_at',
-          'expires_at',
-        ])) as GiftRow[];
+        .returning(GIFT_COLUMNS)) as GiftRow[];
       return { ok: true, grant: toGrant(row) } as const;
     });
+  }
+
+  buildRecordFeedbackQuery(userId: number, at: Date): Knex.QueryBuilder {
+    return this.database(this.table)
+      .where('user_id', userId)
+      .whereNull('feedback_answered_at')
+      .update({ feedback_answered_at: at })
+      .returning('id');
+  }
+
+  // One answer per gift: only the first update finds the column empty, so a
+  // second request, however close, updates nothing and reports false.
+  async recordFeedbackAnswer(userId: number, at: Date): Promise<boolean> {
+    const updated = (await this.buildRecordFeedbackQuery(
+      userId,
+      at
+    )) as unknown[];
+    return updated.length > 0;
   }
 }
 
@@ -224,8 +248,7 @@ export class InMemoryAiCreditGiftsRepository implements IAiCreditGiftsRepository
         (s) =>
           s.giftId === giftId &&
           s.userId === userId &&
-          s.at.getTime() >= since.getTime() &&
-          s.billable !== false
+          s.at.getTime() >= since.getTime()
       )
       .reduce((sum, s) => sum + s.costUsd, 0);
   }
@@ -247,6 +270,13 @@ export class InMemoryAiCreditGiftsRepository implements IAiCreditGiftsRepository
     const next = this.queue.then(() => this.claimNow(input));
     this.queue = next.catch(() => undefined);
     return next;
+  }
+
+  async recordFeedbackAnswer(userId: number, at: Date): Promise<boolean> {
+    const gift = this.gifts.find((g) => g.userId === userId);
+    if (gift == null || gift.feedbackAnsweredAt != null) return false;
+    gift.feedbackAnsweredAt = at;
+    return true;
   }
 
   private async claimNow(input: AiGiftClaimInput): Promise<AiGiftClaimOutcome> {
@@ -274,6 +304,7 @@ export class InMemoryAiCreditGiftsRepository implements IAiCreditGiftsRepository
       credits: input.credits,
       claimedAt: input.claimedAt,
       expiresAt: input.expiresAt,
+      feedbackAnsweredAt: null,
       ipHash: input.ipHash,
     };
     this.gifts.push(grant);

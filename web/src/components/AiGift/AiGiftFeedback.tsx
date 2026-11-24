@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react';
+import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAiGift, AI_GIFT_QUERY_KEY } from '../../lib/hooks/useAiGift';
@@ -22,10 +22,6 @@ export function AiGiftFeedback() {
   const [step, setStep] = useState<Step>('ask');
   const [comment, setComment] = useState('');
   const [sending, setSending] = useState(false);
-
-  useEffect(() => {
-    void queryClient.invalidateQueries({ queryKey: AI_GIFT_QUERY_KEY });
-  }, [queryClient]);
 
   if (step !== 'done' && gift?.feedbackDue !== true) return null;
 
@@ -101,6 +97,7 @@ export function AiGiftFeedback() {
             {t('feedback.commentLabel')}
           </label>
           <textarea
+            ref={(node) => node?.focus()}
             id={commentId}
             className={styles.textarea}
             value={comment}

@@ -2,7 +2,7 @@
   "triggerText": "Crédits IA offerts",
   "triggerLabel": "Cadeau : crédits IA offerts",
   "title": "Crédits IA offerts",
-  "body": "Récupère {{credits}} crédits IA pour des cartes Claude sur tes imports. Ils expirent {{hours}} heures après les avoir récupérés.",
+  "body": "Récupère {{credits}} crédits IA pour des cartes Claude sur tes imports. Récupérés maintenant, ils expirent le {{date}}.",
   "claimUntil": "Tu peux les récupérer jusqu’au {{date}}.",
   "claim": "Récupérer {{credits}} crédits",
   "claiming": "Récupération",

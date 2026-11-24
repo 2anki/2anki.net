@@ -84,6 +84,7 @@ describe('AiGiftFeedback', () => {
     const box = screen.getByLabelText(
       'What should have been different? (optional)'
     );
+    expect(box).toHaveFocus();
     expect(box).toHaveAttribute('maxLength', '500');
     fireEvent.change(box, { target: { value: 'Too many cards' } });
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));

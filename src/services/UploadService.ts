@@ -116,6 +116,7 @@ import {
   uploadAiGiftMode,
   type UploadGiftModeDeps,
 } from '../lib/claude/aiCredits/gift/uploadGiftMode';
+import { AI_GIFT_MIN_MONTHLY_CARDS } from '../lib/claude/aiCredits/gift/giftTerms';
 import { getAiGiftReaders } from '../data_layer/createAiGiftReaders';
 import { isExpectedUploadState } from '../lib/upload/isExpectedUploadState';
 import {
@@ -782,9 +783,22 @@ function giftCardLimitOf(res: express.Response): number | null {
 }
 
 function giftCanConvert(res: express.Response): boolean {
-  const limit = giftCardLimitOf(res);
-  return aiGiftOf(res) === 'only' && limit != null && limit > 0;
+  return aiGiftOf(res) === 'only' && giftCardLimitOf(res) != null;
 }
+
+function giftStopped(res: express.Response): boolean {
+  return res.locals.aiGiftStop === true;
+}
+
+function positiveId(owner: unknown): number | null {
+  const id = Number(owner);
+  return owner != null && Number.isFinite(id) && id > 0 ? id : null;
+}
+
+// Accounts with a gift-only conversion running in this process. A gift's
+// in-flight holds live per worker, so a second conversion would get a fresh
+// set of holds; one at a time keeps the overshoot to one conversion's.
+const activeGiftConversions = new Set<number>();
 
 function giftContextOf(res: express.Response): {
   aiGift?: AiGiftMode;
@@ -964,16 +978,31 @@ class UploadService {
     });
   }
 
-  private async resolveUploadAiGift(
+  // What an upload that asked for Claude cards may do with the gift. A
+  // gift-only upload converts on the gift when the month has at least
+  // AI_GIFT_MIN_MONTHLY_CARDS cards left and no other gift-only conversion of
+  // this account is running; otherwise it takes the standard free path, with
+  // the credits notice when the gift is spent or already busy.
+  private async giftForUpload(
     owner: unknown,
     paying: boolean
-  ): Promise<AiGiftMode | null> {
-    const ownerNumeric = Number(owner);
-    const userId =
-      owner != null && Number.isFinite(ownerNumeric) && ownerNumeric > 0
-        ? ownerNumeric
-        : null;
-    return uploadAiGiftMode(userId, paying, this.aiGiftReaders);
+  ): Promise<{
+    aiGift: AiGiftMode | null;
+    aiGiftCardLimit: number | null;
+    aiGiftStop: boolean;
+  }> {
+    const none = { aiGift: null, aiGiftCardLimit: null, aiGiftStop: false };
+    const userId = positiveId(owner);
+    const gift = await uploadAiGiftMode(userId, paying, this.aiGiftReaders);
+    if (gift == null || userId == null) return none;
+    if (gift === 'fallback') return { ...none, aiGift: 'fallback' };
+    if (gift === 'spent') return { ...none, aiGiftStop: true };
+    const remaining = await this.remainingMonthlyCards(String(userId));
+    if (remaining < AI_GIFT_MIN_MONTHLY_CARDS) return none;
+    if (activeGiftConversions.has(userId)) {
+      return { ...none, aiGiftStop: true };
+    }
+    return { aiGift: 'only', aiGiftCardLimit: remaining, aiGiftStop: false };
   }
 
   private async remainingMonthlyCards(owner: string): Promise<number> {
@@ -1431,12 +1460,9 @@ class UploadService {
       const settings = new CardOption(req.body);
       const ws = new Workspace(true, 'fs');
       const paying = isPaying(res.locals);
-      const aiGift = await this.resolveUploadAiGift(owner, paying);
-      res.locals.aiGift = aiGift;
-      res.locals.aiGiftCardLimit =
-        aiGift === 'only'
-          ? await this.remainingMonthlyCards(String(owner))
-          : null;
+      if (settings.claudeAIFlashcards) {
+        Object.assign(res.locals, await this.giftForUpload(owner, paying));
+      }
 
       if (owner != null && settings.n2aBasic == null) {
         await this.settingsRepository.attachCustomTemplates(
@@ -1795,6 +1821,11 @@ class UploadService {
       settings,
       paying
     );
+    const giftConversionOwner =
+      aiGiftOf(res) === 'only' && ownerId != null ? ownerId : null;
+    if (giftConversionOwner != null) {
+      activeGiftConversions.add(giftConversionOwner);
+    }
     useCase
       .execute(
         paying,
@@ -1953,6 +1984,9 @@ class UploadService {
         );
       })
       .finally(() => {
+        if (giftConversionOwner != null) {
+          activeGiftConversions.delete(giftConversionOwner);
+        }
         if (!retriedWithAi) {
           this.inFlightConversions.delete(fingerprint);
         }
@@ -2140,7 +2174,7 @@ class UploadService {
 
     const {
       packages,
-      warnings,
+      warnings: generatedWarnings,
       cardFingerprints,
       cardsHeldBack,
       emptyReason,
@@ -2161,6 +2195,11 @@ class UploadService {
         ...(cardLimit != null ? { cardLimit } : {}),
       }
     );
+    // A gift that is spent, or busy with another conversion of this account,
+    // built this deck with the standard parser: say so, as for spent credits.
+    const warnings = giftStopped(res)
+      ? [...(generatedWarnings ?? []), AI_CREDITS_EXHAUSTED_WARNING_CODE]
+      : generatedWarnings;
     this.recordIssuedGuids(packages, syncOwnerId, settings);
     this.recordUploadIdentityMetric(packages, syncOwnerId);
     this.recordCardFingerprints(syncOwnerId, cardFingerprints);

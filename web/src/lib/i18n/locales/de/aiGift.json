@@ -2,7 +2,7 @@
   "triggerText": "Gratis-KI-Credits",
   "triggerLabel": "Geschenk: Gratis-KI-Credits",
   "title": "Gratis-KI-Credits",
-  "body": "Hol dir {{credits}} KI-Credits für Claude-Karten bei deinen Uploads. Sie verfallen {{hours}} Stunden, nachdem du sie abgeholt hast.",
+  "body": "Hol dir {{credits}} KI-Credits für Claude-Karten bei deinen Uploads. Holst du sie jetzt ab, verfallen sie am {{date}}.",
   "claimUntil": "Du kannst sie bis {{date}} abholen.",
   "claim": "{{credits}} Credits abholen",
   "claiming": "Wird abgeholt",

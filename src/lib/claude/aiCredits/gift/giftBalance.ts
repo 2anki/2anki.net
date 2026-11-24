@@ -13,6 +13,7 @@ export interface AiGiftGrant {
   credits: number;
   claimedAt: Date;
   expiresAt: Date;
+  feedbackAnsweredAt?: Date | null;
 }
 
 export interface AiGiftBalance {

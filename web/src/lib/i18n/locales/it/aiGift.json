@@ -2,7 +2,7 @@
   "triggerText": "Crediti IA gratis",
   "triggerLabel": "Regalo: crediti IA gratis",
   "title": "Crediti IA gratis",
-  "body": "Riscatta {{credits}} crediti IA per le carte Claude nei tuoi caricamenti. Scadono {{hours}} ore dopo averli riscattati.",
+  "body": "Riscatta {{credits}} crediti IA per le carte Claude nei tuoi caricamenti. Se li riscatti ora, scadono il {{date}}.",
   "claimUntil": "Puoi riscattarli fino al {{date}}.",
   "claim": "Riscatta {{credits}} crediti",
   "claiming": "Riscatto in corso",

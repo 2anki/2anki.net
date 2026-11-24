@@ -2,7 +2,7 @@
   "triggerText": "Créditos de IA gratis",
   "triggerLabel": "Regalo: créditos de IA gratis",
   "title": "Créditos de IA gratis",
-  "body": "Reclama {{credits}} créditos de IA para tarjetas de Claude en tus subidas. Caducan {{hours}} horas después de reclamarlos.",
+  "body": "Reclama {{credits}} créditos de IA para tarjetas de Claude en tus subidas. Si los reclamas ahora, caducan el {{date}}.",
   "claimUntil": "Puedes reclamarlos hasta el {{date}}.",
   "claim": "Reclamar {{credits}} créditos",
   "claiming": "Reclamando",

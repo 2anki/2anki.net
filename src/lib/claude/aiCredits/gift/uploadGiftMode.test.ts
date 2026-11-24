@@ -45,10 +45,10 @@ describe('uploadAiGiftMode', () => {
     expect(await uploadAiGiftMode(9, false, () => readers({}))).toBe('only');
   });
 
-  it('leaves a free account with a spent gift on the standard free path', async () => {
+  it('marks a free account whose gift is spent, so it gets the credits notice', async () => {
     expect(
       await uploadAiGiftMode(9, false, () => readers({ spendUsd: 1 }))
-    ).toBeNull();
+    ).toBe('spent');
   });
 
   it('leaves a free account alone while the switch is off', async () => {

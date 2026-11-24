@@ -2,7 +2,7 @@
   "triggerText": "Gratis AI-credits",
   "triggerLabel": "Cadeau: gratis AI-credits",
   "title": "Gratis AI-credits",
-  "body": "Claim {{credits}} AI-credits voor Claude-kaarten bij je uploads. Ze verlopen {{hours}} uur nadat je ze claimt.",
+  "body": "Claim {{credits}} AI-credits voor Claude-kaarten bij je uploads. Claim je ze nu, dan verlopen ze op {{date}}.",
   "claimUntil": "Je kunt ze claimen tot {{date}}.",
   "claim": "{{credits}} credits claimen",
   "claiming": "Bezig met claimen",

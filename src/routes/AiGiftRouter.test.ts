@@ -13,10 +13,16 @@ import {
   cachedExposure,
   type AiGiftDeps,
 } from '../usecases/ai/aiGift/aiGiftDeps';
+import {
+  AI_GIFT_CREDITS_PER_CLAIM,
+  AI_GIFT_TOTAL_BUDGET_CREDITS,
+} from '../lib/claude/aiCredits/gift/giftTerms';
 import { track } from '../services/events/track';
 
 const trackMock = track as Mock;
 const OPENING = new Date('2026-11-25T12:00:00.000Z');
+const CLAIMS_THAT_FIT =
+  AI_GIFT_TOTAL_BUDGET_CREDITS / AI_GIFT_CREDITS_PER_CLAIM;
 
 interface Harness {
   url: string;
@@ -39,11 +45,6 @@ async function startHarness(): Promise<Harness> {
     isEnabled: async () => enabled,
     exposureCredits: (at) => gifts.exposureCredits(at),
     forgetExposure: exposure.forget,
-    feedbackCount: async (userId) =>
-      trackMock.mock.calls.filter(
-        ([name, options]) =>
-          name === AI_GIFT_FEEDBACK_EVENT && options?.userId === userId
-      ).length,
     now: () => now,
   };
   const signedIn: express.RequestHandler = (req, res, next) => {
@@ -165,11 +166,19 @@ describe('GET /api/ai/gift while the gift is open', () => {
       body: {
         state: 'open',
         credits: 100,
-        hours: 48,
+        expiresIfClaimedNow: '2026-11-27T12:00:00.000Z',
         claimClosesAt: '2026-12-04T20:00:00.000Z',
         feedbackDue: false,
       },
     });
+  });
+
+  it('tells a visitor late in the window when a claim made now would expire', async () => {
+    h.setNow(new Date('2026-12-04T10:00:00.000Z'));
+
+    expect((await getGift(h, null)).body.expiresIfClaimedNow).toBe(
+      '2026-12-04T22:00:00.000Z'
+    );
   });
 
   it('closes for everyone without a gift once claims close', async () => {
@@ -289,24 +298,28 @@ describe('POST /api/ai/gift/claim', () => {
 });
 
 describe('the gift budget', () => {
-  it('never grants past 11000 credits, even when claims arrive together', async () => {
-    const claims = Array.from({ length: 130 }, (_, i) =>
+  it('never grants past the budget, even when claims arrive together', async () => {
+    const claims = Array.from({ length: CLAIMS_THAT_FIT + 20 }, (_, i) =>
       claim(h, 1000 + i, `10.0.${Math.floor(i / 200)}.${i % 200}`)
     );
 
     const results = await Promise.all(claims);
 
-    expect(results.filter((r) => r.status === 200)).toHaveLength(110);
+    expect(results.filter((r) => r.status === 200)).toHaveLength(
+      CLAIMS_THAT_FIT
+    );
     expect(
       results
         .filter((r) => r.status !== 200)
         .every((r) => r.body.code === 'gift_budget_full')
     ).toBe(true);
-    expect(await h.gifts.exposureCredits(OPENING)).toBe(11000);
+    expect(await h.gifts.exposureCredits(OPENING)).toBe(
+      AI_GIFT_TOTAL_BUDGET_CREDITS
+    );
   });
 
   it('shows the gifts as all claimed for now once the budget is full', async () => {
-    for (let i = 0; i < 110; i += 1) {
+    for (let i = 0; i < CLAIMS_THAT_FIT; i += 1) {
       await claim(h, 2000 + i, `10.1.${Math.floor(i / 3)}.1`);
     }
 
@@ -317,7 +330,7 @@ describe('the gift budget', () => {
   });
 
   it('frees the unspent credits of expired gifts, but keeps what they spent', async () => {
-    for (let i = 0; i < 110; i += 1) {
+    for (let i = 0; i < CLAIMS_THAT_FIT; i += 1) {
       await claim(h, 3000 + i, `10.2.${Math.floor(i / 3)}.1`);
     }
     h.gifts.spend.push({
@@ -336,7 +349,7 @@ describe('the gift budget', () => {
   });
 
   it('counts a gift that in-flight calls took past 100 at what it cost', async () => {
-    for (let i = 0; i < 109; i += 1) {
+    for (let i = 0; i < CLAIMS_THAT_FIT - 1; i += 1) {
       await claim(h, 5000 + i, `10.3.${Math.floor(i / 3)}.1`);
     }
     h.gifts.spend.push({
@@ -371,6 +384,31 @@ describe('the one question after a gift-funded conversion', () => {
       expiresAt: '2026-11-27T12:00:00.000Z',
       feedbackDue: true,
     });
+  });
+
+  it('stores one answer when two arrive together', async () => {
+    h.gifts.spend.push({ giftId: 1, userId: 5, costUsd: 0.37, at: OPENING });
+
+    const statuses = await Promise.all([
+      answer(h, 5, { answer: 'yes' }),
+      answer(h, 5, { answer: 'no', comment: 'second' }),
+    ]);
+
+    expect([...statuses].sort()).toEqual([204, 409]);
+    expect(eventsNamed(AI_GIFT_FEEDBACK_EVENT)).toHaveLength(1);
+    expect(h.gifts.gifts[0].feedbackAnsweredAt).toEqual(OPENING);
+  });
+
+  it('charges the gift for a call Claude refused', async () => {
+    h.gifts.spend.push({
+      giftId: 1,
+      userId: 5,
+      costUsd: 0.2,
+      at: OPENING,
+      billable: false,
+    });
+
+    expect((await getGift(h, 5)).body.credits).toBe(80);
   });
 
   it('records the answer once and stops asking', async () => {
@@ -425,5 +463,26 @@ describe('the one question after a gift-funded conversion', () => {
 
   it('refuses an account that never claimed the gift', async () => {
     expect(await answer(h, 77, { answer: 'yes' })).toBe(403);
+  });
+});
+
+describe('cachedExposure', () => {
+  it('reads exposure at most once every 30 seconds on the status path', async () => {
+    let clock = 0;
+    const read = vi.fn(async () => 42);
+    const cache = cachedExposure(read, () => clock);
+
+    await cache.exposureCredits(OPENING);
+    clock = 29_999;
+    await cache.exposureCredits(OPENING);
+    expect(read).toHaveBeenCalledTimes(1);
+
+    clock = 30_001;
+    await cache.exposureCredits(OPENING);
+    expect(read).toHaveBeenCalledTimes(2);
+
+    cache.forget();
+    await cache.exposureCredits(OPENING);
+    expect(read).toHaveBeenCalledTimes(3);
   });
 });

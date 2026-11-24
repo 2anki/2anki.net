@@ -38,7 +38,11 @@ export class RecordAiGiftFeedbackUseCase {
     if (grant == null) {
       return { ok: false, reason: 'no_gift' };
     }
-    if ((await this.deps.feedbackCount(input.userId)) > 0) {
+    const first = await this.deps.gifts.recordFeedbackAnswer(
+      input.userId,
+      this.deps.now()
+    );
+    if (!first) {
       return { ok: false, reason: 'already_answered' };
     }
     const comment =

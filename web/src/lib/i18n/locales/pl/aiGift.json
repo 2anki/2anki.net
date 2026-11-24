@@ -2,7 +2,7 @@
   "triggerText": "Darmowe kredyty AI",
   "triggerLabel": "Prezent: darmowe kredyty AI",
   "title": "Darmowe kredyty AI",
-  "body": "Odbierz {{credits}} kredytów AI na karty Claude w przesyłanych plikach. Wygasają {{hours}} godzin po odebraniu.",
+  "body": "Odbierz {{credits}} kredytów AI na karty Claude w przesyłanych plikach. Odebrane teraz wygasają {{date}}.",
   "claimUntil": "Możesz je odebrać do {{date}}.",
   "claim": "Odbierz {{credits}} kredytów",
   "claiming": "Odbieranie",

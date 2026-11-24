@@ -31,6 +31,7 @@ import {
   type AiGiftMode,
 } from './aiCredits/gift/giftBalance';
 import { runOnGiftCredits } from './aiCredits/gift/giftFunding';
+import { AI_GIFT_RESERVED_CREDITS_PER_CALL } from './aiCredits/gift/giftTerms';
 import { createAiGiftReaders } from '../../data_layer/createAiGiftReaders';
 
 // A user crossing $25 in 30 days costs more than triple the subscription
@@ -407,11 +408,11 @@ async function runOnGift<T>(
   run: () => Promise<T>
 ): Promise<T> {
   recordFirstGiftUse(subject, gift);
-  reserveInflightGiftCredits(gift.giftId, RESERVED_CREDITS_PER_INFLIGHT_CALL);
+  reserveInflightGiftCredits(gift.giftId, AI_GIFT_RESERVED_CREDITS_PER_CALL);
   try {
     return await runOnGiftCredits(gift.giftId, run);
   } finally {
-    releaseInflightGiftCredits(gift.giftId, RESERVED_CREDITS_PER_INFLIGHT_CALL);
+    releaseInflightGiftCredits(gift.giftId, AI_GIFT_RESERVED_CREDITS_PER_CALL);
   }
 }
 

@@ -15,7 +15,7 @@ import { rememberClaimIntent } from './giftUiState';
 const OPEN = {
   state: 'open',
   credits: 100,
-  hours: 48,
+  expiresIfClaimedNow: '2026-11-27T12:00:00.000Z',
   claimClosesAt: '2026-12-04T20:00:00.000Z',
   feedbackDue: false,
 };
@@ -101,7 +101,7 @@ describe('AiGiftPresent', () => {
 
     const panel = screen.getByRole('dialog', { name: 'Free AI credits' });
     expect(panel).toHaveTextContent(
-      'Claim 100 AI credits for Claude cards on your uploads. They expire 48 hours after you claim them.'
+      `Claim 100 AI credits for Claude cards on your uploads. Claimed now, they expire on ${formatGiftDate('2026-11-27T12:00:00.000Z', 'en')}.`
     );
     expect(panel).toHaveTextContent('You can claim them until');
     expect(track).toHaveBeenCalledWith('ai_gift_opened', {
@@ -161,9 +161,11 @@ describe('AiGiftPresent', () => {
     fireEvent.click(await trigger());
     fireEvent.click(screen.getByRole('button', { name: 'Claim 100 credits' }));
 
-    expect(
-      await screen.findByText('You have 100 AI credits from the gift.')
-    ).toBeInTheDocument();
+    const claimed = await screen.findByText(
+      'You have 100 AI credits from the gift.'
+    );
+    expect(claimed).toHaveFocus();
+    expect(claimed.closest('[aria-live="polite"]')).not.toBeNull();
     expect(
       screen.getByText(
         `They expire on ${formatGiftDate('2026-11-27T12:00:00.000Z', 'en')}. Turn on Claude cards and drop a file to use them.`
@@ -187,6 +189,29 @@ describe('AiGiftPresent', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'This account has already claimed the gift.'
     );
+  });
+
+  test('moves focus to the all-claimed message when it replaces the button', async () => {
+    routeFetch(OPEN, reply(409, { code: 'gift_budget_full' }));
+    renderPresent(true);
+
+    fireEvent.click(await trigger());
+    fireEvent.click(screen.getByRole('button', { name: 'Claim 100 credits' }));
+
+    expect(
+      await screen.findByText('The free AI credits are all claimed for now.')
+    ).toHaveFocus();
+  });
+
+  test('closes on an outside click without trapping focus', async () => {
+    routeFetch(OPEN);
+    renderPresent(false);
+
+    fireEvent.click(await trigger());
+    expect(screen.getByRole('dialog')).not.toHaveAttribute('aria-modal');
+    fireEvent.pointerDown(screen.getByTestId('where'));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   test('shows the gifts as all claimed for now with nothing to press', async () => {

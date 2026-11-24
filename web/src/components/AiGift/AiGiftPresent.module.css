@@ -69,6 +69,27 @@
   }
 }
 
+@media (min-width: 640px) and (max-width: 1279px) {
+  .triggerTextWide {
+    display: none;
+  }
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.body p:focus {
+  outline: none;
+}
+
+.body p:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
 .panel {
   position: fixed;
   top: 64px;

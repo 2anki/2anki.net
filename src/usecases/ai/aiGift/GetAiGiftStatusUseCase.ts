@@ -5,9 +5,9 @@ import {
 import {
   AI_GIFT_CLAIMS_CLOSE_AT,
   AI_GIFT_CREDITS_PER_CLAIM,
-  AI_GIFT_HOURS,
   giftBudgetHasRoom,
   giftClaimsOpen,
+  giftExpiresAt,
 } from '../../../lib/claude/aiCredits/gift/giftTerms';
 import type { AiGiftDeps } from './aiGiftDeps';
 
@@ -16,7 +16,7 @@ export type AiGiftStatus =
   | {
       state: 'open';
       credits: number;
-      hours: number;
+      expiresIfClaimedNow: Date;
       claimClosesAt: Date;
       feedbackDue: false;
     }
@@ -46,8 +46,7 @@ export class GetAiGiftStatusUseCase {
           userId,
           grant.claimedAt
         );
-        const feedbackDue =
-          spendUsd > 0 && (await this.deps.feedbackCount(userId)) === 0;
+        const feedbackDue = spendUsd > 0 && grant.feedbackAnsweredAt == null;
         if (giftIsActive(grant, now)) {
           return {
             state: 'claimed',
@@ -69,7 +68,7 @@ export class GetAiGiftStatusUseCase {
     return {
       state: 'open',
       credits: AI_GIFT_CREDITS_PER_CLAIM,
-      hours: AI_GIFT_HOURS,
+      expiresIfClaimedNow: giftExpiresAt(now),
       claimClosesAt: AI_GIFT_CLAIMS_CLOSE_AT,
       feedbackDue: false,
     };

@@ -7,7 +7,6 @@ export interface AiGiftDeps {
   isEnabled: () => Promise<boolean>;
   exposureCredits: (now: Date) => Promise<number>;
   forgetExposure: () => void;
-  feedbackCount: (userId: number) => Promise<number>;
   now: () => Date;
 }
 

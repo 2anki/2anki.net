@@ -8,6 +8,10 @@ export interface UploadGiftModeDeps extends AiGiftBalanceReaders {
   now: () => Date;
 }
 
+// 'spent': an account with no plan whose unexpired gift has no credits left.
+// Its upload builds with the standard parser and carries the credits notice.
+export type UploadGift = AiGiftMode | 'spent';
+
 // How an upload may use the free AI credits gift. A paying account's upload
 // may fall back on it once its plan's credits are spent. An account with no
 // plan reaches Claude only while it holds unspent, unexpired gift credits and
@@ -17,13 +21,14 @@ export async function uploadAiGiftMode(
   userId: number | null,
   paying: boolean,
   readers: () => UploadGiftModeDeps
-): Promise<AiGiftMode | null> {
+): Promise<UploadGift | null> {
   if (userId == null) return null;
   if (paying) return 'fallback';
   try {
     const deps = readers();
     const gift = await computeAiGiftBalance(userId, deps.now(), deps);
-    return gift != null && gift.credits > 0 ? 'only' : null;
+    if (gift == null) return null;
+    return gift.credits > 0 ? 'only' : 'spent';
   } catch (error) {
     console.error('[ai-gift] upload gift read failed', error);
     return null;

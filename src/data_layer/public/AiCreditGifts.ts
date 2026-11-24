@@ -20,6 +20,8 @@ export default interface AiCreditGifts {
 
   ip_hash: string | null;
 
+  feedback_answered_at: Date | null;
+
   created_at: Date;
 }
 
@@ -38,6 +40,8 @@ export interface AiCreditGiftsInitializer {
 
   ip_hash?: string | null;
 
+  feedback_answered_at?: Date | null;
+
   /** Default value: CURRENT_TIMESTAMP */
   created_at?: Date;
 }
@@ -55,6 +59,8 @@ export interface AiCreditGiftsMutator {
   expires_at?: Date;
 
   ip_hash?: string | null;
+
+  feedback_answered_at?: Date | null;
 
   created_at?: Date;
 }

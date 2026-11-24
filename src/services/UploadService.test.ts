@@ -10837,6 +10837,8 @@ describe('walkMediaFiles', () => {
   });
 });
 
+import { AI_GIFT_MIN_MONTHLY_CARDS } from '../lib/claude/aiCredits/gift/giftTerms';
+
 describe('UploadService.handleUpload — the free AI credits gift', () => {
   let tmpDir: string;
   let infoSpy: MockInstance;
@@ -10946,16 +10948,17 @@ describe('UploadService.handleUpload — the free AI credits gift', () => {
     expect(context).toMatchObject({ aiGift: 'only', cardLimit: 100 });
   });
 
-  it("keeps a free account out of a month's cards on the free path, so the gift is not spent on a deck it cannot keep", async () => {
+  it('keeps a free account with fewer than 20 cards left this month on the free path, so the gift is not spent on cards that would be cut', async () => {
     const jobs = jobRepository();
     const { res, capturedStatus } = signedIn(false);
     const service = new UploadService(
       buildRepository(),
       jobs,
       buildUsersRepo({
-        getCardUsage: vi
-          .fn()
-          .mockResolvedValue({ cards_used: 100, month_started_at: new Date() }),
+        getCardUsage: vi.fn().mockResolvedValue({
+          cards_used: MONTHLY_CARD_LIMIT - AI_GIFT_MIN_MONTHLY_CARDS + 1,
+          month_started_at: new Date(),
+        }),
       }),
       ...fakeUploadServiceDeps(),
       undefined,
@@ -10968,7 +10971,21 @@ describe('UploadService.handleUpload — the free AI credits gift', () => {
     expect(jobs.create).not.toHaveBeenCalled();
   });
 
-  it('keeps a free account whose gift is spent on the free path, with no Claude job', async () => {
+  function sendsCards() {
+    mockFirstApkg = Buffer.from('fake-apkg');
+    execute.mockResolvedValue({
+      packages: [{ name: 'lecture', cardCount: 12 }],
+      warnings: [],
+    });
+  }
+
+  function renamed(request: express.Request, name: string) {
+    (request.files as Array<{ originalname: string }>)[0].originalname = name;
+    return request;
+  }
+
+  it("builds a spent gift's upload with the standard parser and the credits notice", async () => {
+    sendsCards();
     const jobs = jobRepository();
     const { res, capturedStatus } = signedIn(false);
 
@@ -10979,6 +10996,54 @@ describe('UploadService.handleUpload — the free AI credits gift', () => {
 
     expect(capturedStatus()).not.toBe(202);
     expect(jobs.create).not.toHaveBeenCalled();
+    expect(res.set).toHaveBeenCalledWith(
+      'X-Warning-Code',
+      'ai-credits-exhausted'
+    );
+  });
+
+  it('runs one gift-only conversion per account at a time; a second gets the standard parser and the credits notice', async () => {
+    const jobs = jobRepository();
+    let finish: () => void = () => undefined;
+    execute.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = () => resolve({ packages: [], warnings: [] });
+        })
+    );
+    const service = serviceWith(jobs, giftReaders({}));
+    const first = signedIn(false);
+    await service.handleUpload(aiRequest(), first.res);
+    expect(first.capturedStatus()).toBe(202);
+
+    sendsCards();
+    const second = signedIn(false);
+    await service.handleUpload(renamed(aiRequest(), 'other.html'), second.res);
+
+    expect(second.capturedStatus()).not.toBe(202);
+    expect(jobs.create).toHaveBeenCalledTimes(1);
+    expect(second.res.set).toHaveBeenCalledWith(
+      'X-Warning-Code',
+      'ai-credits-exhausted'
+    );
+
+    finish();
+    await new Promise((resolve) => setImmediate(resolve));
+    const third = signedIn(false);
+    await service.handleUpload(renamed(aiRequest(), 'third.html'), third.res);
+    expect(third.capturedStatus()).toBe(202);
+  });
+
+  it('reads the gift only when the upload asked for Claude cards', async () => {
+    sendsCards();
+    const readers = vi.fn(giftReaders({}));
+    const { res } = signedIn(false);
+    const request = aiRequest();
+    request.body = {};
+
+    await serviceWith(jobRepository(), readers).handleUpload(request, res);
+
+    expect(readers).not.toHaveBeenCalled();
   });
 
   it('keeps a free account on the free path while the switch is off, even holding a gift', async () => {

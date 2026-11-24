@@ -12,6 +12,7 @@ export const JOB_LOCK_KEYS = {
   passEndingEmails: 21005,
   metricTripwire: 21006,
   confirmEmailNotices: 21007,
+  aiGiftClaims: 21009,
 } as const;
 
 /**

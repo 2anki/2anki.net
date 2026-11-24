@@ -2,7 +2,7 @@
   "triggerText": "Créditos de IA grátis",
   "triggerLabel": "Presente: créditos de IA grátis",
   "title": "Créditos de IA grátis",
-  "body": "Resgate {{credits}} créditos de IA para cartões do Claude nos seus envios. Eles expiram {{hours}} horas depois do resgate.",
+  "body": "Resgate {{credits}} créditos de IA para cartões do Claude nos seus envios. Resgatados agora, eles expiram em {{date}}.",
   "claimUntil": "Você pode resgatá-los até {{date}}.",
   "claim": "Resgatar {{credits}} créditos",
   "claiming": "Resgatando",

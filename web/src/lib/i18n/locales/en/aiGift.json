@@ -2,7 +2,7 @@
   "triggerText": "Free AI credits",
   "triggerLabel": "Free AI credits gift",
   "title": "Free AI credits",
-  "body": "Claim {{credits}} AI credits for Claude cards on your uploads. They expire {{hours}} hours after you claim them.",
+  "body": "Claim {{credits}} AI credits for Claude cards on your uploads. Claimed now, they expire on {{date}}.",
   "claimUntil": "You can claim them until {{date}}.",
   "claim": "Claim {{credits}} credits",
   "claiming": "Claiming",

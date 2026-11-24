@@ -1,10 +1,9 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type RefCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import GiftIcon from '../icons/GiftIcon';
 import { useAiGift, AI_GIFT_QUERY_KEY } from '../../lib/hooks/useAiGift';
-import { useDialogFocus } from '../../lib/hooks/useDialogFocus';
 import { useAppLanguage } from '../../lib/i18n/useAppLanguage';
 import {
   claimAiGift,
@@ -27,6 +26,8 @@ const GIFT_RETURN_PATH = '/upload';
 interface AiGiftPresentProps {
   isLoggedIn: boolean;
   align?: 'start' | 'end';
+  className?: string;
+  labelFromWide?: boolean;
 }
 
 const dateLocale = (language: string): string =>
@@ -67,6 +68,7 @@ interface PanelBodyProps {
   onSignUp: () => void;
   onSignIn: () => void;
   onUse: () => void;
+  resultRef: RefCallback<HTMLParagraphElement>;
 }
 
 function PanelBody({
@@ -78,6 +80,7 @@ function PanelBody({
   onSignUp,
   onSignIn,
   onUse,
+  resultRef,
 }: Readonly<PanelBodyProps>) {
   const { t } = useTranslation('aiGift');
   const language = useAppLanguage();
@@ -85,13 +88,19 @@ function PanelBody({
   const onUploadPage = pathname === GIFT_RETURN_PATH;
 
   if (gift.state === 'full') {
-    return <p className={styles.text}>{t('full')}</p>;
+    return (
+      <p ref={resultRef} tabIndex={-1} className={styles.text}>
+        {t('full')}
+      </p>
+    );
   }
 
   if (gift.state === 'claimed') {
     return (
       <>
-        <p className={styles.text}>{t('claimed', { count: gift.credits })}</p>
+        <p ref={resultRef} tabIndex={-1} className={styles.text}>
+          {t('claimed', { count: gift.credits })}
+        </p>
         <p className={styles.text}>
           {t('claimedExpires', {
             date: formatGiftDate(gift.expiresAt, language),
@@ -109,7 +118,10 @@ function PanelBody({
   return (
     <>
       <p className={styles.text}>
-        {t('body', { credits: gift.credits, hours: gift.hours })}
+        {t('body', {
+          credits: gift.credits,
+          date: formatGiftDate(gift.expiresIfClaimedNow, language),
+        })}
       </p>
       <p className={styles.note}>
         {t('claimUntil', {
@@ -158,6 +170,8 @@ function PanelBody({
 export function AiGiftPresent({
   isLoggedIn,
   align = 'end',
+  className,
+  labelFromWide = false,
 }: Readonly<AiGiftPresentProps>) {
   const { t } = useTranslation('aiGift');
   const gift = useAiGift(isLoggedIn);
@@ -165,7 +179,9 @@ export function AiGiftPresent({
   const queryClient = useQueryClient();
   const panelId = useId();
   const titleId = useId();
-  const panelRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const focusResultNext = useRef(false);
   const [openChoice, setOpen] = useState<boolean | null>(null);
   const [returnedToClaim] = useState(
     () => isLoggedIn && hasClaimIntent(Date.now())
@@ -191,9 +207,37 @@ export function AiGiftPresent({
     if (openedOnReturn) forgetClaimIntent();
   }, [openedOnReturn]);
 
-  useDialogFocus(panelRef, () => setOpen(false), open);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setOpen(false);
+      triggerRef.current?.focus();
+    };
+    const onPointer = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('pointerdown', onPointer);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('pointerdown', onPointer);
+    };
+  }, [open]);
 
   if (!visible) return null;
+
+  const closeToTrigger = () => {
+    setOpen(false);
+    triggerRef.current?.focus();
+  };
+
+  const resultRef: RefCallback<HTMLParagraphElement> = (node) => {
+    if (node != null && focusResultNext.current) {
+      focusResultNext.current = false;
+      node.focus();
+    }
+  };
 
   const onToggle = () => {
     if (!open) {
@@ -209,6 +253,7 @@ export function AiGiftPresent({
     const result = await claimAiGift();
     setClaiming(false);
     if (result.ok) {
+      focusResultNext.current = true;
       const claimed: AiGiftStatus = {
         state: 'claimed',
         credits: result.credits,
@@ -222,6 +267,7 @@ export function AiGiftPresent({
       return;
     }
     if (result.reason === 'gift_budget_full') {
+      focusResultNext.current = true;
       const full: AiGiftStatus = { state: 'full', feedbackDue: false };
       queryClient.setQueriesData<AiGiftStatus>(
         { queryKey: AI_GIFT_QUERY_KEY },
@@ -242,16 +288,26 @@ export function AiGiftPresent({
   const onHide = () => {
     setGiftDismissed(true);
     setDismissed(true);
-    setOpen(false);
+    closeToTrigger();
   };
 
   const triggerClass = dismissed ? styles.triggerQuiet : styles.trigger;
   const panelClass =
     align === 'start' ? `${styles.panel} ${styles.panelStart}` : styles.panel;
 
+  const textClass = labelFromWide
+    ? `${styles.triggerText} ${styles.triggerTextWide}`
+    : styles.triggerText;
+
   return (
-    <div className={styles.present}>
+    <div
+      ref={rootRef}
+      className={
+        className == null ? styles.present : `${styles.present} ${className}`
+      }
+    >
       <button
+        ref={triggerRef}
         type="button"
         className={triggerClass}
         aria-expanded={open}
@@ -266,14 +322,13 @@ export function AiGiftPresent({
           ribbonStroke="var(--gift-green)"
         />
         {!dismissed && (
-          <span className={styles.triggerText} aria-hidden="true">
+          <span className={textClass} aria-hidden="true">
             {t('triggerText')}
           </span>
         )}
       </button>
       {open && (
         <div
-          ref={panelRef}
           id={panelId}
           className={panelClass}
           role="dialog"
@@ -293,21 +348,24 @@ export function AiGiftPresent({
               type="button"
               className={styles.closeButton}
               aria-label={t('close')}
-              onClick={() => setOpen(false)}
+              onClick={closeToTrigger}
             >
               <span aria-hidden="true">×</span>
             </button>
           </div>
-          <PanelBody
-            gift={gift}
-            isLoggedIn={isLoggedIn}
-            claiming={claiming}
-            refusal={refusal}
-            onClaim={onClaim}
-            onSignUp={() => leaveToAuth('/register')}
-            onSignIn={() => leaveToAuth('/login')}
-            onUse={() => setOpen(false)}
-          />
+          <div className={styles.body} aria-live="polite">
+            <PanelBody
+              gift={gift}
+              isLoggedIn={isLoggedIn}
+              claiming={claiming}
+              refusal={refusal}
+              onClaim={onClaim}
+              onSignUp={() => leaveToAuth('/register')}
+              onSignIn={() => leaveToAuth('/login')}
+              onUse={() => setOpen(false)}
+              resultRef={resultRef}
+            />
+          </div>
           {!dismissed && (
             <button
               type="button"

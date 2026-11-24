@@ -10,8 +10,10 @@ import {
 import { AiCreditBalance } from './aiCredits/balance';
 import { AiGiftBalance } from './aiCredits/gift/giftBalance';
 import { currentGiftId } from './aiCredits/gift/giftFunding';
+import { computeAiGiftBalance } from './aiCredits/gift/giftBalance';
+import { AI_GIFT_RESERVED_CREDITS_PER_CALL } from './aiCredits/gift/giftTerms';
+import { InMemoryAiCreditGiftsRepository } from '../../data_layer/AiCreditGiftsRepository';
 import {
-  RESERVED_CREDITS_PER_INFLIGHT_CALL,
   reservedCreditsFor,
   reservedGiftCreditsFor,
   resetInflightReservations,
@@ -187,8 +189,8 @@ describe('withAiBudget and the gift', () => {
     expect(deps.computeGiftBalance).not.toHaveBeenCalled();
   });
 
-  it('bounds calls in flight on the gift by the same reservation as a plan', async () => {
-    const deps = makeDeps({ gift: giftBalance(15) });
+  it('holds 50 credits per gift-paid call, so a full gift runs two calls at once', async () => {
+    const deps = makeDeps({ gift: giftBalance(100) });
     let release: () => void = () => undefined;
     const held = new Promise<void>((resolve) => {
       release = resolve;
@@ -207,7 +209,7 @@ describe('withAiBudget and the gift', () => {
     );
     await flushAsync();
     expect(reservedGiftCreditsFor(GIFT_ID)).toBe(
-      2 * RESERVED_CREDITS_PER_INFLIGHT_CALL
+      2 * AI_GIFT_RESERVED_CREDITS_PER_CALL
     );
 
     await expect(
@@ -217,6 +219,43 @@ describe('withAiBudget and the gift', () => {
     release();
     await Promise.all([first, second]);
     expect(reservedGiftCreditsFor(GIFT_ID)).toBe(0);
+  });
+
+  it('runs the gift down on calls Claude refused, which still cost input', async () => {
+    const gifts = new InMemoryAiCreditGiftsRepository();
+    await gifts.claim({
+      userId: USER,
+      credits: 100,
+      claimedAt: new Date('2026-11-25T10:00:00.000Z'),
+      expiresAt: new Date('2026-11-27T10:00:00.000Z'),
+      ipHash: null,
+    });
+    const [grant] = gifts.gifts;
+    for (let i = 0; i < 4; i += 1) {
+      gifts.spend.push({
+        giftId: grant.id,
+        userId: USER,
+        costUsd: 0.25,
+        at: new Date('2026-11-25T11:00:00.000Z'),
+        billable: false,
+      });
+    }
+    const deps = {
+      ...makeDeps({}),
+      computeGiftBalance: (userId: number, now: Date) =>
+        computeAiGiftBalance(userId, now, {
+          isEnabled: async () => true,
+          findGrant: (id) => gifts.findGrant(id),
+          giftCostSince: (giftId, id, since) =>
+            gifts.giftCostSince(giftId, id, since),
+        }),
+    };
+    const run = vi.fn();
+
+    await expect(
+      withAiBudget({ userId: USER, aiGift: 'only' }, run, deps)
+    ).rejects.toBeInstanceOf(AiCreditsExhaustedError);
+    expect(run).not.toHaveBeenCalled();
   });
 
   it('records the first AI use on the gift once', async () => {

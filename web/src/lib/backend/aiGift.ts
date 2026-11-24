@@ -5,7 +5,7 @@ export type AiGiftStatus =
   | {
       state: 'open';
       credits: number;
-      hours: number;
+      expiresIfClaimedNow: string;
       claimClosesAt: string;
       feedbackDue: boolean;
     }
@@ -49,13 +49,13 @@ export function parseAiGiftStatus(data: unknown): AiGiftStatus {
   if (
     data.state === 'open' &&
     typeof data.credits === 'number' &&
-    typeof data.hours === 'number' &&
+    typeof data.expiresIfClaimedNow === 'string' &&
     typeof data.claimClosesAt === 'string'
   ) {
     return {
       state: 'open',
       credits: data.credits,
-      hours: data.hours,
+      expiresIfClaimedNow: data.expiresIfClaimedNow,
       claimClosesAt: data.claimClosesAt,
       feedbackDue,
     };

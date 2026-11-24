@@ -6,11 +6,9 @@ import { ipRateLimit } from './middleware/ipRateLimit';
 import { AiGiftController } from '../controllers/AiGiftController';
 import { getDatabase } from '../data_layer';
 import { AiCreditGiftsRepository } from '../data_layer/AiCreditGiftsRepository';
-import { AiUsageMetricsRepository } from '../data_layer/AiUsageMetricsRepository';
 import { getFeatureFlag } from '../lib/featureFlags/getFeatureFlag';
 import { AI_CREDITS_GIFT_FLAG } from '../lib/featureFlags/aiCreditsGift';
 import {
-  AI_GIFT_FEEDBACK_EVENT,
   cachedExposure,
   type AiGiftDeps,
 } from '../usecases/ai/aiGift/aiGiftDeps';
@@ -33,15 +31,12 @@ function productionDeps(): AiGiftDeps {
   if (defaultDeps != null) return defaultDeps;
   const database = getDatabase();
   const gifts = new AiCreditGiftsRepository(database);
-  const usage = new AiUsageMetricsRepository(database);
   const exposure = cachedExposure((now) => gifts.exposureCredits(now));
   defaultDeps = {
     gifts,
     isEnabled: () => getFeatureFlag(AI_CREDITS_GIFT_FLAG, false),
     exposureCredits: exposure.exposureCredits,
     forgetExposure: exposure.forget,
-    feedbackCount: (userId) =>
-      usage.eventCountSince(AI_GIFT_FEEDBACK_EVENT, userId, new Date(0)),
     now: () => new Date(),
   };
   return defaultDeps;

@@ -53,7 +53,7 @@ export class AiGiftController {
         return res.json({
           state: 'open',
           credits: result.credits,
-          hours: result.hours,
+          expiresIfClaimedNow: result.expiresIfClaimedNow.toISOString(),
           claimClosesAt: result.claimClosesAt.toISOString(),
           feedbackDue: false,
         });

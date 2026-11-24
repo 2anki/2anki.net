@@ -39,22 +39,25 @@ function NavigationBar({ isLoggedIn }: Readonly<NavigationBarProps>) {
             fetchPriority="high"
           />
         </a>
-        <div className={styles.brandEnd}>
-          {isResolved && (
-            <AiGiftPresent isLoggedIn={isLoggedIn === true} align="start" />
-          )}
-          <button
-            type="button"
-            className={styles.burger}
-            aria-label={t('nav.menu')}
-            aria-expanded={active}
-            onClick={() => setActive(!active)}
-          >
-            <span aria-hidden="true" />
-            <span aria-hidden="true" />
-            <span aria-hidden="true" />
-          </button>
-        </div>
+        {isResolved && (
+          <AiGiftPresent
+            isLoggedIn={isLoggedIn === true}
+            align="start"
+            className={styles.navPresent}
+            labelFromWide
+          />
+        )}
+        <button
+          type="button"
+          className={styles.burger}
+          aria-label={t('nav.menu')}
+          aria-expanded={active}
+          onClick={() => setActive(!active)}
+        >
+          <span aria-hidden="true" />
+          <span aria-hidden="true" />
+          <span aria-hidden="true" />
+        </button>
       </div>
 
       <div className={active ? styles.menuActive : styles.menu}>

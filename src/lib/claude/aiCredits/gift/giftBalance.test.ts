@@ -1,6 +1,11 @@
 import { vi } from 'vitest';
 import { computeAiGiftBalance, type AiGiftGrant } from './giftBalance';
-import { giftBudgetHasRoom, giftExpiresAt } from './giftTerms';
+import {
+  AI_GIFT_CREDITS_PER_CLAIM,
+  AI_GIFT_TOTAL_BUDGET_CREDITS,
+  giftBudgetHasRoom,
+  giftExpiresAt,
+} from './giftTerms';
 
 const grant: AiGiftGrant = {
   id: 4,
@@ -71,8 +76,9 @@ describe('gift terms', () => {
     );
   });
 
-  it('has room only while exposure plus one claim stays within 11000', () => {
-    expect(giftBudgetHasRoom(10900)).toBe(true);
-    expect(giftBudgetHasRoom(10901)).toBe(false);
+  it('has room only while exposure plus one claim stays within the budget', () => {
+    const lastFit = AI_GIFT_TOTAL_BUDGET_CREDITS - AI_GIFT_CREDITS_PER_CLAIM;
+    expect(giftBudgetHasRoom(lastFit)).toBe(true);
+    expect(giftBudgetHasRoom(lastFit + 1)).toBe(false);
   });
 });

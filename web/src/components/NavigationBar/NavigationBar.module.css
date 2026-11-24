@@ -42,14 +42,12 @@
   height: 28px;
 }
 
-.brandEnd {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
+.navPresent {
+  margin-left: auto;
 }
 
 @media (min-width: 1024px) {
-  .brandEnd {
+  .navPresent {
     margin-left: 1rem;
   }
 }
