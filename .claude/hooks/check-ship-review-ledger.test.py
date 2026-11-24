@@ -78,6 +78,13 @@ class Repo:
         self.git("update-ref", "refs/remotes/origin/main", sha)
         return sha
 
+    def revert_on_main(self, commit):
+        self.git("checkout", "-q", "main")
+        self.git("revert", "--no-edit", commit)
+        self.main = self.git("rev-parse", "HEAD")
+        self.git("update-ref", "refs/remotes/origin/main", self.main)
+        return self.main
+
     def revert_branch(self, branch_name, commit):
         self.git("checkout", "-q", "-b", branch_name, self.main)
         self.git("revert", "--no-edit", commit)
@@ -244,6 +251,16 @@ class RequiredScopeTest(LedgerTestCase):
         chore = self.repo.commit("src/lib/cards.ts", "export const x = 1;\n", "chore: tidy")
         self.assertEqual(ship_ledger.required_scopes(chore, self.repo.path), ("engineering",))
         self.assertEqual(ship_ledger.required_scopes(self.first, self.repo.path), ("engineering",))
+
+    def test_a_fix_title_over_chore_commits_needs_reach(self):
+        self.repo.branch_from_main("titled")
+        chore = self.repo.commit("src/lib/cards.ts", "export const x = 1;\n", "chore: tidy")
+        self.assertEqual(
+            ship_ledger.required_scopes(chore, self.repo.path, ["fix: keep the cards"]), ("engineering", "reach")
+        )
+        self.repo.passes(5, chore, "engineering")
+        self.assertIsNone(ship_ledger.head_violation("5", chore, self.repo.path))
+        self.assertIn("no `reach` pass", ship_ledger.head_violation("5", chore, self.repo.path, ["fix: keep the cards"]))
 
     def test_unreadable_subjects_require_reach(self):
         self.assertTrue(ship_ledger.needs_reach(["src/lib/cards.ts"], None))
@@ -502,6 +519,15 @@ class AliasAndExtensionTest(LedgerTestCase):
         for command in ("gh alias list", "gh extension list", "gh alias delete rv"):
             self.assertAllowed(command)
 
+    def test_the_words_elsewhere_in_a_command_are_not_a_definition(self):
+        for command in (
+            "gh issue create --repo 2anki/server --title 'Add an install hint' --label extension",
+            "gh label create extension --repo 2anki/server",
+            "gh issue create --repo 2anki/server --title 'alias set fails' --label bug",
+        ):
+            self.assertAllowed(command)
+        self.assertDenied("ls && gh ext create gh-review", "no hook reads")
+
 
 class AnyGhBodyFileTest(LedgerTestCase):
     def test_the_body_file_rule_applies_whatever_the_subcommand(self):
@@ -557,6 +583,14 @@ class ExactRevertTest(LedgerTestCase):
         revert = self.repo.revert_branch("revert-cards", landed)
         self.assertIsNone(ship_ledger.reverted_commit(revert, self.repo.path))
         self.assertIn("no `engineering` pass", self.head_violation(revert))
+
+    def test_a_revert_of_a_revert_is_a_re_land_and_needs_the_review(self):
+        landed = self.repo.commit_on_main("src/lib/cards.ts", "export const broken = 1;\n", "chore: cards")
+        rolled_back = self.repo.revert_on_main(landed)
+        re_land = self.repo.revert_branch("re-land-cards", rolled_back)
+        self.assertIsNone(ship_ledger.reverted_commit(re_land, self.repo.path))
+        self.assertIn("no `engineering` pass", self.head_violation(re_land))
+        self.assertDenied(post(8, self.repo.marker_file(re_land)), "no `engineering` pass")
 
     def test_an_unanswered_block_still_refuses_an_exact_revert(self):
         landed = self.repo.commit_on_main("src/lib/cards.ts", "export const broken = 1;\n", "feat: cards")

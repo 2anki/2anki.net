@@ -74,8 +74,14 @@ import unicodedata
 HOOKS_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HOOKS_DIR)
 
-import merge_command  # noqa: E402
-import ship_ledger  # noqa: E402
+HELPER_IMPORT_ERROR = None
+try:
+    import merge_command  # noqa: E402
+    import ship_ledger  # noqa: E402
+except Exception as helper_error:
+    HELPER_IMPORT_ERROR = helper_error
+
+MAY_BE_A_MERGE = re.compile(r"merge", re.IGNORECASE)
 
 
 def allow():
@@ -242,7 +248,7 @@ def review_marker_violation(pr_data):
 
 def ledger_violation(number, pr_data, cwd):
     head = as_text(pr_data.get("headRefOid"))
-    reason = ship_ledger.head_violation(number, head, cwd)
+    reason = ship_ledger.head_violation(number, head, cwd, [as_text(pr_data.get("title"))])
     if reason is None:
         return None
     return (
@@ -421,6 +427,16 @@ def reach_violation(pr_data):
     )
 
 
+def refuse_without_helpers(cmd):
+    if not isinstance(cmd, str) or MAY_BE_A_MERGE.search(cmd):
+        deny(
+            f"Refusing this command: the merge gate could not load its helpers "
+            f"({type(HELPER_IMPORT_ERROR).__name__}), so it cannot check a merge, and a gate that cannot "
+            "check does not let one through. Fix .claude/hooks/merge_command.py or ship_ledger.py on a branch."
+        )
+    allow()
+
+
 def main():
     if os.environ.get("CLAUDE_SKIP_SAFETY"):
         allow()
@@ -434,6 +450,9 @@ def main():
         allow()
 
     cmd = data.get("tool_input", {}).get("command", "")
+
+    if HELPER_IMPORT_ERROR is not None:
+        refuse_without_helpers(cmd)
 
     if not is_gh_pr_merge(cmd):
         allow()

@@ -196,10 +196,21 @@ def alias_violation():
     )
 
 
-def defines_a_command(words):
-    if "alias" in words and words & ALIAS_ACTIONS:
-        return True
-    return bool(words & EXTENSION_WORDS and words & EXTENSION_ACTIONS)
+def is_gh_program(part):
+    return part == "gh" or part.endswith("/gh")
+
+
+def defines_a_command(parts):
+    lowered = [part.lower() for part in parts]
+    for index, part in enumerate(lowered[:-2]):
+        if not is_gh_program(part):
+            continue
+        subcommand, action = lowered[index + 1], lowered[index + 2]
+        if subcommand == "alias" and action in ALIAS_ACTIONS:
+            return True
+        if subcommand in EXTENSION_WORDS and action in EXTENSION_ACTIONS:
+            return True
+    return False
 
 
 def check_ledger(pr, shas, cwd):
@@ -217,7 +228,7 @@ def gate(cmd, cwd):
         allow()
     parts = tokens(cmd)
     words = {part.lower() for part in parts}
-    if defines_a_command(words):
+    if defines_a_command(parts):
         deny(alias_violation())
     files = referenced_files(parts)
     if files:

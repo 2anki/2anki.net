@@ -3,6 +3,10 @@ import importlib.util
 import io
 import json
 import os
+import shutil
+import subprocess
+import sys
+import tempfile
 import time
 import unittest
 from unittest import mock
@@ -638,17 +642,17 @@ class MergeTimeLedgerTest(unittest.TestCase):
         self.addCleanup(self.repo.cleanup)
         self.head = self.repo.commit("change.txt", "first\n", "chore: first")
 
-    def merge(self, author="alemayhu", comments=None):
+    def merge(self, author="alemayhu", comments=None, title="chore: first", files=("change.txt",)):
         marker = [{"body": f"<!-- ship-review: pass sha={self.head} -->"}]
         pr = {
             "number": 1,
             "url": "https://github.com/2anki/2anki.net/pull/1",
-            "title": "chore: first",
+            "title": title,
             "headRefOid": self.head,
             "headRefName": "chore/first",
-            "body": "",
+            "body": REACH_TABLE,
             "author": {"login": author},
-            "files": [{"path": "change.txt"}],
+            "files": [{"path": path} for path in files],
             "commits": [],
             "statusCheckRollup": [],
             "reviews": [],
@@ -689,6 +693,38 @@ class MergeTimeLedgerTest(unittest.TestCase):
 
     def test_dependabot_still_needs_neither_marker_nor_ledger(self):
         self.assertEqual(self.merge(author="app/dependabot", comments=[]), {"continue": True})
+
+    def test_a_fix_title_over_chore_commits_needs_a_reach_pass(self):
+        self.repo.branch_from_main("titled")
+        self.head = self.repo.commit("src/lib/cards.ts", "export const x = 1;\n", "chore: tidy")
+        self.repo.passes(1, self.head, "engineering")
+        files = ("src/lib/cards.ts",)
+        self.assertEqual(self.merge(files=files), {"continue": True})
+        refusal = self.merge(title="fix: keep the cards", files=files)["hookSpecificOutput"]["permissionDecisionReason"]
+        self.assertIn("no `reach` pass", refusal)
+        self.repo.passes(1, self.head, "reach")
+        self.assertEqual(self.merge(title="fix: keep the cards", files=files), {"continue": True})
+
+
+class HelperImportFailureTest(unittest.TestCase):
+    def run_alone(self, command):
+        lonely = tempfile.mkdtemp(prefix="merge-status-alone-")
+        self.addCleanup(shutil.rmtree, lonely, True)
+        hook = os.path.join(lonely, "check-merge-status.py")
+        shutil.copy(os.path.join(HOOKS_DIR, "check-merge-status.py"), hook)
+        env = {key: value for key, value in os.environ.items() if key != "CLAUDE_SKIP_SAFETY"}
+        payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": command}})
+        result = subprocess.run([sys.executable, hook], input=payload, env=env, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return json.loads(result.stdout)
+
+    def test_a_failed_helper_import_refuses_the_merge(self):
+        output = self.run_alone(MERGE)
+        self.assertEqual(output["hookSpecificOutput"]["permissionDecision"], "deny")
+        self.assertIn("could not load its helpers (ModuleNotFoundError)", output["hookSpecificOutput"]["permissionDecisionReason"])
+
+    def test_a_failed_helper_import_lets_other_commands_through(self):
+        self.assertEqual(self.run_alone("ls -la"), {"continue": True})
 
 
 if __name__ == "__main__":

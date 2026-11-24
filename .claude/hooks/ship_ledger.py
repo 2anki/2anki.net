@@ -36,7 +36,12 @@ Exact revert: when the verbatim patch-id of `<merge-base>..<sha>` equals that
 of `git diff M M^` for one of the last 20 first-parent commits M of
 `origin/main`, and no changed path is under `migrations/`, no scope is
 required; a recorded block that no later same-scope pass answers still
-refuses. Git computes this; there is no label to claim.
+refuses. Git computes this; there is no label to claim. A re-land is not a
+revert: when the PR's patch-id also equals the forward patch (`git diff N^ N`)
+of one of the last 200 first-parent commits N (a revert of a revert brings
+back a change that was rolled back), the normal scopes apply. The PR title
+counts as a subject for `reach` when the caller passes it (the merge gate
+does; the marker hook cannot read it without a network call).
 
 `head_violation` is the one check, used by `check-ship-review-ledger.py` when
 a marker is posted and by `check-merge-status.py` at merge time.
@@ -60,6 +65,7 @@ MIGRATION_ROOTS = ("migrations/", "src/data_layer/public/")
 REACH_ROOTS = ("src/", "web/src/")
 REACH_SUBJECT = re.compile(r"^(feat|fix|perf|refactor)(\([^)]*\))?!?:", re.IGNORECASE)
 REVERT_WINDOW = 20
+RELAND_WINDOW = 200
 REVERT_EXCLUDED_ROOT = "migrations/"
 PR_NUMBER = re.compile(r"[1-9][0-9]{0,8}")
 FULL_SHA = re.compile(r"[0-9a-f]{40}")
@@ -195,11 +201,13 @@ def needs_reach(paths, subjects):
     return any(REACH_SUBJECT.match(subject.strip()) for subject in subjects)
 
 
-def required_scopes(sha, cwd):
+def required_scopes(sha, cwd, extra_subjects=()):
     change = read_change(sha, cwd)
     if change is None:
         return SCOPES
     paths, diff, subjects = change
+    if subjects is not None:
+        subjects = subjects + [subject for subject in extra_subjects if isinstance(subject, str)]
     scopes = list(BASE_SCOPES)
     if hard_rails.rail_paths(paths) or hard_rails.rail_content_hits(diff):
         scopes.append("security")
@@ -226,8 +234,19 @@ def reverted_commit(sha, cwd):
     listed = run_git(["rev-list", "--first-parent", "-n", str(REVERT_WINDOW), BASE_REF], cwd)
     for commit in text(listed or b"").splitlines():
         if verbatim_patch_id(pr_diff(commit, commit + "^", cwd), cwd) == target:
-            return commit
+            return None if relands_a_commit(target, cwd) else commit
     return None
+
+
+def relands_a_commit(target, cwd):
+    """True when `target` is the forward patch of one of origin/main's last RELAND_WINDOW first-parent commits."""
+    listed = run_git(["rev-list", "--first-parent", "-n", str(RELAND_WINDOW), BASE_REF], cwd)
+    if listed is None:
+        return True
+    for commit in text(listed).splitlines():
+        if verbatim_patch_id(pr_diff(commit + "^", commit, cwd), cwd) == target:
+            return True
+    return False
 
 
 def parse_line(line):
@@ -302,8 +321,11 @@ def unparsable_reason(error):
     )
 
 
-def head_violation(pr, sha, cwd):
-    """None when the ledger backs a pass for PR `pr` at `sha` (the marker hook and the merge gate share this)."""
+def head_violation(pr, sha, cwd, extra_subjects=()):
+    """None when the ledger backs a pass for PR `pr` at `sha` (the marker hook and the merge gate share this).
+
+    `extra_subjects` are subjects the squash commit may take that are not commits (the PR title, at merge time).
+    """
     path = ledger_path(cwd)
     if path is None:
         return "could not find this checkout's git dir to read the review ledger"
@@ -312,7 +334,7 @@ def head_violation(pr, sha, cwd):
     except LedgerError as error:
         return unparsable_reason(error)
     patch = patch_id(sha, cwd)
-    reason = marker_violation(entries, pr, sha, patch, required_scopes(sha, cwd))
+    reason = marker_violation(entries, pr, sha, patch, required_scopes(sha, cwd, extra_subjects))
     if reason is None:
         return None
     if reverted_commit(sha, cwd) is not None:
