@@ -190,6 +190,46 @@ class TestContentTriggers(unittest.TestCase):
                     )
                 )
 
+    def test_removed_line_starting_with_two_dashes_is_scanned(self):
+        diff = "\n".join([
+            "diff --git a/ecosystem.config.js b/ecosystem.config.js",
+            "--- a/ecosystem.config.js",
+            "+++ b/ecosystem.config.js",
+            "@@ -1,2 +1,1 @@",
+            "---max-old-space-size=4096",
+            " node dist/server.js",
+        ])
+        self.assertEqual(rails.rail_content_hits(diff), ["max-old-space-size"])
+
+    def test_added_line_starting_with_two_pluses_is_scanned(self):
+        diff = "\n".join([
+            "--- a/src/lib/foo.ts",
+            "+++ b/src/lib/foo.ts",
+            "@@ -1 +1 @@",
+            "+++limit; const MONTHLY_CARD_LIMIT = 999;",
+        ])
+        self.assertEqual(rails.rail_content_hits(diff), ["MONTHLY_CARD_LIMIT"])
+
+    def test_carriage_return_only_file_is_scanned_past_its_first_line(self):
+        diff = "+const a = 1;\rconst b = 2;\rexport const ANONYMOUS_CARD_CAP = 999;"
+        self.assertEqual(rails.rail_content_hits(diff), ["ANONYMOUS_CARD_CAP"])
+
+    def test_removed_carriage_return_only_file_is_scanned_past_its_first_line(self):
+        diff = "-const a = 1;\r  max_memory_restart: '2G',\r"
+        self.assertEqual(rails.rail_content_hits(diff), ["max_memory_restart"])
+
+    def test_line_separator_inside_a_line_does_not_hide_a_trigger(self):
+        diff = "+const a = 1; const SUBSCRIBER_NODE_LIMIT = 9999;\n+const b = 2;"
+        self.assertEqual(rails.rail_content_hits(diff), ["SUBSCRIBER_NODE_LIMIT"])
+
+    def test_crlf_diff_still_reports_its_trigger(self):
+        diff = "--- a/f.ts\r\n+++ b/f.ts\r\n+const x = process.env.SECRET;\r\n"
+        self.assertEqual(rails.rail_content_hits(diff), ["process.env.SECRET"])
+
+    def test_trigger_after_a_carriage_return_in_a_context_line_still_rails(self):
+        diff = " const a = 1;\r+const CHUNK_MAX_TOKENS = 8000;\n+const b = 2;"
+        self.assertEqual(rails.rail_content_hits(diff), ["CHUNK_MAX_TOKENS"])
+
     def test_files_whose_job_is_holding_a_limit_are_rails(self):
         for path in (
             "src/lib/httpServerTimeouts.ts",
