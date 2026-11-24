@@ -2505,10 +2505,25 @@ function UploadForm({
   const [resumeClosedKey, setResumeClosedKey] = useState<string | null>(null);
   const [lastDeckOnOffer, setLastDeckOnOffer] = useState(false);
 
+  const settledOwnerKey =
+    currentOwnerId == null ? 'signed-out' : String(currentOwnerId);
+  const [firstLoadSettledFor, setFirstLoadSettledFor] = useState<string | null>(
+    null
+  );
+  if (
+    firstLoadSettledFor !== settledOwnerKey &&
+    !userLocalsLoading &&
+    cardUsage?.loading !== true
+  ) {
+    setFirstLoadSettledFor(settledOwnerKey);
+  }
+  const firstLoadSettled = firstLoadSettledFor === settledOwnerKey;
+
   const zoneIdle =
     zoneState === 'idle' &&
     validation == null &&
     !waitingForDeck &&
+    firstLoadSettled &&
     !isUploadLocked &&
     !resumingPreview &&
     resumeOffer == null &&

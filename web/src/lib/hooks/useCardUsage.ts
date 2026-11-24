@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { getCardUsage, CardUsageResponse } from '../backend/getCardUsage';
+import { useUserLocals } from './useUserLocals';
 
 export const CARD_USAGE_QUERY_KEY = ['cardUsage'] as const;
 
@@ -8,13 +9,19 @@ interface CardUsageState extends CardUsageResponse {
 }
 
 export const useCardUsage = (enabled: boolean): CardUsageState | null => {
+  const {
+    data: userLocals,
+    isLoading: sessionLoading,
+    isError: sessionFailed,
+  } = useUserLocals();
+  const sessionUnknown = sessionFailed && userLocals == null;
   const { data, isFetching } = useQuery({
-    queryKey: CARD_USAGE_QUERY_KEY,
+    queryKey: [...CARD_USAGE_QUERY_KEY, userLocals?.user?.id ?? null],
     queryFn: getCardUsage,
-    enabled,
+    enabled: enabled && !sessionLoading && !sessionUnknown,
   });
 
-  if (!enabled) {
+  if (!enabled || sessionUnknown) {
     return null;
   }
 
@@ -23,7 +30,7 @@ export const useCardUsage = (enabled: boolean): CardUsageState | null => {
       cards_used: 0,
       cards_limit: 100,
       unlimited: false,
-      loading: isFetching,
+      loading: isFetching || sessionLoading,
     };
   }
 

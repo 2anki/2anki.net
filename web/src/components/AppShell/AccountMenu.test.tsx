@@ -77,6 +77,9 @@ function renderMenu({
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
+  if (locals != null) {
+    queryClient.setQueryData(['userLocals'], { user: { id: 1 }, locals });
+  }
   return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={['/upload']}>

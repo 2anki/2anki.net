@@ -30,6 +30,10 @@ function renderWithProviders(ui: React.ReactElement) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
+  queryClient.setQueryData(['userLocals'], {
+    user: { id: 1 },
+    locals: sidebarProps.locals,
+  });
   return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={['/upload']}>{ui}</MemoryRouter>
