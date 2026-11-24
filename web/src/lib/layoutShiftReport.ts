@@ -7,7 +7,9 @@ const WINDOW_MAX_MS = 5000;
 const MAX_REPORTS_PER_PAGE = 3;
 const TARGET_MAX_LENGTH = 60;
 const PATH_MAX_SEGMENTS = 4;
-const ROUTE_WORD = /^[a-z][a-z-]{0,23}$/;
+const ROUTE_WORD_PART = /^\d?[a-z]+\d?$/;
+const SINGLE_WORD_MAX_LENGTH = 24;
+const HYPHENATED_MAX_LENGTH = 40;
 
 export interface ShiftSample {
   value: number;
@@ -35,17 +37,28 @@ function roundTo3(value: number): number {
   return Math.round(value * 1000) / 1000;
 }
 
+function isRouteWord(segment: string): boolean {
+  const maxLength = segment.includes('-')
+    ? HYPHENATED_MAX_LENGTH
+    : SINGLE_WORD_MAX_LENGTH;
+  return (
+    segment.length <= maxLength &&
+    segment.split('-').every((part) => ROUTE_WORD_PART.test(part))
+  );
+}
+
 /**
  * Routes carry ids and one-time tokens (/mindmaps/:id, /users/r/:token), and a
  * mistyped address can carry anything. Only a segment that reads as a route
- * word (lowercase letters and hyphens, under 24 characters) is kept, so none
- * of that reaches the events table.
+ * word is kept, so none of that reaches the events table: hyphenated words of
+ * lowercase letters, each allowed one digit at either end (step1-anki,
+ * what-is-2anki), at most 24 characters, or 40 when hyphenated.
  */
 export function shiftPath(pathname: string): string {
   const segments = pathname.split('/').filter((segment) => segment !== '');
   const safe = segments
     .slice(0, PATH_MAX_SEGMENTS)
-    .map((segment) => (ROUTE_WORD.test(segment) ? segment : ':id'));
+    .map((segment) => (isRouteWord(segment) ? segment : ':id'));
   return `/${safe.join('/')}`;
 }
 
