@@ -249,6 +249,24 @@ describe('LoginForm', () => {
     }
   );
 
+  it('clears the address refusal when the email is edited', async () => {
+    renderLoginForm();
+    const email = screen.getByRole('textbox', { name: 'Email' });
+    fireEvent.change(email, { target: { value: 'learner@gmail' } });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Email me a sign-in link' })
+    );
+    await screen.findByText(
+      'Enter a full email address, like name@example.com.'
+    );
+
+    fireEvent.change(email, { target: { value: 'learner@gmail.com' } });
+
+    expect(
+      screen.queryByText('Enter a full email address, like name@example.com.')
+    ).not.toBeInTheDocument();
+  });
+
   it('shows the server refusal of an address inline', async () => {
     mockRequestMagicLink.mockResolvedValue({
       ok: false,
