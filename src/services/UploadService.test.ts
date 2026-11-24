@@ -47,6 +47,15 @@ vi.mock('../services/SubscriptionService', () => ({
 
 vi.mock('./events/track', () => ({ track: vi.fn() }));
 
+vi.mock('../data_layer/createAiGiftReaders', () => ({
+  getAiGiftReaders: () => ({
+    isEnabled: async () => false,
+    findGrant: async () => null,
+    giftCostSince: async () => 0,
+    now: () => new Date(),
+  }),
+}));
+
 const mockGetFeatureFlag = vi.fn().mockResolvedValue(false);
 vi.mock('../lib/featureFlags/getFeatureFlag', () => ({
   getFeatureFlag: (...args: unknown[]) => mockGetFeatureFlag(...args),
@@ -10825,5 +10834,175 @@ describe('walkMediaFiles', () => {
     const media = walkMediaFiles(dir).sort();
 
     expect(media).toEqual(['folderA/image.png', 'root.png']);
+  });
+});
+
+describe('UploadService.handleUpload — the free AI credits gift', () => {
+  let tmpDir: string;
+  let infoSpy: MockInstance;
+
+  const giftGrant = {
+    id: 3,
+    userId: 42,
+    credits: 100,
+    claimedAt: new Date('2026-11-25T10:00:00.000Z'),
+    expiresAt: new Date('2099-11-27T10:00:00.000Z'),
+  };
+
+  function giftReaders(options: {
+    enabled?: boolean;
+    grant?: typeof giftGrant | null;
+    spendUsd?: number;
+  }) {
+    return () => ({
+      isEnabled: async () => options.enabled ?? true,
+      findGrant: async () =>
+        options.grant === undefined ? giftGrant : options.grant,
+      giftCostSince: async () => options.spendUsd ?? 0,
+      now: () => new Date('2026-11-25T12:00:00.000Z'),
+    });
+  }
+
+  function jobRepository(): JobRepository {
+    return {
+      create: vi.fn().mockResolvedValue(undefined),
+      updateJobStatus: vi.fn().mockResolvedValue(undefined),
+      findJobById: vi.fn().mockResolvedValue(null),
+      deleteJob: vi.fn().mockResolvedValue(undefined),
+    } as unknown as JobRepository;
+  }
+
+  function aiRequest(): express.Request {
+    return buildRequest({
+      files: [
+        {
+          originalname: 'lecture.html',
+          mimetype: 'text/html',
+          size: 4096,
+          path: '/tmp/lecture.html',
+        } as unknown as Express.Multer.File,
+      ],
+      body: { 'claude-ai-flashcards': 'true' },
+    });
+  }
+
+  function signedIn(subscriber: boolean) {
+    const built = buildResponse();
+    (built.res.locals as Record<string, unknown>).owner = 42;
+    (built.res.locals as Record<string, unknown>).subscriber = subscriber;
+    return built;
+  }
+
+  function serviceWith(
+    jobs: JobRepository,
+    readers: ReturnType<typeof giftReaders>
+  ) {
+    return new UploadService(
+      buildRepository(),
+      jobs,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps(),
+      undefined,
+      readers
+    );
+  }
+
+  let execute: Mock;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gift-ws-'));
+    mockWorkspaceLocation = tmpDir;
+    mockWorkspaceId = 'gift-ws-id';
+    infoSpy = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    execute = vi.fn().mockResolvedValue({ packages: [], warnings: [] });
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return { execute } as unknown as InstanceType<
+        typeof GeneratePackagesUseCase
+      >;
+    });
+  });
+
+  afterEach(() => {
+    infoSpy.mockRestore();
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('sends a free account with gift credits to the Claude job, on the gift alone and still unpaid', async () => {
+    const jobs = jobRepository();
+    const { res, capturedStatus } = signedIn(false);
+
+    await serviceWith(jobs, giftReaders({})).handleUpload(aiRequest(), res);
+
+    expect(capturedStatus()).toBe(202);
+    expect(jobs.create).toHaveBeenCalledWith(
+      'gift-ws-id',
+      '42',
+      expect.any(String),
+      'claude'
+    );
+    const [paying, , , , , userId, context] = execute.mock.calls[0];
+    expect(paying).toBe(false);
+    expect(userId).toBe(42);
+    expect(context).toMatchObject({ aiGift: 'only', cardLimit: 100 });
+  });
+
+  it("keeps a free account out of a month's cards on the free path, so the gift is not spent on a deck it cannot keep", async () => {
+    const jobs = jobRepository();
+    const { res, capturedStatus } = signedIn(false);
+    const service = new UploadService(
+      buildRepository(),
+      jobs,
+      buildUsersRepo({
+        getCardUsage: vi
+          .fn()
+          .mockResolvedValue({ cards_used: 100, month_started_at: new Date() }),
+      }),
+      ...fakeUploadServiceDeps(),
+      undefined,
+      giftReaders({})
+    );
+
+    await service.handleUpload(aiRequest(), res);
+
+    expect(capturedStatus()).not.toBe(202);
+    expect(jobs.create).not.toHaveBeenCalled();
+  });
+
+  it('keeps a free account whose gift is spent on the free path, with no Claude job', async () => {
+    const jobs = jobRepository();
+    const { res, capturedStatus } = signedIn(false);
+
+    await serviceWith(jobs, giftReaders({ spendUsd: 1 })).handleUpload(
+      aiRequest(),
+      res
+    );
+
+    expect(capturedStatus()).not.toBe(202);
+    expect(jobs.create).not.toHaveBeenCalled();
+  });
+
+  it('keeps a free account on the free path while the switch is off, even holding a gift', async () => {
+    const jobs = jobRepository();
+    const { res, capturedStatus } = signedIn(false);
+
+    await serviceWith(jobs, giftReaders({ enabled: false })).handleUpload(
+      aiRequest(),
+      res
+    );
+
+    expect(capturedStatus()).not.toBe(202);
+    expect(jobs.create).not.toHaveBeenCalled();
+  });
+
+  it('lets a paying account fall back on the gift only after its plan', async () => {
+    const jobs = jobRepository();
+    const { res, capturedStatus } = signedIn(true);
+
+    await serviceWith(jobs, giftReaders({})).handleUpload(aiRequest(), res);
+
+    expect(capturedStatus()).toBe(202);
+    const [paying, , , , , , context] = execute.mock.calls[0];
+    expect(paying).toBe(true);
+    expect(context).toMatchObject({ aiGift: 'fallback' });
   });
 });

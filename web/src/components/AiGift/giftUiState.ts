@@ -28,11 +28,13 @@ export function rememberClaimIntent(now: number): void {
   storage()?.setItem(CLAIM_INTENT_KEY, String(now));
 }
 
-export function takeClaimIntent(now: number): boolean {
-  const store = storage();
-  const saved = store?.getItem(CLAIM_INTENT_KEY);
-  if (store == null || saved == null) return false;
-  store.removeItem(CLAIM_INTENT_KEY);
+export function hasClaimIntent(now: number): boolean {
+  const saved = storage()?.getItem(CLAIM_INTENT_KEY);
+  if (saved == null) return false;
   const savedAt = Number(saved);
   return Number.isFinite(savedAt) && now - savedAt < CLAIM_INTENT_MAX_AGE_MS;
+}
+
+export function forgetClaimIntent(): void {
+  storage()?.removeItem(CLAIM_INTENT_KEY);
 }

@@ -116,6 +116,7 @@ import {
   UPLOAD_CANDIDATE_RULES,
 } from './induction/induceCardsFromDom';
 import { hasVisibleContent } from './hasVisibleContent';
+import type { AiGiftMode } from '../claude/aiCredits/gift/giftBalance';
 
 type SectionTagLookup = (element: Element) => string[];
 
@@ -152,6 +153,7 @@ export interface DeckParserInput {
   pdfCredential?: string;
   userId?: number | null;
   anonymousPassId?: number | null;
+  aiGift?: AiGiftMode | null;
   requestId?: string;
   knownGuids?: KnownGuids;
   uploadIdentity?: UploadIdentityContext;

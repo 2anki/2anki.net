@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import GiftIcon from '../icons/GiftIcon';
 import { useAiGift, AI_GIFT_QUERY_KEY } from '../../lib/hooks/useAiGift';
 import { useDialogFocus } from '../../lib/hooks/useDialogFocus';
+import { useAppLanguage } from '../../lib/i18n/useAppLanguage';
 import {
   claimAiGift,
   type AiGiftRefusal,
@@ -16,7 +17,8 @@ import {
   isGiftDismissed,
   rememberClaimIntent,
   setGiftDismissed,
-  takeClaimIntent,
+  forgetClaimIntent,
+  hasClaimIntent,
 } from './giftUiState';
 import styles from './AiGiftPresent.module.css';
 
@@ -27,11 +29,16 @@ interface AiGiftPresentProps {
   align?: 'start' | 'end';
 }
 
+const dateLocale = (language: string): string =>
+  language.startsWith('en') ? 'en-GB' : language;
+
 export function formatGiftDate(iso: string, language: string): string {
-  return new Intl.DateTimeFormat(language, {
-    dateStyle: 'long',
-    timeStyle: 'short',
-  }).format(new Date(iso));
+  return new Date(iso).toLocaleString(dateLocale(language), {
+    day: 'numeric',
+    month: 'long',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 function refusalKey(reason: AiGiftRefusal): string {
@@ -72,7 +79,8 @@ function PanelBody({
   onSignIn,
   onUse,
 }: Readonly<PanelBodyProps>) {
-  const { t, i18n } = useTranslation('aiGift');
+  const { t } = useTranslation('aiGift');
+  const language = useAppLanguage();
   const { pathname } = useLocation();
   const onUploadPage = pathname === GIFT_RETURN_PATH;
 
@@ -83,12 +91,10 @@ function PanelBody({
   if (gift.state === 'claimed') {
     return (
       <>
-        <p className={styles.text}>
-          {t('claimed', { count: gift.credits })}
-        </p>
+        <p className={styles.text}>{t('claimed', { count: gift.credits })}</p>
         <p className={styles.text}>
           {t('claimedExpires', {
-            date: formatGiftDate(gift.expiresAt, i18n.language),
+            date: formatGiftDate(gift.expiresAt, language),
           })}
         </p>
         {!onUploadPage && (
@@ -107,7 +113,7 @@ function PanelBody({
       </p>
       <p className={styles.note}>
         {t('claimUntil', {
-          date: formatGiftDate(gift.claimClosesAt, i18n.language),
+          date: formatGiftDate(gift.claimClosesAt, language),
         })}
       </p>
       {refusal != null && (
@@ -160,7 +166,10 @@ export function AiGiftPresent({
   const panelId = useId();
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
-  const [open, setOpen] = useState(false);
+  const [openChoice, setOpen] = useState<boolean | null>(null);
+  const [returnedToClaim] = useState(
+    () => isLoggedIn && hasClaimIntent(Date.now())
+  );
   const [dismissed, setDismissed] = useState(isGiftDismissed);
   const [claiming, setClaiming] = useState(false);
   const [refusal, setRefusal] = useState<AiGiftRefusal | null>(null);
@@ -175,11 +184,12 @@ export function AiGiftPresent({
     });
   }, [visible, gift?.state, isLoggedIn]);
 
+  const openedOnReturn = returnedToClaim && gift?.state === 'open';
+  const open = openChoice ?? openedOnReturn;
+
   useEffect(() => {
-    if (gift?.state === 'open' && isLoggedIn && takeClaimIntent(Date.now())) {
-      setOpen(true);
-    }
-  }, [gift?.state, isLoggedIn]);
+    if (openedOnReturn) forgetClaimIntent();
+  }, [openedOnReturn]);
 
   useDialogFocus(panelRef, () => setOpen(false), open);
 
@@ -249,7 +259,12 @@ export function AiGiftPresent({
         aria-label={t('triggerLabel')}
         onClick={onToggle}
       >
-        <GiftIcon width={18} height={18} />
+        <GiftIcon
+          width={20}
+          height={20}
+          boxStroke="var(--gift-red)"
+          ribbonStroke="var(--gift-green)"
+        />
         {!dismissed && (
           <span className={styles.triggerText} aria-hidden="true">
             {t('triggerText')}
@@ -266,6 +281,12 @@ export function AiGiftPresent({
         >
           <div className={styles.panelHeader}>
             <h2 id={titleId} className={styles.title}>
+              <GiftIcon
+                width={18}
+                height={18}
+                boxStroke="var(--gift-red)"
+                ribbonStroke="var(--gift-green)"
+              />
               {t('title')}
             </h2>
             <button
@@ -288,7 +309,11 @@ export function AiGiftPresent({
             onUse={() => setOpen(false)}
           />
           {!dismissed && (
-            <button type="button" className={styles.hideButton} onClick={onHide}>
+            <button
+              type="button"
+              className={styles.hideButton}
+              onClick={onHide}
+            >
               {t('hide')}
             </button>
           )}

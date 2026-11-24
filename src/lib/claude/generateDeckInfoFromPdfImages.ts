@@ -5,6 +5,7 @@ import { escapeAttribute } from '../notion-render/escape';
 import { ANKI_MATH_FRAGMENT } from './ankiMathFragment';
 import { VisionMediaType } from './countVisionTokens';
 import { recordClaudeUsage } from './recordClaudeUsage';
+import type { AiGiftMode } from './aiCredits/gift/giftBalance';
 import {
   AiCreditsExhaustedError,
   assertAiBudget,
@@ -293,7 +294,8 @@ async function runPagesWithConcurrency(
   onProgress?: (step: string) => void,
   userId?: number | null,
   requestId?: string,
-  anonymousPassId?: number | null
+  anonymousPassId?: number | null,
+  aiGift?: AiGiftMode | null
 ): Promise<PageVisionResult> {
   const compactDecks: CompactDeck[] = [];
   const failures: unknown[] = [];
@@ -310,15 +312,17 @@ async function runPagesWithConcurrency(
       if (index >= images.length) return;
       onProgress?.(`claude:vision:page:${index + 1}:${images.length}`);
       try {
-        const decks = await withAiBudget({ userId, anonymousPassId }, () =>
-          visionCardsForPage(
-            images[index],
-            prompt,
-            index,
-            userId,
-            requestId,
-            anonymousPassId
-          )
+        const decks = await withAiBudget(
+          { userId, anonymousPassId, aiGift },
+          () =>
+            visionCardsForPage(
+              images[index],
+              prompt,
+              index,
+              userId,
+              requestId,
+              anonymousPassId
+            )
         );
         const attributed = attachPageImages
           ? attachPageImageToCompactDecks(decks, images[index].relPath)
@@ -372,10 +376,11 @@ export async function generateDeckInfoFromPdfImages(
   onProgress?: (step: string) => void,
   userId?: number | null,
   requestId?: string,
-  anonymousPassId?: number | null
+  anonymousPassId?: number | null,
+  aiGift?: AiGiftMode | null
 ): Promise<DeckInfo[]> {
   const t0 = Date.now();
-  await assertAiBudget({ userId, anonymousPassId });
+  await assertAiBudget({ userId, anonymousPassId, aiGift });
   const images = resolvePageImages(htmlContent, context.mediaBaseDir);
 
   if (images.length === 0) {
@@ -398,7 +403,8 @@ export async function generateDeckInfoFromPdfImages(
     onProgress,
     userId,
     requestId,
-    anonymousPassId
+    anonymousPassId,
+    aiGift
   );
   const deckInfo = mergeDeckInfoArrays(
     expandCompactDeckInfo(

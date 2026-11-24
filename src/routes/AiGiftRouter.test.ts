@@ -330,8 +330,9 @@ describe('the gift budget', () => {
     h.setNow(new Date('2026-11-27T12:00:00.000Z'));
 
     expect((await claim(h, 4000, '10.9.9.9')).status).toBe(200);
-    expect(await h.gifts.exposureCredits(new Date('2026-11-27T12:00:00.000Z')))
-      .toBeCloseTo(160, 5);
+    expect(
+      await h.gifts.exposureCredits(new Date('2026-11-27T12:00:00.000Z'))
+    ).toBeCloseTo(160, 5);
   });
 
   it('counts a gift that in-flight calls took past 100 at what it cost', async () => {

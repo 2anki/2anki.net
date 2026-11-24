@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import type { AiGiftMode } from '../../lib/claude/aiCredits/gift/giftBalance';
 import {
   isRescueCandidate,
   type RescueCandidate,
@@ -83,6 +84,7 @@ export interface GenerationContext {
   requestId?: string;
   cardLimit?: number;
   anonymousPassId?: number | null;
+  aiGift?: AiGiftMode | null;
 }
 
 class GeneratePackagesUseCase {
@@ -102,6 +104,7 @@ class GeneratePackagesUseCase {
       requestId,
       cardLimit,
       anonymousPassId,
+      aiGift,
     } = context;
     ensureUploadBytes(files);
     const unavailable = findUnavailableUpload(files);
@@ -118,6 +121,7 @@ class GeneratePackagesUseCase {
         enqueuedAt,
         userId,
         anonymousPassId,
+        aiGift,
         knownGuids,
         uploadIdentity,
         existingCardFingerprints,

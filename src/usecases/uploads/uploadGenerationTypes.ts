@@ -7,6 +7,7 @@ import type CardOption from '../../lib/parser/Settings/CardOption';
 import type Workspace from '../../lib/parser/WorkSpace';
 import type { UploadedFile } from '../../lib/storage/types';
 import type { EmptyDeckReason } from '../jobs/EmptyDeckError';
+import type { AiGiftMode } from '../../lib/claude/aiCredits/gift/giftBalance';
 
 export interface UploadGenerationTask {
   paying: boolean;
@@ -16,6 +17,7 @@ export interface UploadGenerationTask {
   enqueuedAt: number;
   userId: number | null;
   anonymousPassId?: number | null;
+  aiGift?: AiGiftMode | null;
   knownGuids?: KnownGuids;
   uploadIdentity?: UploadIdentityContext;
   existingCardFingerprints?: string[];

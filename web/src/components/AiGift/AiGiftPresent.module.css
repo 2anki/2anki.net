@@ -1,7 +1,16 @@
 .present {
+  --gift-red: #b91c1c;
+  --gift-green: #15803d;
+  --gift-tint: #fdecec;
   position: relative;
   display: inline-flex;
   align-items: center;
+}
+
+:global([data-theme='dark']) .present {
+  --gift-red: #f87171;
+  --gift-green: #4ade80;
+  --gift-tint: #3b1518;
 }
 
 .trigger,
@@ -21,9 +30,9 @@
 }
 
 .trigger {
-  background: var(--color-primary-light);
+  background: var(--gift-tint);
   color: var(--color-text-primary);
-  border: 1px solid var(--color-primary);
+  border: 1px solid var(--gift-red);
 }
 
 .triggerQuiet {
@@ -35,7 +44,7 @@
 
 .trigger:hover,
 .triggerQuiet:hover {
-  border-color: var(--color-primary);
+  border-color: var(--gift-green);
 }
 
 .trigger:focus-visible,
@@ -101,6 +110,9 @@
 }
 
 .title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   margin: 0;
   font-size: var(--text-base);
   font-weight: var(--font-semibold);

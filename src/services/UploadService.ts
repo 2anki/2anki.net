@@ -110,6 +110,13 @@ import {
   getMintedAnonId,
   getOwner,
 } from '../lib/User/getOwner';
+import type { AiGiftMode } from '../lib/claude/aiCredits/gift/giftBalance';
+import {
+  restartAiGiftMode,
+  uploadAiGiftMode,
+  type UploadGiftModeDeps,
+} from '../lib/claude/aiCredits/gift/uploadGiftMode';
+import { getAiGiftReaders } from '../data_layer/createAiGiftReaders';
 import { isExpectedUploadState } from '../lib/upload/isExpectedUploadState';
 import {
   ZIP_PARTLY_RECOVERED_WARNING,
@@ -762,6 +769,35 @@ function logNoPackageDiagnostics(uploadedFiles: UploadedFile[]) {
   }
 }
 
+function aiGiftOf(res: express.Response): AiGiftMode | null {
+  const value: unknown = res.locals.aiGift;
+  return value === 'fallback' || value === 'only' ? value : null;
+}
+
+// A gift-only upload is a free account's, so it reaches Claude only while the
+// month still has cards left, and its deck is kept within them.
+function giftCardLimitOf(res: express.Response): number | null {
+  const value: unknown = res.locals.aiGiftCardLimit;
+  return typeof value === 'number' ? value : null;
+}
+
+function giftCanConvert(res: express.Response): boolean {
+  const limit = giftCardLimitOf(res);
+  return aiGiftOf(res) === 'only' && limit != null && limit > 0;
+}
+
+function giftContextOf(res: express.Response): {
+  aiGift?: AiGiftMode;
+  cardLimit?: number;
+} {
+  const aiGift = aiGiftOf(res);
+  if (aiGift == null) return {};
+  const limit = giftCardLimitOf(res);
+  return aiGift === 'only' && limit != null
+    ? { aiGift, cardLimit: limit }
+    : { aiGift };
+}
+
 class UploadService {
   private readonly inFlightConversions = new Set<string>();
   private readonly holdRateLimiter: InMemoryRateLimiter;
@@ -784,7 +820,8 @@ class UploadService {
     private readonly photoToFlashcardsUseCase: PhotoToFlashcardsUseCase,
     private readonly aiRequestCostReader: IAiRequestCostReader,
     private readonly heldDeckRepository: IHeldDeckRepository,
-    holdRateLimiter?: InMemoryRateLimiter
+    holdRateLimiter?: InMemoryRateLimiter,
+    private readonly aiGiftReaders: () => UploadGiftModeDeps = getAiGiftReaders
   ) {
     this.holdRateLimiter =
       holdRateLimiter ??
@@ -925,6 +962,23 @@ class UploadService {
       userId: ownerId,
       props: totals,
     });
+  }
+
+  private async resolveUploadAiGift(
+    owner: unknown,
+    paying: boolean
+  ): Promise<AiGiftMode | null> {
+    const ownerNumeric = Number(owner);
+    const userId =
+      owner != null && Number.isFinite(ownerNumeric) && ownerNumeric > 0
+        ? ownerNumeric
+        : null;
+    return uploadAiGiftMode(userId, paying, this.aiGiftReaders);
+  }
+
+  private async remainingMonthlyCards(owner: string): Promise<number> {
+    const { cards_used } = await this.usersRepository.getCardUsage(owner);
+    return Math.max(0, MONTHLY_CARD_LIMIT - cards_used);
   }
 
   private async loadExistingCardFingerprints(
@@ -1093,11 +1147,18 @@ class UploadService {
     }
 
     const paying = isPaying(res.locals);
+    const ownerNumeric = Number(owner);
+    const aiGift = await restartAiGiftMode(
+      Number.isFinite(ownerNumeric) && ownerNumeric > 0 ? ownerNumeric : null,
+      paying,
+      this.aiGiftReaders
+    );
     this.runClaudeRestart(
       job.object_id,
       owner,
       workspaceDir,
       paying,
+      aiGift,
       res.locals.requestId,
       async (step) => {
         await this.jobRepository.updateJobStatus(job.object_id, owner, step);
@@ -1177,6 +1238,7 @@ class UploadService {
     owner: string,
     workspaceDir: string,
     paying: boolean,
+    aiGift: AiGiftMode | null,
     requestId: string | undefined,
     onProgress: (step: string) => Promise<void>
   ) {
@@ -1200,7 +1262,7 @@ class UploadService {
     // balance so it stops cleanly at zero; if a later file trips the always-on
     // per-call guard, stop issuing calls and ship the files already produced
     // rather than failing the whole job.
-    const preCheck = await getAiBudgetStatus(userId);
+    const preCheck = await getAiBudgetStatus({ userId, aiGift });
     if (preCheck.exhausted) {
       throw new AiCreditsExhaustedError();
     }
@@ -1208,6 +1270,7 @@ class UploadService {
     const generateOptions = {
       isPaying: paying,
       userId,
+      aiGift,
       requestId,
       comprehensive: settings?.aiComprehensive,
       conversionResultCache: getConversionResultCache(),
@@ -1368,6 +1431,12 @@ class UploadService {
       const settings = new CardOption(req.body);
       const ws = new Workspace(true, 'fs');
       const paying = isPaying(res.locals);
+      const aiGift = await this.resolveUploadAiGift(owner, paying);
+      res.locals.aiGift = aiGift;
+      res.locals.aiGiftCardLimit =
+        aiGift === 'only'
+          ? await this.remainingMonthlyCards(String(owner))
+          : null;
 
       if (owner != null && settings.n2aBasic == null) {
         await this.settingsRepository.attachCustomTemplates(
@@ -1393,7 +1462,11 @@ class UploadService {
         return this.respondImageOnlyNoText(req, res, files);
       }
 
-      if (owner != null && paying && settings.claudeAIFlashcards) {
+      if (
+        owner != null &&
+        (paying || giftCanConvert(res)) &&
+        settings.claudeAIFlashcards
+      ) {
         return await this.handleAsyncUpload(
           req,
           res,
@@ -1738,6 +1811,7 @@ class UploadService {
           existingCardFingerprints,
           requestId: res.locals.requestId,
           anonymousPassId: getAnonymousPassId(res),
+          ...giftContextOf(res),
         }
       )
       .then(async ({ packages, warnings, cardFingerprints }) => {

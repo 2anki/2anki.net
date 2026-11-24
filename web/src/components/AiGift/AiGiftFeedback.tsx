@@ -32,7 +32,8 @@ export function AiGiftFeedback() {
   const markAnswered = () => {
     queryClient.setQueriesData<AiGiftStatus>(
       { queryKey: AI_GIFT_QUERY_KEY },
-      (current) => (current == null ? current : { ...current, feedbackDue: false })
+      (current) =>
+        current == null ? current : { ...current, feedbackDue: false }
     );
   };
 

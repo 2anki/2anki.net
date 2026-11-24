@@ -31,9 +31,7 @@ import {
   type AiGiftMode,
 } from './aiCredits/gift/giftBalance';
 import { runOnGiftCredits } from './aiCredits/gift/giftFunding';
-import { AiCreditGiftsRepository } from '../../data_layer/AiCreditGiftsRepository';
-import { getFeatureFlag } from '../featureFlags/getFeatureFlag';
-import { AI_CREDITS_GIFT_FLAG } from '../featureFlags/aiCreditsGift';
+import { createAiGiftReaders } from '../../data_layer/createAiGiftReaders';
 
 // A user crossing $25 in 30 days costs more than triple the subscription
 // price — worth a human look, not enforcement. Kept as an ops signal; part 2's
@@ -133,17 +131,12 @@ function defaultDeps(): AiBudgetDeps {
   const readers = createAiCreditReaders(database);
   const passReaders = createAnonymousPassCreditReaders(database);
   const usage = new AiUsageMetricsRepository(database);
-  const gifts = new AiCreditGiftsRepository(database);
+  const gifts = createAiGiftReaders(database);
   return {
     computeBalance: (userId: number, now: Date) =>
       computeAiCreditBalance(userId, now, readers),
     computeGiftBalance: (userId: number, now: Date) =>
-      computeAiGiftBalance(userId, now, {
-        isEnabled: () => getFeatureFlag(AI_CREDITS_GIFT_FLAG, false),
-        findGrant: (id) => gifts.findGrant(id),
-        giftCostSince: (giftId, id, since) =>
-          gifts.giftCostSince(giftId, id, since),
-      }),
+      computeAiGiftBalance(userId, now, gifts),
     computeAnonymousPassBalance: (anonymousPassId: number, now: Date) =>
       computeAnonymousPassBalance(anonymousPassId, now, passReaders),
     reader: usage,
@@ -389,9 +382,7 @@ async function giftBalanceFor(
 }
 
 function giftHasHeadroom(gift: AiGiftBalance | null): gift is AiGiftBalance {
-  return (
-    gift != null && gift.credits - reservedGiftCreditsFor(gift.giftId) > 0
-  );
+  return gift != null && gift.credits - reservedGiftCreditsFor(gift.giftId) > 0;
 }
 
 const firstGiftUseClaims = new Set<number>();
@@ -420,10 +411,7 @@ async function runOnGift<T>(
   try {
     return await runOnGiftCredits(gift.giftId, run);
   } finally {
-    releaseInflightGiftCredits(
-      gift.giftId,
-      RESERVED_CREDITS_PER_INFLIGHT_CALL
-    );
+    releaseInflightGiftCredits(gift.giftId, RESERVED_CREDITS_PER_INFLIGHT_CALL);
   }
 }
 

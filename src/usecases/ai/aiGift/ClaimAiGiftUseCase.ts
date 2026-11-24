@@ -51,7 +51,10 @@ export class ClaimAiGiftUseCase {
     };
   }
 
-  private refuse(userId: number, reason: ClaimAiGiftRefusal): ClaimAiGiftResult {
+  private refuse(
+    userId: number,
+    reason: ClaimAiGiftRefusal
+  ): ClaimAiGiftResult {
     if (reason === 'gift_budget_full') {
       this.deps.forgetExposure();
     }

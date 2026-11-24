@@ -181,9 +181,9 @@ describe('withAiBudget and the gift', () => {
   it('never offers the gift to a surface that did not ask for it', async () => {
     const deps = makeDeps({ plan: planBalance(0), gift: giftBalance(100) });
 
-    await expect(
-      withAiBudget(USER, vi.fn(), deps)
-    ).rejects.toBeInstanceOf(AiCreditsExhaustedError);
+    await expect(withAiBudget(USER, vi.fn(), deps)).rejects.toBeInstanceOf(
+      AiCreditsExhaustedError
+    );
     expect(deps.computeGiftBalance).not.toHaveBeenCalled();
   });
 

@@ -1,9 +1,6 @@
 import type express from 'express';
 import { getOwnerId } from '../lib/User/getOwner';
-import {
-  ipRateLimitBucket,
-  resolveClientIp,
-} from '../lib/rateLimit/ipHelpers';
+import { ipRateLimitBucket, resolveClientIp } from '../lib/rateLimit/ipHelpers';
 import hmacToken from '../lib/misc/hmacToken';
 import type { GetAiGiftStatusUseCase } from '../usecases/ai/aiGift/GetAiGiftStatusUseCase';
 import type {

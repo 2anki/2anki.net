@@ -1,4 +1,5 @@
 import path from 'node:path';
+import type { AiGiftMode } from '../../lib/claude/aiCredits/gift/giftBalance';
 import pLimit from 'p-limit';
 import { collectIssuedGuids } from '../../lib/anki/collectIssuedGuids';
 import type { KnownGuids } from '../../lib/anki/guidLedgerTypes';
@@ -409,6 +410,7 @@ async function buildClaudeFlashcardDeck(
   ctx: {
     userId: number | null;
     anonymousPassId?: number | null;
+    aiGift?: AiGiftMode | null;
     requestId?: string;
     crossFileDedup?: CrossFileDedupState;
   }
@@ -422,6 +424,7 @@ async function buildClaudeFlashcardDeck(
     onProgress,
     userId: ctx.userId,
     anonymousPassId: ctx.anonymousPassId,
+    aiGift: ctx.aiGift,
     requestId: ctx.requestId,
     crossFileDedup: ctx.crossFileDedup,
   });
@@ -620,6 +623,7 @@ export interface GetPackagesFromZipOptions {
   crossFileDedup?: CrossFileDedupState;
   cardLimit?: number;
   anonymousPassId?: number | null;
+  aiGift?: AiGiftMode | null;
 }
 
 export const getPackagesFromZip = async (
@@ -638,6 +642,7 @@ export const getPackagesFromZip = async (
     crossFileDedup,
     cardLimit,
     anonymousPassId,
+    aiGift,
   } = options;
   if (!fileContents) {
     return { packages: [] };
@@ -671,7 +676,12 @@ export const getPackagesFromZip = async (
     settings
   );
 
-  if (effectiveSettings.claudeAIFlashcards && paying && fileNames.length > 0) {
+  const claudeCardsAllowed = paying || aiGift === 'only';
+  if (
+    effectiveSettings.claudeAIFlashcards &&
+    claudeCardsAllowed &&
+    fileNames.length > 0
+  ) {
     return withZipRecoveryWarning(
       zipHandler,
       await buildClaudeFlashcardDeck(
@@ -681,7 +691,7 @@ export const getPackagesFromZip = async (
         paying,
         workspace,
         onProgress,
-        { userId, requestId, crossFileDedup, anonymousPassId }
+        { userId, requestId, crossFileDedup, anonymousPassId, aiGift }
       )
     );
   }

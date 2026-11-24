@@ -95,9 +95,11 @@ export class AiCreditGiftsRepository implements IAiCreditGiftsRepository {
     userId: number,
     since: Date
   ): Promise<number> {
-    const row = (await this.buildGiftCostQuery(giftId, userId, since).first()) as
-      | { cost_usd: number | string }
-      | undefined;
+    const row = (await this.buildGiftCostQuery(
+      giftId,
+      userId,
+      since
+    ).first()) as { cost_usd: number | string } | undefined;
     return Number(row?.cost_usd ?? 0);
   }
 
@@ -202,9 +204,7 @@ export interface InMemoryGiftSpend {
 // A stand-in for route and use case tests, with the same rules as the SQL
 // repository. Claims run one at a time through a promise chain, the way the
 // advisory lock serializes them in Postgres.
-export class InMemoryAiCreditGiftsRepository
-  implements IAiCreditGiftsRepository
-{
+export class InMemoryAiCreditGiftsRepository implements IAiCreditGiftsRepository {
   readonly gifts: InMemoryGift[] = [];
   readonly spend: InMemoryGiftSpend[] = [];
   private queue: Promise<unknown> = Promise.resolve();
@@ -237,7 +237,9 @@ export class InMemoryAiCreditGiftsRepository
         .reduce((total, s) => total + s.costUsd, 0);
       const spentCredits = cost / 0.01;
       const active = gift.expiresAt.getTime() > now.getTime();
-      return sum + (active ? Math.max(gift.credits, spentCredits) : spentCredits);
+      return (
+        sum + (active ? Math.max(gift.credits, spentCredits) : spentCredits)
+      );
     }, 0);
   }
 
