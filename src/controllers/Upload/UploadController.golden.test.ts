@@ -2272,6 +2272,7 @@ describe('the connector at the monthly card limit', () => {
         code: undefined,
         inputSource: 'url',
         inputFormat: 'other',
+        returned_as_error: false,
       },
     ]);
     expect(recorded[0]).not.toHaveProperty('held_for_plan');
