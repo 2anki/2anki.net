@@ -1753,6 +1753,31 @@ describe('a plan hold claimed after paying', () => {
     });
   }, 20_000);
 
+  it('releases the free month with no arm to a pass-first anon id whose deck was held before the flag went on', async () => {
+    const held = await upload('large', { ...signedOutPassFirstArm, flags: {} });
+    population = signedInFree;
+
+    const signupClaim = await new ClaimHeldDeckUseCase(
+      heldDecks,
+      new StorageHandler(),
+      goldenService(),
+      () => Promise.resolve(true)
+    ).execute({
+      anonId: PASS_FIRST_ANON,
+      owner: String(OWNER),
+      paying: false,
+      requestId: 'golden-signup-claim',
+    });
+
+    expect(held.body).not.toHaveProperty('passFirstArm');
+    expect(signupClaim).toMatchObject({
+      kind: 'signup',
+      cardCount: 100,
+      cutAt: 'month',
+    });
+    expect(signupClaim).not.toHaveProperty('passFirstArm');
+  }, 20_000);
+
   it('keeps the options of a pass-first sign-up claim for the later plan claim', async () => {
     await upload('large', signedOutPassFirstArm);
     population = {

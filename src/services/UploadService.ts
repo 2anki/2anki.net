@@ -3167,6 +3167,7 @@ class UploadService {
     // the limit wall, never a 500. The prune runs only once the hold is safely
     // stored, so it is best-effort and never converts a held deck into a wall.
     let supersededHolds: ExpiredHeldDeck[] = [];
+    const passFirstArm = await passFirstArmFor(anonId);
     try {
       supersededHolds =
         await this.heldDeckRepository.findUnclaimedByAnonId(anonId);
@@ -3178,6 +3179,7 @@ class UploadService {
         cardCount,
         cardsHeldBack,
         expiresAt: new Date(Date.now() + HELD_DECK_TTL_MS),
+        passFirstArm: passFirstArm === 'off' ? null : passFirstArm,
       });
     } catch (error) {
       console.error('[UploadService] could not hold the deck for signup', {
@@ -3194,7 +3196,6 @@ class UploadService {
       storage,
       res.locals.requestId
     );
-    const passFirstArm = await passFirstArmFor(anonId);
     track('conversion_succeeded', {
       userId: null,
       anonymousId: analyticsAnonId(req, anonId),

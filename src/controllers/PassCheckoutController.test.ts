@@ -10,6 +10,8 @@ import {
 } from '../lib/featureFlags/getFeatureFlag';
 import { LIMIT_WALL_PASS_FIRST_FLAG } from '../lib/featureFlags/limitWallPassFirst';
 import { resolvePassFirstArm } from '../lib/upload/passFirstArm';
+import { InMemoryHeldDeckRepository } from '../data_layer/HeldDeckRepository';
+import { ResolveCheckoutPassFirstArmUseCase } from '../usecases/checkout/ResolveCheckoutPassFirstArmUseCase';
 
 vi.mock('geoip-lite', () => ({ default: { lookup: vi.fn() } }));
 
@@ -48,12 +50,18 @@ const makeRes = (
 
 const makeController = (
   execute: Mock,
-  passKind: PassKind = '24h'
+  passKind: PassKind = '24h',
+  heldDecks = new InMemoryHeldDeckRepository()
 ): { controller: PassCheckoutController; record: Mock } => {
   const record = vi.fn();
   const useCase = { execute } as unknown as CreatePassCheckoutUseCase;
   return {
-    controller: new PassCheckoutController(useCase, passKind, { record }),
+    controller: new PassCheckoutController(
+      useCase,
+      passKind,
+      { record },
+      new ResolveCheckoutPassFirstArmUseCase(heldDecks)
+    ),
     record,
   };
 };
@@ -323,6 +331,41 @@ describe('PassCheckoutController pass-first split test', () => {
         surface,
         pass_first_arm: arm,
       });
+    }
+  );
+
+  it.each([
+    ['the pass-first arm its hold was shown', 'pass_first', CONTROL_ANON],
+    ['no arm for a deck held before the flag went on', null, PASS_FIRST_ANON],
+  ] as const)(
+    'tags a gate checkout with %s, not the hashed arm',
+    async (_label, storedArm, anonId) => {
+      flagOn(true);
+      const heldDecks = new InMemoryHeldDeckRepository();
+      await heldDecks.insert({
+        storageKey: 'held/abc',
+        anonId,
+        filename: 'notes.html',
+        cardCount: 21,
+        cardsHeldBack: 13,
+        expiresAt: new Date(Date.now() + 60_000),
+        passFirstArm: storedArm,
+      });
+      const execute = resolving();
+      const { controller, record } = makeController(execute, '24h', heldDecks);
+
+      await controller.createSession(
+        {
+          cookies: { anon_id: anonId },
+          body: { surface: 'anonymous-gate' },
+        } as never,
+        makeRes({})
+      );
+
+      expect(execute.mock.calls[0][0].passFirstArm).toBe(
+        storedArm ?? undefined
+      );
+      expect(recordedProps(record).pass_first_arm).toBe(storedArm ?? undefined);
     }
   );
 

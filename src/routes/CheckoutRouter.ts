@@ -38,6 +38,7 @@ import DayPassCreditRepository from '../data_layer/DayPassCreditRepository';
 import { DayPassCreditEligibility } from '../usecases/checkout/dayPassCredit';
 import { GetDayPassCreditOfferUseCase } from '../usecases/checkout/GetDayPassCreditOfferUseCase';
 import { CreateDayPassCreditCheckoutUseCase } from '../usecases/checkout/CreateDayPassCreditCheckoutUseCase';
+import { checkoutPassFirstArmFromHolds } from '../usecases/checkout/ResolveCheckoutPassFirstArmUseCase';
 
 const CheckoutRouter = () => {
   const router = express.Router();
@@ -46,6 +47,8 @@ const CheckoutRouter = () => {
     new UsersRepository(getDatabase()),
     new StripeCustomerResolver(getStripe(), new UsersRepository(getDatabase()))
   );
+
+  const checkoutPassFirstArm = checkoutPassFirstArmFromHolds(getDatabase());
 
   const lapsedSubscriptions = new StripeLapsedSubscriptions(
     getStripe(),
@@ -170,7 +173,8 @@ const CheckoutRouter = () => {
       const controller = new PassCheckoutController(
         useCase,
         '24h',
-        getEventsSink()
+        getEventsSink(),
+        checkoutPassFirstArm
       );
       return controller.createSession(req, res);
     }
@@ -198,7 +202,8 @@ const CheckoutRouter = () => {
       const controller = new PassCheckoutController(
         useCase,
         '7d',
-        getEventsSink()
+        getEventsSink(),
+        checkoutPassFirstArm
       );
       return controller.createSession(req, res);
     }
@@ -226,7 +231,8 @@ const CheckoutRouter = () => {
       const controller = new PassCheckoutController(
         useCase,
         '120d',
-        getEventsSink()
+        getEventsSink(),
+        checkoutPassFirstArm
       );
       return controller.createSession(req, res);
     }

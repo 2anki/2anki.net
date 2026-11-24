@@ -6,10 +6,8 @@ import { readGaMeasurement } from '../usecases/checkout/gaClientId';
 import { readCheckoutAttribution } from '../lib/attribution/adClick';
 import { checkoutRequestProps } from '../lib/analytics/checkoutRequestProps';
 import { trackingAllowedFor } from '../lib/http/consentRegion';
-import {
-  checkoutPassFirstArm,
-  passFirstArmProps,
-} from '../lib/upload/passFirstArm';
+import { passFirstArmProps } from '../lib/upload/passFirstArm';
+import type { ResolveCheckoutPassFirstArmUseCase } from '../usecases/checkout/ResolveCheckoutPassFirstArmUseCase';
 import type { PassKind } from '../data_layer/UserPassRepository';
 import type { EventsSink } from '../services/events/EventsSink';
 
@@ -17,7 +15,11 @@ class PassCheckoutController {
   constructor(
     private readonly useCase: CreatePassCheckoutUseCase,
     private readonly passKind: PassKind,
-    private readonly eventsSink: Pick<EventsSink, 'record'>
+    private readonly eventsSink: Pick<EventsSink, 'record'>,
+    private readonly passFirstArm: Pick<
+      ResolveCheckoutPassFirstArmUseCase,
+      'execute'
+    >
   ) {}
 
   async createSession(req: Request, res: Response): Promise<void> {
@@ -30,7 +32,10 @@ class PassCheckoutController {
     const { gaClientId, gaSessionId } = readGaMeasurement(req);
     const adClick = readCheckoutAttribution(req);
     const anonIdTrackingAllowed = trackingAllowedFor(req);
-    const passFirstArm = await checkoutPassFirstArm(surface, anonId ?? null);
+    const passFirstArm = await this.passFirstArm.execute(
+      surface,
+      anonId ?? null
+    );
 
     const result = await this.useCase.execute({
       userId,

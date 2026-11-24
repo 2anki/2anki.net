@@ -1,7 +1,6 @@
 import { createHash } from 'node:crypto';
 
 import {
-  checkoutPassFirstArm,
   isPassFirstTestArm,
   isPassFirstTestLive,
   passFirstArmFor,
@@ -126,45 +125,6 @@ describe('passFirstArmFor', () => {
       'pass_first'
     );
     await expect(passFirstArmFor(idInArm('control'))).resolves.toBe('control');
-  });
-});
-
-describe('checkoutPassFirstArm', () => {
-  afterEach(() => __resetFeatureFlagModuleForTests());
-
-  it.each(['anonymous-gate', 'held-preview'])(
-    'tags a checkout from %s with the visitor arm while the test runs',
-    async (surface) => {
-      flags({ [LIMIT_WALL_PASS_FIRST_FLAG]: true });
-      await expect(
-        checkoutPassFirstArm(surface, idInArm('pass_first'))
-      ).resolves.toBe('pass_first');
-    }
-  );
-
-  it.each([['upload-limit-wall'], ['limit'], [undefined]])(
-    'leaves a checkout from %s untagged and reads no flag',
-    async (surface) => {
-      const get = vi.fn().mockResolvedValue(true);
-      __setFeatureFlagDependencies({
-        repository: {
-          getAll: () => Promise.resolve([]),
-          get,
-          set: () => Promise.resolve(null),
-        },
-      });
-      await expect(
-        checkoutPassFirstArm(surface, idInArm('pass_first'))
-      ).resolves.toBe('off');
-      expect(get).not.toHaveBeenCalled();
-    }
-  );
-
-  it('leaves a held-deck checkout untagged while the flag is off', async () => {
-    flags({});
-    await expect(
-      checkoutPassFirstArm('anonymous-gate', idInArm('pass_first'))
-    ).resolves.toBe('off');
   });
 });
 
