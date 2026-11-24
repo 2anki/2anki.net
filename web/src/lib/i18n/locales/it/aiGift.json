@@ -1,0 +1,34 @@
+{
+  "triggerText": "Crediti IA gratis",
+  "triggerLabel": "Regalo: crediti IA gratis",
+  "title": "Crediti IA gratis",
+  "body": "Riscatta {{credits}} crediti IA per le carte Claude nei tuoi caricamenti. Scadono {{hours}} ore dopo averli riscattati.",
+  "claimUntil": "Puoi riscattarli fino al {{date}}.",
+  "claim": "Riscatta {{credits}} crediti",
+  "claiming": "Riscatto in corso",
+  "signUpToClaim": "Registrati per riscattarli",
+  "haveAccount": "Hai già un account?",
+  "signIn": "Accedi",
+  "claimed_one": "Hai {{count}} credito IA dal regalo.",
+  "claimed_other": "Hai {{count}} crediti IA dal regalo.",
+  "claimedExpires": "Scadono il {{date}}. Attiva le carte Claude e carica un file per usarli.",
+  "useThem": "Vai al caricamento",
+  "full": "I crediti IA gratis sono stati tutti riscattati per ora.",
+  "hide": "Nascondi",
+  "close": "Chiudi",
+  "refused": {
+    "alreadyClaimed": "Questo account ha già riscattato il regalo.",
+    "ipLimit": "Troppi riscatti da questa rete oggi. Riprova domani.",
+    "closed": "Il regalo è terminato.",
+    "generic": "Impossibile riscattare i crediti. Riprova tra un momento."
+  },
+  "feedback": {
+    "question": "Le carte Claude sono venute come volevi?",
+    "yes": "Sì",
+    "no": "No",
+    "commentLabel": "Cosa avrebbe dovuto essere diverso? (facoltativo)",
+    "send": "Invia",
+    "thanks": "Grazie. Ci aiuta a migliorare le carte Claude.",
+    "close": "Chiudi"
+  }
+}

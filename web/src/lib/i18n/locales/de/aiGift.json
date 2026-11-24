@@ -1,0 +1,34 @@
+{
+  "triggerText": "Gratis-KI-Credits",
+  "triggerLabel": "Geschenk: Gratis-KI-Credits",
+  "title": "Gratis-KI-Credits",
+  "body": "Hol dir {{credits}} KI-Credits für Claude-Karten bei deinen Uploads. Sie verfallen {{hours}} Stunden, nachdem du sie abgeholt hast.",
+  "claimUntil": "Du kannst sie bis {{date}} abholen.",
+  "claim": "{{credits}} Credits abholen",
+  "claiming": "Wird abgeholt",
+  "signUpToClaim": "Registrieren und abholen",
+  "haveAccount": "Schon ein Konto?",
+  "signIn": "Anmelden",
+  "claimed_one": "Du hast {{count}} KI-Credit aus dem Geschenk.",
+  "claimed_other": "Du hast {{count}} KI-Credits aus dem Geschenk.",
+  "claimedExpires": "Sie verfallen am {{date}}. Schalte Claude-Karten ein und lade eine Datei hoch, um sie zu nutzen.",
+  "useThem": "Zum Upload",
+  "full": "Die Gratis-KI-Credits sind vorerst alle vergeben.",
+  "hide": "Ausblenden",
+  "close": "Schließen",
+  "refused": {
+    "alreadyClaimed": "Dieses Konto hat das Geschenk schon abgeholt.",
+    "ipLimit": "Aus diesem Netzwerk wurde heute zu oft abgeholt. Versuch es morgen wieder.",
+    "closed": "Das Geschenk ist beendet.",
+    "generic": "Die Credits konnten nicht abgeholt werden. Versuch es gleich noch einmal."
+  },
+  "feedback": {
+    "question": "Sind die Claude-Karten so geworden, wie du wolltest?",
+    "yes": "Ja",
+    "no": "Nein",
+    "commentLabel": "Was hätte anders sein sollen? (optional)",
+    "send": "Senden",
+    "thanks": "Danke. Das hilft uns, Claude-Karten zu verbessern.",
+    "close": "Schließen"
+  }
+}

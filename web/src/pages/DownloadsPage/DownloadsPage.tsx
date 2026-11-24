@@ -49,6 +49,7 @@ import {
 } from './components/ThinDeckNotice';
 import { EmptyBackNotice } from './components/EmptyBackNotice';
 import { SkippedAiFilesNotice } from './components/SkippedAiFilesNotice';
+import { AiGiftFeedback } from '../../components/AiGift/AiGiftFeedback';
 import { CherrySkippedNotice } from './components/CherrySkippedNotice';
 import { ImageDropNotice } from './components/ImageDropNotice';
 import { PartialDeckNotice } from './components/PartialDeckNotice';
@@ -601,6 +602,7 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
         <h1 className={sharedStyles.title}>{t('downloads.title')}</h1>
         <p className={sharedStyles.subtitle}>{t('downloads.subtitle')}</p>
       </div>
+      {!loading && !hasActiveJobs && <AiGiftFeedback />}
 
       {loading ? (
         <SkeletonList count={4} />

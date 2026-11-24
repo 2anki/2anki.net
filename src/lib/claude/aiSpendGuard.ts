@@ -17,11 +17,23 @@ import {
   RESERVED_CREDITS_PER_INFLIGHT_CALL,
   releaseInflightCredits,
   releaseInflightCreditsForPass,
+  releaseInflightGiftCredits,
   reserveInflightCredits,
   reserveInflightCreditsForPass,
+  reserveInflightGiftCredits,
   reservedCreditsFor,
   reservedCreditsForPass,
+  reservedGiftCreditsFor,
 } from './aiCredits/inflightReservations';
+import {
+  computeAiGiftBalance,
+  type AiGiftBalance,
+  type AiGiftMode,
+} from './aiCredits/gift/giftBalance';
+import { runOnGiftCredits } from './aiCredits/gift/giftFunding';
+import { AiCreditGiftsRepository } from '../../data_layer/AiCreditGiftsRepository';
+import { getFeatureFlag } from '../featureFlags/getFeatureFlag';
+import { AI_CREDITS_GIFT_FLAG } from '../featureFlags/aiCreditsGift';
 
 // A user crossing $25 in 30 days costs more than triple the subscription
 // price — worth a human look, not enforcement. Kept as an ops signal; part 2's
@@ -53,32 +65,43 @@ export type AiSpendSubject =
   | number
   | null
   | undefined
-  | { userId?: number | null; anonymousPassId?: number | null };
+  | {
+      userId?: number | null;
+      anonymousPassId?: number | null;
+      aiGift?: AiGiftMode | null;
+    };
 
 interface NormalizedSubject {
   kind: 'user' | 'pass' | 'none';
   userId: number;
   anonymousPassId: number;
+  aiGift: AiGiftMode | null;
 }
 
 function normalizeSubject(subject: AiSpendSubject): NormalizedSubject {
   if (subject == null) {
-    return { kind: 'none', userId: 0, anonymousPassId: 0 };
+    return { kind: 'none', userId: 0, anonymousPassId: 0, aiGift: null };
   }
   if (typeof subject === 'number') {
-    return { kind: 'user', userId: subject, anonymousPassId: 0 };
+    return { kind: 'user', userId: subject, anonymousPassId: 0, aiGift: null };
   }
   if (subject.userId != null) {
-    return { kind: 'user', userId: subject.userId, anonymousPassId: 0 };
+    return {
+      kind: 'user',
+      userId: subject.userId,
+      anonymousPassId: 0,
+      aiGift: subject.aiGift ?? null,
+    };
   }
   if (subject.anonymousPassId != null) {
     return {
       kind: 'pass',
       userId: 0,
       anonymousPassId: subject.anonymousPassId,
+      aiGift: null,
     };
   }
-  return { kind: 'none', userId: 0, anonymousPassId: 0 };
+  return { kind: 'none', userId: 0, anonymousPassId: 0, aiGift: null };
 }
 
 export interface AiBudgetDeps {
@@ -90,6 +113,10 @@ export interface AiBudgetDeps {
     anonymousPassId: number,
     now: Date
   ) => Promise<AiCreditBalance | null>;
+  computeGiftBalance?: (
+    userId: number,
+    now: Date
+  ) => Promise<AiGiftBalance | null>;
   reader: IAiSpendReader;
   passReader?: IAnonymousPassSpendReader;
   sendAlert: (subject: string, body: string) => Promise<void>;
@@ -106,9 +133,17 @@ function defaultDeps(): AiBudgetDeps {
   const readers = createAiCreditReaders(database);
   const passReaders = createAnonymousPassCreditReaders(database);
   const usage = new AiUsageMetricsRepository(database);
+  const gifts = new AiCreditGiftsRepository(database);
   return {
     computeBalance: (userId: number, now: Date) =>
       computeAiCreditBalance(userId, now, readers),
+    computeGiftBalance: (userId: number, now: Date) =>
+      computeAiGiftBalance(userId, now, {
+        isEnabled: () => getFeatureFlag(AI_CREDITS_GIFT_FLAG, false),
+        findGrant: (id) => gifts.findGrant(id),
+        giftCostSince: (giftId, id, since) =>
+          gifts.giftCostSince(giftId, id, since),
+      }),
     computeAnonymousPassBalance: (anonymousPassId: number, now: Date) =>
       computeAnonymousPassBalance(anonymousPassId, now, passReaders),
     reader: usage,
@@ -164,6 +199,7 @@ export function resetAiSpendClaims(): void {
   claimedExhaustedWindows.clear();
   claimedExhaustedPassWindows.clear();
   alertClaims.clear();
+  firstGiftUseClaims.clear();
 }
 
 const windowClaimKey = (windowStart: Date): number =>
@@ -306,11 +342,89 @@ export async function getAiBudgetStatus(
   try {
     resolved = deps ?? defaultDeps();
   } catch (error) {
-    // Pass fails closed, user fails open (see budgetStatusFor).
+    // Pass and gift-only fail closed, user fails open (see budgetStatusFor).
     console.error('[ai-credits] guard init failed', error);
-    return { exhausted: normalized.kind === 'pass', balance: null };
+    return { exhausted: failsClosed(normalized), balance: null };
   }
-  return budgetStatusFor(normalized, resolved);
+  const now = resolved.now?.() ?? new Date();
+  if (normalized.aiGift === 'only') {
+    const gift = await giftBalanceFor(resolved, normalized, now);
+    return { exhausted: gift == null || gift.credits <= 0, balance: null };
+  }
+  const status = await budgetStatusFor(normalized, resolved);
+  if (status.exhausted && normalized.aiGift === 'fallback') {
+    const gift = await giftBalanceFor(resolved, normalized, now);
+    if (gift != null && gift.credits > 0) {
+      return { exhausted: false, balance: status.balance };
+    }
+  }
+  return status;
+}
+
+function failsClosed(subject: NormalizedSubject): boolean {
+  return subject.kind === 'pass' || subject.aiGift === 'only';
+}
+
+// The gift is read only for a call that asked for it. A read error means no
+// gift: a paying account then answers exactly as it did before the gift, and
+// a gift-only account is stopped (fails closed), since it has nothing else.
+async function giftBalanceFor(
+  deps: AiBudgetDeps,
+  subject: NormalizedSubject,
+  now: Date
+): Promise<AiGiftBalance | null> {
+  if (
+    subject.kind !== 'user' ||
+    subject.aiGift == null ||
+    deps.computeGiftBalance == null
+  ) {
+    return null;
+  }
+  try {
+    return await deps.computeGiftBalance(subject.userId, now);
+  } catch (error) {
+    console.error('[ai-credits] gift balance read failed', error);
+    return null;
+  }
+}
+
+function giftHasHeadroom(gift: AiGiftBalance | null): gift is AiGiftBalance {
+  return (
+    gift != null && gift.credits - reservedGiftCreditsFor(gift.giftId) > 0
+  );
+}
+
+const firstGiftUseClaims = new Set<number>();
+
+function recordFirstGiftUse(
+  subject: NormalizedSubject,
+  gift: AiGiftBalance
+): void {
+  if (gift.spent > 0 || firstGiftUseClaims.has(gift.giftId)) {
+    return;
+  }
+  firstGiftUseClaims.add(gift.giftId);
+  track('ai_gift_first_use', {
+    userId: subject.userId,
+    props: withServerMarker({ gift_id: gift.giftId, mode: subject.aiGift }),
+  });
+}
+
+async function runOnGift<T>(
+  subject: NormalizedSubject,
+  gift: AiGiftBalance,
+  run: () => Promise<T>
+): Promise<T> {
+  recordFirstGiftUse(subject, gift);
+  reserveInflightGiftCredits(gift.giftId, RESERVED_CREDITS_PER_INFLIGHT_CALL);
+  try {
+    return await runOnGiftCredits(gift.giftId, run);
+  } finally {
+    releaseInflightGiftCredits(
+      gift.giftId,
+      RESERVED_CREDITS_PER_INFLIGHT_CALL
+    );
+  }
 }
 
 // Who the watch alert is about, with that subject's own readers: a user's
@@ -489,15 +603,29 @@ export async function assertAiBudget(
     // An anonymous pass fails closed: no readers means no way to prove the
     // pass has headroom, so it gets no AI rather than unmetered AI.
     console.error('[ai-credits] guard init failed', error);
-    if (normalized.kind === 'pass') {
+    if (failsClosed(normalized)) {
+      throw new AiCreditsExhaustedError();
+    }
+    return;
+  }
+  const now = resolved.now?.() ?? new Date();
+  if (normalized.aiGift === 'only') {
+    maybeNotifyAlertForSubject(resolved, normalized, now);
+    if (!giftHasHeadroom(await giftBalanceFor(resolved, normalized, now))) {
       throw new AiCreditsExhaustedError();
     }
     return;
   }
   const status = await budgetStatusFor(normalized, resolved);
-  const now = resolved.now?.() ?? new Date();
   maybeNotifyAlertForSubject(resolved, normalized, now);
   if (isBudgetSpent(status, normalized)) {
+    if (
+      normalized.aiGift === 'fallback' &&
+      status.exhausted &&
+      giftHasHeadroom(await giftBalanceFor(resolved, normalized, now))
+    ) {
+      return;
+    }
     throw new AiCreditsExhaustedError();
   }
 }
@@ -526,15 +654,31 @@ export async function withAiBudget<T>(
   } catch (error) {
     // An anonymous pass fails closed (see assertAiBudget); a user fails open.
     console.error('[ai-credits] guard init failed', error);
-    if (normalized.kind === 'pass') {
+    if (failsClosed(normalized)) {
       throw new AiCreditsExhaustedError();
     }
     return run();
   }
-  const status = await budgetStatusFor(normalized, resolved);
   const now = resolved.now?.() ?? new Date();
+  if (normalized.aiGift === 'only') {
+    maybeNotifyAlertForSubject(resolved, normalized, now);
+    const gift = await giftBalanceFor(resolved, normalized, now);
+    if (!giftHasHeadroom(gift)) {
+      throw new AiCreditsExhaustedError();
+    }
+    return runOnGift(normalized, gift, run);
+  }
+  const status = await budgetStatusFor(normalized, resolved);
   maybeNotifyAlertForSubject(resolved, normalized, now);
   if (isBudgetSpent(status, normalized)) {
+    // The gift is drawn only once the plan's recorded balance is spent, not
+    // while plan credits are merely reserved by calls still running.
+    if (normalized.aiGift === 'fallback' && status.exhausted) {
+      const gift = await giftBalanceFor(resolved, normalized, now);
+      if (giftHasHeadroom(gift)) {
+        return runOnGift(normalized, gift, run);
+      }
+    }
     // budgetStatusFor already fires the event when the raw balance is spent;
     // the reservation-throttled stop (positive balance, no headroom left) is
     // the case it never sees, so record it here.

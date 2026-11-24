@@ -5,6 +5,7 @@ import { useAppLanguage } from '../../lib/i18n/useAppLanguage';
 import { useTheme } from '../../lib/hooks/useTheme';
 import styles from './NavigationBar.module.css';
 import { RightSide } from './components/RightSide';
+import { AiGiftPresent } from '../AiGift/AiGiftPresent';
 
 interface NavigationBarProps {
   isLoggedIn: boolean | undefined;
@@ -38,17 +39,22 @@ function NavigationBar({ isLoggedIn }: Readonly<NavigationBarProps>) {
             fetchPriority="high"
           />
         </a>
-        <button
-          type="button"
-          className={styles.burger}
-          aria-label={t('nav.menu')}
-          aria-expanded={active}
-          onClick={() => setActive(!active)}
-        >
-          <span aria-hidden="true" />
-          <span aria-hidden="true" />
-          <span aria-hidden="true" />
-        </button>
+        <div className={styles.brandEnd}>
+          {isResolved && (
+            <AiGiftPresent isLoggedIn={isLoggedIn === true} align="start" />
+          )}
+          <button
+            type="button"
+            className={styles.burger}
+            aria-label={t('nav.menu')}
+            aria-expanded={active}
+            onClick={() => setActive(!active)}
+          >
+            <span aria-hidden="true" />
+            <span aria-hidden="true" />
+            <span aria-hidden="true" />
+          </button>
+        </div>
       </div>
 
       <div className={active ? styles.menuActive : styles.menu}>

@@ -1,0 +1,34 @@
+{
+  "triggerText": "Créditos de IA grátis",
+  "triggerLabel": "Presente: créditos de IA grátis",
+  "title": "Créditos de IA grátis",
+  "body": "Resgate {{credits}} créditos de IA para cartões do Claude nos seus envios. Eles expiram {{hours}} horas depois do resgate.",
+  "claimUntil": "Você pode resgatá-los até {{date}}.",
+  "claim": "Resgatar {{credits}} créditos",
+  "claiming": "Resgatando",
+  "signUpToClaim": "Cadastre-se para resgatar",
+  "haveAccount": "Já tem uma conta?",
+  "signIn": "Entrar",
+  "claimed_one": "Você tem {{count}} crédito de IA do presente.",
+  "claimed_other": "Você tem {{count}} créditos de IA do presente.",
+  "claimedExpires": "Eles expiram em {{date}}. Ative os cartões do Claude e envie um arquivo para usá-los.",
+  "useThem": "Ir para o envio",
+  "full": "Os créditos de IA grátis já foram todos resgatados por enquanto.",
+  "hide": "Ocultar",
+  "close": "Fechar",
+  "refused": {
+    "alreadyClaimed": "Esta conta já resgatou o presente.",
+    "ipLimit": "Muitos resgates desta rede hoje. Tente novamente amanhã.",
+    "closed": "O presente terminou.",
+    "generic": "Não foi possível resgatar os créditos. Tente novamente em instantes."
+  },
+  "feedback": {
+    "question": "Os cartões do Claude saíram como você queria?",
+    "yes": "Sim",
+    "no": "Não",
+    "commentLabel": "O que deveria ter sido diferente? (opcional)",
+    "send": "Enviar",
+    "thanks": "Obrigado. Isso nos ajuda a ajustar os cartões do Claude.",
+    "close": "Fechar"
+  }
+}

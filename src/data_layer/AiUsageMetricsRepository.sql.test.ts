@@ -69,7 +69,7 @@ describe('AiUsageMetricsRepository generated SQL', () => {
     const { sql, bindings } = repository.buildUserCostQuery(42, since).toSQL();
 
     expect(sql).toBe(
-      `select coalesce(sum((props->>'cost_usd')::numeric) filter (where props->>'billable' is distinct from 'false'), 0) as cost_usd from "events" where "name" = ? and "created_at" >= ? and "user_id" = ?`
+      `select coalesce(sum((props->>'cost_usd')::numeric) filter (where props->>'billable' is distinct from 'false' and props->>'gift_id' is null), 0) as cost_usd from "events" where "name" = ? and "created_at" >= ? and "user_id" = ?`
     );
     expect(bindings).toEqual(['ai_usage_recorded', since, 42]);
   });
@@ -80,7 +80,7 @@ describe('AiUsageMetricsRepository generated SQL', () => {
       .toSQL();
 
     expect(sql).toBe(
-      `select coalesce(sum((props->>'cost_usd')::numeric) filter (where props->>'billable' is distinct from 'false'), 0) as cost_usd from "events" where "name" = ? and "created_at" >= ? and "anonymous_pass_id" = ?`
+      `select coalesce(sum((props->>'cost_usd')::numeric) filter (where props->>'billable' is distinct from 'false' and props->>'gift_id' is null), 0) as cost_usd from "events" where "name" = ? and "created_at" >= ? and "anonymous_pass_id" = ?`
     );
     expect(bindings).toEqual(['ai_usage_recorded', since, 7]);
   });
@@ -102,7 +102,7 @@ describe('AiUsageMetricsRepository generated SQL', () => {
       .toSQL();
 
     expect(sql).toBe(
-      `select coalesce(sum((props->>'cost_usd')::numeric) filter (where props->>'billable' is distinct from 'false'), 0) as cost_usd from "events" where "name" = ? and "created_at" >= ? and ("user_id" = ? or "anonymous_pass_id" in (?, ?))`
+      `select coalesce(sum((props->>'cost_usd')::numeric) filter (where props->>'billable' is distinct from 'false' and props->>'gift_id' is null), 0) as cost_usd from "events" where "name" = ? and "created_at" >= ? and ("user_id" = ? or "anonymous_pass_id" in (?, ?))`
     );
     expect(bindings).toEqual(['ai_usage_recorded', since, 42, 7, 9]);
   });

@@ -55,7 +55,35 @@ export function releaseInflightCreditsForPass(
   reservedByPass.set(anonymousPassId, next);
 }
 
+// Gift credits are a separate balance from the plan's, so calls running on a
+// gift hold their reservation here and never shrink the plan's headroom.
+const reservedByGift = new Map<number, number>();
+
+export function reservedGiftCreditsFor(giftId: number): number {
+  return reservedByGift.get(giftId) ?? 0;
+}
+
+export function reserveInflightGiftCredits(
+  giftId: number,
+  credits: number
+): void {
+  reservedByGift.set(giftId, reservedGiftCreditsFor(giftId) + credits);
+}
+
+export function releaseInflightGiftCredits(
+  giftId: number,
+  credits: number
+): void {
+  const next = reservedGiftCreditsFor(giftId) - credits;
+  if (next <= 0) {
+    reservedByGift.delete(giftId);
+    return;
+  }
+  reservedByGift.set(giftId, next);
+}
+
 export function resetInflightReservations(): void {
   reservedByUser.clear();
   reservedByPass.clear();
+  reservedByGift.clear();
 }

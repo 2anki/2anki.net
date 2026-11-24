@@ -21,6 +21,7 @@ import {
 } from '../../lib/data_layer/aiChoice';
 import useQuery from '../../lib/hooks/useQuery';
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
+import { useAiGift } from '../../lib/hooks/useAiGift';
 import { hasSessionHint } from '../../lib/sessionHint';
 import {
   useAiCredits,
@@ -45,7 +46,8 @@ type AiBadgeState =
   | 'free'
   | 'on'
   | 'onForPdfs'
-  | 'off';
+  | 'off'
+  | 'giftOff';
 
 interface Props {
   setErrorMessage: ErrorHandlerType;
@@ -56,9 +58,11 @@ function deriveAiBadgeState(
   isPaying: boolean,
   isAiOn: boolean,
   localsLoaded: boolean,
-  claudeOnForPdfs: boolean
+  claudeOnForPdfs: boolean,
+  hasGiftCredits: boolean
 ): AiBadgeState {
   if (!isSignedIn) return localsLoaded ? 'anonPreview' : 'anon';
+  if (!isPaying && hasGiftCredits) return isAiOn ? 'on' : 'giftOff';
   if (!isPaying) return 'free';
   if (isAiOn) return 'on';
   if (claudeOnForPdfs) return 'onForPdfs';
@@ -86,6 +90,7 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
   const { t } = useTranslation();
   const { t: tCredits, i18n } = useTranslation('aicredits');
   const { t: tPass } = useTranslation('anonymousPass');
+  const { t: tGift } = useTranslation('aiGift');
   const query = useQuery();
   const view = query.get('view');
   const navigate = useNavigate();
@@ -102,6 +107,11 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
 
   const isSignedIn = userLocals?.user?.id != null;
   const isPaying = isPayingUser(userLocals?.locals);
+  const gift = useAiGift();
+  const giftCredits =
+    isSignedIn && gift?.state === 'claimed' && gift.credits > 0
+      ? gift.credits
+      : null;
   const [aiFlag, setAiFlag] = useState(
     () => globalThis.localStorage?.getItem(AI_FLAG_KEY) === 'true'
   );
@@ -116,7 +126,9 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
   }, [isSignedIn]);
 
   const localsLoaded = userLocals != null;
-  const isAiOn = isSignedIn ? isPaying && aiFlag : localsLoaded && aiFlag;
+  const isAiOn = isSignedIn
+    ? (isPaying || giftCredits != null) && aiFlag
+    : localsLoaded && aiFlag;
   const sessionHint = hasSessionHint();
   const claudeOnForPdfs =
     !aiChoiceRecorded &&
@@ -129,7 +141,8 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
         isPaying,
         isAiOn,
         localsLoaded,
-        claudeOnForPdfs
+        claudeOnForPdfs,
+        giftCredits != null
       );
   const aiCredits = useAiCredits(
     aiBadgeState === 'on' ||
@@ -456,6 +469,41 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
               {t('upload.page.signInToTurnOn')}
             </Link>
             <span>{sentenceEnd}</span>
+          </span>
+        )}
+        {aiBadgeState === 'giftOff' && giftCredits != null && (
+          <>
+            <button
+              type="button"
+              className={styles.aiToggle}
+              aria-pressed="false"
+              aria-label={t('upload.page.turnAiOn')}
+              onClick={toggleAi}
+            >
+              <span className={styles.badgeWarning}>
+                {t('upload.page.aiOff')}
+              </span>
+            </button>
+            <span className={styles.aiOffBadgeBody}>
+              <span>
+                {' '}
+                {tGift('claimed', { count: giftCredits })}
+                {sentenceGap}
+              </span>
+              <button
+                type="button"
+                className={styles.aiInlineLink}
+                onClick={toggleAi}
+              >
+                {t('upload.page.turnOnClaudeCards')}
+              </button>
+              <span>{sentenceEnd}</span>
+            </span>
+          </>
+        )}
+        {aiBadgeState === 'on' && giftCredits != null && !isPaying && (
+          <span className={styles.aiOffBadgeBody}>
+            {tGift('claimed', { count: giftCredits })}
           </span>
         )}
         {aiBadgeState === 'anonPreview' && (

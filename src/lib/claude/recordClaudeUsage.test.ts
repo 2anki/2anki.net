@@ -1,5 +1,6 @@
 import { vi, type Mock } from 'vitest';
 import { recordClaudeUsage } from './recordClaudeUsage';
+import { runOnGiftCredits } from './aiCredits/gift/giftFunding';
 import { track } from '../../services/events/track';
 
 vi.mock('../../services/events/track', () => ({
@@ -205,5 +206,35 @@ describe('recordClaudeUsage', () => {
     });
 
     expect(info).toHaveBeenCalledWith(expect.not.stringContaining('request='));
+  });
+  it('stamps the gift that paid for a call on its usage event', async () => {
+    await runOnGiftCredits(17, async () => {
+      recordClaudeUsage({
+        surface: 'conversion',
+        model: 'claude-sonnet-5',
+        usage: { input_tokens: 10, output_tokens: 5 },
+        userId: 42,
+      });
+    });
+
+    expect(trackMock).toHaveBeenCalledWith(
+      'ai_usage_recorded',
+      expect.objectContaining({
+        userId: 42,
+        props: expect.objectContaining({ gift_id: 17 }),
+      })
+    );
+  });
+
+  it('leaves gift_id off a call no gift paid for', () => {
+    recordClaudeUsage({
+      surface: 'conversion',
+      model: 'claude-sonnet-5',
+      usage: { input_tokens: 10, output_tokens: 5 },
+      userId: 42,
+    });
+
+    const props = trackMock.mock.calls[0][1].props as Record<string, unknown>;
+    expect(Object.keys(props)).not.toContain('gift_id');
   });
 });

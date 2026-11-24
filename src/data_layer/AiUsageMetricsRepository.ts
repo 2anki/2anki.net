@@ -112,11 +112,12 @@ export class AiUsageMetricsRepository
   }
 
   // What a user or pass is charged: every recorded call except those marked
-  // billable=false (Claude declined without writing anything usable). The
-  // spend alert reads recordedCost instead, so ops still sees their cost.
+  // billable=false (Claude declined without writing anything usable) and those
+  // the free AI credits gift paid for (stamped gift_id, charged to the gift).
+  // The spend alert reads recordedCost instead, so ops still sees their cost.
   private chargedCost(): Knex.Raw {
     return this.database.raw(
-      "coalesce(sum((props->>'cost_usd')::numeric) filter (where props->>'billable' is distinct from 'false'), 0) as cost_usd"
+      "coalesce(sum((props->>'cost_usd')::numeric) filter (where props->>'billable' is distinct from 'false' and props->>'gift_id' is null), 0) as cost_usd"
     );
   }
 

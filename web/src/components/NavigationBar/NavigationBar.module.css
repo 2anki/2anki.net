@@ -42,6 +42,18 @@
   height: 28px;
 }
 
+.brandEnd {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+@media (min-width: 1024px) {
+  .brandEnd {
+    margin-left: 1rem;
+  }
+}
+
 .burger {
   display: flex;
   flex-direction: column;

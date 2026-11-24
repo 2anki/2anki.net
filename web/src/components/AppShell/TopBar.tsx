@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useAppLanguage } from '../../lib/i18n/useAppLanguage';
 import { useTheme } from '../../lib/hooks/useTheme';
 import { AccountMenu } from './AccountMenu';
+import { AiGiftPresent } from '../AiGift/AiGiftPresent';
 import type { SidebarLocals } from './Sidebar';
 import styles from './AppShell.module.css';
 
@@ -47,6 +48,7 @@ export function TopBar({
         <img src={logoSrc} alt="" />
       </a>
       <div className={styles.topBarEnd}>
+        <AiGiftPresent isLoggedIn />
         <AccountMenu email={email} locals={locals} onLogOut={onLogOut} />
       </div>
     </header>

@@ -1,0 +1,34 @@
+{
+  "triggerText": "Créditos de IA gratis",
+  "triggerLabel": "Regalo: créditos de IA gratis",
+  "title": "Créditos de IA gratis",
+  "body": "Reclama {{credits}} créditos de IA para tarjetas de Claude en tus subidas. Caducan {{hours}} horas después de reclamarlos.",
+  "claimUntil": "Puedes reclamarlos hasta el {{date}}.",
+  "claim": "Reclamar {{credits}} créditos",
+  "claiming": "Reclamando",
+  "signUpToClaim": "Regístrate para reclamarlos",
+  "haveAccount": "¿Ya tienes cuenta?",
+  "signIn": "Inicia sesión",
+  "claimed_one": "Tienes {{count}} crédito de IA del regalo.",
+  "claimed_other": "Tienes {{count}} créditos de IA del regalo.",
+  "claimedExpires": "Caducan el {{date}}. Activa las tarjetas de Claude y sube un archivo para usarlos.",
+  "useThem": "Ir a subir",
+  "full": "Los créditos de IA gratis están todos reclamados por ahora.",
+  "hide": "Ocultar",
+  "close": "Cerrar",
+  "refused": {
+    "alreadyClaimed": "Esta cuenta ya reclamó el regalo.",
+    "ipLimit": "Demasiadas reclamaciones desde esta red hoy. Vuelve a intentarlo mañana.",
+    "closed": "El regalo ha terminado.",
+    "generic": "No se pudieron reclamar los créditos. Inténtalo de nuevo en un momento."
+  },
+  "feedback": {
+    "question": "¿Las tarjetas de Claude quedaron como querías?",
+    "yes": "Sí",
+    "no": "No",
+    "commentLabel": "¿Qué debería haber sido diferente? (opcional)",
+    "send": "Enviar",
+    "thanks": "Gracias. Esto nos ayuda a ajustar las tarjetas de Claude.",
+    "close": "Cerrar"
+  }
+}

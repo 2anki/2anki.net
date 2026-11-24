@@ -1,0 +1,34 @@
+{
+  "triggerText": "Free AI credits",
+  "triggerLabel": "Free AI credits gift",
+  "title": "Free AI credits",
+  "body": "Claim {{credits}} AI credits for Claude cards on your uploads. They expire {{hours}} hours after you claim them.",
+  "claimUntil": "You can claim them until {{date}}.",
+  "claim": "Claim {{credits}} credits",
+  "claiming": "Claiming",
+  "signUpToClaim": "Sign up to claim",
+  "haveAccount": "Have an account?",
+  "signIn": "Sign in",
+  "claimed_one": "You have {{count}} AI credit from the gift.",
+  "claimed_other": "You have {{count}} AI credits from the gift.",
+  "claimedExpires": "They expire on {{date}}. Turn on Claude cards and drop a file to use them.",
+  "useThem": "Go to upload",
+  "full": "The free AI credits are all claimed for now.",
+  "hide": "Hide",
+  "close": "Close",
+  "refused": {
+    "alreadyClaimed": "This account has already claimed the gift.",
+    "ipLimit": "Too many claims from this network today. Try again tomorrow.",
+    "closed": "The gift has ended.",
+    "generic": "Couldn't claim the credits. Try again in a moment."
+  },
+  "feedback": {
+    "question": "Did the Claude cards come out the way you wanted?",
+    "yes": "Yes",
+    "no": "No",
+    "commentLabel": "What should have been different? (optional)",
+    "send": "Send",
+    "thanks": "Thanks. This helps us tune Claude cards.",
+    "close": "Close"
+  }
+}
