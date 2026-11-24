@@ -4,7 +4,7 @@ Bug reports, support emails, and feedback frequently arrive with the reporter's 
 
 | Requirement | Do instead | Why |
 | --- | --- | --- |
-| Do not put a reporter's first or last name in a commit message, PR title, PR body, GitHub issue, code comment, FEATURE.md, spec, or changelog entry. | Use the numeric user ID (`user 21770`), the role ("a returning Notion user"), or "a real user this week." | The commit goes into `main`'s history forever; the PR is world-readable. People sharing a bug with support do not consent to becoming a public artifact. |
+| Do not put a reporter's first or last name in a commit message, PR title, PR body, GitHub issue, code comment, FEATURE.md, spec, or changelog entry. | Use the numeric user ID (`user 12345`, an invented id), the role ("a returning Notion user"), or "a real user this week." | The commit goes into `main`'s history forever; the PR is world-readable. People sharing a bug with support do not consent to becoming a public artifact. |
 | Do not put the reporter's email address, Notion workspace name, deck title, or any other content from their account in a commit, PR, issue, or doc. | Strip it. If a specific example is load-bearing, use a fabricated stand-in (`"Week 18: Polarised Lenses"` becomes `"a recent Notion page"`). | Workspace names and deck titles routinely contain the user's name, employer, school, or coursework. |
 | Do not put an **uploaded file's original filename** (PDF/HTML/zip/apkg name) or the document's visible title/subject in a commit, PR, issue, or doc — even when quoting DB rows (`uploads.filename`, `jobs.title`) during investigation. | Describe the shape instead: "a multi-page study-guide PDF", "a text-heavy upload". | A filename is a deck title wearing a different hat — same exposure (coursework, school, employer, sometimes the person's own name in the file). It's easy to miss because a raw filename doesn't read as "personal" the way a name or email does — 2026-07-23 (issue #3804) shipped a reporter's exact PDF filenames and study-topic title into a public issue during a root-cause writeup, caught and scrubbed after the fact. |
 | Do not paste a reporter's screenshot, email, or message body into a commit/PR/issue. | Reference the support inbox ("matches the toggle-with-table report in the inbox") without quoting. | Screenshots leak the same identifiers plus more (study material, handwriting, faces). |
@@ -20,7 +20,7 @@ Bug reports, support emails, and feedback frequently arrive with the reporter's 
 
 Not the harness memory (`~/.claude/projects/.../memory/`). It persists into later sessions and nobody reviews it, so nothing that ties back to one reporter goes there: no name, email, workspace name, deck title, filename or user ID. See `## Memory & sensitive data` in CLAUDE.md.
 
-## Why "user 21770" instead of "an anonymous user"
+## Why "user 12345" instead of "an anonymous user"
 
 A numeric ID lets Al and future-you reconcile the artifact back to the original report without exposing identity. "An anonymous user" is fine for a changelog entry but loses the trail for engineering work. Pick the level of detail to match the audience:
 
