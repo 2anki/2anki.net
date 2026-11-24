@@ -135,18 +135,19 @@ function isFreePhotoQuotaError(
   );
 }
 
-function freePhotoQuotaError(
-  owner: string,
-  used: number,
-  limit: number
-): Error {
-  const plansUrl = connectorPlansUrl(owner, 'photo', null);
-  return Object.assign(
-    new Error(
-      `You've used all ${limit} free photos for this month. The count resets on ${nextMonthlyReset()}. Plan details: ${plansUrl}`
-    ),
-    { status: 429, used, limit }
-  );
+export class PhotoLimitReachedError extends Error {
+  readonly status = 429;
+
+  constructor(
+    owner: string,
+    readonly used: number,
+    readonly limit: number
+  ) {
+    super(
+      `You've used all ${limit} free photos for this month. The count resets on ${nextMonthlyReset()}. Plan details: ${connectorPlansUrl(owner, 'photo', null)}`
+    );
+    this.name = 'PhotoLimitReachedError';
+  }
 }
 
 // MCP owners are the OAuth user id as a string; anything else has no user row.
@@ -530,6 +531,24 @@ export class DeckNotReadyError extends Error {
   }
 }
 
+const ENDED_WITHOUT_DECK_STATUSES = new Set([
+  'failed',
+  'interrupted',
+  'cancelled',
+]);
+
+export class JobEndedWithoutDeckError extends Error {
+  readonly reason: string;
+
+  constructor(jobStatus: string) {
+    super(
+      'This conversion ended without a deck, so there is nothing to preview.'
+    );
+    this.name = 'JobEndedWithoutDeckError';
+    this.reason = `job_${jobStatus}`;
+  }
+}
+
 export interface ConvertInput {
   url?: string;
   text?: string;
@@ -660,7 +679,7 @@ export class McpToolsService {
       return await this.photoToFlashcards.generateCards(input);
     } catch (error) {
       if (isFreePhotoQuotaError(error)) {
-        throw freePhotoQuotaError(input.owner, error.used, error.limit);
+        throw new PhotoLimitReachedError(input.owner, error.used, error.limit);
       }
       throw error;
     }
@@ -758,6 +777,9 @@ export class McpToolsService {
     if (job) {
       const key = job.download_key;
       if (key == null || !APKG_KEY_PATTERN.test(key)) {
+        if (ENDED_WITHOUT_DECK_STATUSES.has(job.status)) {
+          throw new JobEndedWithoutDeckError(job.status);
+        }
         throw new DeckNotReadyError();
       }
       return { key, job };

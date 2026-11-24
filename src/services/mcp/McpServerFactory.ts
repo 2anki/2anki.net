@@ -1,7 +1,12 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
-import { DeckNotReadyError, McpToolsService } from './McpToolsService';
+import {
+  DeckNotReadyError,
+  JobEndedWithoutDeckError,
+  McpToolsService,
+  PhotoLimitReachedError,
+} from './McpToolsService';
 import type { McpNextStep } from './McpToolsService';
 import {
   McpConvertOptions,
@@ -381,6 +386,23 @@ export function buildMcpServer(context: McpRequestContext): McpServer {
     return result;
   };
 
+  const thrownResult = (
+    toolName: string,
+    error: unknown,
+    errorCode: string,
+    props: Record<string, unknown> = {}
+  ): ToolResult => {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`[mcp] ${toolName} failed: ${sanitizeForLog(message)}`);
+    return finish(
+      toolName,
+      { content: [{ type: 'text', text: message }], isError: true },
+      false,
+      errorCode,
+      props
+    );
+  };
+
   registerTool<{ limit?: number }>(
     server,
     'list_my_decks',
@@ -516,6 +538,18 @@ export function buildMcpServer(context: McpRequestContext): McpServer {
           pageSize ?? 20
         );
       } catch (error) {
+        if (error instanceof JobEndedWithoutDeckError) {
+          return finish(
+            'get_deck_preview',
+            outcomeResult(error.message, {
+              code: 'preview_failed',
+              status: 'failed',
+              reason: error.reason,
+            }),
+            false,
+            error.reason
+          );
+        }
         if (error instanceof DeckNotReadyError) {
           return finish(
             'get_deck_preview',
@@ -659,11 +693,21 @@ export function buildMcpServer(context: McpRequestContext): McpServer {
     async ({ url, text, filename, options, detail }) => {
       context.recordToolCall('convert_to_deck');
       const inputProps = convertInputProps({ url, text, filename });
-      const result = await context.toolsService.convertToDeck(
-        { url, text, filename, options },
-        context.owner,
-        context.locals
-      );
+      let result: Awaited<ReturnType<McpToolsService['convertToDeck']>>;
+      try {
+        result = await context.toolsService.convertToDeck(
+          { url, text, filename, options },
+          context.owner,
+          context.locals
+        );
+      } catch (error) {
+        return thrownResult(
+          'convert_to_deck',
+          error,
+          'convert_failed',
+          inputProps
+        );
+      }
       if (result.kind === 'error') {
         return finish(
           'convert_to_deck',
@@ -757,13 +801,18 @@ export function buildMcpServer(context: McpRequestContext): McpServer {
     },
     async ({ cards, deckName, options, detail }) => {
       context.recordToolCall('create_deck');
-      const result = await context.toolsService.createDeck(
-        cards,
-        deckName,
-        options,
-        context.owner,
-        context.locals
-      );
+      let result: Awaited<ReturnType<McpToolsService['createDeck']>>;
+      try {
+        result = await context.toolsService.createDeck(
+          cards,
+          deckName,
+          options,
+          context.owner,
+          context.locals
+        );
+      } catch (error) {
+        return thrownResult('create_deck', error, 'create_failed');
+      }
       if (result.kind === 'error') {
         return finish(
           'create_deck',
@@ -831,9 +880,12 @@ export function buildMcpServer(context: McpRequestContext): McpServer {
     {
       title: 'Photo to flashcards',
       outputSchema: {
-        cards: z.array(z.record(z.string(), z.unknown())),
-        count: z.number(),
-        summary: z.string(),
+        cards: z.array(z.record(z.string(), z.unknown())).optional(),
+        count: z.number().optional(),
+        summary: z.string().optional(),
+        code: z.string().optional(),
+        message: z.string().optional(),
+        ...OUTCOME_SHAPE,
       },
       annotations: {
         readOnlyHint: false,
@@ -868,29 +920,51 @@ export function buildMcpServer(context: McpRequestContext): McpServer {
     },
     async ({ image, density, mode, includeSourceImage }) => {
       context.recordToolCall('photo_to_deck');
+      let result: Awaited<ReturnType<McpToolsService['photoToDeck']>>;
       try {
-        const result = await context.toolsService.photoToDeck(
+        result = await context.toolsService.photoToDeck(
           { image, density, mode, includeSourceImage },
           context.owner,
           context.locals
         );
-        const textMarkdown = renderDeckMarkdownTable({
-          headerLines: [`**${result.summary}**`],
-          cards: result.cards,
-          totalCount: result.count,
-        });
-        return structuredResult(result as unknown as Record<string, unknown>, {
-          untrusted: true,
-          textMarkdown,
-        });
       } catch (error) {
-        return errorResult(
-          error instanceof Error
-            ? error.message
-            : 'Could not read cards from this photo.',
+        if (error instanceof PhotoLimitReachedError) {
+          return finish(
+            'photo_to_deck',
+            outcomeResult(error.message, {
+              code: 'photo_failed',
+              status: 'not_created',
+              reason: 'monthly_photo_limit',
+            }),
+            false,
+            'monthly_photo_limit'
+          );
+        }
+        return finish(
+          'photo_to_deck',
+          errorResult(
+            error instanceof Error
+              ? error.message
+              : 'Could not read cards from this photo.',
+            'photo_failed'
+          ),
+          false,
           'photo_failed'
         );
       }
+      const textMarkdown = renderDeckMarkdownTable({
+        headerLines: [`**${result.summary}**`],
+        cards: result.cards,
+        totalCount: result.count,
+      });
+      return finish(
+        'photo_to_deck',
+        structuredResult(result as unknown as Record<string, unknown>, {
+          untrusted: true,
+          textMarkdown,
+        }),
+        true
+      );
     }
   );
 
