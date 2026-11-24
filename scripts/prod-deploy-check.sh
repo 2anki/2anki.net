@@ -23,15 +23,16 @@ my $mode = shift @ARGV // '';
 my $ext = qr/(?:pdf|html?|zip|apkg|colpkg|md|markdown|csv|tsv|txt|xlsx?|docx?|pptx?|odt|epub|png|jpe?g|gif|webp|heic|svg|enex|opml|anki2)/i;
 my $stamp = qr/^(\d{4}-\d\d-\d\dT\d\d:\d\d)[\d:.]*(?:Z|[+-]\d\d:?\d\d)?:?[ \t]?/;
 my $access = qr/"([A-Z]+) (\S+) HTTP\/[\d.]+" (\d{3}|-)/;
-my $value = qr/(?:(["'])(?:(?!\g{-1}).)*\g{-1}|[^\s,;})\]]+)/;
-my $whole_value = qr/(?:(["'])(?:(?!\g{-1}).)*\g{-1}|[^,}\n]+)/;
+my $quoted = qr/(?:"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`)/;
+my $value = qr/(?:$quoted|[^\s,;})\]]+)/;
+my $whole_value = qr/(?:$quoted|[^,}\n]+)/;
 
 sub mask {
   local $_ = shift;
   s/\e\[[\d;?]*[A-Za-z]//g;
   s{://[^/\s@]+@[^/\s:]*}{://<cred>@<host>}g;
   s/\$2[aby]\$\d\d\$[.\/A-Za-z0-9]{53}/<hash>/g;
-  s/\b(authorization)(["']?\s*[:=]\s*)(?:(["'])(?:(?!\3).)*\3|(?:basic|bearer|digest|negotiate)\s+[^\s"',;})\]]+|[^\s,;})\]]+)/$1$2<secret>/gi;
+  s/\b(authorization)(["']?\s*[:=]\s*)(?:$quoted|(?:basic|bearer|digest|negotiate)\s+[^\s"',;})\]]+|[^\s,;})\]]+)/$1$2<secret>/gi;
   s/\bbearer\s+[^\s"',;]+/Bearer <token>/gi;
   s/\beyJ[\w-]+\.[\w-]+\.[\w-]*/<jwt>/g;
   s/\b(\w*token|\w*_key|\w*secret|password\w*|passwd|cookie|set-cookie|x-api-key|api[_-]?key|connect\.sid|sid)(["']?\s*[:=]\s*)$value/$1$2<secret>/gi;
@@ -46,7 +47,9 @@ sub mask {
   s{\b(cus|sub|si|pi|ch|cs|in|ii|pm|py|re|txn|evt|prod|price|plink|seti|acct|card|src|tok|sk|rk|pk|whsec|promo|bpc)_((?:live_|test_)?[A-Za-z0-9]{8,})}{ my ($p, $t) = ($1, $2); ($t =~ /[0-9A-Z]/ || length($t) >= 14) ? "${p}_<id>" : "${p}_$t" }ge;
   s/\b[0-9a-fA-F]{16,}\b/<hex>/g;
   s{[A-Za-z0-9+_-]{24,}={0,2}}{ my $m = $&; ($m =~ /\d/ && $m =~ /[A-Za-z]/) ? '<blob>' : $m }ge;
-  s/(["'`])[^"'`\n]*?\.$ext\1/$1<file>$1/g;
+  s/"(?:[^"\\\n]|\\.)*?\.$ext"/"<file>"/g;
+  s/'(?:[^'\\\n]|\\.)*?\.$ext'/'<file>'/g;
+  s/`(?:[^`\\\n]|\\.)*?\.$ext`/`<file>`/g;
   s{[^\s"'`/\\=:,;()<>\[\]{}]+\.$ext\b}{<file>}g;
   s/\b(name|deck|deck_?name|title|subject|customer|customer_name|workspace|workspace_name|file_?name|original_?name|email)(["']?\s*[:=]\s*)$whole_value/$1$2<name>/gi;
   s/\b(name|file|first_?file|path|key)(["']?\s*[:=]\s*)$value/$1$2<name>/gi if /\[upload\]/i;

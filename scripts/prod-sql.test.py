@@ -49,9 +49,12 @@ echo "    42"
 """
 
 PREAMBLE = (
+    "SET client_encoding = 'UTF8';\n"
+    "SET standard_conforming_strings = on;\n"
     "SET statement_timeout = '120s';\n"
     "SET lock_timeout = '5s';\n"
     "SET idle_in_transaction_session_timeout = '60s';\n"
+    "SET temp_file_limit = '1GB';\n"
     "SET default_transaction_read_only = on;\n"
     "BEGIN TRANSACTION READ ONLY;\n"
 )
@@ -169,10 +172,14 @@ class SessionTest(Case):
     def test_sets_read_only_and_timeouts_in_pgoptions(self):
         run = self.run_sql("select 1;\n", env_file=app_env())
 
-        options = run.psql_env()["PGOPTIONS"]
+        env = run.psql_env()
+        options = env["PGOPTIONS"]
         self.assertIn("-c default_transaction_read_only=on", options)
+        self.assertIn("-c standard_conforming_strings=on", options)
         self.assertIn("-c statement_timeout=120000", options)
         self.assertIn("-c lock_timeout=5000", options)
+        self.assertIn("-c temp_file_limit=1GB", options)
+        self.assertEqual(env["PGCLIENTENCODING"], "UTF8")
 
     def test_caps_the_whole_run_with_a_wall_clock_timeout(self):
         run = self.run_sql("select 1;\n", env_file=app_env())
@@ -289,6 +296,26 @@ class AcceptedTest(Case):
             "select deleted_at, updated_at, created_at from uploads order by 1 desc limit 5;\nselect 2",
         ))
 
+    def test_accepts_backslashes_and_dollar_signs_inside_strings(self):
+        self.assert_each_accepted((
+            "select regexp_replace(s, '\\s+', ' ', 'g') from t where s ~ '[^\\x00-\\x7F]';",
+            "select count(*) from t where s ~ '^[0-9]+$';",
+            "select case when a then 'x' else'y' end from t;",
+        ))
+
+    def test_accepts_references_after_a_dot_that_are_not_calls(self):
+        self.assert_each_accepted((
+            "select (t).* from t;",
+            "select t.created_at, u.id from users t join uploads u on u.owner = t.id;",
+            "select count(*) from public.users;",
+            "select (select 1) as x, (select max(id) from t) + 1;",
+            "select (array[1, 2])[1], a[2] from t;",
+            "select (s).lower from t;",
+        ))
+
+    def test_accepts_a_section_label_written_as_a_statement(self):
+        self.assert_each_accepted(("select '== signups' as section;\nselect count(*) from users;",))
+
 
 class RefusedTest(Case):
     def test_refuses_each_earlier_probe_before_anything_is_sent(self):
@@ -380,6 +407,35 @@ class RefusedTest(Case):
             "select * from pg_statistic;",
             "select * from pg_stats;",
             "select * from pg_catalog.pg_hba_file_rules;",
+            "select subname from pg_subscription;",
+            'select * from "PG_SUBSCRIPTION";',
+        ))
+
+    def test_refuses_a_call_written_as_a_name_after_a_dot(self):
+        self.assert_each_refused((
+            "select (1).pg_sleep;",
+            "select ('x').similarity;",
+            "select (array[1])[1].pg_sleep;",
+            "select a[1].pg_sleep from t;",
+            "select (select 1).pg_sleep;",
+            "select (1) . pg_sleep;",
+            "select (1)\n.\npg_sleep;",
+            'select (1)."pg_sleep";',
+            'select (1)."PG_SLEEP";',
+            "select (t).col from t;",
+        ))
+
+    def test_refuses_escape_strings_and_backslashes_outside_strings(self):
+        self.assert_each_refused((
+            "select E'x';",
+            "select e'x';",
+            "select 1e'x';",
+            "select 1.5e'x';",
+            "select (e'x');",
+            "select U&'x';",
+            "select 1 \\ 2;",
+            "select 'a' \\g",
+            "select $tag$x$tag$;",
         ))
 
     def test_refuses_explain_options_beyond_format_costs_verbose_and_settings(self):

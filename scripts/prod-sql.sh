@@ -10,17 +10,25 @@
 # The pre-flight accepts a file only when every statement starts with select,
 # with, explain, show or table, and every function it calls is on the list in
 # ALLOWED_FUNCTIONS below (schema absent or pg_catalog). To call another
-# function, add it to that list in a reviewed PR with a test. It also refuses:
-# comments, dollar signs, E'' and U& strings or identifiers, any backslash (so
-# no psql meta-command), a colon before a name or quote (so no psql variable),
-# backticks, non-ASCII outside single-quoted strings, control bytes, a byte
-# order mark, the words into, insert, update, delete, merge, truncate, copy,
-# analyze, execute, lock, set and reset, row locks, and the role, credential,
-# large object and statistics catalogs. explain takes only the bare form or the
-# options format, costs, verbose and settings. Every check reads the lowercased
-# contents of double-quoted identifiers as well as plain words, and a quoted
-# identifier before "(" is a function call. Transaction and session statements
-# are refused because no statement may start with them.
+# function, add it to that list in a reviewed PR with a test. A name after a
+# "." that follows ")" or "]" also counts as a call, so (value).name must be on
+# the list too; ".*", alias.column and schema.table are ordinary references.
+# It also refuses: comments, a backslash or a dollar sign outside a
+# single-quoted string (so no psql meta-command and no dollar quote; inside a
+# string they are plain characters because standard_conforming_strings is
+# forced on), E'' and U& strings or identifiers (an e directly before a quote
+# is refused unless it ends a longer name), a colon before a name or quote (so
+# no psql variable), backticks, non-ASCII outside single-quoted strings,
+# control bytes, a byte order mark, the words into, insert, update, delete,
+# merge, truncate, copy, analyze, execute, lock, set and reset, row locks, and
+# the role, credential, subscription, large object and statistics catalogs.
+# explain takes only the bare form or the options format, costs, verbose and
+# settings. Every check reads the lowercased contents of double-quoted
+# identifiers as well as plain words, and a quoted identifier before "(" is a
+# function call. Transaction and session statements are refused because no
+# statement may start with them. psql display commands such as \echo are
+# refused with every other backslash command, so write a section label as an
+# ordinary statement: select '== signups' as section;
 #
 # What it cannot guarantee: it reads tokens, not a query plan. It does not stop
 # a select from reading secret columns of app tables (password hashes, reset
@@ -33,8 +41,11 @@
 #
 # The session adds a second layer: the file runs inside one
 # BEGIN TRANSACTION READ ONLY ... ROLLBACK that the file cannot end early, with
-# default_transaction_read_only, a statement timeout, a short lock timeout and
-# a 300-second wall-clock cap on the whole run. On the box the connection
+# default_transaction_read_only, standard_conforming_strings on, UTF8 client
+# encoding, a statement timeout, a short lock timeout, a 1GB temp_file_limit
+# and a 300-second wall-clock cap on the whole run. temp_file_limit needs a
+# superuser to set it on PostgreSQL 14, so when the read-only role arrives the
+# owner sets it on that role instead. On the box the connection
 # string is parsed into PGHOST, PGPORT, PGUSER, PGPASSWORD and PGDATABASE, so
 # it never sits in the process list, and none of them is printed.
 # Results are for the conversation or the private board only, never the repo,
@@ -60,9 +71,12 @@ pg_size_pretty pg_total_relation_size pg_relation_size pg_database_size current_
 version
 "
 
-SESSION_PREAMBLE="SET statement_timeout = '120s';
+SESSION_PREAMBLE="SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SET statement_timeout = '120s';
 SET lock_timeout = '5s';
 SET idle_in_transaction_session_timeout = '60s';
+SET temp_file_limit = '1GB';
 SET default_transaction_read_only = on;
 BEGIN TRANSACTION READ ONLY;"
 
@@ -91,6 +105,7 @@ my %denied_words = map { $_ => 1 } qw(into insert update delete merge truncate c
 my %denied_relations = map { $_ => 1 } qw(
   pg_authid pg_shadow pg_user_mapping pg_user_mappings pg_largeobject pg_largeobject_metadata
   pg_statistic pg_statistic_ext_data pg_stats pg_stats_ext pg_stats_ext_exprs pg_hba_file_rules pg_file_settings
+  pg_subscription
 );
 my %explain_options = map { $_ => 1 } qw(format costs verbose settings);
 my %explain_formats = map { $_ => 1 } qw(text json yaml xml);
@@ -106,9 +121,7 @@ sub refuse {
 
 refuse('a byte order mark', 0) if $sql =~ /^\xEF\xBB\xBF/;
 refuse('a NUL or control byte', $-[0]) if $sql =~ /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/;
-refuse('a backslash', $-[0]) if $sql =~ /\\/;
 refuse('a comment', $-[0]) if $sql =~ /--|\/\*/;
-refuse('a dollar sign', $-[0]) if $sql =~ /\$/;
 refuse('a backtick', $-[0]) if $sql =~ /`/;
 
 my @tokens;
@@ -120,7 +133,10 @@ while ($i < $n) {
     $i++;
   } elsif ($c eq "'") {
     my $before = substr($sql, 0, $i);
-    refuse('an E string', $i) if $before =~ /(?:^|[^A-Za-z0-9_])[eE]\z/;
+    if ($before =~ /([A-Za-z0-9_]*)[eE]\z/) {
+      my $run = $1;
+      refuse('an E string', $i) if $run eq '' || $run =~ /^[0-9]/;
+    }
     refuse('a U& string', $i) if $before =~ /[uU]&\z/;
     my $j = $i + 1;
     while (1) {
@@ -171,6 +187,10 @@ while ($i < $n) {
     }
   } elsif (ord($c) > 127) {
     refuse('non-ASCII text outside a quoted string', $i);
+  } elsif ($c eq '\\') {
+    refuse('a backslash outside a string', $i);
+  } elsif ($c eq '$') {
+    refuse('a dollar sign outside a string', $i);
   } else {
     push @tokens, { kind => 'punct', text => $c, at => $i };
     $i++;
@@ -250,11 +270,21 @@ for my $s (@statements) {
       next if $call_like_keywords{ $t->{text} } || $type_modifiers{ $t->{text} };
       next if $k >= 1 && ($s->[$k - 1]{kind} eq 'word') && $s->[$k - 1]{text} =~ /^(?:as|with|recursive)$/;
     }
-    next if $allowed_functions{ $t->{text} };
-    my $line = 1 + (substr($sql, 0, $t->{at}) =~ tr/\n//);
-    print "refused: the SQL file calls $t->{text} on line $line, which is not on the function list in scripts/prod-sql.sh. If it only reads, add it to ALLOWED_FUNCTIONS in a reviewed PR with a test.\n";
-    exit 1;
+    refuse_call($t) unless $allowed_functions{ $t->{text} };
   }
+  for my $k (2 .. $#$s) {
+    my $t = $s->[$k];
+    next unless is_name($t) && is_punct($s->[$k - 1], '.');
+    next unless is_punct($s->[$k - 2], ')') || is_punct($s->[$k - 2], ']');
+    refuse_call($t) unless $allowed_functions{ $t->{text} };
+  }
+}
+
+sub refuse_call {
+  my ($t) = @_;
+  my $line = 1 + (substr($sql, 0, $t->{at}) =~ tr/\n//);
+  print "refused: the SQL file calls $t->{text} on line $line, which is not on the function list in scripts/prod-sql.sh. If it only reads, add it to ALLOWED_FUNCTIONS in a reviewed PR with a test.\n";
+  exit 1;
 }
 refuse('no statements', 0) unless $kept;
 PERL
@@ -292,7 +322,8 @@ for my $pair (split /&/, defined $query ? $query : "") {
   my ($k, $v) = split /=/, $pair, 2;
   $ENV{PGSSLMODE} = $decode->($v) if defined $v && $k eq "sslmode";
 }
-$ENV{PGOPTIONS} = "-c default_transaction_read_only=on -c statement_timeout=120000 -c lock_timeout=5000 -c idle_in_transaction_session_timeout=60000";
+$ENV{PGOPTIONS} = "-c default_transaction_read_only=on -c standard_conforming_strings=on -c statement_timeout=120000 -c lock_timeout=5000 -c idle_in_transaction_session_timeout=60000 -c temp_file_limit=1GB";
+$ENV{PGCLIENTENCODING} = "UTF8";
 $ENV{PGAPPNAME} = "prod-sql";
 exec("timeout", "-k", "10s", "300s", "psql", "-X", "-q", "-v", "ON_ERROR_STOP=1", "-f", "-") or do { print STDERR "could not start psql\n"; exit 7 };
 PERL

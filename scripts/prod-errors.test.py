@@ -99,6 +99,8 @@ def sensitive_error():
         f"{ts(13, 55)}: stripe event for cus_abcdefghijklmnop status in_progress",
         f"{ts(14, 10)}: notion sync {{ workspace: 'Ada Lab Space', customer: Ada Lovelace Ltd, deck: Organic Chemistry Week 3 }}",
         f"{ts(14, 20)}: export done title=Organic Chemistry Week 3, status=ok",
+        f"{ts(14, 30)}: sync failed {{ title: 'Ada\\'s Organic Notes', deck: \"Week \\\"3\\\" Organic\", workspace: `It's Ada's Lab` }}",
+        f"{ts(14, 40)}: export of 'Ada\\'s notes.pdf' failed",
     ]
 
 
@@ -169,6 +171,8 @@ class MaskingTest(unittest.TestCase):
             "stripe event for cus_<id> status in_progress",
             "notion sync { workspace: <name>, customer: <name>, deck: <name>}",
             "export done title=<name>, status=ok",
+            "sync failed { title: <name>, deck: <name>, workspace: <name> }",
+            "export of '<file>' failed",
         ):
             with self.subTest(expected=expected):
                 self.assertIn(expected, collapsed)
