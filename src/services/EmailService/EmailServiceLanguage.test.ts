@@ -254,6 +254,42 @@ describe('EmailService renders copy in the recipient language', () => {
         'Du hast dich bei 2anki angemeldet, aber noch keinen Stapel erstellt.'
       );
     });
+
+    it('says the whole account is deleted, naming decks only when there are some', async () => {
+      await serviceFor(null).sendInactivityWarningEmail(
+        'unknown@example.com',
+        'tok-inact5',
+        { deckName: 'Organic Chemistry' }
+      );
+      expect(lastMessage().html).toContain(
+        "If you don't sign in within 14 days, we'll delete your account and everything in it, including your decks on 2anki. Decks you already downloaded to Anki stay in Anki."
+      );
+
+      await serviceFor(null).sendInactivityWarningEmail(
+        'unknown@example.com',
+        'tok-inact6',
+        null
+      );
+      const noDeck = lastMessage().html;
+      expect(noDeck).toContain(
+        "We delete accounts that have been inactive for 6 months. If you don't sign in within 14 days, we'll delete your account. Signing in once keeps it."
+      );
+      expect(noDeck).not.toMatch(/decks on 2anki|downloaded to Anki|files/);
+    });
+
+    it('keeps the German no-deck fine print free of decks and files', async () => {
+      await serviceFor('de').sendInactivityWarningEmail(
+        'de-user@example.com',
+        'tok-inact7',
+        null
+      );
+
+      const html = lastMessage().html;
+      expect(html).toContain(
+        'Wenn du dich nicht innerhalb von 14 Tagen anmeldest, löschen wir dein Konto. Eine Anmeldung genügt, und es bleibt erhalten.'
+      );
+      expect(html).not.toMatch(/Stapel auf 2anki|Dateien/);
+    });
   });
 
   describe('abandoned checkout recovery', () => {

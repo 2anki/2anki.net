@@ -52,7 +52,8 @@ export interface InactivityWarningStrings {
   bodyNoConversion: string;
   passLine: string;
   cta: string;
-  housekeeping: string;
+  housekeepingWithConversion: string;
+  housekeepingNoConversion: string;
   signoff: string;
 }
 

@@ -65,8 +65,10 @@ export const en: EmailStrings = {
     passLine:
       'Only need it for one push? A Day Pass covers a full day of converting and a Week Pass covers a week. Pay once, no subscription.',
     cta: 'Open 2anki',
-    housekeeping:
-      "We clean up accounts that have been inactive for 6 months. If you don't sign in within 14 days, we'll remove your uploaded decks and files. Anything already downloaded to Anki is safe. Signing in once keeps everything.",
+    housekeepingWithConversion:
+      "We delete accounts that have been inactive for 6 months. If you don't sign in within 14 days, we'll delete your account and everything in it, including your decks on 2anki. Decks you already downloaded to Anki stay in Anki. Signing in once keeps your account.",
+    housekeepingNoConversion:
+      "We delete accounts that have been inactive for 6 months. If you don't sign in within 14 days, we'll delete your account. Signing in once keeps it.",
     signoff: 'The 2anki Team',
   },
   abandonedCheckout: {

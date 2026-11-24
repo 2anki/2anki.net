@@ -553,6 +553,9 @@ export class EmailService implements IEmailService {
     const subject = hasConversion
       ? copy.subjectWithConversion
       : copy.subjectNoConversion;
+    const housekeeping = hasConversion
+      ? copy.housekeepingWithConversion
+      : copy.housekeepingNoConversion;
 
     const ctaUrl = `${domain}/r/email?t=${encodeURIComponent(token)}&c=inactivity&to=/upload`;
     const unsubscribeUrl = `${domain}/unsubscribe?uid=${token}`;
@@ -561,7 +564,7 @@ export class EmailService implements IEmailService {
       .replace('{{bodyText}}', () => bodyText)
       .replace('{{passLine}}', copy.passLine)
       .replace('{{cta}}', copy.cta)
-      .replace('{{housekeeping}}', copy.housekeeping)
+      .replace('{{housekeeping}}', housekeeping)
       .replace('{{signoff}}', copy.signoff)
       .replace('{{unsubscribe}}', strings.commercialShared.unsubscribe)
       .replace('{{ctaUrl}}', ctaUrl)

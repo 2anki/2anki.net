@@ -68,8 +68,10 @@ export const de: DeepPartial<EmailStrings> = {
     passLine:
       'Brauchst du es nur für einen Endspurt? Ein Tagespass deckt einen ganzen Tag Konvertieren ab, ein Wochenpass eine ganze Woche. Einmal zahlen, kein Abo.',
     cta: '2anki öffnen',
-    housekeeping:
-      'Wir räumen Konten auf, die 6 Monate inaktiv waren. Wenn du dich nicht innerhalb von 14 Tagen anmeldest, entfernen wir deine hochgeladenen Stapel und Dateien. Alles, was bereits in Anki heruntergeladen wurde, bleibt sicher. Eine Anmeldung genügt, und alles bleibt erhalten.',
+    housekeepingWithConversion:
+      'Wir löschen Konten, die 6 Monate inaktiv waren. Wenn du dich nicht innerhalb von 14 Tagen anmeldest, löschen wir dein Konto mit allem, was darin ist, auch deine Stapel auf 2anki. Stapel, die du schon in Anki heruntergeladen hast, bleiben in Anki. Eine Anmeldung genügt, und dein Konto bleibt erhalten.',
+    housekeepingNoConversion:
+      'Wir löschen Konten, die 6 Monate inaktiv waren. Wenn du dich nicht innerhalb von 14 Tagen anmeldest, löschen wir dein Konto. Eine Anmeldung genügt, und es bleibt erhalten.',
     signoff: 'Das 2anki-Team',
   },
   abandonedCheckout: {
