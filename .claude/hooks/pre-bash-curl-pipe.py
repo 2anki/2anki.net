@@ -4,7 +4,12 @@ PreToolUse → Bash: refuse `curl ... | sh|bash`-style pipes.
 
 The repo's safety.py already blocks pushes to main and bare `git push`;
 this complements it with a deterministic check for arbitrary-code-execution
-download patterns. Bypass: CLAUDE_SKIP_SAFETY=1 <command>
+download patterns.
+
+CLAUDE_SKIP_SAFETY is honored only when set in the environment the session
+was launched with (by Alexander, in his own shell). An inline prefix on the
+command is ignored: this hook reads os.environ before the shell that would
+apply the assignment ever runs (.claude/docs/autonomous-shipping.md).
 """
 import json
 import os
@@ -58,8 +63,7 @@ def main():
         deny(
             "Refusing curl|wget piped into a shell/interpreter — that pattern\n"
             "is arbitrary-code-execution against an unverified network response.\n"
-            "Download to a file, inspect (and ideally checksum), then run.\n"
-            "Bypass with CLAUDE_SKIP_SAFETY=1 if you've verified the source."
+            "Download to a file, inspect (and ideally checksum), then run the file."
         )
 
     allow()

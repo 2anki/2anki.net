@@ -13,8 +13,12 @@ would make every push wait.
 Skips pushes to main/master (safety.py blocks those anyway). Skips a workspace
 when nothing in it changed since the last push.
 
-Bypass: CLAUDE_SKIP_TYPECHECK=1 git push ...   (env var, or inline in the
-        CLAUDE_SKIP_SAFETY=1     git push ...   command string — both honored)
+WIP skip: CLAUDE_SKIP_TYPECHECK=1 git push ...   (env var, or inline in the
+          command string — this check only, both honored).
+CLAUDE_SKIP_SAFETY is honored only when set in the environment the session
+was launched with (by Alexander, in his own shell). An inline
+`CLAUDE_SKIP_SAFETY=1` prefix is ignored, as in every other hook
+(.claude/docs/autonomous-shipping.md).
 """
 import json
 import os
@@ -45,7 +49,7 @@ def deny(reason):
 
 GIT_PUSH = re.compile(r"\bgit\s+push\b")
 PROTECTED_BRANCH = re.compile(r"\b(main|master)\b")
-SKIP_IN_COMMAND = re.compile(r"\bCLAUDE_SKIP_(TYPECHECK|SAFETY)=1\b")
+SKIP_IN_COMMAND = re.compile(r"\bCLAUDE_SKIP_TYPECHECK=1\b")
 NOT_INSTALLED = re.compile(r"command not found|ENOENT|not found|No such file", re.IGNORECASE)
 
 NOT_INSTALLED_RESULT = "__not_installed__"

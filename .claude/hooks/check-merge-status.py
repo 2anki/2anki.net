@@ -465,7 +465,7 @@ def gate(cmd):
             "job must have actually RUN, dependency changes need a SUCCESS test run, "
             "the review agent must have passed the head SHA, and a "
             "feat:/fix:/perf:/refactor: PR touching source must say who else it reaches.\n"
-            "Human bypass: merge from the GitHub UI, or relaunch with CLAUDE_SKIP_SAFETY=1 set at launch."
+            "Fix the branch and run /ship again; only Alexander overrides this gate, from the GitHub UI."
         )
 
     allow()

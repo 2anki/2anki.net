@@ -538,6 +538,17 @@ class MainWiringTest(unittest.TestCase):
         _, output = self.run_main(pr)
         self.assertIn("review-agent pass marker", output["hookSpecificOutput"]["permissionDecisionReason"])
 
+    def test_the_refusal_does_not_tell_the_agent_to_bypass(self):
+        pr = {**self.pr(REACH_TABLE), "comments": []}
+        _, output = self.run_main(pr)
+        refusal = output["hookSpecificOutput"]["permissionDecisionReason"]
+        self.assertNotIn("CLAUDE_SKIP_SAFETY", refusal)
+        self.assertNotIn("relaunch", refusal.lower())
+
+    def test_an_inline_skip_safety_prefix_does_not_bypass(self):
+        output = self.hook_output("CLAUDE_SKIP_SAFETY=1 " + MERGE, lambda args, label: json.dumps(self.pr(REACH_TABLE)))
+        self.assertEqual(output["hookSpecificOutput"]["permissionDecision"], "deny")
+
     def test_still_exempts_dependabot_from_the_marker(self):
         pr = {**self.pr(""), "title": "build(deps): bump x", "commits": commits("build(deps): bump x"),
               "files": [{"path": "package.json"}], "author": {"login": "app/dependabot"}, "comments": [],
