@@ -86,9 +86,20 @@ class TestPassThrough(unittest.TestCase):
         self.assertEqual(result["result"], "allow")
         self.assertEqual(result["checks"], [])
 
-    def test_inline_skip_safety_in_command_allows(self):
+    def test_inline_skip_safety_prefix_is_ignored(self):
         result = run_hook(
             "CLAUDE_SKIP_SAFETY=1 git push -u origin feat/x",
+            ts_files=["src/server.ts"],
+            check_results={"server tsc --noEmit": "server.ts:1 error TS2322"},
+        )
+        self.assertEqual(result["result"], "deny")
+        self.assertEqual(result["checks"], ["server tsc --noEmit"])
+        self.assertNotIn("CLAUDE_SKIP_SAFETY", result["reason"])
+
+    def test_launch_time_skip_safety_env_still_allows(self):
+        result = run_hook(
+            "git push -u origin feat/x",
+            env={"CLAUDE_SKIP_SAFETY": "1"},
             ts_files=["src/server.ts"],
         )
         self.assertEqual(result["result"], "allow")

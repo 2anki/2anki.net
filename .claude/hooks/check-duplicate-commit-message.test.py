@@ -125,7 +125,7 @@ class TestDuplicateMessage(unittest.TestCase):
         self.assertEqual(result["result"], "deny")
         self.assertIn("abc1234", result["reason"])
         self.assertIn("43 minutes ago", result["reason"])
-        self.assertIn("CLAUDE_SKIP_COMMIT_DUP_CHECK=1", result["reason"])
+        self.assertNotIn("CLAUDE_SKIP_COMMIT_DUP_CHECK", result["reason"])
 
     def test_duplicate_deny_message_format(self):
         log_output = "a1b2c3d 2 hours ago fix: handle null pointer\n"
@@ -135,7 +135,7 @@ class TestDuplicateMessage(unittest.TestCase):
         )
         self.assertIn("Warning: this commit message was used in the last 24h", result["reason"])
         self.assertIn("Previous:", result["reason"])
-        self.assertIn("Re-run with CLAUDE_SKIP_COMMIT_DUP_CHECK=1", result["reason"])
+        self.assertIn("Say what this commit changes that the earlier one did not", result["reason"])
 
     def test_same_subject_different_body_denies(self):
         log_output = "abc1234 1 hour ago feat: update user profile\n"

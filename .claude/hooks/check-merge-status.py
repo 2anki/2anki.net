@@ -15,6 +15,11 @@ Denies the merge when ANY of these hold (see .claude/docs/autonomous-shipping.md
   5. No review-agent pass marker for the head SHA
      (`<!-- ship-review: pass sha=<headRefOid> -->`, full 40-char SHA, posted by
      /ship). Dependabot PRs are exempt — the /batch dependabot decision matrix is their review.
+     For every other PR the review ledger (`ship_ledger.head_violation`) must
+     also back a pass for the head SHA: required scopes, no unanswered block,
+     verbatim patch-id carry-over, the exact-revert rule. The merge command is
+     held to one exact form, so this is the point a marker posted by a script,
+     an alias, the web UI or a swapped file cannot route around.
   6. The PR came from a spec PR but the body has no `## Deviations from spec`
      heading — an implement PR must list where the code departs from the spec
      (issue #4427 item 4). "Came from a spec" needs BOTH the `<type>/spec-<slug>`
@@ -69,7 +74,14 @@ import unicodedata
 HOOKS_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HOOKS_DIR)
 
-import merge_command  # noqa: E402
+HELPER_IMPORT_ERROR = None
+try:
+    import merge_command  # noqa: E402
+    import ship_ledger  # noqa: E402
+except Exception as helper_error:
+    HELPER_IMPORT_ERROR = helper_error
+
+MAY_BE_A_MERGE = re.compile(r"merge", re.IGNORECASE)
 
 
 def allow():
@@ -231,6 +243,20 @@ def review_marker_violation(pr_data):
     return (
         "no review-agent pass marker (`<!-- ship-review: pass sha=<head> -->`) on this PR "
         "— merge through /ship, which runs the review agent and posts the marker"
+    )
+
+
+def ledger_violation(number, pr_data, cwd):
+    head = as_text(pr_data.get("headRefOid"))
+    github_paths = [as_text(f.get("path")) for f in entries(pr_data.get("files")) if as_text(f.get("path"))]
+    reason = ship_ledger.head_violation(number, head, cwd, [as_text(pr_data.get("title"))], github_paths)
+    if reason is None:
+        return None
+    return (
+        f"the review ledger does not back a pass for head {head[:7]}: {reason}. A marker on the PR is "
+        "not enough on its own: run the /ship step 2 reviewers on this head in this checkout and record "
+        "each verdict with `python3 .claude/hooks/ship_ledger.py record <n> <full sha> <pass|block> "
+        "<scope>`"
     )
 
 
@@ -402,6 +428,16 @@ def reach_violation(pr_data):
     )
 
 
+def refuse_without_helpers(cmd):
+    if not isinstance(cmd, str) or MAY_BE_A_MERGE.search(cmd):
+        deny(
+            f"Refusing this command: the merge gate could not load its helpers "
+            f"({type(HELPER_IMPORT_ERROR).__name__}), so it cannot check a merge, and a gate that cannot "
+            "check does not let one through. Fix .claude/hooks/merge_command.py or ship_ledger.py on a branch."
+        )
+    allow()
+
+
 def main():
     if os.environ.get("CLAUDE_SKIP_SAFETY"):
         allow()
@@ -416,13 +452,17 @@ def main():
 
     cmd = data.get("tool_input", {}).get("command", "")
 
+    if HELPER_IMPORT_ERROR is not None:
+        refuse_without_helpers(cmd)
+
     if not is_gh_pr_merge(cmd):
         allow()
 
-    merge_command.deny_on_error(gate, cmd, deny)
+    cwd = data.get("cwd") if isinstance(data.get("cwd"), str) else os.getcwd()
+    merge_command.deny_on_error(lambda command: gate(command, cwd), cmd, deny)
 
 
-def gate(cmd):
+def gate(cmd, cwd):
     form_violation = merge_command.merge_form_violation(cmd)
     if form_violation:
         deny(form_violation)
@@ -447,6 +487,9 @@ def gate(cmd):
         marker_violation = review_marker_violation(pr_data)
         if marker_violation:
             violations.append(marker_violation)
+        backing_violation = ledger_violation(number, pr_data, cwd)
+        if backing_violation:
+            violations.append(backing_violation)
 
     spec_violation = deviations_violation(pr_data)
     if spec_violation:
@@ -465,7 +508,7 @@ def gate(cmd):
             "job must have actually RUN, dependency changes need a SUCCESS test run, "
             "the review agent must have passed the head SHA, and a "
             "feat:/fix:/perf:/refactor: PR touching source must say who else it reaches.\n"
-            "Human bypass: merge from the GitHub UI, or relaunch with CLAUDE_SKIP_SAFETY=1 set at launch."
+            "Fix the branch and run /ship again; only Alexander overrides this gate, from the GitHub UI."
         )
 
     allow()

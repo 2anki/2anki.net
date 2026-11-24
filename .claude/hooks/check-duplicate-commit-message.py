@@ -121,7 +121,7 @@ def main():
     deny(
         f"Warning: this commit message was used in the last 24h.\n"
         f'  Previous: {sha} "{truncated}"{time_part}\n'
-        f"Re-run with CLAUDE_SKIP_COMMIT_DUP_CHECK=1 to proceed."
+        f"Say what this commit changes that the earlier one did not, and commit with that message."
     )
 
 

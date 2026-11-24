@@ -8,7 +8,9 @@ aren't punished for being concise):
   * Body must exist — at least one non-empty, non-trailer line below
     the subject. Length and prose quality are the human's call.
 
-Bypass for one-off cases: CLAUDE_SKIP_COMMIT_CHECK=1 git commit ...
+CLAUDE_SKIP_COMMIT_CHECK is read only from the environment the session was
+launched with; an inline `CLAUDE_SKIP_COMMIT_CHECK=1 git commit ...` prefix
+does nothing, and the refusal does not suggest it.
 """
 import json
 import os
@@ -142,8 +144,7 @@ def main():
         deny(
             "Commit message quality check failed:\n  - "
             + "\n  - ".join(errors)
-            + "\n\nRewrite the message and retry. "
-            "Set CLAUDE_SKIP_COMMIT_CHECK=1 in the command env to bypass."
+            + "\n\nRewrite the message and retry."
         )
 
     allow()

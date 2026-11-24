@@ -3,6 +3,10 @@ import importlib.util
 import io
 import json
 import os
+import shutil
+import subprocess
+import sys
+import tempfile
 import time
 import unittest
 from unittest import mock
@@ -419,6 +423,7 @@ class MainWiringTest(unittest.TestCase):
         stdin = io.StringIO(json.dumps({"tool_name": "Bash", "tool_input": {"command": command}}))
         stdout = io.StringIO()
         with mock.patch.object(check_merge_status, "run_gh", fake_run_gh), \
+                mock.patch.object(check_merge_status.ship_ledger, "head_violation", return_value=None), \
                 mock.patch("subprocess.run", side_effect=fake_subprocess_run), \
                 mock.patch.dict(os.environ, {}, clear=False), \
                 mock.patch("sys.stdin", stdin), \
@@ -446,6 +451,7 @@ class MainWiringTest(unittest.TestCase):
         stdin = io.StringIO(json.dumps({"tool_name": "Bash", "tool_input": {"command": command}}))
         stdout = io.StringIO()
         with mock.patch.object(check_merge_status, "run_gh", run_gh), \
+                mock.patch.object(check_merge_status.ship_ledger, "head_violation", return_value=None), \
                 mock.patch("subprocess.run", side_effect=AssertionError("no REST call expected")), \
                 mock.patch.dict(os.environ, {}, clear=False), \
                 mock.patch("sys.stdin", stdin), \
@@ -538,6 +544,17 @@ class MainWiringTest(unittest.TestCase):
         _, output = self.run_main(pr)
         self.assertIn("review-agent pass marker", output["hookSpecificOutput"]["permissionDecisionReason"])
 
+    def test_the_refusal_does_not_tell_the_agent_to_bypass(self):
+        pr = {**self.pr(REACH_TABLE), "comments": []}
+        _, output = self.run_main(pr)
+        refusal = output["hookSpecificOutput"]["permissionDecisionReason"]
+        self.assertNotIn("CLAUDE_SKIP_SAFETY", refusal)
+        self.assertNotIn("relaunch", refusal.lower())
+
+    def test_an_inline_skip_safety_prefix_does_not_bypass(self):
+        output = self.hook_output("CLAUDE_SKIP_SAFETY=1 " + MERGE, lambda args, label: json.dumps(self.pr(REACH_TABLE)))
+        self.assertEqual(output["hookSpecificOutput"]["permissionDecision"], "deny")
+
     def test_still_exempts_dependabot_from_the_marker(self):
         pr = {**self.pr(""), "title": "build(deps): bump x", "commits": commits("build(deps): bump x"),
               "files": [{"path": "package.json"}], "author": {"login": "app/dependabot"}, "comments": [],
@@ -609,6 +626,118 @@ class MainWiringTest(unittest.TestCase):
         self.assertIn("PR description template", reason)
         self.assertIn("gh pr edit 1 ", reason)
         self.assertIn("ship-body-1.txt", reason)
+
+
+_ledger_spec = importlib.util.spec_from_file_location(
+    "ship_review_ledger_tests",
+    os.path.join(HOOKS_DIR, "check-ship-review-ledger.test.py"),
+)
+ledger_tests = importlib.util.module_from_spec(_ledger_spec)
+_ledger_spec.loader.exec_module(ledger_tests)
+
+
+class MergeTimeLedgerTest(unittest.TestCase):
+    def setUp(self):
+        self.repo = ledger_tests.Repo()
+        self.addCleanup(self.repo.cleanup)
+        self.head = self.repo.commit("change.txt", "first\n", "chore: first")
+
+    def merge(self, author="alemayhu", comments=None, title="chore: first", files=("change.txt",)):
+        marker = [{"body": f"<!-- ship-review: pass sha={self.head} -->"}]
+        pr = {
+            "number": 1,
+            "url": "https://github.com/2anki/2anki.net/pull/1",
+            "title": title,
+            "headRefOid": self.head,
+            "headRefName": "chore/first",
+            "body": REACH_TABLE,
+            "author": {"login": author},
+            "files": [{"path": path} for path in files],
+            "commits": [],
+            "statusCheckRollup": [],
+            "reviews": [],
+            "comments": marker if comments is None else comments,
+        }
+        payload = {"tool_name": "Bash", "tool_input": {"command": MERGE}, "cwd": self.repo.path}
+        stdout = io.StringIO()
+        with mock.patch.object(check_merge_status, "run_gh", lambda args, label: json.dumps(pr)), \
+                mock.patch.object(check_merge_status.merge_command, "fetch_rest_files", return_value=None), \
+                mock.patch.dict(os.environ, ledger_tests.ISOLATED_GIT_ENV, clear=False), \
+                mock.patch("sys.stdin", io.StringIO(json.dumps(payload))), \
+                mock.patch("sys.stdout", stdout):
+            os.environ.pop("CLAUDE_SKIP_SAFETY", None)
+            with self.assertRaises(SystemExit):
+                check_merge_status.main()
+        return json.loads(stdout.getvalue())
+
+    def test_a_valid_marker_with_an_empty_ledger_is_refused(self):
+        output = self.merge()
+        refusal = output["hookSpecificOutput"]["permissionDecisionReason"]
+        self.assertIn("review ledger does not back a pass", refusal)
+        self.assertNotIn("no review-agent pass marker", refusal)
+
+    def test_a_backed_ledger_lets_the_merge_through(self):
+        self.repo.passes(1, self.head, "engineering")
+        self.assertEqual(self.merge(), {"continue": True})
+
+    def test_a_block_recorded_after_the_marker_refuses_the_merge(self):
+        self.repo.passes(1, self.head, "engineering")
+        self.repo.record(1, self.head, "block", "security")
+        refusal = self.merge()["hookSpecificOutput"]["permissionDecisionReason"]
+        self.assertIn("`security` block", refusal)
+
+    def test_a_backed_ledger_does_not_replace_the_marker(self):
+        self.repo.passes(1, self.head, "engineering")
+        refusal = self.merge(comments=[])["hookSpecificOutput"]["permissionDecisionReason"]
+        self.assertIn("no review-agent pass marker", refusal)
+
+    def test_dependabot_still_needs_neither_marker_nor_ledger(self):
+        self.assertEqual(self.merge(author="app/dependabot", comments=[]), {"continue": True})
+
+    def test_a_fix_title_over_chore_commits_needs_a_reach_pass(self):
+        self.repo.branch_from_main("titled")
+        self.head = self.repo.commit("src/lib/cards.ts", "export const x = 1;\n", "chore: tidy")
+        self.repo.passes(1, self.head, "engineering")
+        files = ("src/lib/cards.ts",)
+        self.assertEqual(self.merge(files=files), {"continue": True})
+        refusal = self.merge(title="fix: keep the cards", files=files)["hookSpecificOutput"]["permissionDecisionReason"]
+        self.assertIn("no `reach` pass", refusal)
+        self.repo.passes(1, self.head, "reach")
+        self.assertEqual(self.merge(title="fix: keep the cards", files=files), {"continue": True})
+
+
+    def test_a_migration_github_lists_but_the_local_diff_lacks_widens_the_scopes(self):
+        self.repo.passes(1, self.head, "engineering")
+        self.assertEqual(self.merge(), {"continue": True})
+        files = ("change.txt", "migrations/20260101_add.js")
+        refusal = self.merge(files=files)["hookSpecificOutput"]["permissionDecisionReason"]
+        self.assertIn("no `security` pass", refusal)
+        self.repo.passes(1, self.head, "security")
+        refusal = self.merge(files=files)["hookSpecificOutput"]["permissionDecisionReason"]
+        self.assertIn("no `migration` pass", refusal)
+        self.repo.passes(1, self.head, "migration")
+        self.assertEqual(self.merge(files=files), {"continue": True})
+
+
+class HelperImportFailureTest(unittest.TestCase):
+    def run_alone(self, command):
+        lonely = tempfile.mkdtemp(prefix="merge-status-alone-")
+        self.addCleanup(shutil.rmtree, lonely, True)
+        hook = os.path.join(lonely, "check-merge-status.py")
+        shutil.copy(os.path.join(HOOKS_DIR, "check-merge-status.py"), hook)
+        env = {key: value for key, value in os.environ.items() if key != "CLAUDE_SKIP_SAFETY"}
+        payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": command}})
+        result = subprocess.run([sys.executable, hook], input=payload, env=env, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return json.loads(result.stdout)
+
+    def test_a_failed_helper_import_refuses_the_merge(self):
+        output = self.run_alone(MERGE)
+        self.assertEqual(output["hookSpecificOutput"]["permissionDecision"], "deny")
+        self.assertIn("could not load its helpers (ModuleNotFoundError)", output["hookSpecificOutput"]["permissionDecisionReason"])
+
+    def test_a_failed_helper_import_lets_other_commands_through(self):
+        self.assertEqual(self.run_alone("ls -la"), {"continue": True})
 
 
 if __name__ == "__main__":

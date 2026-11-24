@@ -3,8 +3,10 @@
 PreToolUse → Write/Edit: regex-only scan for hardcoded secrets and obvious
 unsafe patterns in the content about to be written.
 
-No LLM calls. No network. Deterministic. Bypass: CLAUDE_SKIP_SAFETY=1 set in the environment at launch (a Write has
-no command string to prefix).
+No LLM calls. No network. Deterministic. CLAUDE_SKIP_SAFETY is honored only
+when set in the environment the session was launched with (by Alexander, in
+his own shell; a Write has no command string to prefix). The refusals do not
+suggest it.
 """
 import json
 import os
@@ -131,8 +133,7 @@ def main():
             f"Refusing to write to {path}: this is Kanel-generated code under "
             "src/data_layer/public/.\n"
             "Hand-edits are silently overwritten on the next `pnpm kanel`.\n"
-            "Change the migration and re-run `pnpm kanel` to regenerate these types instead.\n"
-            "If you genuinely must touch it, relaunch with CLAUDE_SKIP_SAFETY=1 set."
+            "Change the migration and re-run `pnpm kanel` to regenerate these types instead."
         )
 
     if content is None or not content.strip():
@@ -154,7 +155,7 @@ def main():
             f"Refusing to write to {path}: deterministic scan flagged the following:\n"
             f"{bullets}\n\n"
             "If a finding is a false positive (e.g. example fixture, mock token), move it under\n"
-            "a *.test.ts / fixtures/ path, or relaunch with CLAUDE_SKIP_SAFETY=1 set."
+            "a *.test.ts / fixtures/ path."
         )
 
     allow()
