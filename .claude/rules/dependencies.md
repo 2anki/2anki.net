@@ -11,7 +11,7 @@
 | Do not `pnpm add` against the root for a web-only package. | `pnpm --filter 2anki-web add <pkg>` so it lands in the right workspace. | — |
 | Do not introduce a new HTTP client. | Use `instrumentedAxios` from `services/observability/`. The SSRF guard, allowlist, and DNS pinning live there. | CWE-918 |
 | Do not import `node-fetch` v2 in new code. | Native `fetch` (Node 22) or `instrumentedAxios`. The `@types/node-fetch` dep is legacy. | — |
-| Do not pin Node version below `.nvmrc`. | Match the value in `.nvmrc` and `.github/workflows/server.yml`; bump both together. | — |
+| Do not pin Node version below `.nvmrc`. | Match `.nvmrc`, `engines.node` in `package.json` and `node-version` in `.github/actions/setup/action.yml`; bump all three together. | — |
 | Do not commit a dep that requires a build step beyond `onlyBuiltDependencies`. | Allowlisted: `better-sqlite3`. Anything else triggers a pnpm warning and a security review. | CWE-829 |
 | Do not skip the lockfile in CI. | `--frozen-lockfile` is mandatory on CI; mismatch must fail the build, not be papered over. | CWE-829 |
 | Do not import a Notion / Stripe / Anthropic / SendGrid SDK without using the project's wrapper. | NotionAPIWrapper, StripeController helpers, the Claude lib, EmailService — wrappers exist so the SSRF guard, retries, and observability instrument every call. | — |

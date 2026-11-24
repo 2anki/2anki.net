@@ -75,10 +75,10 @@ When given a spec or issue:
 5. **Write the failing test first.**
 6. **Implement.** Smallest viable change. No drive-by refactors.
 7. **Answer: how will we measure this worked?** Name the specific log line, metric, or query that will confirm the behavior in production. Add instrumentation alongside the implementation — not as a follow-up ticket.
-8. **Changelog entry.** If a real user would notice this change, add a JSON file to `web/src/pages/WhatsNewPage/changelog/` in the same PR — one entry per file, named `YYYY-MM-DD-slug.json`. User voice, no implementation details — see CLAUDE.md > Changelog. If the PR is internal-only, say so in the PR body so reviewers don't ask. **Never write a `fix:` changelog entry unless this PR contains a source change that implements the fix** — a PR of tests + a "X now works" changelog with no code change is a false artifact. If you investigated and could not land the fix, say so plainly and omit the entry; don't ship a characterization test that asserts the broken output as expected.
+8. **Changelog entry.** If a real user would notice this change, add a JSON file to `web/src/pages/WhatsNewPage/changelog/` in the same PR — one entry per file, named `YYYY-MM-DD-slug.json`. User voice, no implementation details — see `.claude/docs/changelog.md`. If the PR is internal-only, say so in the PR body so reviewers don't ask. **Never write a `fix:` changelog entry unless this PR contains a source change that implements the fix** — a PR of tests + a "X now works" changelog with no code change is a false artifact. If you investigated and could not land the fix, say so plainly and omit the entry; don't ship a characterization test that asserts the broken output as expected.
 9. **Run the local checks** — everything green before pushing: the test files your diff touches (`pnpm test <path>`, `pnpm --filter 2anki-web test:run <path relative to web/>`), `pnpm typecheck`, `pnpm arch`, `pnpm --filter 2anki-web typecheck`, `pnpm --filter 2anki-web lint`, and `pnpm format:check`. The full suites (`pnpm test` and `/check`, which runs the whole web vitest suite) are for a diff that touches the shared list in `.claude/rules/testing.md` (`DeckParser`, `BlockHandler`, `Note`, induction helpers, exporters). CI runs both full suites on every push and is the gate: on 2026-10-15 five parallel build agents each ran both suites locally and the ship agents ran them again after rebasing (no ship step asks for that), which cooked the laptop and found nothing CI did not (#4758).
 10. **Say who else this reaches.** A `feat:`/`fix:`/`perf:`/`refactor:` PR carries a `## Who else this reaches` section (the merge hook requires it when `src/` or `web/src/` changes; the `/ship` reach reviewer reads it on every such PR, so a prerender script, `web/public/` or migration change lists its populations too): one row per population the changed code paths are reachable from, a reachable one with the test that exercises it, an unreachable one with a one-line reason. Walk the axes that apply: signed-out / free / free over the limit / paying / pass holder / Auto Sync; flag on / off / each experiment arm; Notion-connected vs uploaded file; web vs MCP vs iOS API callers. Any "unchanged", "byte-for-byte" or "no behaviour change" claim, there or anywhere in the body, names the test that proves it; a claim with no test is a guess, so drop it or write the test. `check-merge-status.py` denies the merge when the section is missing or empty, and the `/ship` reach reviewer traces callers on its own and blocks on a population you missed, a reachable one without a test, an unreachable one without a reason, or a reason its trace contradicts. Why: #4589 called its control arm "byte-for-byte unchanged" and dropped the held-back-cards notice for signed-in free users for 19 days (#4789); #4730 broke prerendered landing pages (#4901). Neither surface was the one the PR was about.
-11. **Open the PR.** Title uses a conventional commit prefix (`fix:`, `feat:`, `perf:`, `chore:`, `refactor:`, `test:`, `docs:`) followed by an imperative summary.
+11. **Open the PR.** Title uses a conventional commit prefix (`fix:`, `feat:`, `perf:`, `chore:`, `refactor:`, `test:`, `docs:`) followed by an imperative summary. Read `.claude/docs/shell-hooks.md` before any Bash command that uses `gh`: write the body to a file and pass it with `--body-file`.
 
 **Ship it, then end with the PR link.** A finished PR is not done until `/ship <n>` has merged it and verified the deploy. Hard-rail PRs (`.claude/hooks/hard_rails.py`) ship the same way; `/ship` runs the extra rail verification. Print the full `https://github.com/2anki/server/pull/<n>` URL and the deploy verdict as the last lines of your reply.
 
@@ -125,10 +125,10 @@ Specific log, metric, or query that confirms this worked in production.
 ## Browser check
 - [ ] Golden path on localhost:3000
 - [ ] No console errors at 375px
-Notes:
+Notes: (or replace both boxes with the out-clause line below the template)
 
 ## Changelog
-The exact title added to the new file under `web/src/pages/WhatsNewPage/changelog/`, or "No entry — internal-only, no user-visible change."
+The exact title added to the new file under `web/src/pages/WhatsNewPage/changelog/`, or the no-entry line below the template.
 
 ## Risks
 What could break. Rollback plan if relevant.
@@ -136,6 +136,12 @@ What could break. Rollback plan if relevant.
 ## Goal alignment
 Which of simpler / faster / more beautiful does this serve (the goal in CLAUDE.md)? For user-facing changes, name the metric that would show it moved, where it's read, and when ("none — internal" is valid; silence is not). If it serves none of the three, justify.
 ```
+
+The merge hooks read three things in the body. These lines sit outside the template so an unedited paste satisfies neither hook:
+
+- **No changelog entry:** a line containing `no changelog entry` (any case), as `check-changelog-on-merge.py` matches it: `No changelog entry — <reason>`. "No entry" alone is refused.
+- **Browser out-clause:** in place of the two boxes, `Browser check: not applicable — <reason>`, with a space and then the em dash (U+2014), as `check-browser-attestation.py` matches it. A full stop after "applicable" (`Browser check: not applicable.`) is refused, and so is a hyphen in place of the dash.
+- **Length:** at most 400 words of prose (`check-pr-body-length.py`). Table rows (lines that start and end with `|`) and fenced code blocks are not counted; headings and HTML comments are. This template has many sections, so keep each to a line or two and put narrative in the commit body.
 
 ## Reviewing PRs
 
@@ -150,7 +156,7 @@ Security, testing, code-quality, and dependency rules live in `.claude/rules/*.m
 - **Express 5 `ErrorHandler`** has a non-standard signature `(res, req, err)`, wired through a wrapper in `server.ts`. Never mount it directly as middleware. Async errors propagate natively — no `express-async-errors`, no try/catch wrappers.
 - **React 19** — `forwardRef` is unnecessary; pass `ref` as a regular prop. Router is in library mode (`<BrowserRouter>`/`<Routes>`), not the data router — no `createBrowserRouter`, loaders, or actions.
 - **Web env vars** use `REACT_APP_*` (CRA compatibility shim in `vite.config.ts`), not `VITE_*` or bare `process.env.*`.
-- **Server tests use Jest, web tests use Vitest.** Wrong API → confusing runtime errors. Check the nearest config.
+- **Server and web tests both use Vitest, with separate configs** (root `vitest.config.mts` for `src/`, `web/vite.config.ts` for `web/src/`). There is no Jest: `jest.*` calls fail at runtime, use `vi.*`. Check the nearest config.
 - **create_deck (Python bridge)** — `CardGenerator.ts` spawns `create_deck/create_deck.py`, which reads `deck_info.json` and writes the `.apkg`. Changing the JSON shape requires coordinated TS + Python edits. Python discovery is venv → platform lookup → `PYTHON`/`ANKI_PYTHON` env override; do not hardcode paths.
 
 ## When stuck

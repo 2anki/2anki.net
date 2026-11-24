@@ -54,7 +54,7 @@ When proposing a spec, name which leading indicator it's intended to move and by
 Tech stack is in `CLAUDE.md`. Two scoping facts that change effort estimates:
 
 - Cross-language changes (TypeScript ↔ Python `create_deck/`) and changes spanning server + web are inherently higher effort.
-- Server uses Jest, web uses Vitest, Python uses pytest. Specs adding features should flag which test layer applies.
+- Server and web use Vitest, Python uses pytest. Specs adding features should flag which test layer applies.
 
 ## Workflows
 

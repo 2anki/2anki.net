@@ -29,7 +29,7 @@ If the triage produces a downstream action (a GH issue to file, a feature signal
 
 ## Workflow
 
-1. **Read the message.** The `.eml` lives in `~/Downloads` on this Mac (the WSL path `/mnt/c/Users/alexa/Downloads/` is the fallback per `CLAUDE.md` Gotchas) or wherever Alexander pasted it.
+1. **Read the message.** The `.eml` lives in `~/Downloads` on this Mac (per `.claude/docs/support-email.md`; the WSL path `/mnt/c/Users/alexa/Downloads/` is the fallback) or wherever Alexander pasted it.
 2. **Classify** into exactly one category.
 3. **Summarize the signal** in one or two sentences. What the user actually wants, not what they literally typed.
 4. **Recommend the next action.** One of: file a GH issue, route to PM as feedback, draft a how-to reply, flag to Alexander, delete.

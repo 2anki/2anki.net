@@ -30,7 +30,7 @@ For PRs that touch `web/src/` but have no runtime-visible effect (pure type chan
 Browser check: not applicable — <reason>
 ```
 
-The line must start with `Browser check: not applicable —` (exact prefix, including the em-dash). The reason is free-form. Examples:
+The body must contain `Browser check: not applicable —` exactly: a space, then the em dash (U+2014). A full stop after "applicable" (`Browser check: not applicable.`) is refused, and so is a hyphen or an en dash in place of the em dash. The reason is free-form. Examples:
 
 - `Browser check: not applicable — type-only change, no rendered output`
 - `Browser check: not applicable — deletes an unreachable code path`
