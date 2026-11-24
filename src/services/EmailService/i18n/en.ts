@@ -99,7 +99,7 @@ export const en: EmailStrings = {
       'To get the second version, start Pro before your pass ends. Cancel any time.',
     cta: 'Start Pro',
     otherPasses:
-      'Prefer another pass? The pricing page has Day and Week passes too. Pay once, nothing recurring.',
+      'Prefer another pass? The pricing page has the Day Pass, Week Pass, and Semester Pass. Pay once, nothing recurring.',
     replyLine:
       'A conversion not coming out right? Reply to this email. Alexander reads every one.',
     signoff: 'The 2anki Team',

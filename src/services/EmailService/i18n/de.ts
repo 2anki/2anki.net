@@ -104,7 +104,7 @@ export const de: DeepPartial<EmailStrings> = {
       'Um die zweite Variante zu bekommen, starte Pro, bevor dein Pass endet. Jederzeit kündbar.',
     cta: 'Pro starten',
     otherPasses:
-      'Lieber ein anderer Pass? Auf der Preisseite gibt es auch Tages- und Wochenpässe. Einmal zahlen, nichts Wiederkehrendes.',
+      'Lieber wieder ein Pass? Auf der Preisseite gibt es den Day Pass, den Week Pass und den Semester Pass. Einmal zahlen, nichts Wiederkehrendes.',
     replyLine:
       'Eine Umwandlung sieht nicht richtig aus? Antworte auf diese E-Mail. Alexander liest jede einzelne.',
     signoff: 'Das 2anki-Team',
