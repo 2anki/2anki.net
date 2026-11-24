@@ -7,6 +7,7 @@ export const DEBT_KINDS = [
   'debugger',
   'explicit-any',
   'ts-ignore',
+  'disable-directive',
 ] as const;
 export type DebtKind = (typeof DEBT_KINDS)[number];
 export type DebtCounts = Record<DebtKind, Record<string, number>>;
@@ -43,6 +44,18 @@ export interface Stale {
   allowed: number;
 }
 
+const RATCHETED_RULES = [
+  'no-console',
+  'no-debugger',
+  'no-explicit-any',
+  'ban-ts-comment',
+];
+
+const DISABLE_DIRECTIVE =
+  /(?:\/\/|\/\*)\s*(?:eslint|oxlint)-disable(?:-next-line|-line)?(?![\w-])([^\n]*)/;
+
+const LINTED_EXTENSION = /\.[cm]?[jt]sx?$/;
+
 const KIND_BY_RULE: ReadonlyMap<string, DebtKind> = new Map([
   ['eslint(no-console)', 'console-log'],
   ['eslint(no-debugger)', 'debugger'],
@@ -56,6 +69,7 @@ const WHAT: Record<DebtKind, string> = {
   debugger: 'debugger statement',
   'explicit-any': 'any without a same-line justification',
   'ts-ignore': '@ts-ignore without a same-line justification',
+  'disable-directive': `eslint-disable or oxlint-disable comment covering a ratcheted rule (${RATCHETED_RULES.join(', ')}, or every rule)`,
 };
 
 const FIX: Record<DebtKind, string> = {
@@ -64,24 +78,22 @@ const FIX: Record<DebtKind, string> = {
   debugger: 'Delete the debugger statement',
   'explicit-any': `Use a real type, or unknown and narrow it. If any is unavoidable, end the line with a comment of at least ${MIN_JUSTIFICATION_WORDS} words saying why`,
   'ts-ignore': `Fix the type, or use @ts-expect-error. If @ts-ignore stays, follow it on the same line with at least ${MIN_JUSTIFICATION_WORDS} words saying why`,
+  'disable-directive': `Remove the comment and fix the code. For an unavoidable any, drop the directive and justify the any on the same line with at least ${MIN_JUSTIFICATION_WORDS} words`,
 };
 
+function perKind<T>(make: () => T): Record<DebtKind, T> {
+  return Object.fromEntries(DEBT_KINDS.map((kind) => [kind, make()])) as Record<
+    DebtKind,
+    T
+  >;
+}
+
 export function emptyCounts(): DebtCounts {
-  return {
-    'console-log': {},
-    debugger: {},
-    'explicit-any': {},
-    'ts-ignore': {},
-  };
+  return perKind<Record<string, number>>(() => ({}));
 }
 
 export function emptyLines(): DebtLines {
-  return {
-    'console-log': {},
-    debugger: {},
-    'explicit-any': {},
-    'ts-ignore': {},
-  };
+  return perKind<Record<string, number[]>>(() => ({}));
 }
 
 function countWords(text: string): number {
@@ -199,14 +211,94 @@ export function shrinkBaseline(
 }
 
 export function totals(counts: DebtCounts): Record<DebtKind, number> {
-  const sum = (byFile: Record<string, number>) =>
-    Object.values(byFile).reduce((total, n) => total + n, 0);
-  return {
-    'console-log': sum(counts['console-log']),
-    debugger: sum(counts.debugger),
-    'explicit-any': sum(counts['explicit-any']),
-    'ts-ignore': sum(counts['ts-ignore']),
-  };
+  const result = perKind(() => 0);
+  for (const kind of DEBT_KINDS) {
+    result[kind] = Object.values(counts[kind]).reduce(
+      (total, n) => total + n,
+      0
+    );
+  }
+  return result;
+}
+
+export function disablesRatchetedRule(lineText: string): boolean {
+  const match = DISABLE_DIRECTIVE.exec(lineText);
+  if (match === null) {
+    return false;
+  }
+  const ruleList = match[1]
+    .replace(/\*\/.*$/, '')
+    .split(/\s--/)[0]
+    .trim();
+  if (ruleList === '') {
+    return true;
+  }
+  return ruleList
+    .split(/[\s,]+/)
+    .filter((rule) => rule !== '')
+    .some((rule) =>
+      RATCHETED_RULES.some(
+        (ratcheted) => rule === ratcheted || rule.endsWith(`/${ratcheted}`)
+      )
+    );
+}
+
+export function collectDisableDirectives(
+  files: Array<{ path: string; text: string }>
+): DebtFindings {
+  const counts = emptyCounts();
+  const lines = emptyLines();
+  for (const file of files) {
+    file.text.split('\n').forEach((lineText, index) => {
+      if (!disablesRatchetedRule(lineText)) {
+        return;
+      }
+      const byFile = counts['disable-directive'];
+      byFile[file.path] = (byFile[file.path] ?? 0) + 1;
+      lines['disable-directive'][file.path] = [
+        ...(lines['disable-directive'][file.path] ?? []),
+        index + 1,
+      ];
+    });
+  }
+  return { counts, lines };
+}
+
+export function mergeFindings(...all: DebtFindings[]): DebtFindings {
+  const counts = emptyCounts();
+  const lines = emptyLines();
+  for (const findings of all) {
+    for (const kind of DEBT_KINDS) {
+      Object.assign(counts[kind], findings.counts[kind]);
+      Object.assign(lines[kind], findings.lines[kind]);
+    }
+  }
+  return { counts, lines };
+}
+
+function matchesIgnorePattern(file: string, pattern: string): boolean {
+  const directory = /^\*\*\/(.+)\/\*\*$/.exec(pattern);
+  if (directory !== null) {
+    return `/${file}`.includes(`/${directory[1]}/`);
+  }
+  const basename = /^\*\*\/([^*/]+)$/.exec(pattern);
+  if (basename !== null) {
+    return file === basename[1] || file.endsWith(`/${basename[1]}`);
+  }
+  throw new Error(
+    `cannot evaluate ignore pattern "${pattern}"; teach matchesIgnorePattern in scripts/debt-ratchet/ratchet.ts its shape`
+  );
+}
+
+export function isLintedPath(file: string, ignorePatterns: string[]): boolean {
+  const ignored = ignorePatterns.some((pattern) =>
+    matchesIgnorePattern(file, pattern)
+  );
+  return !ignored && LINTED_EXTENSION.test(file);
+}
+
+export function formatSummary(newFindings: number): string {
+  return `debt: ${newFindings} new finding(s) above ${BASELINE_PATH}. That file lists debt that existed on 2026-11-24 and may only shrink; never add an entry or raise a count to make this pass. If you moved or renamed a file, rename its baseline entry to the new path; that is the only allowed edit (.claude/rules/code-quality.md)`;
 }
 
 export function formatGrowth(growth: Growth): string {

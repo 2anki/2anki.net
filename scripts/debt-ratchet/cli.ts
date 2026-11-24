@@ -5,9 +5,13 @@ import {
   BASELINE_PATH,
   DEBT_CONFIG_PATH,
   collectDebt,
+  collectDisableDirectives,
   compareToBaseline,
   formatGrowth,
   formatStale,
+  formatSummary,
+  isLintedPath,
+  mergeFindings,
   parseBaseline,
   parseOxlintReport,
   serializeBaseline,
@@ -18,38 +22,79 @@ import {
 const LINTED_PATHS = ['src', 'web/src'];
 const MIN_FILES = 2500;
 
-function lintForDebt() {
-  const oxlint = process.env.OXLINT ?? 'oxlint';
-  const result = spawnSync(
-    oxlint,
-    ['-c', DEBT_CONFIG_PATH, '--format', 'json', ...LINTED_PATHS],
-    {
-      encoding: 'utf8',
-      maxBuffer: 256 * 1024 * 1024,
-    }
-  );
+function run(command: string, args: string[]): string {
+  const result = spawnSync(command, args, {
+    encoding: 'utf8',
+    maxBuffer: 256 * 1024 * 1024,
+  });
   if (result.error) {
     throw result.error;
   }
-  const report = parseOxlintReport(result.stdout);
-  if (report.number_of_files < MIN_FILES) {
+  return result.stdout;
+}
+
+function requireFloor(what: string, count: number) {
+  if (count < MIN_FILES) {
     throw new Error(
-      `oxlint checked ${report.number_of_files} files, below the floor of ${MIN_FILES}. Check ignorePatterns in ${DEBT_CONFIG_PATH}`
+      `${what} covered ${count} files, below the floor of ${MIN_FILES}. Check ignorePatterns in ${DEBT_CONFIG_PATH}`
     );
   }
+}
+
+function lintForDebt() {
+  const report = parseOxlintReport(
+    run(process.env.OXLINT ?? 'oxlint', [
+      '-c',
+      DEBT_CONFIG_PATH,
+      '--format',
+      'json',
+      ...LINTED_PATHS,
+    ])
+  );
+  requireFloor('oxlint', report.number_of_files);
   return report;
+}
+
+function lintedFiles(): string[] {
+  const config: { ignorePatterns: string[] } = JSON.parse(
+    readFileSync(DEBT_CONFIG_PATH, 'utf8')
+  );
+  const files = run('git', [
+    'ls-files',
+    '-z',
+    '--cached',
+    '--others',
+    '--exclude-standard',
+    '--',
+    ...LINTED_PATHS,
+  ])
+    .split('\0')
+    .filter((file) => file !== '' && isLintedPath(file, config.ignorePatterns));
+  requireFloor('the disable-comment scan', files.length);
+  return files;
 }
 
 function main(): number {
   const report = lintForDebt();
-  const fileLines = new Map<string, string[]>();
-  const readLine = (file: string, line: number) => {
-    if (!fileLines.has(file)) {
-      fileLines.set(file, readFileSync(file, 'utf8').split('\n'));
+  const fileText = new Map<string, string>();
+  const read = (file: string) => {
+    const cached = fileText.get(file);
+    if (cached !== undefined) {
+      return cached;
     }
-    return fileLines.get(file)?.[line - 1];
+    const text = readFileSync(file, 'utf8');
+    fileText.set(file, text);
+    return text;
   };
-  const findings = collectDebt(report.diagnostics, readLine);
+  const findings = mergeFindings(
+    collectDebt(
+      report.diagnostics,
+      (file, line) => read(file).split('\n')[line - 1]
+    ),
+    collectDisableDirectives(
+      lintedFiles().map((path) => ({ path, text: read(path) }))
+    )
+  );
   const baseline = parseBaseline(readFileSync(BASELINE_PATH, 'utf8'));
 
   if (process.argv.includes('--shrink')) {
@@ -71,13 +116,11 @@ function main(): number {
     console.error(formatGrowth(entry));
   }
   if (grown.length > 0) {
-    console.error(
-      `debt: ${grown.length} new finding(s) above ${BASELINE_PATH}. That file lists debt that existed on 2026-11-24 and may only shrink; never add an entry or raise a count to make this pass (.claude/rules/code-quality.md)`
-    );
+    console.error(formatSummary(grown.length));
     return 1;
   }
   console.info(
-    `debt: ok, ${report.number_of_files} files, no new console.log, debugger, bare any or bare @ts-ignore`
+    `debt: ok, ${report.number_of_files} files, no new console.log, debugger, bare any, bare @ts-ignore or disable comment for them`
   );
   return 0;
 }

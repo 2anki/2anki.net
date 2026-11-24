@@ -7,12 +7,16 @@ import {
   BASELINE_PATH,
   DEBT_CONFIG_PATH,
   collectDebt,
+  collectDisableDirectives,
   compareToBaseline,
+  disablesRatchetedRule,
   emptyCounts,
   emptyLines,
   formatGrowth,
   formatStale,
+  formatSummary,
   isJustified,
+  isLintedPath,
   parseBaseline,
   parseOxlintReport,
   shrinkBaseline,
@@ -28,6 +32,7 @@ const DEBT_CEILINGS = {
   debugger: 0,
   'explicit-any': 242,
   'ts-ignore': 5,
+  'disable-directive': 12,
 };
 
 function counts(partial: Partial<DebtCounts>): DebtCounts {
@@ -194,6 +199,120 @@ describe('messages', () => {
       })
     ).toContain('pnpm debt:shrink');
   });
+
+  it('allows renaming a baseline entry when its file moved, and nothing else', () => {
+    const message = formatSummary(1);
+
+    expect(message).toContain('never add an entry or raise a count');
+    expect(message).toContain(
+      'If you moved or renamed a file, rename its baseline entry to the new path; that is the only allowed edit'
+    );
+  });
+});
+
+describe('a moved file', () => {
+  const movedFindings = {
+    counts: counts({ 'console-log': { 'src/new/a.ts': 2 } }),
+    lines: { ...emptyLines(), 'console-log': { 'src/new/a.ts': [1, 2] } },
+  };
+
+  it('fails under its new path until the baseline entry is renamed', () => {
+    const result = compareToBaseline(
+      counts({ 'console-log': { 'src/old/a.ts': 2 } }),
+      movedFindings
+    );
+
+    expect(result.grown.map((entry) => entry.file)).toEqual(['src/new/a.ts']);
+    expect(result.stale.map((entry) => entry.file)).toEqual(['src/old/a.ts']);
+  });
+
+  it('passes once the entry is renamed, with the same total', () => {
+    const result = compareToBaseline(
+      counts({ 'console-log': { 'src/new/a.ts': 2 } }),
+      movedFindings
+    );
+
+    expect(result).toEqual({ grown: [], stale: [] });
+  });
+});
+
+describe('disablesRatchetedRule', () => {
+  it.each([
+    ['// eslint-disable-next-line @typescript-eslint/no-explicit-any', true],
+    ['  return res; // eslint-disable-line no-console', true],
+    ['/* eslint-disable no-debugger */', true],
+    ['/* oxlint-disable typescript/ban-ts-comment */', true],
+    ['// oxlint-disable-next-line no-console, no-alert', true],
+    ['// eslint-disable-next-line no-explicit-any -- legacy mock shape', true],
+    ['/* eslint-disable */', true],
+    ['// eslint-disable-next-line', true],
+    ['// eslint-disable-next-line react-hooks/exhaustive-deps', false],
+    ['// eslint-disable-line @typescript-eslint/no-use-before-define', false],
+    ['/* eslint-enable no-console */', false],
+    ["const rule = 'no-console';", false],
+  ])('%j is %s', (lineText, expected) => {
+    expect(disablesRatchetedRule(lineText)).toBe(expected);
+  });
+});
+
+describe('collectDisableDirectives', () => {
+  it('counts directives for ratcheted rules per file with their lines', () => {
+    const findings = collectDisableDirectives([
+      {
+        path: 'src/a.test.ts',
+        text: [
+          '// eslint-disable-next-line @typescript-eslint/no-explicit-any',
+          'const x = y as any;',
+          '// eslint-disable-next-line react-hooks/exhaustive-deps',
+        ].join('\n'),
+      },
+      { path: 'src/b.ts', text: 'const ok = 1;' },
+    ]);
+
+    expect(findings.counts['disable-directive']).toEqual({
+      'src/a.test.ts': 1,
+    });
+    expect(findings.lines['disable-directive']).toEqual({
+      'src/a.test.ts': [1],
+    });
+  });
+
+  it('tells the author to fix the code or justify the any instead', () => {
+    const message = formatGrowth({
+      kind: 'disable-directive',
+      file: 'src/a.ts',
+      count: 1,
+      allowed: 0,
+      lines: [4],
+    });
+
+    expect(message).toContain('src/a.ts:4');
+    expect(message).toContain('justify the any on the same line');
+  });
+});
+
+describe('isLintedPath', () => {
+  const patterns = [
+    '**/node_modules/**',
+    '**/data_layer/public/**',
+    '**/react-app-env.d.ts',
+  ];
+
+  it.each([
+    ['src/lib/a.ts', true],
+    ['web/src/App.tsx', true],
+    ['src/data_layer/public/Users.ts', false],
+    ['web/src/react-app-env.d.ts', false],
+    ['src/node_modules/x/index.js', false],
+    ['src/lib/a.json', false],
+    ['src/lib/a.md', false],
+  ])('%s is linted: %s', (file, expected) => {
+    expect(isLintedPath(file, patterns)).toBe(expected);
+  });
+
+  it('refuses an ignore pattern shape it cannot evaluate', () => {
+    expect(() => isLintedPath('src/a.ts', ['src/*.ts'])).toThrow(/src\/\*\.ts/);
+  });
 });
 
 describe('parsers', () => {
@@ -258,6 +377,7 @@ describe('the debt oxlint config', () => {
       debugger: 1,
       'explicit-any': 1,
       'ts-ignore': 1,
+      'disable-directive': 0,
     });
   });
 

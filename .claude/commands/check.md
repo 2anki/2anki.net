@@ -1,5 +1,5 @@
 ---
-description: Parallel server tsc + server arch + web typecheck + web vitest + web lint
+description: Parallel server tsc + server arch + debt ratchet + web typecheck + web vitest + web lint
 allowed-tools: Bash
 ---
 
@@ -9,11 +9,13 @@ Run all checks in parallel via a single Bash call:
 bash scripts/check.sh
 ```
 
-It runs `pnpm typecheck`, `pnpm arch`, and the web `typecheck`, `test:run` and `lint` in parallel, waits on each, prints `check: FAILED, pnpm <leg>` for every leg that fails, and exits non-zero if any did. Trust the exit code: a bare `wait` used to return 0 whatever the legs did (#5070).
+It runs `pnpm typecheck`, `pnpm arch`, `pnpm debt`, and the web `typecheck`, `test:run` and `lint` in parallel, waits on each, prints `check: FAILED, pnpm <leg>` for every leg that fails, and exits non-zero if any did. Trust the exit code: a bare `wait` used to return 0 whatever the legs did (#5070).
 
-The server leg is `typecheck` (`tsc -p . --noEmit`), never `build`. `build` is `tsc -p .` with no `outDir`, so it emits `.js` beside every `.ts`; TS module resolution then prefers the stale sibling and the cruise loses about 90% of its edges. `arch` runs `git clean -fX src` first to protect against that, but a `build` running *concurrently* re-emits during the cruise and blinds the `error`-severity rules this command exists to enforce. Same program, same errors, no emit.
+The server leg is `typecheck` (`tsc -p . --noEmit`, then `tsc -p scripts/debt-ratchet` for the ratchet, which the root config excludes), never `build`. `build` is `tsc -p .` with no `outDir`, so it emits `.js` beside every `.ts`; TS module resolution then prefers the stale sibling and the cruise loses about 90% of its edges. `arch` runs `git clean -fX src` first to protect against that, but a `build` running *concurrently* re-emits during the cruise and blinds the `error`-severity rules this command exists to enforce. Same program, same errors, no emit.
 
-`arch` is the dependency-cruiser architecture-fitness sensor (`.dependency-cruiser.cjs`). It exits non-zero on `error`-severity rules (a value-import of the knex query builder outside `src/data_layer/`, and `src/server.ts` reaching the conversion internals), and `scripts/arch.sh` also fails a run that cruised 0 modules, printed no module count or found no TypeScript compiler it supports, and stops before the cruise when `git clean` fails. Circular-dependency, data-layer-leaf, and layer-skip (route/controller reaching `data_layer` directly) violations ride as `warn` (reported, non-blocking) — they document existing debt that should shrink, not grow.
+`arch` is the dependency-cruiser architecture-fitness sensor (`.dependency-cruiser.cjs`). It exits non-zero on `error`-severity rules (a value-import of the knex query builder outside `src/data_layer/`, `src/server.ts` reaching the conversion internals, and a layer skip: a route or controller importing `src/data_layer/` directly), and `scripts/arch.sh` also fails a run that cruised 0 modules, printed no module count or found no TypeScript compiler it supports, and stops before the cruise when `git clean` fails. The layer-skip rule is an error over the committed baseline `.dependency-cruiser-known-violations.json`: the edges listed there are ignored and any other one fails. Circular-dependency and data-layer-leaf violations ride as `warn` (reported, non-blocking) — they document existing debt that should shrink, not grow.
+
+`debt` (`scripts/debt-ratchet/cli.ts`, also run by `pnpm lint`) lints `src/` and `web/src/` with `.oxlintrc.debt.json` and fails when a file gains a `console.log`, a `debugger`, an `any` or `@ts-ignore` without a same-line justification, or an `eslint-disable`/`oxlint-disable` comment for those rules, compared with `.debt-ratchet-baseline.json`.
 
 If any fails, print one line per failure with the file:line and the error message — nothing else. If all pass, say "all clean" and stop.
 

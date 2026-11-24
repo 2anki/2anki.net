@@ -45,7 +45,7 @@ if [ -z "$modules" ] || [ "$modules" -lt "$MIN_MODULES" ] || [ "${dependencies:-
 fi
 
 if grep -q 'error no-layer-skip-to-data-layer' <<<"$output"; then
-  echo "arch: FAILED, a route or controller imports src/data_layer directly (each 'error no-layer-skip-to-data-layer' line above names the file and the repository). Call a use case or service instead. Do not add the edge to $KNOWN_VIOLATIONS: that file only lists the edges that existed on 2026-11-24 and may only shrink" >&2
+  echo "arch: FAILED, a route or controller imports src/data_layer directly (each 'error no-layer-skip-to-data-layer' line above names the file and the repository). Call a use case or service instead. Do not add the edge to $KNOWN_VIOLATIONS: that file only lists the edges that existed on 2026-11-24 and may only shrink. If you moved or renamed a file, rename its baseline entry to the new path; that is the only allowed edit" >&2
 fi
 
 if [ "${1:-}" = "--shrink" ]; then

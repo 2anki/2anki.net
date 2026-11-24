@@ -59,5 +59,14 @@
     "src/controllers/Upload/helpers/handleDropbox.ts": 1,
     "src/routes/WebhookRouter.ts": 3,
     "web/src/components/errors/helpers/useDismissed.ts": 1
+  },
+  "disable-directive": {
+    "src/lib/claude/ClaudeService.ts": 1,
+    "src/lib/storage/jobs/helpers/performConversion.test.ts": 1,
+    "src/services/NotionService/BlockHandler/helpers/buildHeadingTagMap.test.ts": 2,
+    "src/services/NotionService/helpers/collapseDataSourcesToDatabases.test.ts": 5,
+    "src/services/ops/PerformanceMetricsService.test.ts": 1,
+    "web/src/lib/chunkReload.ts": 1,
+    "web/src/pages/UploadPage/components/UploadForm/hooks/useGooglePicker.ts": 1
   }
 }
