@@ -47,7 +47,7 @@ function seededKeys(): Set<string> {
 
 describe('feature flag seed migrations', () => {
   it('finds the flags the code reads', () => {
-    expect(flagKeysReadInCode().has('limit_wall_pro_price')).toBe(true);
+    expect(flagKeysReadInCode().has('thin_deck_ai_offer')).toBe(true);
   });
 
   it('has a seed migration for every flag key the code reads', () => {

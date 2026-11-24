@@ -63,16 +63,6 @@ function asLoggedIn() {
   } as ReturnType<typeof useUserLocals>);
 }
 
-function asLoggedInWithProPrice() {
-  mockedUseUserLocals.mockReturnValue({
-    data: {
-      user: { id: 1, email: 'test@example.com' },
-      features: { limitWallProPrice: true },
-    },
-    isLoading: false,
-  } as ReturnType<typeof useUserLocals>);
-}
-
 function asAnonymous() {
   mockedUseUserLocals.mockReturnValue({
     data: undefined,
@@ -109,6 +99,10 @@ function renderPage(initialEntries: string[] = ['/limit']) {
     </HelmetProvider>
   );
 }
+
+beforeEach(() => {
+  mockGetCheckoutPrices.mockResolvedValue(null);
+});
 
 describe('LimitPage', () => {
   beforeEach(() => {
@@ -270,8 +264,7 @@ describe('LimitPage', () => {
     expect(screen.queryByText('Get Auto Sync')).toBeNull();
   });
 
-  it('shows the Pro monthly price from the checkout prices when the flag is on', async () => {
-    asLoggedInWithProPrice();
+  it('shows the Pro monthly price from the checkout prices to a signed-in account', async () => {
     mockGetCheckoutPrices.mockResolvedValue({
       monthly: { cents: 799 },
       annual: { cents: 6400 },
@@ -284,14 +277,14 @@ describe('LimitPage', () => {
     ).toBeTruthy();
   });
 
-  it('never asks for the Pro price when the flag is off', () => {
-    renderPage();
+  it('never asks for the Pro price for a signed-out visitor', () => {
+    asAnonymous();
+    renderPage(['/limit?kind=anonymous']);
     expect(mockGetCheckoutPrices).not.toHaveBeenCalled();
     expect(screen.queryByText(/Pro is .*\/month/)).toBeNull();
   });
 
   it('leaves the Pro card without a price when the price cannot be read', async () => {
-    asLoggedInWithProPrice();
     mockGetCheckoutPrices.mockResolvedValue(null);
     renderPage();
     await screen.findByText('Upgrade to Pro');
@@ -816,14 +809,8 @@ describe('LimitPage — pass-first wall', () => {
     expect(screen.queryByText('This file makes 184 cards')).toBeNull();
   });
 
-  it('still shows the Pro price when both the pass-first and Pro price flags are on', async () => {
-    mockedUseUserLocals.mockReturnValue({
-      data: {
-        user: { id: 1, email: 'test@example.com' },
-        features: { limitWallPassFirst: true, limitWallProPrice: true },
-      },
-      isLoading: false,
-    } as ReturnType<typeof useUserLocals>);
+  it('still shows the Pro price on the pass-first wall for a signed-in account', async () => {
+    asLoggedInPassFirst();
     mockGetCheckoutPrices.mockResolvedValue({
       monthly: { cents: 799 },
       annual: { cents: 6400 },

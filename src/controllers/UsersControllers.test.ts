@@ -3156,7 +3156,7 @@ describe('UsersController cookie options — 30-day persistent session', () => {
 });
 
 describe('UsersController.getLocals', () => {
-  it('tells a tab loaded before they were unconditional that the Day Pass card and the AI preview and choice are on', async () => {
+  it('tells a tab loaded before they were unconditional that the Day Pass card, the AI preview and choice and the wall Pro price are on', async () => {
     vi.mocked(getFeatureFlag).mockResolvedValue(false);
     const userService = {
       getSubscriptionLinkedEmail: vi.fn().mockResolvedValue(null),
@@ -3182,41 +3182,13 @@ describe('UsersController.getLocals', () => {
       anonymousDayPassCard: true,
       anonymousAiPreview: true,
       anonymousAiChoice: true,
+      limitWallProPrice: true,
     });
     const flagsRead = vi.mocked(getFeatureFlag).mock.calls.map(([key]) => key);
     expect(flagsRead).not.toContain('anonymous_day_pass_card');
     expect(flagsRead).not.toContain('anonymous_ai_preview');
     expect(flagsRead).not.toContain('anonymous_ai_choice');
-  });
-
-  it('reads the limit wall Pro price flag, off by default', async () => {
-    vi.mocked(getFeatureFlag).mockImplementation(async (key: string) =>
-      key === 'limit_wall_pro_price' ? true : false
-    );
-    const userService = {
-      getSubscriptionLinkedEmail: vi.fn().mockResolvedValue(null),
-    } as unknown as UsersService;
-    const authService = {
-      getUserFrom: vi.fn().mockResolvedValue(null),
-    } as unknown as AuthenticationService;
-    const controller = new UsersController(
-      userService,
-      authService,
-      {} as ReturnType<typeof import('../data_layer').getDatabase>
-    );
-    const req = { cookies: {} } as unknown as express.Request;
-    const res = {
-      locals: {},
-      json: vi.fn(),
-    } as unknown as express.Response & { json: Mock };
-
-    await controller.getLocals(req, res);
-
-    const { features } = res.json.mock.calls[0][0];
-    expect(features.limitWallProPrice).toBe(true);
-    expect(features.thinDeckAiOffer).toBe(false);
-    expect(getFeatureFlag).toHaveBeenCalledWith('limit_wall_pro_price', false);
-    vi.mocked(getFeatureFlag).mockReset().mockResolvedValue(false);
+    expect(flagsRead).not.toContain('limit_wall_pro_price');
   });
 
   it('reads the pass-first limit wall flag, off when unread', async () => {
@@ -3244,7 +3216,6 @@ describe('UsersController.getLocals', () => {
 
     const { features } = res.json.mock.calls[0][0];
     expect(features.limitWallPassFirst).toBe(true);
-    expect(features.limitWallProPrice).toBe(false);
     expect(getFeatureFlag).toHaveBeenCalledWith('limit_wall_pass_first', false);
     vi.mocked(getFeatureFlag).mockReset().mockResolvedValue(false);
   });

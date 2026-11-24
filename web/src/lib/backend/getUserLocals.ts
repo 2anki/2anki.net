@@ -32,7 +32,6 @@ interface GetUserLocalsResponse {
   features?: {
     kiUI: boolean;
     ops?: boolean;
-    limitWallProPrice?: boolean;
     limitWallPassFirst?: boolean;
     thinDeckAiOffer?: boolean;
   };

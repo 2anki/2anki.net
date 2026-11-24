@@ -12,7 +12,10 @@ import { useUserLocals } from '../../lib/hooks/useUserLocals';
 
 vi.mock('../../lib/analytics/track', () => ({ track: vi.fn() }));
 vi.mock('../../lib/backend/get2ankiApi', () => ({
-  get2ankiApi: vi.fn(() => ({ startPassCheckout: vi.fn() })),
+  get2ankiApi: vi.fn(() => ({
+    startPassCheckout: vi.fn(),
+    getCheckoutPrices: vi.fn().mockResolvedValue(null),
+  })),
 }));
 vi.mock('../../lib/hooks/useUserLocals', () => ({ useUserLocals: vi.fn() }));
 vi.mock('../../lib/backend/startUnlimitedUpgrade', () => ({
