@@ -148,7 +148,7 @@ The pre-cutover smoke check (`scripts/prod-smoke.ts`) prints to the deploy run l
 
 ## 6b. Rail verification after deploy (only when step 1 hit)
 
-The log reads below have sanctioned scripts available now ("Read-only checks" in `.claude/docs/prod-ops.md`): `scripts/prod-deploy-check.sh` with the deploy run's `startedAt` gives crashes, 5xx and the status mix on upload, claim, checkout, webhook and sign-in routes; `scripts/prod-errors.sh` gives the wider error read. The post-deploy database read moves to `scripts/prod-sql.sh` once the read-only database role exists ("Read-only database role" in the same file); until then the migration check below is unchanged.
+The reads below have sanctioned scripts ("Read-only checks" in `.claude/docs/prod-ops.md`): `scripts/prod-deploy-check.sh` with the deploy run's `startedAt` gives crashes, 5xx and the status mix on upload, claim, checkout, webhook and sign-in routes; `scripts/prod-errors.sh` gives the wider error read; `scripts/prod-sql.sh <file.sql>` runs a database read as the read-only role ("Read-only database role" in the same file). The migration check below is unchanged.
 
 - Migration: read-only prod psql (`PGOPTIONS="-c default_transaction_read_only=on"`) confirms the `knex_migrations` row and the new schema; pm2 logs show no query errors since the deploy.
 - Stripe or webhooks: Stripe MCP shows webhook deliveries since the deploy succeeding (no new 4xx/5xx); pm2 logs show no Stripe errors; a checkout session can still be created if checkout changed.

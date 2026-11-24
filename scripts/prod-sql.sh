@@ -3,12 +3,11 @@
 # opens one ssh call and sends the SQL over stdin:
 #   scripts/prod-sql.sh query.sql
 #
-# It runs only through the read-only database role: the connection string must
-# be in the box's app env file as READONLY_DATABASE_URL, and without it the
-# script refuses before connecting. There is no fallback to the application's
-# role. The role's own privileges are the guard ("Read-only database role" in
-# .claude/docs/prod-ops.md says what it must be); until the owner creates it,
-# production reads are not available through this script. Before psql starts
+# It connects as the dedicated read-only database role, whose connection string
+# is in the box's app env file as READONLY_DATABASE_URL; if that variable is
+# missing the script refuses before connecting. There is no fallback to the
+# application's role. The role's own privileges are the guard ("Read-only
+# database role" in .claude/docs/prod-ops.md describes it). Before psql starts
 # it also refuses a READONLY_DATABASE_URL with no host or no user, or with the
 # same user as DATABASE_URL (that line is read only to compare the user). Right
 # after BEGIN, before the caller's SQL, the session checks its own role and
@@ -368,7 +367,7 @@ while (my $line = <$fh>) {
 }
 close $fh;
 my $url = $found{READONLY_DATABASE_URL};
-$fail->("refused: the read-only database role has not been set up yet (READONLY_DATABASE_URL is not in the app env file on the box). See \"Read-only database role\" in .claude/docs/prod-ops.md.") unless defined $url && length $url;
+$fail->("refused: READONLY_DATABASE_URL is not in the app env file on the box, so there is no read-only role to connect as. See \"Read-only database role\" in .claude/docs/prod-ops.md.") unless defined $url && length $url;
 my $url_pattern = qr{^postgres(?:ql)?://(?:([^:@/]*)(?::([^@/]*))?@)?([^:/?]*)(?::(\d+))?(?:/([^?]*))?(?:\?(.*))?\z};
 my $decode = sub { my $s = shift; $s =~ s/%([0-9A-Fa-f]{2})/chr(hex($1))/ge; return $s };
 my ($user, $password, $host, $port, $database, $query) = $url =~ $url_pattern;

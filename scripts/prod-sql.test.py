@@ -170,7 +170,7 @@ class RoleTest(Case):
 
         self.assertEqual(run.result.returncode, 6)
         self.assertEqual(run.result.stdout, "")
-        self.assertIn("read-only database role has not been set up yet", run.result.stderr)
+        self.assertIn("READONLY_DATABASE_URL is not in the app env file on the box", run.result.stderr)
         self.assertIn('"Read-only database role" in .claude/docs/prod-ops.md', run.result.stderr)
         self.assertIsNone(run.recorded("psql-args"))
         self.assertIsNone(run.recorded("timeout-args"))
