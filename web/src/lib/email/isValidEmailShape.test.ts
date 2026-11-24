@@ -6,6 +6,7 @@ describe('isValidEmailShape', () => {
     'learner@example.com',
     '  Learner@Example.COM ',
     'first.last+tag@sub.example.co.uk',
+    'lærer@münchen.de',
   ])('accepts %s', (value) => {
     expect(isValidEmailShape(value)).toBe(true);
   });
@@ -20,7 +21,9 @@ describe('isValidEmailShape', () => {
     'Name <name@example.com>',
     'a@example.com,b@example.com',
     `${'a'.repeat(250)}@example.com`,
-  ])('refuses %s', (value) => {
+    `learner@example.com${String.fromCodePoint(0x0)}`,
+    `learner${String.fromCodePoint(0x200b)}@example.com`,
+  ])('refuses %j', (value) => {
     expect(isValidEmailShape(value)).toBe(false);
   });
 });

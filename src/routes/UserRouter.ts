@@ -151,7 +151,7 @@ const UserRouter = () => {
    * /api/users/magic-link:
    *   post:
    *     summary: Request a magic login link
-   *     description: Sends a magic link email for passwordless login or password reset. Always returns 200 to prevent email enumeration.
+   *     description: Sends a magic link email for passwordless login or password reset. Returns 200 for every well-formed address, known or not, to prevent email enumeration; an address that fails the registration address check gets 400 with code invalid_email.
    *     tags: [Authentication]
    *     requestBody:
    *       required: true
@@ -175,6 +175,12 @@ const UserRouter = () => {
    *           application/json:
    *             schema:
    *               $ref: '#/components/schemas/Success'
+   *       400:
+   *         description: Email missing, not an address (code invalid_email), or purpose invalid
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
    *       429:
    *         description: Too many requests
    *         content:

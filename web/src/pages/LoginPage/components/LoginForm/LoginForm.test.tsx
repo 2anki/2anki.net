@@ -228,6 +228,71 @@ describe('LoginForm', () => {
     expect(screen.queryByText('Check your email')).not.toBeInTheDocument();
   });
 
+  it.each(['4791234567', 'learner@gmail', 'a@example.com,b@example.com'])(
+    'asks for a full address and sends nothing for %j',
+    async (typed) => {
+      renderLoginForm();
+      fireEvent.change(screen.getByRole('textbox', { name: 'Email' }), {
+        target: { value: typed },
+      });
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Email me a sign-in link' })
+      );
+
+      expect(
+        await screen.findByText(
+          'Enter a full email address, like name@example.com.'
+        )
+      ).toBeInTheDocument();
+      expect(mockRequestMagicLink).not.toHaveBeenCalled();
+      expect(screen.queryByText('Check your email')).not.toBeInTheDocument();
+    }
+  );
+
+  it('clears the address refusal when the email is edited', async () => {
+    renderLoginForm();
+    const email = screen.getByRole('textbox', { name: 'Email' });
+    fireEvent.change(email, { target: { value: 'learner@gmail' } });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Email me a sign-in link' })
+    );
+    await screen.findByText(
+      'Enter a full email address, like name@example.com.'
+    );
+
+    fireEvent.change(email, { target: { value: 'learner@gmail.com' } });
+
+    expect(
+      screen.queryByText('Enter a full email address, like name@example.com.')
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows the server refusal of an address inline', async () => {
+    mockRequestMagicLink.mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: () =>
+        Promise.resolve({
+          code: 'invalid_email',
+          message: 'Enter a full email address, like name@example.com.',
+        }),
+    });
+    renderLoginForm();
+    fireEvent.change(screen.getByRole('textbox', { name: 'Email' }), {
+      target: { value: 'test@example.com' },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Email me a sign-in link' })
+    );
+
+    expect(
+      await screen.findByText(
+        'Enter a full email address, like name@example.com.'
+      )
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Check your email')).not.toBeInTheDocument();
+  });
+
   it('says the link could not be sent from the password step too', async () => {
     mockRequestMagicLink.mockResolvedValue({ ok: false, status: 500 });
     renderLoginForm();

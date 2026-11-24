@@ -386,7 +386,7 @@ describe('UsersService.requestMagicLink', () => {
     const storedPassword = createUserAndSeedFromTombstone.mock.calls[0][1];
     expect(storedPassword).toMatch(/^\$2[aby]\$/);
     expect(emailService.sendMagicLinkEmail).toHaveBeenCalledWith(
-      'Newcomer@example.com',
+      'newcomer@example.com',
       expect.any(String),
       'login',
       undefined
@@ -443,6 +443,28 @@ describe('UsersService.requestMagicLink', () => {
     expect(createUserAndSeedFromTombstone).not.toHaveBeenCalled();
     expect(emailService.sendMagicLinkEmail).not.toHaveBeenCalled();
   });
+
+  it.each(['not-an-email', 'a@example.com,b@example.com', 'a<b@example.com'])(
+    'sends nothing to a known account looked up by the non-address %j',
+    async (typed) => {
+      const getByEmail = vi
+        .fn()
+        .mockResolvedValue({ id: 7, email: 'al@example.com' });
+      const repository = { getByEmail } as unknown as UsersRepository;
+      const emailService = buildEmailService();
+      const service = new UsersService(
+        repository,
+        emailService,
+        new InMemoryMagicTokenRepository()
+      );
+
+      const issued = await service.requestMagicLink(typed, 'login');
+
+      expect(issued).toBeUndefined();
+      expect(getByEmail).not.toHaveBeenCalled();
+      expect(emailService.sendMagicLinkEmail).not.toHaveBeenCalled();
+    }
+  );
 
   it('does not create an account for a malformed address', async () => {
     const getByEmail = vi.fn().mockResolvedValue(null);

@@ -157,6 +157,36 @@ describe('sendReEngagementEmails', () => {
     error.mockRestore();
   });
 
+  it('mails the same trimmed lowercase address it checked', async () => {
+    const repo = new InMemoryReEngagementRepository();
+    repo.seedUsers([{ id: 13, name: 'Olivia', email: ' Olivia@Example.com ' }]);
+    const emailService = buildEmailService();
+
+    await sendReEngagementEmails(repo, emailService);
+
+    expect(emailService.sendReEngagementEmail).toHaveBeenCalledWith(
+      'olivia@example.com',
+      'Olivia',
+      expect.any(String)
+    );
+  });
+
+  it('skips a stored address that holds a character that does not print', async () => {
+    const repo = new InMemoryReEngagementRepository();
+    const zeroWidthSpace = String.fromCodePoint(0x200b);
+    repo.seedUsers([
+      { id: 14, name: 'Peggy', email: `peggy${zeroWidthSpace}@example.com` },
+    ]);
+    const emailService = buildEmailService();
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+
+    const result = await sendReEngagementEmails(repo, emailService);
+
+    expect(emailService.sendReEngagementEmail).not.toHaveBeenCalled();
+    expect(result).toEqual({ count: 0 });
+    info.mockRestore();
+  });
+
   it('logs nothing about skipping when every address is valid', async () => {
     const repo = new InMemoryReEngagementRepository();
     repo.seedUsers([{ id: 12, name: 'Niaj', email: 'niaj@example.com' }]);

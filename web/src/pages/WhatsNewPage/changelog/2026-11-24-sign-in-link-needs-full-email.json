@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-24-sign-in-link-needs-full-email",
+  "date": "2026-11-24",
+  "type": "fix",
+  "title": "Sign-in and reset links ask for a full email address before sending, so a typo shows up right at the field"
+}

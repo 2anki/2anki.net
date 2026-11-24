@@ -71,7 +71,11 @@ describe('ForgotPasswordForm failed send in every locale', () => {
     ],
   ])('reports the failed send in %s', async (language, expected) => {
     await i18n.changeLanguage(language);
-    mockRequestMagicLink.mockResolvedValue({ ok: false, status: 500 });
+    mockRequestMagicLink.mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: () => Promise.resolve({ code: 'unknown' }),
+    });
     const setError = vi.fn();
     render(<ForgotPasswordForm setError={setError} />);
 

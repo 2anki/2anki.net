@@ -1563,12 +1563,23 @@ class UsersController {
     if (purpose !== 'login' && purpose !== 'password_reset') {
       return res.status(400).json({ message: 'Invalid purpose' });
     }
+    const normalizedEmail = normalizeEmail(email);
+    if (normalizedEmail == null) {
+      console.info('password_reset.magic_link', {
+        outcome: 'invalid_email',
+        purpose,
+      });
+      return res.status(400).json({
+        message: 'Enter a full email address, like name@example.com.',
+        code: 'invalid_email',
+      });
+    }
 
     let issuedToken: string | undefined;
     try {
       requireMagicLinkSecret();
       issuedToken = await this.userService.requestMagicLink(
-        email.trim(),
+        normalizedEmail,
         purpose,
         readFirstTouchCookie(req).signupOrigin,
         redirect,

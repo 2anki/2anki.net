@@ -13,6 +13,7 @@ import { WithAppleLink } from '../../../../components/forms/WithAppleLink';
 import { WithMicrosoftLink } from '../../../../components/forms/WithMicrosoftLink';
 import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
 import { sanitizeRelativeRedirect } from '../../../../lib/auth/sanitizeRelativeRedirect';
+import { isValidEmailShape } from '../../../../lib/email/isValidEmailShape';
 import styles from '../../../../styles/auth.module.css';
 import loginStyles from './LoginForm.module.css';
 
@@ -45,15 +46,23 @@ function LoginForm() {
     get2ankiApi().requestMagicLink(email, 'login', pageRedirect);
 
   const handleSendMagicLink = async () => {
+    if (!isValidEmailShape(email)) {
+      setError(t('auth.register.errorInvalidEmail'));
+      return;
+    }
     setMagicLinkLoading(true);
     setError(null);
     try {
       const response = await requestLoginLink();
+      const body = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setError(t('auth.login.magicLinkError'));
+        setError(
+          body?.code === 'invalid_email'
+            ? t('auth.register.errorInvalidEmail')
+            : t('auth.login.magicLinkError')
+        );
         return;
       }
-      const body = await response.json().catch(() => ({}));
       if (body?.suppressed) {
         setError(t('auth.login.magicLinkSuppressed'));
         return;
@@ -110,7 +119,10 @@ function LoginForm() {
                   min="3"
                   max="255"
                   value={email}
-                  onChange={(event) => setEmail(event.target.value)}
+                  onChange={(event) => {
+                    setEmail(event.target.value);
+                    setError(null);
+                  }}
                   onBlur={(event) => {
                     if (event.target.value.includes('@')) {
                       localStorage.setItem('email', event.target.value);

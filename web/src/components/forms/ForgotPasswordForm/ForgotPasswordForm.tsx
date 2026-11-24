@@ -5,6 +5,7 @@ import { ErrorHandlerType } from '../../errors/helpers/getErrorMessage';
 import CheckYourEmail from '../../CheckYourEmail/CheckYourEmail';
 import { get2ankiApi } from '../../../lib/backend/get2ankiApi';
 import { UserNotice } from '../../../lib/errors/UserNotice';
+import { isValidEmailShape } from '../../../lib/email/isValidEmailShape';
 import styles from '../../../styles/auth.module.css';
 import sharedStyles from '../../../styles/shared.module.css';
 
@@ -17,9 +18,14 @@ function ForgotPasswordForm({ setError }: Readonly<ForgotPasswordProps>) {
   const [email, setEmail] = useState(localStorage.getItem('email') || '');
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [emailInvalid, setEmailInvalid] = useState(false);
 
   const handleSubmit = async (event: SyntheticEvent) => {
     event.preventDefault();
+    if (!isValidEmailShape(email)) {
+      setEmailInvalid(true);
+      return;
+    }
     setLoading(true);
 
     try {
@@ -28,6 +34,11 @@ function ForgotPasswordForm({ setError }: Readonly<ForgotPasswordProps>) {
         'password_reset'
       );
       if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        if (body?.code === 'invalid_email') {
+          setEmailInvalid(true);
+          return;
+        }
         setError(new UserNotice(t('auth.forgot.sendError')));
         return;
       }
@@ -66,7 +77,10 @@ function ForgotPasswordForm({ setError }: Readonly<ForgotPasswordProps>) {
                 min="3"
                 max="255"
                 value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                onChange={(event) => {
+                  setEmail(event.target.value);
+                  setEmailInvalid(false);
+                }}
                 onBlur={(event) => {
                   if (event.target.value.includes('@')) {
                     localStorage.setItem('email', event.target.value);
@@ -77,8 +91,15 @@ function ForgotPasswordForm({ setError }: Readonly<ForgotPasswordProps>) {
                 inputMode="email"
                 placeholder={t('auth.forgot.emailPlaceholder')}
                 required
+                aria-invalid={emailInvalid ? true : undefined}
+                aria-describedby={emailInvalid ? 'email-error' : undefined}
               />
             </label>
+            {emailInvalid && (
+              <p id="email-error" className={styles.helpDanger} role="alert">
+                {t('auth.register.errorInvalidEmail')}
+              </p>
+            )}
           </div>
           <div className={styles.field}>
             <button
