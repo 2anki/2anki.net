@@ -173,6 +173,6 @@ These words are banned from product UI copy. Marketing pages get slightly more l
 
 - **Periods** on full sentences in helper text, descriptions, error messages, and empty states.
 - **No periods** on button labels, menu items, headings, or short labels.
-- **Em dashes** for asides — like this — not parentheticals where a dash flows better.
+- **Em dashes** for asides — like this — not parentheticals where a dash flows better. Not in emails: product emails use no em dash or en dash anywhere, because the owner reads them there as machine-written. Write two short sentences, or a question and an answer, instead.
 - **No ellipsis** for loading states. Write a real sentence: "Reading your export" not "Loading..."
 - **Oxford comma** in lists: ".zip, .html, .md, and .csv".

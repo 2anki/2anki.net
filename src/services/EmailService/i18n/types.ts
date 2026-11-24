@@ -46,8 +46,8 @@ export interface ReEngagementStrings {
 }
 
 export interface InactivityWarningStrings {
-  subject: string;
-  title: string;
+  subjectWithConversion: string;
+  subjectNoConversion: string;
   bodyWithConversion: string;
   bodyNoConversion: string;
   passLine: string;

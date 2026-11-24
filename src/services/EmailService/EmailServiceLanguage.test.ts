@@ -12,7 +12,7 @@ import { EmailService } from './EmailService';
 import { DEFAULT_SENDER } from './constants';
 
 const MASCOT = '2anki.net/mascot/navbar-logo.png';
-const FOOTER = '2anki.net — Turn what you study into Anki flashcards';
+const FOOTER = 'Turn what you study into Anki flashcards.';
 
 function lastMessage() {
   const calls = send.mock.calls;
@@ -115,14 +115,12 @@ describe('EmailService renders copy in the recipient language', () => {
       );
 
       const msg = lastMessage();
-      expect(msg.subject).toBe(
-        '2anki.net – Dein Stapel «Organische Chemie» ist fertig'
-      );
+      expect(msg.subject).toBe('Dein Stapel «Organische Chemie» ist fertig');
       expect(msg.html).toContain('Dein Stapel ist fertig');
       expect(msg.html).toContain('34 Karten');
       expect(msg.html).toContain('Organische Chemie');
       expect(msg.text).toBe(
-        'Dein Stapel ist fertig: Organische Chemie — 34 Karten. Er hängt an dieser E-Mail.'
+        'Dein Stapel ist fertig: Organische Chemie, 34 Karten. Er hängt an dieser E-Mail.'
       );
       expect(msg.html).not.toContain('{{deckName}}');
       expect(msg.html).not.toContain('{{disclaimerPrefix}}');
@@ -137,12 +135,10 @@ describe('EmailService renders copy in the recipient language', () => {
       );
 
       const msg = lastMessage();
-      expect(msg.subject).toBe(
-        '2anki.net - Your «Organic Chemistry» deck is ready'
-      );
+      expect(msg.subject).toBe('Your «Organic Chemistry» deck is ready');
       expect(msg.html).toContain('34 cards');
       expect(msg.text).toBe(
-        'Your deck is ready: Organic Chemistry — 34 cards. It is attached to this email.'
+        'Your deck is ready: Organic Chemistry, 34 cards. It is attached to this email.'
       );
     });
   });
@@ -199,9 +195,7 @@ describe('EmailService renders copy in the recipient language', () => {
       );
 
       const msg = lastMessage();
-      expect(msg.subject).toBe(
-        'Deine Stapel auf 2anki — immer noch hier, wenn du sie brauchst'
-      );
+      expect(msg.subject).toBe('Deine Stapel auf 2anki sind noch da');
       expect(msg.html).toContain('Dein letzter Stapel auf 2anki war');
       expect(msg.html).toContain('Organische Chemie');
       expect(msg.html).toContain('2anki öffnen');
@@ -221,11 +215,44 @@ describe('EmailService renders copy in the recipient language', () => {
       );
 
       const msg = lastMessage();
-      expect(msg.subject).toBe(
-        'Your decks on 2anki — still here when you need them'
+      expect(msg.subject).toBe('Your 2anki account is still here');
+      expect(msg.html).toContain(
+        '<title>Your 2anki account is still here</title>'
       );
       expect(msg.html).toContain("You signed up for 2anki but haven't made");
+      expect(msg.html).not.toContain('Your decks');
       expect(msg.html).toContain("Don't want emails like this? Unsubscribe");
+    });
+
+    it('names the decks in the subject for an English recipient who has one', async () => {
+      await serviceFor(null).sendInactivityWarningEmail(
+        'unknown@example.com',
+        'tok-inact3',
+        { deckName: 'Organic Chemistry' }
+      );
+
+      const msg = lastMessage();
+      expect(msg.subject).toBe('Your decks on 2anki are still here');
+      expect(msg.html).toContain(
+        '<title>Your decks on 2anki are still here</title>'
+      );
+      expect(msg.html).toContain(
+        'Your last deck on 2anki was Organic Chemistry.'
+      );
+    });
+
+    it('gives the German no-deck variant an account subject', async () => {
+      await serviceFor('de').sendInactivityWarningEmail(
+        'de-user@example.com',
+        'tok-inact4',
+        null
+      );
+
+      const msg = lastMessage();
+      expect(msg.subject).toBe('Dein 2anki-Konto ist noch da');
+      expect(msg.html).toContain(
+        'Du hast dich bei 2anki angemeldet, aber noch keinen Stapel erstellt.'
+      );
     });
   });
 

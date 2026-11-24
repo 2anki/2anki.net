@@ -39,7 +39,7 @@ describe('EmailService.sendSubscriptionRecoveryEmail', () => {
       '2anki.net/mascot/navbar-logo.png'
     );
     expect(SUBSCRIPTION_RECOVERY_TEMPLATE).toContain(
-      '2anki.net — Turn what you study into Anki flashcards'
+      'Turn what you study into Anki flashcards.'
     );
     expect(SUBSCRIPTION_RECOVERY_TEMPLATE).not.toContain('{{unsubscribeUrl}}');
   });

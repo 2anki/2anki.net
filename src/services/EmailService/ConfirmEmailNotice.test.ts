@@ -16,7 +16,7 @@ describe('confirm email notice template', () => {
   it('has the shared header, footer and sign-in placeholder', () => {
     expect(CONFIRM_EMAIL_NOTICE_TEMPLATE).toContain('mascot/navbar-logo.png');
     expect(CONFIRM_EMAIL_NOTICE_TEMPLATE).toContain(
-      '2anki.net — Turn what you study into Anki flashcards'
+      'Turn what you study into Anki flashcards.'
     );
     expect(CONFIRM_EMAIL_NOTICE_TEMPLATE).toContain('{{signInUrl}}');
     expect(CONFIRM_EMAIL_NOTICE_TEMPLATE).toContain('{{email}}');

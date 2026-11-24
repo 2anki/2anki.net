@@ -179,7 +179,7 @@ describe('EmailService conversion emails name the deck and count', () => {
     expect(msg.html).not.toContain('{{deckName}}');
     expect(msg.html).not.toContain('{{cardCountSuffix}}');
     expect(msg.text).toBe(
-      'Your deck is ready: Organic Chemistry Ch. 4 — 34 cards. It is attached to this email.'
+      'Your deck is ready: Organic Chemistry Ch. 4, 34 cards. It is attached to this email.'
     );
   });
 
@@ -198,7 +198,7 @@ describe('EmailService conversion emails name the deck and count', () => {
     expect(msg.html).toContain('1 card');
     expect(msg.html).toContain('https://2anki.net/api/download/u/key-1');
     expect(msg.html).not.toContain('{{link}}');
-    expect(msg.text).toContain('Your deck is ready: Biochemistry — 1 card');
+    expect(msg.text).toContain('Your deck is ready: Biochemistry, 1 card');
   });
 
   it('omits the count clause when card count is absent', async () => {
@@ -214,7 +214,7 @@ describe('EmailService conversion emails name the deck and count', () => {
     expect(msg.html).toContain('History Notes');
     expect(msg.html).not.toContain('{{cardCountSuffix}}');
     expect(msg.html).not.toContain('undefined');
-    expect(msg.html).not.toContain('History Notes —');
+    expect(msg.html).not.toContain('History Notes,');
     expect(msg.text).toBe(
       'Your deck is ready: History Notes. It is attached to this email.'
     );
@@ -233,7 +233,7 @@ describe('EmailService conversion emails name the deck and count', () => {
     const msg = lastMessage();
     expect(msg.html).toContain('Untitled deck');
     expect(msg.text).toBe(
-      'Your deck is ready: Untitled deck — 12 cards. It is attached to this email.'
+      'Your deck is ready: Untitled deck, 12 cards. It is attached to this email.'
     );
   });
 

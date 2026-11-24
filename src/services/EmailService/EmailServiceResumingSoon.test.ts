@@ -55,7 +55,7 @@ describe('pause resume warning email', () => {
         'Your 2anki.net subscription pause ends on December 1, 2026. Billing resumes automatically at $7.99 per month from that date.'
       );
       expect(msg.text).toContain(
-        'Nothing to do if you want to keep going — your decks and settings are exactly as you left them.'
+        'Nothing to do if you want to keep going. Your decks and settings are exactly as you left them.'
       );
       expect(msg.text).toContain(
         "To cancel instead, go to your account page before December 1, 2026. Cancelling during the pause ends your subscription right away, and you won't be charged again."

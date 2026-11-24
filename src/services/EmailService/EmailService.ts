@@ -214,7 +214,7 @@ function deckReadySuffix(
   cardCount: number | undefined,
   strings: DeckReadyStrings
 ): string {
-  return cardCount == null ? '' : ` — ${formatCardCount(cardCount, strings)}`;
+  return cardCount == null ? '' : `, ${formatCardCount(cardCount, strings)}`;
 }
 
 function resolveDeckName(filename: string): string {
@@ -404,7 +404,7 @@ export class EmailService implements IEmailService {
     const msg = {
       to: email,
       from: DEFAULT_SENDER,
-      subject: `2anki.net - Your «${filename}» deck is ready`,
+      subject: strings.subject.replace('{{filename}}', filename),
       text: `${deckReadyText(deckName, cardCount, strings)}. Download it here: ${link}`,
       html: markup,
       replyTo: 'support@2anki.net',
@@ -550,11 +550,14 @@ export class EmailService implements IEmailService {
           () => lastConversion.deckName
         )
       : copy.bodyNoConversion;
+    const subject = hasConversion
+      ? copy.subjectWithConversion
+      : copy.subjectNoConversion;
 
     const ctaUrl = `${domain}/r/email?t=${encodeURIComponent(token)}&c=inactivity&to=/upload`;
     const unsubscribeUrl = `${domain}/unsubscribe?uid=${token}`;
 
-    const markup = INACTIVITY_WARNING_TEMPLATE.replace('{{title}}', copy.title)
+    const markup = INACTIVITY_WARNING_TEMPLATE.replace('{{title}}', subject)
       .replace('{{bodyText}}', () => bodyText)
       .replace('{{passLine}}', copy.passLine)
       .replace('{{cta}}', copy.cta)
@@ -570,7 +573,7 @@ export class EmailService implements IEmailService {
     const msg = {
       to,
       from: this.defaultSender,
-      subject: copy.subject,
+      subject,
       text,
       html: markup,
       replyTo: 'support@2anki.net',
@@ -775,7 +778,7 @@ export class EmailService implements IEmailService {
       to,
       from: this.defaultSender,
       subject: 'Confirm your 2anki subscription claim',
-      text: `Confirm your subscription claim here: ${claimUrl} — this link expires in 15 minutes.`,
+      text: `Confirm your subscription claim here: ${claimUrl}\n\nThis link expires in 15 minutes.`,
       html: markup,
       replyTo: 'support@2anki.net',
     };
@@ -802,7 +805,7 @@ export class EmailService implements IEmailService {
       to: newEmail,
       from: this.defaultSender,
       subject: 'Confirm your new 2anki email',
-      text: `Confirm your new 2anki email here: ${confirmUrl} — this link expires in 30 minutes. If you didn't request this, ignore this email.`,
+      text: `Confirm your new 2anki email here: ${confirmUrl}\n\nThis link expires in 30 minutes. If you didn't request this, ignore this email.`,
       html: markup,
       replyTo: 'support@2anki.net',
     };
@@ -843,7 +846,7 @@ export class EmailService implements IEmailService {
       to,
       from: this.defaultSender,
       subject: 'We got your message',
-      text: 'Thanks for writing in. Your message reached us. 2anki is a one-person project, so a reply usually takes a day or two. Want to add something? Just reply to this message — it comes straight to support@2anki.net.',
+      text: 'Thanks for writing in. Your message reached us. 2anki is a one-person project, so a reply usually takes a day or two. Want to add something? Reply to this message. It comes straight to support@2anki.net.',
       html: CONTACT_CONFIRMATION_TEMPLATE,
       replyTo: 'support@2anki.net',
     };
@@ -868,7 +871,7 @@ export class EmailService implements IEmailService {
       to,
       from: this.defaultSender,
       subject: 'Confirm your 2anki pass claim',
-      text: `Confirm your pass claim here: ${claimUrl} — this link expires in 15 minutes.`,
+      text: `Confirm your pass claim here: ${claimUrl}\n\nThis link expires in 15 minutes.`,
       html: markup,
       replyTo: 'support@2anki.net',
     };
@@ -893,7 +896,7 @@ export class EmailService implements IEmailService {
       to,
       from: this.defaultSender,
       subject: `Claim your 2anki ${passKindLabel}`,
-      text: `Thanks for buying a 2anki ${passKindLabel}. Claim it to your account here: ${claimUrl} — this link stays valid for 30 days, and the pass clock starts when you claim it.`,
+      text: `Thanks for buying a 2anki ${passKindLabel}. Claim it to your account here: ${claimUrl}\n\nThis link stays valid for 30 days, and the pass clock starts when you claim it.`,
       html: markup,
       replyTo: 'support@2anki.net',
     };
@@ -963,7 +966,7 @@ export class EmailService implements IEmailService {
     const msg = {
       to: email,
       from: this.defaultSender,
-      subject: '2anki.net - Subscription Cancelled',
+      subject: 'Your 2anki subscription has been cancelled',
       text,
       html: markup,
       replyTo: 'support@2anki.net',
@@ -1006,7 +1009,7 @@ export class EmailService implements IEmailService {
     const msg = {
       to: email,
       from: this.defaultSender,
-      subject: '2anki.net - Subscription Cancellation Scheduled',
+      subject: `Your 2anki subscription cancels on ${formattedDate}`,
       text,
       html: markup,
       replyTo: 'support@2anki.net',
