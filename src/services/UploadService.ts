@@ -66,6 +66,7 @@ import { readUploadStreamProgress } from '../lib/misc/uploadStreamProgress';
 import { handleUploadLimitError } from '../controllers/Upload/helpers/handleUploadLimitError';
 import { getUploadValidationError } from '../lib/upload/getUploadValidationError';
 import { isImageOnlyUpload } from '../lib/upload/isImageOnlyUpload';
+import { routedAwayFromClaude } from '../usecases/uploads/routedAwayFromClaude';
 import { mergeStoredCardOptions } from '../lib/upload/mergeStoredCardOptions';
 import { withDeckStyle } from '../lib/parser/buildDeckStyle';
 import { withUserNoteTypes } from '../lib/claude/withUserNoteTypes';
@@ -825,6 +826,15 @@ function handOffGiftMarker(res: express.Response): GiftMarker | null {
   return marker;
 }
 
+// An image goes to Photo to Deck and a deck, AnkiApp export, mind map, Kindle
+// clippings or epub to its own converter, none of which draws on the gift, so
+// those uploads take no gift marker. A zip's contents are known only after
+// extraction, so a zip still takes it.
+function mayReachClaude(files: UploadedFile[]): boolean {
+  if (isImageOnlyUpload(files)) return false;
+  return !files.every((file) => routedAwayFromClaude(file.originalname));
+}
+
 function positiveId(owner: unknown): number | null {
   const id = Number(owner);
   return owner != null && Number.isFinite(id) && id > 0 ? id : null;
@@ -1219,16 +1229,18 @@ class UploadService {
     // before the job is claimed, so a refused restart leaves the job as it was.
     const paying = isPaying(res.locals);
     const restartUserId = positiveId(owner);
-    const aiGift = await restartAiGiftMode(
+    const restartGift = await restartAiGiftMode(
       restartUserId,
       paying,
       this.aiGiftReaders
     );
+    const aiGift = restartGift === 'off' ? 'only' : restartGift;
+    const mayDrawOnGift = restartGift != null && restartGift !== 'off';
     const giftMarker =
-      aiGift != null && restartUserId != null
+      mayDrawOnGift && restartUserId != null
         ? takeGiftMarker(restartUserId)
         : null;
-    if (aiGift != null && giftMarker == null) {
+    if (mayDrawOnGift && giftMarker == null) {
       res.status(409).json({
         error: AI_GIFT_BUSY_WARNING_TEXT,
         code: AI_GIFT_BUSY_WARNING_CODE,
@@ -1540,7 +1552,10 @@ class UploadService {
       const settings = new CardOption(req.body);
       const ws = new Workspace(true, 'fs');
       const paying = isPaying(res.locals);
-      if (settings.claudeAIFlashcards) {
+      if (
+        settings.claudeAIFlashcards &&
+        mayReachClaude(req.files as UploadedFile[])
+      ) {
         Object.assign(res.locals, await this.giftForUpload(owner, paying));
       }
 

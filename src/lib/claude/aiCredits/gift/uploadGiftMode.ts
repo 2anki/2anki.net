@@ -51,6 +51,11 @@ export async function uploadAiGiftMode(
   }
 }
 
+// 'off': an account with no plan that claimed while the switch is off. It
+// restarts on the gift alone, which the spend guard then refuses, and it takes
+// no marker, since nothing can draw on the gift.
+export type RestartGift = AiGiftMode | 'off';
+
 // A restarted AI job has no plan check of its own. An account with no plan
 // that ever claimed the gift restarts on the gift alone, so an expired or
 // spent gift stops it instead of letting it run unmetered. A paying account
@@ -59,7 +64,7 @@ export async function restartAiGiftMode(
   userId: number | null,
   paying: boolean,
   readers: () => UploadGiftModeDeps
-): Promise<AiGiftMode | null> {
+): Promise<RestartGift | null> {
   if (userId == null) return null;
   if (paying) {
     try {
@@ -72,7 +77,9 @@ export async function restartAiGiftMode(
     }
   }
   try {
-    return (await readers().findGrant(userId)) == null ? null : 'only';
+    const deps = readers();
+    if ((await deps.findGrant(userId)) == null) return null;
+    return (await deps.isEnabled()) ? 'only' : 'off';
   } catch (error) {
     console.error('[ai-gift] restart gift read failed', error);
     return 'only';

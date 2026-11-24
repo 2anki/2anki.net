@@ -31,5 +31,6 @@
     "thanks": "Gracias. Esto nos ayuda a ajustar las tarjetas de Claude.",
     "close": "Cerrar"
   },
-  "busy": "Otra conversión está usando tus créditos de IA gratis. Este mazo se hizo sin Claude. Vuelve a intentarlo cuando termine la otra."
+  "busy": "Otra conversión está usando tus créditos de IA gratis. Este mazo se hizo sin Claude. Vuelve a intentarlo cuando termine la otra.",
+  "busyRestart": "Otra conversión está usando tus créditos de IA gratis. Vuelve a intentarlo cuando termine."
 }

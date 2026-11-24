@@ -43,6 +43,7 @@ import { isWorkerTerminationError } from '../../lib/workerTermination';
 import Workspace from '../../lib/parser/WorkSpace';
 import { detectOverSplit } from '../../lib/parser/detectOverSplit';
 import { isZipContentFileSupported } from './isZipContentFileSupported';
+import { routedAwayFromClaude } from './routedAwayFromClaude';
 import {
   CrossFileDedupState,
   createCrossFileDedupState,
@@ -121,20 +122,6 @@ interface FileResult {
   cardsHeldBack?: number;
   emptyReason?: EmptyDeckReason;
   rescueCandidates?: RescueCandidate[];
-}
-
-// Files handled by these branches in processFile pre-empt the Claude/PrepareDeck
-// route, so they must not count toward the cross-file gate even when their
-// extension (e.g. "My Clippings.txt" matching isPlainText) otherwise would.
-function routedAwayFromClaude(name: string): boolean {
-  return (
-    isAnkiDeckFile(name) ||
-    isXmlFile(name) ||
-    isOpmlFile(name) ||
-    isBrainstormsJsonFile(name) ||
-    isKindleClippingsFile(name) ||
-    isEpubFile(name)
-  );
 }
 
 // Mirror the exact set of files processFile routes into PrepareDeck's Claude

@@ -4,6 +4,7 @@ import { renderHook, act } from '@testing-library/react';
 import useJobs from './useJobs';
 import Backend from '../../../lib/backend';
 import { UserNotice } from '../../../lib/errors/UserNotice';
+import i18n, { SUPPORTED_LANGUAGES } from '../../../lib/i18n';
 import type { JobsId } from '@server/data_layer/public/Jobs';
 import type JobResponse from '@server/types/JobResponse';
 
@@ -225,6 +226,49 @@ describe('useJobs restart guard', () => {
       expired: true,
       inFlight: false,
     });
+  });
+
+  const aiGiftLocales = import.meta.glob<{ default: { busyRestart: string } }>(
+    '../../../lib/i18n/locales/*/aiGift.json',
+    { eager: true }
+  );
+
+  function busyNoticeIn(language: string): string {
+    const locale =
+      aiGiftLocales[`../../../lib/i18n/locales/${language}/aiGift.json`];
+    if (locale == null) throw new Error(`no aiGift locale for ${language}`);
+    return locale.default.busyRestart;
+  }
+
+  describe('a restart refused because another conversion uses the gift', () => {
+    afterEach(async () => {
+      await i18n.changeLanguage('en');
+    });
+
+    it.each(SUPPORTED_LANGUAGES)(
+      'shows the translated gift-busy notice in %s',
+      async (language) => {
+        await i18n.changeLanguage(language);
+        await i18n.loadNamespaces('aiGift');
+        const backend = makeMockBackend();
+        (
+          backend.restartClaudeJob as ReturnType<typeof vi.fn>
+        ).mockRejectedValueOnce(taggedError(409, 'ai-gift-busy'));
+        const setError = vi.fn();
+        const { result } = renderHook(() => useJobs(backend, setError));
+        await act(async () => {
+          await Promise.resolve();
+        });
+
+        await act(async () => {
+          await result.current.restartJob(failedClaudeJob('boom'));
+        });
+
+        const notice = setError.mock.calls[0][0] as UserNotice;
+        expect(notice).toBeInstanceOf(UserNotice);
+        expect(notice.message).toBe(busyNoticeIn(language));
+      }
+    );
   });
 
   it('sends only one restart when the button is hammered before the first resolves', async () => {

@@ -5,6 +5,7 @@ import { ErrorHandlerType } from '../../../components/errors/helpers/getErrorMes
 import Backend from '../../../lib/backend';
 import { UserNotice } from '../../../lib/errors/UserNotice';
 import { track } from '../../../lib/analytics/track';
+import { AI_GIFT_BUSY_WARNING_CODE } from '../../UploadPage/components/UploadForm/uploadResponse';
 import type { JobsId } from '@server/data_layer/public/Jobs';
 import type JobResponse from '@server/types/JobResponse';
 
@@ -51,7 +52,7 @@ export default function useJobs(
   backend: Backend,
   setError: ErrorHandlerType
 ): UseJobsResult {
-  const { t } = useTranslation('downloadsx');
+  const { t } = useTranslation(['downloadsx', 'aiGift']);
   const [jobs, setJobs] = useState<JobResponse[]>([]);
   const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null);
   const [isWarmup, setIsWarmup] = useState(true);
@@ -154,6 +155,11 @@ export default function useJobs(
         codeOf(error) === 'already_running'
       ) {
         await fetchJobs();
+      } else if (
+        statusOf(error) === 409 &&
+        codeOf(error) === AI_GIFT_BUSY_WARNING_CODE
+      ) {
+        setError(new UserNotice(t('aiGift:busyRestart')));
       } else {
         setError(error);
       }
