@@ -272,7 +272,7 @@ def test_a_name_that_might_change_is_not_plain(name):
     assert not is_plain_name(name)
 
 
-def _exporter_takes(name):
+def _exporter_ships(name):
     workdir = tempfile.mkdtemp()
     collection = Collection(os.path.join(workdir, "collection.anki2"))
     try:
@@ -281,15 +281,16 @@ def _exporter_takes(name):
         collection.add_note(note, 1)
         with open(os.path.join(collection.media.dir(), name), "wb") as handle:
             handle.write(b"bytes")
+        out_path = os.path.join(workdir, "out.apkg")
         try:
             collection.export_anki_package(
-                out_path=os.path.join(workdir, "out.apkg"),
-                options=ExportAnkiPackageOptions(with_media=True),
+                out_path=out_path,
+                options=ExportAnkiPackageOptions(with_media=True, legacy=True),
                 limit=None,
             )
-            return True
         except InvalidInput:
             return False
+        return list(_media(out_path).values()) == [b"bytes"]
     finally:
         collection.close()
         shutil.rmtree(workdir, ignore_errors=True)
@@ -307,8 +308,8 @@ def _exporter_takes(name):
         ("mixed case", "My Photo.PNG"),
     ],
 )
-def test_a_name_counts_as_accepted_exactly_when_ankis_exporter_takes_it(label, name):
-    assert is_accepted(name, anki_stored_names([name])[name]) is _exporter_takes(name), label
+def test_a_name_counts_as_accepted_exactly_when_ankis_exporter_ships_it(label, name):
+    assert is_accepted(name, anki_stored_names([name])[name]) is _exporter_ships(name), label
 
 
 @pytest.mark.parametrize("name", ["K.png", "Ω.png", "Å.png", "café.png"])
