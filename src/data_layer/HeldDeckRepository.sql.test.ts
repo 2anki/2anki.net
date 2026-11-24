@@ -69,6 +69,77 @@ describe('HeldDeckRepository generated SQL', () => {
     expect(web.bindings).not.toContain('mcp');
   });
 
+  it.each(['control', 'pass_first'] as const)(
+    'stores the %s arm the hold was shown',
+    (arm) => {
+      const { sql, bindings } = repository
+        .buildInsertQuery({
+          storageKey: 'held/abc',
+          anonId: 'anon-1',
+          filename: 'notes.html',
+          cardCount: 21,
+          cardsHeldBack: 13,
+          expiresAt: now,
+          passFirstArm: arm,
+        })
+        .toSQL();
+
+      expect(sql).toBe(
+        'insert into "held_decks" ("anon_id", "card_count", "card_options", "cards_held_back", "expires_at", "filename", "pass_first_arm", "source", "storage_key") values (?, ?, ?, ?, ?, ?, ?, ?, ?) returning *'
+      );
+      expect(bindings).toEqual([
+        'anon-1',
+        21,
+        null,
+        13,
+        now,
+        'notes.html',
+        arm,
+        null,
+        'held/abc',
+      ]);
+    }
+  );
+
+  it('stores no arm as null for a hold made outside the test', () => {
+    const { bindings } = repository
+      .buildInsertQuery({
+        storageKey: 'held/abc',
+        anonId: 'anon-1',
+        filename: 'notes.html',
+        cardCount: 21,
+        cardsHeldBack: 13,
+        expiresAt: now,
+      })
+      .toSQL();
+
+    expect(bindings).toEqual([
+      'anon-1',
+      21,
+      null,
+      13,
+      now,
+      'notes.html',
+      null,
+      null,
+      'held/abc',
+    ]);
+  });
+
+  it('reads the stored arm through the claim and checkout lookups, which select every column', () => {
+    const claim = repository
+      .buildFindNewestClaimableQuery('anon-1', now)
+      .toSQL().sql;
+    const checkout = repository
+      .buildFindNewestByAnonIdQuery('anon-1')
+      .toSQL().sql;
+
+    expect([claim, checkout].map((sql) => sql.split(' where ')[0])).toEqual([
+      'select * from "held_decks"',
+      'select * from "held_decks"',
+    ]);
+  });
+
   it('stores no card options as null', () => {
     const { bindings } = repository
       .buildInsertQuery({

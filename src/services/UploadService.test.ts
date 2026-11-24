@@ -10144,6 +10144,7 @@ describe('UploadService.handleSyncUpload — held deck after the preview cards t
       expect(capturedStatus()).toBe(200);
       expect(capturedJson()).toEqual(HELD_BODY);
       expect(heldDeck.rows).toHaveLength(1);
+      expect(heldDeck.rows[0].pass_first_arm).toBeNull();
       expect(recoveryKeysStored()).toEqual([]);
       expect(heldEventProps()).not.toHaveProperty('preview_cards_arm');
       expect(heldEventProps()).not.toHaveProperty('preview_cards_delivered');
@@ -10168,6 +10169,7 @@ describe('UploadService.handleSyncUpload — held deck after the preview cards t
       expect(capturedStatus()).toBe(200);
       expect(capturedJson()).toEqual({ ...HELD_BODY, passFirstArm: arm });
       expect(heldDeck.rows).toHaveLength(1);
+      expect(heldDeck.rows[0].pass_first_arm).toBe(arm);
       expect(recoveryKeysStored()).toEqual([]);
       expect(heldEventProps()).toMatchObject({ pass_first_arm: arm });
     }

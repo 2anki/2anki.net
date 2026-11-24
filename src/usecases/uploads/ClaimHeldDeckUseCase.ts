@@ -2,6 +2,7 @@ import type {
   HeldDeckSource,
   IHeldDeckRepository,
 } from '../../data_layer/HeldDeckRepository';
+import type HeldDecks from '../../data_layer/public/HeldDecks';
 import type { UploadedFile } from '../../lib/storage/types';
 import { EmptyDeckError } from '../jobs/EmptyDeckError';
 import {
@@ -10,7 +11,7 @@ import {
 } from '../users/CheckMonthlyCardLimitUseCase';
 import { isPreviewHoldKey } from '../../lib/upload/anonymousAiPreview';
 import {
-  resolvePassFirstArm,
+  isPassFirstTestArm,
   type PassFirstArm,
   type PassFirstTestArm,
 } from '../../lib/upload/passFirstArm';
@@ -182,16 +183,21 @@ export class ClaimHeldDeckUseCase {
       false
   ) {}
 
-  // While the pass-first test runs, a sign-up hold's arm comes from the anon
-  // id it was held under, the same one the upload hashed. A free sign-up in
-  // the pass-first arm releases the 21-card preview; the full deck takes a
-  // plan claim. A failed flag read keeps the up-to-100-card claim.
-  private async signupArm(kind: HoldKind, key: string): Promise<PassFirstArm> {
-    if (kind !== 'signup') {
+  // A sign-up hold's arm is the one its gate showed, stored when the deck was
+  // held, so a deck held before the test started keeps the sign-up-first
+  // claim. A free sign-up in the pass-first arm releases the 21-card preview;
+  // the full deck takes a plan claim. With the flag off or unreadable, every
+  // stored arm gets the up-to-100-card claim.
+  private async signupArm(
+    kind: HoldKind,
+    hold: HeldDecks
+  ): Promise<PassFirstArm> {
+    const storedArm = hold.pass_first_arm;
+    if (kind !== 'signup' || !isPassFirstTestArm(storedArm)) {
       return 'off';
     }
     try {
-      return resolvePassFirstArm(key, await this.passFirstTestLive());
+      return (await this.passFirstTestLive()) ? storedArm : 'off';
     } catch (error) {
       console.error('[ClaimHeldDeck] pass-first flag read failed', error);
       return 'off';
@@ -226,7 +232,7 @@ export class ClaimHeldDeckUseCase {
       throw new NoHeldDeckError();
     }
     const { hold, kind } = found;
-    const arm = await this.signupArm(kind, hold.anon_id);
+    const arm = await this.signupArm(kind, hold);
     const capToPreview = arm === 'pass_first' && !paying;
     const claimed = await this.repository.markClaimed(
       hold.id,

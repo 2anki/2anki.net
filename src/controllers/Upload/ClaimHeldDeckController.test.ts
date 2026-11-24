@@ -3,7 +3,10 @@ import { Request, Response } from 'express';
 
 vi.mock('../../services/events/track', () => ({ track: vi.fn() }));
 
-import { InMemoryHeldDeckRepository } from '../../data_layer/HeldDeckRepository';
+import {
+  InMemoryHeldDeckRepository,
+  type HeldDeckPassFirstArm,
+} from '../../data_layer/HeldDeckRepository';
 import {
   ClaimHeldDeckUseCase,
   planHoldKey,
@@ -86,7 +89,11 @@ function buildUseCase(repo: InMemoryHeldDeckRepository) {
   return new ClaimHeldDeckUseCase(repo, store, converter);
 }
 
-async function seedHold(repo: InMemoryHeldDeckRepository, expiresAt?: Date) {
+async function seedHold(
+  repo: InMemoryHeldDeckRepository,
+  expiresAt?: Date,
+  passFirstArm?: HeldDeckPassFirstArm
+) {
   await repo.insert({
     storageKey: 'held/x.html',
     anonId: ANON,
@@ -94,6 +101,7 @@ async function seedHold(repo: InMemoryHeldDeckRepository, expiresAt?: Date) {
     cardCount: 21,
     cardsHeldBack: 13,
     expiresAt: expiresAt ?? new Date(Date.now() + 60_000),
+    passFirstArm,
   });
 }
 
@@ -170,7 +178,7 @@ describe('ClaimHeldDeckController', () => {
 
   it('POST returns the held-back count when a sign-up claim is cut to the preview', async () => {
     const repo = new InMemoryHeldDeckRepository();
-    await seedHold(repo);
+    await seedHold(repo, undefined, 'pass_first');
     const converter: HeldDeckConverter = {
       convertHeldFileForOwner: vi.fn().mockResolvedValue({
         downloadKey: 'owner-key.apkg',
@@ -247,7 +255,7 @@ describe('ClaimHeldDeckController', () => {
     'POST says how many answerless lines a sign-up claim %s left out',
     async (_case, previewFirst) => {
       const repo = new InMemoryHeldDeckRepository();
-      await seedHold(repo);
+      await seedHold(repo, undefined, previewFirst ? 'pass_first' : 'control');
       const converter: HeldDeckConverter = {
         convertHeldFileForOwner: vi.fn().mockResolvedValue({
           downloadKey: 'owner-key.apkg',
@@ -305,7 +313,7 @@ describe('ClaimHeldDeckController', () => {
   it.each([
     ['pass-first', ANON, 'pass_first'],
     ['control', 'anon-controller-3', 'control'],
-  ])(
+  ] as const)(
     'records the %s arm of the split test on anonymous_partial_claimed, for a visitor who declined analytics too',
     async (_label, anonId, arm) => {
       expect(resolvePassFirstArm(anonId, true)).toBe(arm);
@@ -317,6 +325,7 @@ describe('ClaimHeldDeckController', () => {
         cardCount: 21,
         cardsHeldBack: 13,
         expiresAt: new Date(Date.now() + 60_000),
+        passFirstArm: arm,
       });
       const store: HeldFileStore = {
         getFileContents: vi

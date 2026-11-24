@@ -1,5 +1,8 @@
 import { vi } from 'vitest';
-import { InMemoryHeldDeckRepository } from '../../data_layer/HeldDeckRepository';
+import {
+  InMemoryHeldDeckRepository,
+  type HeldDeckPassFirstArm,
+} from '../../data_layer/HeldDeckRepository';
 import { EmptyDeckError } from '../jobs/EmptyDeckError';
 import { MonthlyLimitError } from '../users/CheckMonthlyCardLimitUseCase';
 import {
@@ -40,7 +43,11 @@ function buildConverter(
 
 async function seedHold(
   repo: InMemoryHeldDeckRepository,
-  overrides: { expiresAt?: Date; anonId?: string } = {}
+  overrides: {
+    expiresAt?: Date;
+    anonId?: string;
+    passFirstArm?: HeldDeckPassFirstArm;
+  } = {}
 ) {
   return repo.insert({
     storageKey: 'held/abc.html',
@@ -49,6 +56,7 @@ async function seedHold(
     cardCount: 21,
     cardsHeldBack: 13,
     expiresAt: overrides.expiresAt ?? new Date(Date.now() + 60_000),
+    passFirstArm: overrides.passFirstArm,
   });
 }
 
@@ -863,7 +871,10 @@ describe('ClaimHeldDeckUseCase', () => {
 
     it('caps a free sign-up claim at the 21-card preview for the pass-first arm', async () => {
       const repo = new InMemoryHeldDeckRepository();
-      await seedHold(repo, { anonId: PASS_FIRST_ANON });
+      await seedHold(repo, {
+        anonId: PASS_FIRST_ANON,
+        passFirstArm: 'pass_first',
+      });
       const { converter, convertHeldFileForOwner } = buildConverter({
         downloadKey: 'owner-key.apkg',
         cardCount: 21,
@@ -903,7 +914,7 @@ describe('ClaimHeldDeckUseCase', () => {
 
     it('keeps the up-to-100-card sign-up claim for the control arm and names it', async () => {
       const repo = new InMemoryHeldDeckRepository();
-      await seedHold(repo);
+      await seedHold(repo, { passFirstArm: 'control' });
       const { converter, convertHeldFileForOwner } = buildConverter();
       const useCase = new ClaimHeldDeckUseCase(
         repo,
@@ -956,7 +967,10 @@ describe('ClaimHeldDeckUseCase', () => {
 
     it('builds the full deck when a paying account in the pass-first arm claims a sign-up hold', async () => {
       const repo = new InMemoryHeldDeckRepository();
-      await seedHold(repo, { anonId: PASS_FIRST_ANON });
+      await seedHold(repo, {
+        anonId: PASS_FIRST_ANON,
+        passFirstArm: 'pass_first',
+      });
       const { converter, convertHeldFileForOwner } = buildConverter();
       const useCase = new ClaimHeldDeckUseCase(
         repo,
@@ -980,10 +994,13 @@ describe('ClaimHeldDeckUseCase', () => {
       ['the flag is off', passFirstOff],
       ['the flag read fails', () => Promise.reject(new Error('db down'))],
     ])(
-      'keeps the up-to-100-card sign-up claim with no arm for a pass-first anon id when %s',
+      'keeps the up-to-100-card sign-up claim with no arm for a hold stored in the pass-first arm when %s',
       async (_label, passFirst) => {
         const repo = new InMemoryHeldDeckRepository();
-        await seedHold(repo, { anonId: PASS_FIRST_ANON });
+        await seedHold(repo, {
+          anonId: PASS_FIRST_ANON,
+          passFirstArm: 'pass_first',
+        });
         const { converter, convertHeldFileForOwner } = buildConverter();
         const useCase = new ClaimHeldDeckUseCase(
           repo,
@@ -1008,5 +1025,115 @@ describe('ClaimHeldDeckUseCase', () => {
         });
       }
     );
+
+    it('releases the sign-up-first claim with no arm for a hold made before the flag went on', async () => {
+      const repo = new InMemoryHeldDeckRepository();
+      await seedHold(repo, { anonId: PASS_FIRST_ANON });
+      const { converter, convertHeldFileForOwner } = buildConverter();
+      const useCase = new ClaimHeldDeckUseCase(
+        repo,
+        buildStore().store,
+        converter,
+        passFirstOn
+      );
+
+      const result = await useCase.execute({
+        anonId: PASS_FIRST_ANON,
+        owner: OWNER,
+        paying: false,
+        requestId: undefined,
+      });
+
+      expect(convertHeldFileForOwner.mock.calls[0]).toHaveLength(6);
+      expect(result).toEqual({
+        downloadKey: 'owner-key.apkg',
+        cardCount: 34,
+        deckName: 'study-notes',
+        kind: 'signup',
+      });
+    });
+
+    it.each([
+      ['pass_first', 'control', ANON],
+      ['control', 'pass_first', PASS_FIRST_ANON],
+    ] as const)(
+      'claims a hold stored in the %s arm by that arm, though its anon id hashes to %s',
+      async (storedArm, hashedArm, anonId) => {
+        expect(resolvePassFirstArm(anonId, true)).toBe(hashedArm);
+        const repo = new InMemoryHeldDeckRepository();
+        await seedHold(repo, { anonId, passFirstArm: storedArm });
+        const { converter, convertHeldFileForOwner } = buildConverter();
+        const useCase = new ClaimHeldDeckUseCase(
+          repo,
+          buildStore().store,
+          converter,
+          passFirstOn
+        );
+
+        const result = await useCase.execute({
+          anonId,
+          owner: OWNER,
+          paying: false,
+          requestId: undefined,
+        });
+
+        expect(result.passFirstArm).toBe(storedArm);
+        expect(convertHeldFileForOwner.mock.calls[0][6]).toEqual(
+          storedArm === 'pass_first'
+            ? { previewCap: 21, heldCards: 34 }
+            : undefined
+        );
+      }
+    );
+
+    it.each([
+      ['a different anon id cookie', 'anon-claim-other'],
+      ['no anon id cookie', null],
+    ])(
+      'never reaches a stored pass-first hold with %s',
+      async (_label, anonId) => {
+        const repo = new InMemoryHeldDeckRepository();
+        await seedHold(repo, { anonId: ANON, passFirstArm: 'pass_first' });
+        const { converter, convertHeldFileForOwner } = buildConverter();
+        const useCase = new ClaimHeldDeckUseCase(
+          repo,
+          buildStore().store,
+          converter,
+          passFirstOn
+        );
+
+        await expect(
+          useCase.execute({
+            anonId,
+            owner: OWNER,
+            paying: false,
+            requestId: undefined,
+          })
+        ).rejects.toBeInstanceOf(NoHeldDeckError);
+        expect(convertHeldFileForOwner).not.toHaveBeenCalled();
+        expect(repo.rows[0].claimed_at).toBeNull();
+      }
+    );
+
+    it('reads no flag for a hold stored with no arm', async () => {
+      const repo = new InMemoryHeldDeckRepository();
+      await seedHold(repo);
+      const passFirst = vi.fn().mockResolvedValue(true);
+      const useCase = new ClaimHeldDeckUseCase(
+        repo,
+        buildStore().store,
+        buildConverter().converter,
+        passFirst
+      );
+
+      await useCase.execute({
+        anonId: ANON,
+        owner: OWNER,
+        paying: false,
+        requestId: undefined,
+      });
+
+      expect(passFirst).not.toHaveBeenCalled();
+    });
   });
 });

@@ -31,6 +31,8 @@ export default interface HeldDecks {
   card_options: unknown | null;
 
   source: string | null;
+
+  pass_first_arm: string | null;
 }
 
 /** Represents the initializer for the table public.held_decks */
@@ -60,6 +62,8 @@ export interface HeldDecksInitializer {
   card_options?: unknown | null;
 
   source?: string | null;
+
+  pass_first_arm?: string | null;
 }
 
 /** Represents the mutator for the table public.held_decks */
@@ -87,4 +91,6 @@ export interface HeldDecksMutator {
   card_options?: unknown | null;
 
   source?: string | null;
+
+  pass_first_arm?: string | null;
 }

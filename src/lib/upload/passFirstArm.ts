@@ -6,8 +6,6 @@ import { LIMIT_WALL_PASS_FIRST_FLAG } from '../featureFlags/limitWallPassFirst';
 export type PassFirstTestArm = 'control' | 'pass_first';
 export type PassFirstArm = 'off' | PassFirstTestArm;
 
-const HELD_DECK_SURFACES = new Set(['anonymous-gate', 'held-preview']);
-
 export async function isPassFirstTestLive(): Promise<boolean> {
   try {
     return await getFeatureFlag(LIMIT_WALL_PASS_FIRST_FLAG, false);
@@ -36,16 +34,6 @@ export async function passFirstArmFor(
   anonId: string | null
 ): Promise<PassFirstArm> {
   return resolvePassFirstArm(anonId, await isPassFirstTestLive());
-}
-
-export async function checkoutPassFirstArm(
-  surface: string | undefined,
-  anonId: string | null
-): Promise<PassFirstArm> {
-  if (surface == null || !HELD_DECK_SURFACES.has(surface)) {
-    return 'off';
-  }
-  return passFirstArmFor(anonId);
 }
 
 export function isPassFirstTestArm(value: unknown): value is PassFirstTestArm {
