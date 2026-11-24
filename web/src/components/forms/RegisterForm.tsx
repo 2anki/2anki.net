@@ -21,6 +21,7 @@ import { markConnectorReturn } from '../../lib/auth/markConnectorReturn';
 import { readSignupOrigin } from '../../lib/signupOrigin';
 import { fireSignupConversion } from '../../lib/analytics/googleAds';
 import { track } from '../../lib/analytics/track';
+import { isValidEmailShape } from '../../lib/email/isValidEmailShape';
 import {
   UserNotice,
   isIntentionalBackendNotice,
@@ -41,6 +42,7 @@ const CAUSE_MAX_LENGTH = 120;
 
 type SignupFailureReason =
   | 'account_exists'
+  | 'invalid_email'
   | 'validation'
   | 'rate_limited'
   | 'server'
@@ -51,11 +53,17 @@ function isAccountExistsFailure(message: unknown): boolean {
   return typeof message === 'string' && message.includes('already exists');
 }
 
+function isInvalidEmailFailure(code: unknown): boolean {
+  return code === 'invalid_email';
+}
+
 function classifySignupFailure(
   status: number,
-  backendMessage: string | null
+  backendMessage: string | null,
+  backendCode: unknown
 ): SignupFailureReason {
   if (isAccountExistsFailure(backendMessage)) return 'account_exists';
+  if (isInvalidEmailFailure(backendCode)) return 'invalid_email';
   if (status === 400 || status === 422) return 'validation';
   if (status === 429) return 'rate_limited';
   if (status >= 500) return 'server';
@@ -112,6 +120,7 @@ function RegisterForm({ setErrorMessage, redirect, variant = 'page' }: Props) {
   const [loading, setLoading] = useState(false);
   const [accountExists, setAccountExists] = useState(false);
   const [connectionFailed, setConnectionFailed] = useState(false);
+  const [emailInvalid, setEmailInvalid] = useState(false);
   const signupOrigin = useMemo(
     () =>
       readSignupOrigin(
@@ -156,6 +165,15 @@ function RegisterForm({ setErrorMessage, redirect, variant = 'page' }: Props) {
 
   const handleSubmit = async (event: SyntheticEvent) => {
     event.preventDefault();
+    if (!isValidEmailShape(email)) {
+      track('signup_failed', {
+        method: 'email',
+        reason: 'invalid_email',
+        attempts: 0,
+      });
+      setEmailInvalid(true);
+      return;
+    }
     setLoading(true);
     setAccountExists(false);
     setConnectionFailed(false);
@@ -179,9 +197,14 @@ function RegisterForm({ setErrorMessage, redirect, variant = 'page' }: Props) {
         track('signup_failed', {
           method: 'email',
           status: res.status,
-          reason: classifySignupFailure(res.status, backendMessage),
+          reason: classifySignupFailure(res.status, backendMessage, body?.code),
           attempts,
         });
+        if (isInvalidEmailFailure(body?.code)) {
+          setEmailInvalid(true);
+          setLoading(false);
+          return;
+        }
         if (isAccountExistsFailure(backendMessage)) {
           if (email.includes('@')) {
             localStorage.setItem('email', email);
@@ -292,7 +315,10 @@ function RegisterForm({ setErrorMessage, redirect, variant = 'page' }: Props) {
               min="3"
               max="255"
               value={email}
-              onChange={(event) => setEmail(event.target.value)}
+              onChange={(event) => {
+                setEmail(event.target.value);
+                setEmailInvalid(false);
+              }}
               onBlur={(event) => {
                 if (event.target.value.includes('@')) {
                   localStorage.setItem('email', event.target.value);
@@ -303,8 +329,15 @@ function RegisterForm({ setErrorMessage, redirect, variant = 'page' }: Props) {
               inputMode="email"
               required
               name="email"
+              aria-invalid={emailInvalid ? true : undefined}
+              aria-describedby={emailInvalid ? 'email-error' : undefined}
             />
           </label>
+          {emailInvalid && (
+            <p id="email-error" className={styles.helpDanger} role="alert">
+              {t('auth.register.errorInvalidEmail')}
+            </p>
+          )}
         </div>
         <div className={styles.field}>
           <label htmlFor="password">

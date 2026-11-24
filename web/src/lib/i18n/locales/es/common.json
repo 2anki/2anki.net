@@ -507,7 +507,8 @@
       "create": "Crear cuenta",
       "loginQuestion": "¿Ya tienes una cuenta?",
       "errorGeneric": "Algo salió mal por nuestra parte. Inténtalo de nuevo, o escribe a support@2anki.net si sigue ocurriendo.",
-      "errorNetwork": "No se pudo conectar con 2anki.net. Revisa tu conexión e inténtalo de nuevo. Si ya tienes una cuenta, inicia sesión."
+      "errorNetwork": "No se pudo conectar con 2anki.net. Revisa tu conexión e inténtalo de nuevo. Si ya tienes una cuenta, inicia sesión.",
+      "errorInvalidEmail": "Escribe una dirección de correo completa, como name@example.com."
     },
     "forgot": {
       "title": "Restablece tu contraseña",

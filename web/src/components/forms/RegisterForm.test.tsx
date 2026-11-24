@@ -465,4 +465,126 @@ describe('RegisterForm', () => {
       );
     });
   });
+
+  describe('email shape', () => {
+    const INVALID_EMAIL_MESSAGE =
+      'Enter a full email address, like name@example.com.';
+
+    function submitWith(email: string) {
+      fireEvent.change(screen.getByRole('textbox', { name: 'Email' }), {
+        target: { value: email },
+      });
+      fireEvent.change(screen.getByLabelText('Password'), {
+        target: { value: 'supersecret' },
+      });
+      fireEvent.click(screen.getByRole('checkbox'));
+      fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
+    }
+
+    function renderInline(setErrorMessage = vi.fn()) {
+      render(
+        <MemoryRouter initialEntries={['/upload']}>
+          <RegisterForm
+            setErrorMessage={setErrorMessage}
+            redirect="/upload"
+            variant="inline"
+          />
+        </MemoryRouter>
+      );
+      return setErrorMessage;
+    }
+
+    it.each(['4791234567', 'studyhard', 'name@gmail', 'a@b@example.com'])(
+      'refuses %s inline in the embedded form without sending it',
+      async (email) => {
+        const setErrorMessage = renderInline();
+
+        submitWith(email);
+
+        expect(await screen.findByText(INVALID_EMAIL_MESSAGE)).toBeVisible();
+        expect(screen.getByRole('textbox', { name: 'Email' })).toHaveAttribute(
+          'aria-invalid',
+          'true'
+        );
+        expect(registerMock).not.toHaveBeenCalled();
+        expect(setErrorMessage).not.toHaveBeenCalled();
+        expect(trackMock).toHaveBeenCalledWith('signup_failed', {
+          method: 'email',
+          reason: 'invalid_email',
+          attempts: 0,
+        });
+      }
+    );
+
+    it('refuses a domain with no dot on the register page, which the browser email type lets through', async () => {
+      renderForm();
+
+      submitWith('name@gmail');
+
+      expect(
+        await screen.findByText(INVALID_EMAIL_MESSAGE)
+      ).toBeInTheDocument();
+      expect(registerMock).not.toHaveBeenCalled();
+    });
+
+    it('sends a valid address with surrounding spaces', async () => {
+      registerMock.mockResolvedValue({ status: 200 });
+      renderInline();
+
+      submitWith('  learner@example.com ');
+
+      await waitFor(() => {
+        expect(registerMock).toHaveBeenCalledWith(
+          '',
+          'learner@example.com',
+          'supersecret',
+          null
+        );
+      });
+      expect(screen.queryByText(INVALID_EMAIL_MESSAGE)).toBeNull();
+    });
+
+    it('clears the refusal once the address is edited', async () => {
+      renderInline();
+      submitWith('4791234567');
+      await screen.findByText(INVALID_EMAIL_MESSAGE);
+
+      fireEvent.change(screen.getByRole('textbox', { name: 'Email' }), {
+        target: { value: 'learner@example.com' },
+      });
+
+      expect(screen.queryByText(INVALID_EMAIL_MESSAGE)).toBeNull();
+      expect(
+        screen.getByRole('textbox', { name: 'Email' })
+      ).not.toHaveAttribute('aria-invalid');
+    });
+
+    it('shows the server refusal inline instead of a generic error', async () => {
+      registerMock.mockResolvedValue({
+        status: 400,
+        json: () =>
+          Promise.resolve({
+            message: INVALID_EMAIL_MESSAGE,
+            code: 'invalid_email',
+          }),
+      });
+      const setErrorMessage = renderForm();
+
+      fillAndSubmit();
+
+      expect(
+        await screen.findByText(INVALID_EMAIL_MESSAGE)
+      ).toBeInTheDocument();
+      expect(setErrorMessage).not.toHaveBeenCalled();
+      expect(trackMock).toHaveBeenCalledWith('signup_failed', {
+        method: 'email',
+        status: 400,
+        reason: 'invalid_email',
+        attempts: 1,
+      });
+      expect(
+        screen.getByRole('button', { name: 'Create account' })
+      ).not.toBeDisabled();
+    });
+  });
 });

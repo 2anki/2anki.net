@@ -127,4 +127,45 @@ describe('sendReEngagementEmails', () => {
     ).resolves.toMatchObject({ count: expect.any(Number) });
     expect(emailService.sendReEngagementEmail).toHaveBeenCalledTimes(2);
   });
+
+  it('skips accounts whose email is not an address without calling the provider', async () => {
+    const repo = new InMemoryReEngagementRepository();
+    repo.seedUsers([
+      { id: 9, name: 'Ivan', email: '4791234567' },
+      { id: 10, name: 'Judy', email: 'judy@example.com' },
+      { id: 11, name: 'Mallory', email: 'mallory@gmail' },
+    ]);
+    const emailService = buildEmailService();
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const result = await sendReEngagementEmails(repo, emailService);
+
+    expect(emailService.sendReEngagementEmail).toHaveBeenCalledTimes(1);
+    expect(emailService.sendReEngagementEmail).toHaveBeenCalledWith(
+      'judy@example.com',
+      'Judy',
+      expect.any(String)
+    );
+    expect(repo.getEmails().map((e) => e.userId)).toEqual([10]);
+    expect(result).toEqual({ count: 1 });
+    expect(info.mock.calls).toEqual([
+      ['[re-engagement] skipped 2 account(s) without a valid email address'],
+    ]);
+    expect(error).not.toHaveBeenCalled();
+    info.mockRestore();
+    error.mockRestore();
+  });
+
+  it('logs nothing about skipping when every address is valid', async () => {
+    const repo = new InMemoryReEngagementRepository();
+    repo.seedUsers([{ id: 12, name: 'Niaj', email: 'niaj@example.com' }]);
+    const emailService = buildEmailService();
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+
+    await sendReEngagementEmails(repo, emailService);
+
+    expect(info).not.toHaveBeenCalled();
+    info.mockRestore();
+  });
 });

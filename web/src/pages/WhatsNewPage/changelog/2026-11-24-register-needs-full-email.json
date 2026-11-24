@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-24-register-needs-full-email",
+  "date": "2026-11-24",
+  "type": "fix",
+  "title": "Creating an account asks for a full email address, so receipts and sign-in links reach you"
+}

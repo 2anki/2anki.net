@@ -507,7 +507,8 @@
       "create": "Crea un account",
       "loginQuestion": "Hai un account?",
       "errorGeneric": "Qualcosa è andato storto dalla nostra parte. Riprova, oppure scrivi a support@2anki.net se continua a succedere.",
-      "errorNetwork": "Impossibile raggiungere 2anki.net. Controlla la connessione e riprova. Se hai già un account, accedi."
+      "errorNetwork": "Impossibile raggiungere 2anki.net. Controlla la connessione e riprova. Se hai già un account, accedi.",
+      "errorInvalidEmail": "Inserisci un indirizzo email completo, come name@example.com."
     },
     "forgot": {
       "title": "Reimposta la password",

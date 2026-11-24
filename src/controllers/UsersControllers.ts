@@ -42,6 +42,7 @@ import {
   microsoftSignInUrl,
 } from '../lib/auth/providerSignInUrl';
 import { parseSignupOrigin } from './helpers/parseSignupOrigin';
+import { normalizeEmail } from '../lib/email/isValidEmailShape';
 import {
   parseFirstTouch,
   FirstTouchAttribution,
@@ -347,7 +348,15 @@ class UsersController {
       return;
     }
 
-    const doesUserExist = await this.userService.getUserFrom(req.body.email);
+    const email = normalizeEmail(req.body.email);
+    if (email == null) {
+      return res.status(400).json({
+        message: 'Enter a full email address, like name@example.com.',
+        code: 'invalid_email',
+      });
+    }
+
+    const doesUserExist = await this.userService.getUserFrom(email);
     if (doesUserExist) {
       console.debug('User already exists');
       return res.status(400).json({
@@ -357,7 +366,7 @@ class UsersController {
     }
 
     const password = this.authService.getHashPassword(req.body.password);
-    const { name, email } = req.body;
+    const { name } = req.body;
     const firstTouch = readFirstTouchCookie(req);
     const signupOrigin =
       firstTouch.signupOrigin ?? parseSignupOrigin(req.body.source);
