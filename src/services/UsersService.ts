@@ -21,6 +21,7 @@ import { accountHasClaudeCardsByDefault } from '../lib/upload/claudeCardsDefault
 import { track } from './events/track';
 import { sendSignUpEvent } from './GA4Service';
 import { errorName } from '../lib/log/errorName';
+import { normalizeEmail } from '../lib/email/isValidEmailShape';
 
 // Who signed up how, threaded into the account_created event at the single
 // creation choke point in register().
@@ -53,22 +54,6 @@ export type EmailVerificationMethod =
 const MAGIC_LINK_RATE_LIMIT = 5;
 const MAGIC_LINK_RATE_WINDOW_MS = 60 * 60 * 1000;
 const MAGIC_LINK_EXPIRY_MS = 15 * 60 * 1000;
-// Shape check only — the clicked link is the real proof of ownership. This
-// exists so garbage input cannot mint an account row. Plain string scans, not
-// a regex: the input is unauthenticated and a backtracking pattern here is a
-// ReDoS surface (typescript:S8786, the #3960 class).
-function looksLikeEmail(email: string): boolean {
-  if (/\s/.test(email)) {
-    return false;
-  }
-  const at = email.indexOf('@');
-  if (at < 1 || at !== email.lastIndexOf('@')) {
-    return false;
-  }
-  const domain = email.slice(at + 1);
-  const lastDot = domain.lastIndexOf('.');
-  return lastDot >= 1 && lastDot < domain.length - 1;
-}
 
 export class MagicLinkRateLimitError extends Error {
   constructor() {
@@ -293,14 +278,22 @@ class UsersService {
     if (this.magicTokenRepository == null) {
       return undefined;
     }
-    let user = await this.repository.getByEmail(email);
+    const address = normalizeEmail(email);
+    if (address == null) {
+      console.info('password_reset.magic_link', {
+        outcome: 'invalid_email',
+        purpose,
+      });
+      return undefined;
+    }
+    let user = await this.repository.getByEmail(address);
     if (user?.id == null) {
       // A new visitor who picks "email me a sign-in link" is signing up — the
       // link email doubles as account creation, and clicking it both proves
       // mailbox ownership (verifyMagicLink marks the email verified) and logs
       // them in. Password resets stay a silent no-op: there is no account to
       // reset, and creating one there would mask the real situation.
-      if (purpose !== 'login' || !looksLikeEmail(email)) {
+      if (purpose !== 'login') {
         console.info('password_reset.magic_link', {
           outcome: 'unknown_email',
           purpose,
@@ -311,11 +304,11 @@ class UsersService {
       await this.registerVerifiedIdentity(
         '',
         placeholderPassword,
-        email,
+        address,
         signupOrigin ?? 'magic_link',
         { method: 'magic_link', ...telemetry }
       );
-      user = await this.repository.getByEmail(email.toLowerCase());
+      user = await this.repository.getByEmail(address);
       if (user?.id == null) {
         console.info('password_reset.magic_link', {
           outcome: 'signup_failed',
@@ -349,7 +342,7 @@ class UsersService {
     let sendResult;
     try {
       sendResult = await this.emailService.sendMagicLinkEmail(
-        email,
+        address,
         token,
         purpose,
         redirect

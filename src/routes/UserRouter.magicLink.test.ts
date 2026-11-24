@@ -1089,3 +1089,128 @@ describe('what the magic-link log records', () => {
     expect(logged).not.toContain(binding);
   });
 });
+
+describe('the address check on a sign-in link request', () => {
+  const REFUSAL = {
+    message: 'Enter a full email address, like name@example.com.',
+    code: 'invalid_email',
+  };
+
+  const userCount = async () => (await holder.db!('users')).length;
+
+  it.each([
+    ['digits only', '4791234567'],
+    ['a domain without a dot', 'learner@gmail'],
+    ['a display name', 'Learner <learner@example.com>'],
+    ['two addresses split by a comma', `${EMAIL},${OTHER_EMAIL}`],
+    ['two addresses split by a semicolon', `${EMAIL};${OTHER_EMAIL}`],
+    [
+      'a zero-width space',
+      `learner${String.fromCodePoint(0x200b)}@example.com`,
+    ],
+    ['a NUL character', `${EMAIL}${String.fromCodePoint(0x0)}`],
+    [
+      'a next-line character',
+      `learner${String.fromCodePoint(0x85)}@example.com`,
+    ],
+  ])(
+    'refuses %s with the registration 400 and sends nothing',
+    async (_label, email) => {
+      const before = await userCount();
+
+      const res = await requestLink(new Browser(), email);
+
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual(REFUSAL);
+      expect(sentTokens()).toEqual([]);
+      expect(await userCount()).toBe(before);
+    }
+  );
+
+  it('counts each refusal in the log without the address', async () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+
+    await requestLink(new Browser(), '4791234567');
+
+    expect(info.mock.calls).toContainEqual([
+      'password_reset.magic_link',
+      { outcome: 'invalid_email', purpose: 'login' },
+    ]);
+    expect(JSON.stringify(info.mock.calls)).not.toContain('4791234567');
+  });
+
+  it('refuses a reset request for a non-address the same way', async () => {
+    const res = await requestLink(new Browser(), `${EMAIL},${OTHER_EMAIL}`, {
+      purpose: 'password_reset',
+    });
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual(REFUSAL);
+    expect(sentTokens()).toEqual([]);
+  });
+
+  it('sends nothing to an account whose stored email is not an address', async () => {
+    await holder.db!('users').insert({
+      name: 'Digits',
+      email: '4791234567',
+      password: 'hash',
+    });
+
+    const res = await requestLink(new Browser(), '4791234567');
+
+    expect(res.status).toBe(400);
+    expect(sentTokens()).toEqual([]);
+  });
+
+  it.each([' Mixed.Case@Example.com ', 'MIXED.CASE@EXAMPLE.COM'])(
+    'mails the trimmed lowercase address for an account stored in mixed case, typed as %j',
+    async (typed) => {
+      const [mixedId] = await holder.db!('users').insert({
+        name: 'Mixed',
+        email: 'Mixed.Case@Example.com',
+        password: 'hash',
+        email_verified: true,
+      });
+      const before = await userCount();
+
+      const res = await requestLink(new Browser(), typed);
+
+      expect(res.status).toBe(200);
+      expect(holder.sendMagicLinkEmail).toHaveBeenCalledWith(
+        'mixed.case@example.com',
+        expect.any(String),
+        'login',
+        undefined
+      );
+      expect(await userCount()).toBe(before);
+      const owners = await holder.db!('magic_tokens').pluck('owner');
+      expect(owners).toEqual([mixedId]);
+    }
+  );
+
+  it('creates a new account under the trimmed lowercase address and mails that address', async () => {
+    const res = await requestLink(new Browser(), '  Newcomer@Example.com ');
+
+    expect(res.status).toBe(200);
+    expect(holder.sendMagicLinkEmail).toHaveBeenCalledWith(
+      'newcomer@example.com',
+      expect.any(String),
+      'login',
+      undefined
+    );
+    const emails = await holder.db!('users').pluck('email');
+    expect(emails).toContain('newcomer@example.com');
+  });
+
+  it('accepts an address with non-ASCII letters and an internationalised domain', async () => {
+    const res = await requestLink(new Browser(), 'lærer@exämple.com');
+
+    expect(res.status).toBe(200);
+    expect(holder.sendMagicLinkEmail).toHaveBeenCalledWith(
+      'lærer@exämple.com',
+      expect.any(String),
+      'login',
+      undefined
+    );
+  });
+});
