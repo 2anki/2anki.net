@@ -45,20 +45,23 @@ FAKE_PSQL = """#!/bin/bash
 printf '%s\\n' "$@" > "$FAKE_DIR/psql-args"
 env | grep '^PG' | sort > "$FAKE_DIR/psql-env"
 cat > "$FAKE_DIR/psql-stdin"
+if [ "${FAKE_ROLE_CHECK-}" = fail ]; then
+  echo "psql:<stdin>:12: ERROR:  division by zero" >&2
+  grep '^\\\\warn ' "$FAKE_DIR/psql-stdin" | cut -d"'" -f2 >&2
+  exit 3
+fi
 echo " count"
 echo "    42"
 """
 
-PREAMBLE = (
-    "SET client_encoding = 'UTF8';\n"
-    "SET standard_conforming_strings = on;\n"
-    "SET statement_timeout = '120s';\n"
-    "SET lock_timeout = '5s';\n"
-    "SET idle_in_transaction_session_timeout = '60s';\n"
-    "SET default_transaction_read_only = on;\n"
-    "BEGIN TRANSACTION READ ONLY;\n"
-)
+PREAMBLE = subprocess.run(
+    ["bash", "-c", 'eval "$(sed -n "/^session_preamble() {/,/^}/p" "$1")" && session_preamble', "preamble", SCRIPT],
+    capture_output=True,
+    text=True,
+    check=True,
+).stdout
 EPILOGUE = "\n;\nROLLBACK;\n"
+ROLE_CHECK_FAILED = 'refused: the connected role is not read-only. See "Read-only database role" in .claude/docs/prod-ops.md.'
 
 
 def executable(path, body):
@@ -68,7 +71,7 @@ def executable(path, body):
 
 
 class Run:
-    def __init__(self, sql, env_file=None, raw_args=None):
+    def __init__(self, sql, env_file=None, raw_args=None, role_check="pass"):
         self.root = tempfile.TemporaryDirectory()
         root = self.root.name
         bin_dir = os.path.join(root, "bin")
@@ -99,6 +102,7 @@ class Run:
                 "HOME": home,
                 "FAKE_DIR": root,
                 "TMPDIR": self.tmp_dir,
+                "FAKE_ROLE_CHECK": role_check,
                 "PATH": bin_dir + os.pathsep + os.environ["PATH"],
             },
         )
@@ -188,6 +192,75 @@ class RoleTest(Case):
         self.assertNotIn("temp_file_limit", run.psql_env()["PGOPTIONS"])
         self.assertNotIn("temp_file_limit", run.recorded("psql-stdin"))
 
+    def test_refuses_a_read_only_url_that_is_not_a_separate_role_before_psql_starts(self):
+        for name, url in (
+            ("same user as the app", f"postgres://app_user:{URL_SECRET}@db.internal.example.com/app"),
+            ("same user in other case", "postgres://APP_USER:x@db.internal.example.com/app"),
+            ("no host or user", "postgres:///app"),
+            ("no host", "postgres://reader:x@/app"),
+            ("no user", "postgres://db.internal.example.com/app"),
+            ("not a postgres URL", "mysql://reader:x@db.internal.example.com/app"),
+        ):
+            with self.subTest(name=name):
+                run = self.run_sql("select 1;\n", env_file=app_only_env() + f'READONLY_DATABASE_URL="{url}"\n')
+                self.assertEqual(run.result.returncode, 6, run.result.stderr)
+                self.assertIn("refused:", run.result.stderr)
+                self.assertIsNone(run.recorded("psql-args"))
+                for leaked in (URL_SECRET, APP_URL_SECRET, "app_user", "APP_USER", "db.internal"):
+                    self.assertNotIn(leaked, run.result.stdout + run.result.stderr)
+
+    def test_checks_the_role_after_begin_and_before_the_callers_sql(self):
+        run = self.run_sql("select count(*) from users;\n", env_file=box_env())
+
+        stdin = run.recorded("psql-stdin")
+        begin = stdin.index("BEGIN TRANSACTION READ ONLY;")
+        check = stdin.index("role_is_read_only")
+        caller = stdin.index("select count(*) from users;")
+        self.assertLess(begin, check)
+        self.assertLess(check, caller)
+        check_block = stdin[begin:caller]
+        for verified in (
+            "rolsuper",
+            "rolcreaterole",
+            "rolcreatedb",
+            "rolreplication",
+            "rolbypassrls",
+            "pg_write_all_data",
+            "pg_signal_backend",
+            "pg_execute_server_program",
+            "pg_read_server_files",
+            "pg_write_server_files",
+            "pg_has_role(r.oid, c.relowner, 'MEMBER')",
+            "has_table_privilege(r.oid, c.oid, 'INSERT, UPDATE, DELETE, TRUNCATE')",
+            "SELECT 1 / count(*) FROM (",
+            "\\o /dev/null",
+            "\\if :ERROR",
+        ):
+            self.assertIn(verified, check_block)
+
+    def test_a_failed_role_check_ends_with_a_clear_message(self):
+        run = self.run_sql("select 1;\n", env_file=box_env(), role_check="fail")
+
+        self.assertEqual(run.result.returncode, 3)
+        self.assertEqual(run.result.stdout, "")
+        self.assertIn(ROLE_CHECK_FAILED, run.result.stderr)
+        for leaked in (URL_SECRET, DECODED_URL_SECRET, "postgres://", "db.internal"):
+            self.assertNotIn(leaked, run.result.stderr)
+
+    def test_only_lowers_the_session_timeouts_never_raises_them(self):
+        run = self.run_sql("select 1;\n", env_file=box_env())
+
+        stdin = run.recorded("psql-stdin")
+        for name, value in (("statement_timeout", "120000"), ("lock_timeout", "5000"), ("idle_in_transaction_session_timeout", "60000")):
+            with self.subTest(name=name):
+                self.assertIn(
+                    f"SELECT set_config('{name}', '{value}', false) FROM pg_settings WHERE name = '{name}' "
+                    f"AND (setting::bigint = 0 OR setting::bigint > {value});",
+                    stdin,
+                )
+                self.assertNotIn(f"SET {name}", stdin)
+                self.assertNotIn(name, run.psql_env()["PGOPTIONS"])
+
 
 class SessionTest(Case):
     def test_runs_the_file_inside_one_read_only_transaction(self):
@@ -208,8 +281,6 @@ class SessionTest(Case):
         options = env["PGOPTIONS"]
         self.assertIn("-c default_transaction_read_only=on", options)
         self.assertIn("-c standard_conforming_strings=on", options)
-        self.assertIn("-c statement_timeout=120000", options)
-        self.assertIn("-c lock_timeout=5000", options)
         self.assertEqual(env["PGCLIENTENCODING"], "UTF8")
 
     def test_caps_the_whole_run_with_a_wall_clock_timeout(self):

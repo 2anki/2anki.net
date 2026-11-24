@@ -8,7 +8,16 @@
 # script refuses before connecting. There is no fallback to the application's
 # role. The role's own privileges are the guard ("Read-only database role" in
 # .claude/docs/prod-ops.md says what it must be); until the owner creates it,
-# production reads are not available through this script.
+# production reads are not available through this script. Before psql starts
+# it also refuses a READONLY_DATABASE_URL with no host or no user, or with the
+# same user as DATABASE_URL (that line is read only to compare the user). Right
+# after BEGIN, before the caller's SQL, the session checks its own role and
+# ends the run with "the connected role is not read-only" unless the role is
+# not a superuser, cannot create roles or databases, has no replication or
+# bypassrls, is not a member of pg_write_all_data, pg_signal_backend,
+# pg_execute_server_program, pg_read_server_files or pg_write_server_files,
+# and neither owns nor can insert, update, delete or truncate any table outside
+# the system schemas.
 #
 # The pre-flight below is a second layer, not a guarantee. The file is copied
 # once; the pre-flight checks that copy and the same copy is sent.
@@ -50,9 +59,10 @@
 # The session adds another layer: the file runs inside one
 # BEGIN TRANSACTION READ ONLY ... ROLLBACK that the file cannot end early, with
 # default_transaction_read_only, standard_conforming_strings on, UTF8 client
-# encoding, a statement timeout, a short lock timeout and a 300-second
-# wall-clock cap on the whole run. temp_file_limit and statement_timeout are set
-# on the role itself by the owner. On the box the connection
+# encoding and a 300-second wall-clock cap on the whole run. The statement,
+# lock and idle-in-transaction timeouts are set to the script's values only
+# when the role's own value is unset or higher, so a stricter role setting
+# wins; temp_file_limit is left to the role. On the box the connection
 # string is parsed into PGHOST, PGPORT, PGUSER, PGPASSWORD and PGDATABASE, so
 # it never sits in the process list, and none of them is printed.
 # Results are for the conversation or the private board only, never the repo,
@@ -78,13 +88,28 @@ pg_size_pretty pg_total_relation_size pg_relation_size pg_database_size current_
 version
 "
 
-SESSION_PREAMBLE="SET client_encoding = 'UTF8';
+session_preamble() {
+  cat <<'SQL'
+SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
-SET statement_timeout = '120s';
-SET lock_timeout = '5s';
-SET idle_in_transaction_session_timeout = '60s';
 SET default_transaction_read_only = on;
-BEGIN TRANSACTION READ ONLY;"
+\o /dev/null
+SELECT set_config('statement_timeout', '120000', false) FROM pg_settings WHERE name = 'statement_timeout' AND (setting::bigint = 0 OR setting::bigint > 120000);
+SELECT set_config('lock_timeout', '5000', false) FROM pg_settings WHERE name = 'lock_timeout' AND (setting::bigint = 0 OR setting::bigint > 5000);
+SELECT set_config('idle_in_transaction_session_timeout', '60000', false) FROM pg_settings WHERE name = 'idle_in_transaction_session_timeout' AND (setting::bigint = 0 OR setting::bigint > 60000);
+\o
+BEGIN TRANSACTION READ ONLY;
+\o /dev/null
+\set ON_ERROR_STOP 0
+SELECT 1 / count(*) FROM (SELECT 1 / (CASE WHEN NOT r.rolsuper AND NOT r.rolcreaterole AND NOT r.rolcreatedb AND NOT r.rolreplication AND NOT r.rolbypassrls AND NOT EXISTS (SELECT 1 FROM pg_roles g WHERE g.rolname IN ('pg_write_all_data','pg_signal_backend','pg_execute_server_program','pg_read_server_files','pg_write_server_files') AND pg_has_role(r.oid, g.oid, 'MEMBER')) AND NOT EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname NOT IN ('pg_catalog','information_schema') AND c.relkind IN ('r','p') AND (pg_has_role(r.oid, c.relowner, 'MEMBER') OR has_table_privilege(r.oid, c.oid, 'INSERT, UPDATE, DELETE, TRUNCATE'))) THEN 1 ELSE 0 END) AS role_is_read_only FROM pg_roles r WHERE r.rolname = session_user) AS role_check WHERE role_is_read_only = 1;
+\set ON_ERROR_STOP 1
+\o
+\if :ERROR
+\warn 'refused: the connected role is not read-only. See "Read-only database role" in .claude/docs/prod-ops.md.'
+SELECT 'role check failed';
+\endif
+SQL
+}
 
 SESSION_EPILOGUE=";
 ROLLBACK;"
@@ -332,20 +357,25 @@ use warnings;
 my $env_file = "$ENV{HOME}/$ARGV[0]";
 my $fail = sub { print STDERR "$_[0]\n"; exit 6 };
 open(my $fh, "<", $env_file) or $fail->("the app env file is not readable on the box");
-my $url;
+my %found;
 while (my $line = <$fh>) {
   $line =~ s/\r?\n\z//;
-  next unless $line =~ /^READONLY_DATABASE_URL=(.*)\z/;
-  my $value = $1;
+  next unless $line =~ /^(READONLY_DATABASE_URL|DATABASE_URL)=(.*)\z/;
+  my ($key, $value) = ($1, $2);
   $value =~ s/^["']//;
   $value =~ s/["']\z//;
-  $url = $value unless defined $url;
+  $found{$key} = $value unless exists $found{$key};
 }
 close $fh;
+my $url = $found{READONLY_DATABASE_URL};
 $fail->("refused: the read-only database role has not been set up yet (READONLY_DATABASE_URL is not in the app env file on the box). See \"Read-only database role\" in .claude/docs/prod-ops.md.") unless defined $url && length $url;
-my ($user, $password, $host, $port, $database, $query) = $url =~ m{^postgres(?:ql)?://(?:([^:@/]*)(?::([^@/]*))?@)?([^:/?]*)(?::(\d+))?(?:/([^?]*))?(?:\?(.*))?\z};
-$fail->("the connection string is not a postgres URL") unless defined $host;
+my $url_pattern = qr{^postgres(?:ql)?://(?:([^:@/]*)(?::([^@/]*))?@)?([^:/?]*)(?::(\d+))?(?:/([^?]*))?(?:\?(.*))?\z};
 my $decode = sub { my $s = shift; $s =~ s/%([0-9A-Fa-f]{2})/chr(hex($1))/ge; return $s };
+my ($user, $password, $host, $port, $database, $query) = $url =~ $url_pattern;
+$fail->("refused: READONLY_DATABASE_URL is not a postgres URL") unless defined $host;
+$fail->("refused: READONLY_DATABASE_URL has no host or no user") unless length $host && defined $user && length $user;
+my ($application_user) = defined $found{DATABASE_URL} ? $found{DATABASE_URL} =~ $url_pattern : ();
+$fail->("refused: READONLY_DATABASE_URL uses the same database user as DATABASE_URL, so it is not a separate read-only role") if defined $application_user && lc($decode->($application_user)) eq lc($decode->($user));
 delete $ENV{$_} for grep { /^PG/ } keys %ENV;
 $ENV{PGHOST} = $decode->($host) if length $host;
 $ENV{PGPORT} = $port if defined $port;
@@ -356,7 +386,7 @@ for my $pair (split /&/, defined $query ? $query : "") {
   my ($k, $v) = split /=/, $pair, 2;
   $ENV{PGSSLMODE} = $decode->($v) if defined $v && $k eq "sslmode";
 }
-$ENV{PGOPTIONS} = "-c default_transaction_read_only=on -c standard_conforming_strings=on -c statement_timeout=120000 -c lock_timeout=5000 -c idle_in_transaction_session_timeout=60000";
+$ENV{PGOPTIONS} = "-c default_transaction_read_only=on -c standard_conforming_strings=on";
 $ENV{PGCLIENTENCODING} = "UTF8";
 $ENV{PGAPPNAME} = "prod-sql";
 exec("timeout", "-k", "10s", "300s", "psql", "-X", "-q", "-v", "ON_ERROR_STOP=1", "-f", "-") or do { print STDERR "could not start psql\n"; exit 7 };
@@ -392,5 +422,5 @@ fi
 
 remote_script=$(read_remote_script)
 remote_command=$(printf '%q ' perl -e "$remote_script" "$PROD_ENV_FILE_IN_HOME")
-{ printf '%s\n' "$SESSION_PREAMBLE"; cat -- "$sql_copy"; printf '\n%s\n' "$SESSION_EPILOGUE"; } \
+{ session_preamble; cat -- "$sql_copy"; printf '\n%s\n' "$SESSION_EPILOGUE"; } \
   | ssh -o ConnectTimeout=10 -o BatchMode=yes "$PROD_HOST" "$remote_command"

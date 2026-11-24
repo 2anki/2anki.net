@@ -47,6 +47,7 @@ ssh alemayhu@2anki.net 'bash /tmp/q.sh'
 ```
 
 Aggregates only in anything that leaves the session (issue comments, PR bodies): counts, shares, medians — never rows, emails, filenames or deck titles (`.claude/rules/support-confidentiality.md`). Known gap: `uploads.dedupe_key` has never been populated and `uploads.filename` is the produced `.apkg` name, not the source file, so "edited re-upload" questions need a size/time proxy or the `conversion_succeeded.input_format` event prop (present on ~25% of events).
+
 ## Read-only checks
 
 Four sanctioned scripts cover the reads agents used to rebuild from temp files each session. Use them instead of an inline ssh one-liner. The two log reads run on the box from `origin/main`, the same way the stall read does, so they work from any branch or worktree:
@@ -67,3 +68,5 @@ Four sanctioned scripts cover the reads agents used to rebuild from temp files e
 ## Read-only database role
 
 `scripts/prod-sql.sh` will not run until the owner creates a dedicated database role and puts its connection string in the box's app env file under `READONLY_DATABASE_URL`. The role has `SELECT` grants only; it is not a superuser and not a member of the signal-backend or server-program roles; secret columns (password hashes, reset and sign-in tokens, payment provider ids) are revoked from it; and `temp_file_limit` and `statement_timeout` are set on the role itself. Creating it is an owner step tracked privately. Until it exists, production database reads are not available through this script. The pre-flight is a second layer on top of the role, not a guarantee.
+
+The script verifies the role and refuses one that fails. Before psql starts it refuses a `READONLY_DATABASE_URL` with no host or no user, or with the same user as `DATABASE_URL`. Right after `BEGIN`, before the caller's SQL, it ends the run with "the connected role is not read-only" unless the session's role has none of `rolsuper`, `rolcreaterole`, `rolcreatedb`, `rolreplication` or `rolbypassrls`; is not a member of `pg_write_all_data`, `pg_signal_backend`, `pg_execute_server_program`, `pg_read_server_files` or `pg_write_server_files`; and neither owns (directly or by membership) nor holds `INSERT`, `UPDATE`, `DELETE` or `TRUNCATE` on any table outside `pg_catalog` and `information_schema`. It sets the statement, lock and idle-in-transaction timeouts only where the role's own value is unset or higher.
