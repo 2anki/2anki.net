@@ -16,8 +16,9 @@ SCRIPT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "prod-sql.sh")
 
 URL_SECRET = "fakeSecret%2FValue0"
 DECODED_URL_SECRET = "fakeSecret/Value0"
-APP_URL = f"postgres://app_user:{URL_SECRET}@db.internal.example.com:5432/app?sslmode=require&options=-c%20x%3Dy"
-READER_URL = "postgres://reader:fakeReaderValue1@db.internal.example.com/app"
+READER_URL = f"postgres://reader:{URL_SECRET}@db.internal.example.com:5432/app?sslmode=require&options=-c%20x%3Dy"
+APP_URL_SECRET = "fakeAppValue9"
+APP_URL = f"postgres://app_user:{APP_URL_SECRET}@db.internal.example.com/app"
 MULTI_LINE_VALUE = "first-line-of-a-fake-key\nsecond-line-of-a-fake-key"
 
 FAKE_SSH = """#!/bin/bash
@@ -58,7 +59,6 @@ PREAMBLE = (
     "BEGIN TRANSACTION READ ONLY;\n"
 )
 EPILOGUE = "\n;\nROLLBACK;\n"
-APP_ROLE_PREFIX = "SET temp_file_limit = '1GB';\n"
 
 
 def executable(path, body):
@@ -118,8 +118,12 @@ class Run:
         self.root.cleanup()
 
 
-def app_env(extra=""):
-    return f'NODE_ENV=production\nSIGNING_KEY="{MULTI_LINE_VALUE}"\nDATABASE_URL="{APP_URL}"\n{extra}SECRET=other\n'
+def app_only_env():
+    return f'NODE_ENV=production\nSIGNING_KEY="{MULTI_LINE_VALUE}"\nDATABASE_URL="{APP_URL}"\nSECRET=other\n'
+
+
+def box_env():
+    return app_only_env() + f'READONLY_DATABASE_URL="{READER_URL}"\n'
 
 
 class Case(unittest.TestCase):
@@ -130,7 +134,7 @@ class Case(unittest.TestCase):
 
     def run_many(self, sqls):
         with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
-            runs = list(pool.map(lambda sql: Run(sql, env_file=app_env()), sqls))
+            runs = list(pool.map(lambda sql: Run(sql, env_file=box_env()), sqls))
         for run in runs:
             self.addCleanup(run.close)
         return runs
@@ -146,114 +150,142 @@ class Case(unittest.TestCase):
         for sql, run in zip(sqls, self.run_many(sqls)):
             with self.subTest(sql=sql):
                 self.assertEqual(run.result.returncode, 0, run.result.stderr)
-                self.assertTrue(run.recorded("psql-stdin").startswith(APP_ROLE_PREFIX + PREAMBLE + sql))
+                self.assertTrue(run.recorded("psql-stdin").startswith(PREAMBLE + sql))
 
     def assert_refused(self, sql):
-        run = self.run_sql(sql, env_file=app_env())
+        run = self.run_sql(sql, env_file=box_env())
         self.assertEqual(run.result.returncode, 5, run.result.stderr)
         self.assertIn("refused:", run.result.stderr)
         self.assertIsNone(run.recorded("ssh-args"))
         return run
 
 
+class RoleTest(Case):
+    def test_refuses_when_the_read_only_role_is_not_set_up(self):
+        run = self.run_sql("select 1;\n", env_file=app_only_env())
+
+        self.assertEqual(run.result.returncode, 6)
+        self.assertEqual(run.result.stdout, "")
+        self.assertIn("read-only database role has not been set up yet", run.result.stderr)
+        self.assertIn('"Read-only database role" in .claude/docs/prod-ops.md', run.result.stderr)
+        self.assertIsNone(run.recorded("psql-args"))
+        self.assertIsNone(run.recorded("timeout-args"))
+
+    def test_connects_only_as_the_read_only_role(self):
+        run = self.run_sql("select 1;\n", env_file=box_env())
+
+        env = run.psql_env()
+        self.assertEqual(run.result.returncode, 0, run.result.stderr)
+        self.assertEqual(env["PGUSER"], "reader")
+        self.assertEqual(env["PGPASSWORD"], DECODED_URL_SECRET)
+        for recorded in ("psql-env", "psql-args", "timeout-args", "ssh-args"):
+            self.assertNotIn(APP_URL_SECRET, run.recorded(recorded))
+            self.assertNotIn("app_user", run.recorded(recorded))
+
+    def test_leaves_temp_file_limit_to_the_role(self):
+        run = self.run_sql("select 1;\n", env_file=box_env())
+
+        self.assertNotIn("temp_file_limit", run.psql_env()["PGOPTIONS"])
+        self.assertNotIn("temp_file_limit", run.recorded("psql-stdin"))
+
+
 class SessionTest(Case):
     def test_runs_the_file_inside_one_read_only_transaction(self):
-        run = self.run_sql("select count(*) from users;\n", env_file=app_env())
+        run = self.run_sql("select count(*) from users;\n", env_file=box_env())
 
         self.assertEqual(run.result.returncode, 0, run.result.stderr)
         self.assertEqual(run.result.stdout, " count\n    42\n")
-        self.assertEqual(run.recorded("psql-stdin"), APP_ROLE_PREFIX + PREAMBLE + "select count(*) from users;\n" + EPILOGUE)
+        self.assertEqual(run.recorded("psql-stdin"), PREAMBLE + "select count(*) from users;\n" + EPILOGUE)
 
     def test_a_last_statement_without_a_semicolon_is_still_closed_before_the_rollback(self):
-        run = self.run_sql("select 1", env_file=app_env())
+        run = self.run_sql("select 1", env_file=box_env())
 
-        self.assertEqual(run.recorded("psql-stdin"), APP_ROLE_PREFIX + PREAMBLE + "select 1" + EPILOGUE)
+        self.assertEqual(run.recorded("psql-stdin"), PREAMBLE + "select 1" + EPILOGUE)
 
     def test_sets_read_only_and_timeouts_in_pgoptions(self):
-        run = self.run_sql("select 1;\n", env_file=app_env())
+        env = self.run_sql("select 1;\n", env_file=box_env()).psql_env()
 
-        env = run.psql_env()
         options = env["PGOPTIONS"]
         self.assertIn("-c default_transaction_read_only=on", options)
         self.assertIn("-c standard_conforming_strings=on", options)
         self.assertIn("-c statement_timeout=120000", options)
         self.assertIn("-c lock_timeout=5000", options)
-        self.assertIn("-c temp_file_limit=1GB", options)
         self.assertEqual(env["PGCLIENTENCODING"], "UTF8")
 
     def test_caps_the_whole_run_with_a_wall_clock_timeout(self):
-        run = self.run_sql("select 1;\n", env_file=app_env())
+        run = self.run_sql("select 1;\n", env_file=box_env())
 
         self.assertEqual(run.recorded("timeout-args").splitlines()[:4], ["-k", "10s", "300s", "psql"])
 
     def test_psql_gets_no_url_and_no_secret_on_its_command_line(self):
-        run = self.run_sql("select 1;\n", env_file=app_env())
+        run = self.run_sql("select 1;\n", env_file=box_env())
 
         args = run.recorded("psql-args")
         self.assertEqual(args.splitlines(), ["-X", "-q", "-v", "ON_ERROR_STOP=1", "-f", "-"])
-        for leaked in (URL_SECRET, DECODED_URL_SECRET, "postgres://", "db.internal"):
+        for leaked in (URL_SECRET, DECODED_URL_SECRET, APP_URL_SECRET, "postgres://", "db.internal"):
             self.assertNotIn(leaked, args)
             self.assertNotIn(leaked, run.recorded("timeout-args"))
             self.assertNotIn(leaked, run.recorded("ssh-args"))
 
     def test_parses_the_connection_string_into_libpq_variables(self):
-        env = self.run_sql("select 1;\n", env_file=app_env()).psql_env()
+        env = self.run_sql("select 1;\n", env_file=box_env()).psql_env()
 
         self.assertEqual(env["PGHOST"], "db.internal.example.com")
         self.assertEqual(env["PGPORT"], "5432")
-        self.assertEqual(env["PGUSER"], "app_user")
-        self.assertEqual(env["PGPASSWORD"], DECODED_URL_SECRET)
+        self.assertEqual(env["PGUSER"], "reader")
         self.assertEqual(env["PGDATABASE"], "app")
         self.assertEqual(env["PGSSLMODE"], "require")
         self.assertNotIn("x=y", env["PGOPTIONS"])
 
-    def test_through_the_read_only_role_temp_file_limit_is_left_to_the_role(self):
-        run = self.run_sql("select 1;\n", env_file=app_env(f'READONLY_DATABASE_URL="{READER_URL}"\n'))
-
-        self.assertEqual(run.result.returncode, 0, run.result.stderr)
-        self.assertNotIn("temp_file_limit", run.psql_env()["PGOPTIONS"])
-        self.assertEqual(run.recorded("psql-stdin"), PREAMBLE + "select 1;\n" + EPILOGUE)
-
-    def test_through_the_app_role_temp_file_limit_is_set(self):
-        run = self.run_sql("select 1;\n", env_file=app_env())
-
-        self.assertEqual(run.result.returncode, 0, run.result.stderr)
-        self.assertIn("-c temp_file_limit=1GB", run.psql_env()["PGOPTIONS"])
-        self.assertTrue(run.recorded("psql-stdin").startswith(APP_ROLE_PREFIX + PREAMBLE))
-
-    def test_prefers_the_read_only_role_when_its_variable_is_set(self):
-        env = self.run_sql("select 1;\n", env_file=app_env(f'READONLY_DATABASE_URL="{READER_URL}"\n')).psql_env()
-
-        self.assertEqual(env["PGUSER"], "reader")
-        self.assertEqual(env["PGPASSWORD"], "fakeReaderValue1")
-        self.assertNotIn("PGPORT", env)
-
     def test_never_prints_the_connection_details_or_other_env_values(self):
-        run = self.run_sql("select 1;\n", env_file=app_env())
+        run = self.run_sql("select 1;\n", env_file=box_env())
 
-        for leaked in ("fakeSecret", "db.internal.example.com", "fake-key", "SECRET=other", "app_user"):
+        for leaked in ("fakeSecret", APP_URL_SECRET, "db.internal.example.com", "fake-key", "SECRET=other", "reader"):
             self.assertNotIn(leaked, run.result.stdout + run.result.stderr)
 
     def test_connects_to_the_named_host_without_prompting(self):
-        run = self.run_sql("select 1;\n", env_file=app_env())
+        run = self.run_sql("select 1;\n", env_file=box_env())
 
         self.assertEqual(run.recorded("ssh-host"), "alemayhu@2anki.net")
         self.assertIn("BatchMode=yes", run.recorded("ssh-args"))
         self.assertNotIn("select 1", run.recorded("ssh-args"))
-
-    def test_says_so_when_the_env_file_has_no_database_url(self):
-        run = self.run_sql("select 1;\n", env_file=f'SIGNING_KEY="{MULTI_LINE_VALUE}"\n')
-
-        self.assertEqual(run.result.returncode, 6)
-        self.assertIn("DATABASE_URL is not set", run.result.stderr)
-        self.assertNotIn("fake-key", run.result.stderr)
-        self.assertIsNone(run.recorded("psql-args"))
 
     def test_says_so_when_the_env_file_is_missing(self):
         run = self.run_sql("select 1;\n")
 
         self.assertEqual(run.result.returncode, 6)
         self.assertIn("not readable", run.result.stderr)
+
+
+class FunctionAliasTest(Case):
+    def test_refuses_a_name_after_the_alias_of_a_function_call(self):
+        self.assert_each_refused((
+            "select g.pg_sleep from generate_series(1, 2) g;",
+            "select generate_series.pg_sleep from generate_series(1, 2);",
+            "select g.pg_sleep from generate_series(1, 2) as g;",
+            "select g.pg_sleep from users u, lateral generate_series(1, 2) g;",
+            "select g.pg_sleep from users u cross join lateral generate_series(1, 2) as g;",
+            "select g.pg_sleep from pg_catalog.generate_series(1, 2) g;",
+            "select generate_series.pg_sleep from pg_catalog.generate_series(1, 2);",
+            'select g."pg_sleep" from generate_series(1, 2) g;',
+            'select "G".pg_sleep from generate_series(1, 2) "G";',
+            "select g . pg_sleep from generate_series(1, 2) g;",
+            "select g\n.\npg_sleep from generate_series(1, 2) g;",
+            "select x.pg_terminate_backend from unnest(array[1]) x;",
+            "select g.pg_sleep from generate_series(1, 2) g(n);",
+            "select * from rows from (generate_series(1, 2)) g;",
+        ))
+
+    def test_accepts_function_aliases_used_without_a_following_name(self):
+        self.assert_each_accepted((
+            "select g from generate_series(1, 3) g;",
+            "select g.* from generate_series(1, 3) as g;",
+            "select count(*) n from t;",
+            "select extract(epoch from now());",
+            "select u.id, g from users u, generate_series(1, 3) g;",
+            "select n from generate_series(1, 3) g(n);",
+            "select x from (values (1), (2)) v(x);",
+        ))
 
 
 class AcceptedTest(Case):
@@ -546,7 +578,7 @@ class FileTest(Case):
     def test_removes_its_copy_of_the_file(self):
         for sql in ("select 1;\n", "select pg_sleep(1);\n"):
             with self.subTest(sql=sql):
-                run = self.run_sql(sql, env_file=app_env())
+                run = self.run_sql(sql, env_file=box_env())
                 self.assertEqual(os.listdir(run.tmp_dir), [])
 
     def test_refuses_a_directory_or_extra_arguments(self):

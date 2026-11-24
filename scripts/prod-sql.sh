@@ -3,9 +3,15 @@
 # opens one ssh call and sends the SQL over stdin:
 #   scripts/prod-sql.sh query.sql
 #
-# This is an interim guard until a read-only database role exists, and it is
-# safe only for SQL that passes the pre-flight below. The file is copied once;
-# the pre-flight checks that copy and the same copy is sent.
+# It runs only through the read-only database role: the connection string must
+# be in the box's app env file as READONLY_DATABASE_URL, and without it the
+# script refuses before connecting. There is no fallback to the application's
+# role. The role's own privileges are the guard ("Read-only database role" in
+# .claude/docs/prod-ops.md says what it must be); until the owner creates it,
+# production reads are not available through this script.
+#
+# The pre-flight below is a second layer, not a guarantee. The file is copied
+# once; the pre-flight checks that copy and the same copy is sent.
 #
 # The pre-flight accepts a file only when every statement starts with select,
 # with, explain, show, table or values, and every function it calls is on the
@@ -14,7 +20,10 @@
 # ")" or "]" a "." may only be followed by "*", so field access on a
 # parenthesised value such as (row).column is refused; select the row with
 # (t).* or name the column through a table alias. alias.column,
-# schema.table, schema.table.column and alias.* are accepted.
+# schema.table, schema.table.column and alias.* are accepted. The name of every
+# function call and the alias written after its closing parenthesis (with or
+# without as) may likewise only be followed by ".*", and rows from is refused.
+# A column alias list such as g(n) after a FROM item is not a call.
 # It also refuses: comments, a backslash or a dollar sign outside a
 # single-quoted string (so no psql meta-command and no dollar quote; inside a
 # string they are plain characters because standard_conforming_strings is
@@ -32,23 +41,18 @@
 # refused with every other backslash command, so write a section label as an
 # ordinary statement: select '== signups' as section;
 #
-# What it cannot guarantee: it reads tokens, not a query plan. It does not stop
-# a select from reading secret columns of app tables (password hashes, reset
-# and sign-in tokens, payment provider ids); agents must not select them. The
-# durable fix is a dedicated role with SELECT grants only, not a superuser and
-# not in the signal-backend role, with those columns revoked. Creating it is an
-# owner step tracked privately. Once it exists, put its connection string in
-# the app's env file as READONLY_DATABASE_URL and this script connects as it;
-# until then it falls back to DATABASE_URL.
+# What it cannot guarantee: it reads tokens, not a query plan, so it cannot see
+# what a function does with its arguments. It does not stop a select of secret
+# columns of app tables (password hashes, reset and sign-in tokens, payment
+# provider ids); agents must not select them, and the role is where they are
+# revoked.
 #
-# The session adds a second layer: the file runs inside one
+# The session adds another layer: the file runs inside one
 # BEGIN TRANSACTION READ ONLY ... ROLLBACK that the file cannot end early, with
 # default_transaction_read_only, standard_conforming_strings on, UTF8 client
 # encoding, a statement timeout, a short lock timeout and a 300-second
-# wall-clock cap on the whole run. Through DATABASE_URL it also sets a 1GB
-# temp_file_limit. Only a superuser can set that on PostgreSQL 14, so through
-# READONLY_DATABASE_URL it is not set and the owner sets temp_file_limit on the
-# read-only role itself. On the box the connection
+# wall-clock cap on the whole run. temp_file_limit and statement_timeout are set
+# on the role itself by the owner. On the box the connection
 # string is parsed into PGHOST, PGPORT, PGUSER, PGPASSWORD and PGDATABASE, so
 # it never sits in the process list, and none of them is printed.
 # Results are for the conversation or the private board only, never the repo,
@@ -258,27 +262,57 @@ for my $s (@statements) {
     }
   }
   check_explain($s) if $first->{text} eq 'explain';
+  my %call_aliases;
   for my $k (0 .. $#$s - 1) {
+    next unless is_call($s, $k);
     my $t = $s->[$k];
-    next unless is_name($t) && is_punct($s->[$k + 1], '(');
-    next if $k == 0 && $t->{kind} eq 'word' && $t->{text} eq 'explain';
-    my $qualified = $k >= 1 && is_punct($s->[$k - 1], '.');
-    if ($qualified) {
+    if ($k >= 1 && is_punct($s->[$k - 1], '.')) {
       my $schema = $s->[$k - 2];
       refuse("a call to $t->{text} through a schema other than pg_catalog", $t->{at})
         unless $k >= 2 && is_name($schema) && $schema->{text} eq 'pg_catalog' && !($k >= 3 && is_punct($s->[$k - 3], '.'));
     }
-    if ($t->{kind} eq 'word' && !$qualified) {
-      next if $call_like_keywords{ $t->{text} } || $type_modifiers{ $t->{text} };
-      next if $k >= 1 && ($s->[$k - 1]{kind} eq 'word') && $s->[$k - 1]{text} =~ /^(?:as|with|recursive)$/;
-    }
     refuse_call($t) unless $allowed_functions{ $t->{text} };
+    $call_aliases{ $t->{text} } = 1;
+    my $close = closing_paren($s, $k + 1);
+    next unless defined $close;
+    my $alias = $s->[$close + 1];
+    $alias = $s->[$close + 2] if is_word($alias, 'as');
+    $call_aliases{ $alias->{text} } = 1 if is_name($alias);
   }
-  for my $k (1 .. $#$s) {
-    next unless is_punct($s->[$k], '.') && (is_punct($s->[$k - 1], ')') || is_punct($s->[$k - 1], ']'));
-    refuse('a name after a dot that follows a closing parenthesis or bracket (only .* may follow)', $s->[$k]{at})
-      unless is_punct($s->[$k + 1], '*');
+  for my $k (0 .. $#$s - 1) {
+    my $t = $s->[$k];
+    refuse('rows from', $t->{at}) if is_word($t, 'rows') && is_word($s->[$k + 1], 'from');
+    next unless is_punct($s->[$k + 1], '.');
+    my $after_bracket = is_punct($t, ')') || is_punct($t, ']');
+    my $after_call_alias = is_name($t) && $call_aliases{ $t->{text} };
+    next unless $after_bracket || $after_call_alias;
+    refuse('a name after a dot that follows a closing bracket or the alias of a function call (only .* may follow)', $s->[$k + 1]{at})
+      unless is_punct($s->[$k + 2], '*');
   }
+}
+
+sub is_call {
+  my ($s, $k) = @_;
+  my $t = $s->[$k];
+  return 0 unless is_name($t) && is_punct($s->[$k + 1], '(');
+  return 0 if $k == 0 && $t->{kind} eq 'word' && $t->{text} eq 'explain';
+  return 1 if $t->{kind} eq 'quoted';
+  return 1 if $k >= 1 && is_punct($s->[$k - 1], '.');
+  return 0 if $call_like_keywords{ $t->{text} } || $type_modifiers{ $t->{text} };
+  return 0 if $k >= 1 && $s->[$k - 1]{kind} eq 'word' && $s->[$k - 1]{text} =~ /^(?:as|with|recursive)$/;
+  return 0 if $k >= 1 && is_punct($s->[$k - 1], ')');
+  return 1;
+}
+
+sub closing_paren {
+  my ($s, $open) = @_;
+  my $depth = 0;
+  for my $k ($open .. $#$s) {
+    $depth++ if is_punct($s->[$k], '(');
+    $depth-- if is_punct($s->[$k], ')');
+    return $k if $depth == 0;
+  }
+  return undef;
 }
 
 sub refuse_call {
@@ -298,19 +332,17 @@ use warnings;
 my $env_file = "$ENV{HOME}/$ARGV[0]";
 my $fail = sub { print STDERR "$_[0]\n"; exit 6 };
 open(my $fh, "<", $env_file) or $fail->("the app env file is not readable on the box");
-my %found;
+my $url;
 while (my $line = <$fh>) {
   $line =~ s/\r?\n\z//;
-  next unless $line =~ /^(READONLY_DATABASE_URL|DATABASE_URL)=(.*)\z/;
-  my ($key, $value) = ($1, $2);
+  next unless $line =~ /^READONLY_DATABASE_URL=(.*)\z/;
+  my $value = $1;
   $value =~ s/^["']//;
   $value =~ s/["']\z//;
-  $found{$key} = $value unless exists $found{$key};
+  $url = $value unless defined $url;
 }
 close $fh;
-my $app_role = !(defined $found{READONLY_DATABASE_URL} && length $found{READONLY_DATABASE_URL});
-my $url = $app_role ? $found{DATABASE_URL} : $found{READONLY_DATABASE_URL};
-$fail->("DATABASE_URL is not set in the app env file") unless defined $url && length $url;
+$fail->("refused: the read-only database role has not been set up yet (READONLY_DATABASE_URL is not in the app env file on the box). See \"Read-only database role\" in .claude/docs/prod-ops.md.") unless defined $url && length $url;
 my ($user, $password, $host, $port, $database, $query) = $url =~ m{^postgres(?:ql)?://(?:([^:@/]*)(?::([^@/]*))?@)?([^:/?]*)(?::(\d+))?(?:/([^?]*))?(?:\?(.*))?\z};
 $fail->("the connection string is not a postgres URL") unless defined $host;
 my $decode = sub { my $s = shift; $s =~ s/%([0-9A-Fa-f]{2})/chr(hex($1))/ge; return $s };
@@ -324,19 +356,10 @@ for my $pair (split /&/, defined $query ? $query : "") {
   my ($k, $v) = split /=/, $pair, 2;
   $ENV{PGSSLMODE} = $decode->($v) if defined $v && $k eq "sslmode";
 }
-$ENV{PGOPTIONS} = "-c default_transaction_read_only=on -c standard_conforming_strings=on -c statement_timeout=120000 -c lock_timeout=5000 -c idle_in_transaction_session_timeout=60000" . ($app_role ? " -c temp_file_limit=1GB" : "");
+$ENV{PGOPTIONS} = "-c default_transaction_read_only=on -c standard_conforming_strings=on -c statement_timeout=120000 -c lock_timeout=5000 -c idle_in_transaction_session_timeout=60000";
 $ENV{PGCLIENTENCODING} = "UTF8";
 $ENV{PGAPPNAME} = "prod-sql";
-my @psql = ("timeout", "-k", "10s", "300s", "psql", "-X", "-q", "-v", "ON_ERROR_STOP=1", "-f", "-");
-unless ($app_role) {
-  exec(@psql) or do { print STDERR "could not start psql\n"; exit 7 };
-}
-$SIG{PIPE} = "IGNORE";
-open(my $to_psql, "|-", @psql) or do { print STDERR "could not start psql\n"; exit 7 };
-print {$to_psql} "SET temp_file_limit = '1GB';\n";
-while (my $chunk = <STDIN>) { print {$to_psql} $chunk }
-close $to_psql;
-exit(($? & 127) ? 128 + ($? & 127) : $? >> 8);
+exec("timeout", "-k", "10s", "300s", "psql", "-X", "-q", "-v", "ON_ERROR_STOP=1", "-f", "-") or do { print STDERR "could not start psql\n"; exit 7 };
 PERL
 }
 
