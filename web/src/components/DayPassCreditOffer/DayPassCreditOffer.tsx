@@ -8,6 +8,7 @@ import {
   startDayPassCreditCheckout,
 } from '../../lib/backend/dayPassCredit';
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
+import { useAppLanguage } from '../../lib/i18n/useAppLanguage';
 import sharedStyles from '../../styles/shared.module.css';
 import styles from './DayPassCreditOffer.module.css';
 
@@ -18,8 +19,11 @@ interface DayPassCreditOfferProps {
   readonly enabled: boolean;
 }
 
-const formatDateTime = (iso: string, locale: string): string =>
-  new Date(iso).toLocaleString(locale, {
+const dateLocale = (language: string): string =>
+  language.startsWith('en') ? 'en-GB' : language;
+
+const formatDateTime = (iso: string, language: string): string =>
+  new Date(iso).toLocaleString(dateLocale(language), {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
@@ -31,7 +35,8 @@ export function DayPassCreditOffer({
   placement,
   enabled,
 }: DayPassCreditOfferProps) {
-  const { t, i18n } = useTranslation('dayPassCredit');
+  const { t } = useTranslation('dayPassCredit');
+  const language = useAppLanguage();
   const { data: userLocals } = useUserLocals();
   const queryClient = useQueryClient();
   const { data: offer } = useQuery({
@@ -43,6 +48,7 @@ export function DayPassCreditOffer({
   const [pending, setPending] = useState(false);
   const [refusal, setRefusal] = useState<'unavailable' | 'error' | null>(null);
   const shownTracked = useRef(false);
+  const unavailableRef = useRef<HTMLParagraphElement>(null);
 
   const visible = enabled && offer != null;
 
@@ -52,12 +58,21 @@ export function DayPassCreditOffer({
     track('day_pass_credit_offer_shown', { placement });
   }, [visible, placement]);
 
+  useEffect(() => {
+    if (refusal === 'unavailable') unavailableRef.current?.focus();
+  }, [refusal]);
+
   if (!enabled) return null;
 
   if (refusal === 'unavailable') {
     return (
       <section className={styles.offer}>
-        <p role="alert" className={styles.refusal}>
+        <p
+          ref={unavailableRef}
+          role="alert"
+          tabIndex={-1}
+          className={styles.refusal}
+        >
           {t('unavailable')} <Link to="/pricing">{t('seePlans')}</Link>
         </p>
       </section>
@@ -67,6 +82,7 @@ export function DayPassCreditOffer({
   if (offer == null) return null;
 
   const handleClick = async () => {
+    if (pending) return;
     track('day_pass_credit_offer_clicked', { placement });
     setPending(true);
     setRefusal(null);
@@ -86,14 +102,14 @@ export function DayPassCreditOffer({
     offer.semesterStartsAt == null
       ? t('startsNow')
       : t('startsLater', {
-          date: formatDateTime(offer.semesterStartsAt, i18n.language),
+          date: formatDateTime(offer.semesterStartsAt, language),
         });
 
   return (
     <section className={styles.offer} aria-labelledby="day-pass-credit-title">
-      <p id="day-pass-credit-title" className={styles.title}>
+      <h2 id="day-pass-credit-title" className={styles.title}>
         {t('title', { price: offer.display })}
-      </p>
+      </h2>
       <p className={styles.body}>
         {t('body', {
           dayPassPrice: offer.dayPassDisplay,
@@ -103,14 +119,14 @@ export function DayPassCreditOffer({
       <p className={styles.body}>{startLine}</p>
       <p className={styles.body}>
         {t('offerEnds', {
-          date: formatDateTime(offer.endsAt, i18n.language),
+          date: formatDateTime(offer.endsAt, language),
         })}
       </p>
       <button
         type="button"
-        className={sharedStyles.btnSecondary}
+        className={`${sharedStyles.btnSecondary} ${styles.cta}`}
         onClick={handleClick}
-        disabled={pending}
+        aria-disabled={pending ? true : undefined}
       >
         {pending ? t('pending') : t('cta', { price: offer.display })}
       </button>
