@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-24-pass-ending-email-semester-pass",
+  "date": "2026-11-24",
+  "type": "fix",
+  "title": "The email the day before a pass ends lists the Semester Pass next to the Day Pass and Week Pass"
+}

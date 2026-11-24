@@ -61,12 +61,47 @@ describe('pass end emails', () => {
         'Your Week Pass ends in about a day. Here is what happens to your account next, in two versions. Without a plan Tomorrow: the free limit is back. 100 cards a month.'
       );
       expect(msg.text).toContain(
-        'With Pro Tomorrow: same login, same decks, no gap. No card limit. Next week: every conversion comes out whole. Exam week: nothing to buy. To get the second version, start Pro before your pass ends. Cancel any time. Start Pro Prefer another pass? The pricing page has Day and Week passes too. Pay once, nothing recurring.'
+        'With Pro Tomorrow: same login, same decks, no gap. No card limit. Next week: every conversion comes out whole. Exam week: nothing to buy. To get the second version, start Pro before your pass ends. Cancel any time. Start Pro Prefer another pass? The pricing page has the Day Pass, Week Pass, and Semester Pass. Pay once, nothing recurring.'
       );
       expect(msg.html).toContain(
         'href="https://2anki.net/r/email?t=tok-week&c=pass_ending&to=/pricing"'
       );
       expect(msg.categories).toEqual([EMAIL_CATEGORIES.passEnding]);
+    });
+  });
+
+  describe.each([
+    ['Week Pass', 'Your Week Pass ends tomorrow'],
+    ['Semester Pass', 'Your Semester Pass ends tomorrow'],
+  ])('day-before email offering Pro to a %s holder', (passLabel, subject) => {
+    const englishLine =
+      'Prefer another pass? The pricing page has the Day Pass, Week Pass, and Semester Pass. Pay once, nothing recurring.';
+    const germanLine =
+      'Lieber wieder ein Pass? Auf der Preisseite gibt es den Day Pass, den Week Pass und den Semester Pass. Einmal zahlen, nichts Wiederkehrendes.';
+
+    it('names the Semester Pass among the passes in the English text and HTML', async () => {
+      await serviceFor(null).sendPassEndingEmail(
+        'pass@example.com',
+        'tok-pass',
+        passLabel
+      );
+
+      const msg = lastMessage();
+      expect(msg.subject).toBe(subject);
+      expect(msg.text).toContain(englishLine);
+      expect(msg.html).toContain(`>${englishLine}</p>`);
+    });
+
+    it('names the Semester Pass among the passes in the German text and HTML', async () => {
+      await serviceFor('de').sendPassEndingEmail(
+        'pass@example.com',
+        'tok-pass',
+        passLabel
+      );
+
+      const msg = lastMessage();
+      expect(msg.text).toContain(germanLine);
+      expect(msg.html).toContain(`>${germanLine}</p>`);
     });
   });
 
@@ -112,7 +147,7 @@ describe('pass end emails', () => {
       );
 
       const msg = lastMessage();
-      expect(msg.text).not.toContain('Day and Week passes');
+      expect(msg.text).not.toContain('Day Pass, Week Pass');
       expect(msg.text).not.toContain('tomorrow');
       expect(msg.text.indexOf('Renew Semester Pass')).toBeLessThan(
         msg.text.indexOf('Pro has no card limit')
