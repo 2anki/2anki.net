@@ -232,7 +232,11 @@ class RoleTest(Case):
             "pg_read_server_files",
             "pg_write_server_files",
             "pg_catalog.pg_has_role(r.oid, c.relowner, 'MEMBER')",
-            "pg_catalog.has_table_privilege(r.oid, c.oid, 'INSERT, UPDATE, DELETE, TRUNCATE')",
+            "pg_catalog.has_table_privilege(r.oid, c.oid, 'INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER')",
+            "FROM pg_catalog.pg_shdepend d WHERE d.deptype = 'o' AND d.refclassid = 1260 AND pg_catalog.pg_has_role(r.oid, d.refobjid, 'MEMBER')",
+            "d.dbid IN (0, (SELECT oid FROM pg_catalog.pg_database WHERE datname = pg_catalog.current_database()))",
+            "pg_catalog.has_schema_privilege(r.oid, n2.oid, 'CREATE')",
+            "NOT pg_catalog.has_database_privilege(r.oid, pg_catalog.current_database(), 'CREATE, TEMPORARY')",
             "pg_catalog.has_sequence_privilege(r.oid, c.oid, 'USAGE, UPDATE')",
             "c.relkind IN ('r','p','v','m','f','S')",
             "FROM pg_catalog.pg_roles r WHERE pg_catalog.pg_has_role(session_user, r.oid, 'MEMBER')",
@@ -248,7 +252,7 @@ class RoleTest(Case):
     def test_pins_search_path_first_and_qualifies_every_catalog_name(self):
         self.assertTrue(PREAMBLE.startswith("SET search_path = pg_catalog, public;\n"))
         unqualified = re.findall(
-            r"(?<!pg_catalog\.)\b(pg_roles|pg_class|pg_namespace|pg_settings|pg_has_role|has_table_privilege|has_sequence_privilege|set_config|bool_and|count)\b",
+            r"(?<!pg_catalog\.)\b(pg_roles|pg_class|pg_namespace|pg_settings|pg_shdepend|pg_database|pg_has_role|has_table_privilege|has_sequence_privilege|has_schema_privilege|has_database_privilege|current_database|pg_describe_object|set_config|bool_and|count|left)\b",
             PREAMBLE,
         )
         self.assertEqual(unqualified, [])
@@ -264,6 +268,17 @@ class RoleTest(Case):
                 self.assertEqual(run.result.returncode, 6, run.result.stderr)
                 self.assertIn("DATABASE_URL is missing or does not parse", run.result.stderr)
                 self.assertIsNone(run.recorded("psql-args"))
+
+    def test_the_failure_reason_runs_only_on_the_failure_path(self):
+        stdin = self.run_sql("select count(*) from users;\n", env_file=box_env()).recorded("psql-stdin")
+
+        failure_branch = stdin[stdin.index("\\if :ERROR") : stdin.index("\\endif")]
+        self.assertIn("ROLLBACK;\nBEGIN TRANSACTION READ ONLY;\n", failure_branch)
+        self.assertIn("AS role_check_reason", failure_branch)
+        self.assertIn("\\warn :role_check_reason", failure_branch)
+        self.assertTrue(failure_branch.rstrip().endswith("SELECT 'the connected role is not read-only'::pg_catalog.int4;"))
+        self.assertEqual(stdin.count("role_check_reason"), 2)
+        self.assertLess(stdin.index("\\endif"), stdin.index("select count(*) from users;"))
 
     def test_a_failed_role_check_ends_with_a_clear_message(self):
         run = self.run_sql("select 1;\n", env_file=box_env(), role_check="fail")
