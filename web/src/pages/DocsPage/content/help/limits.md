@@ -43,7 +43,7 @@ The **Generate flashcards with Claude AI** card option is a Subscription / Lifet
 
 ## Chat
 
-The Chat study assistant is part of every paid plan — Subscription, Day Pass, and Lifetime. On a free account, past conversations stay readable and decks you already made stay downloadable; sending messages requires a plan.
+The Chat study assistant is part of every paid plan — Subscription, Day Pass, Week Pass, Semester Pass, and Lifetime. On a free account, past conversations stay readable and decks you already made stay downloadable; sending messages requires a plan.
 
 |                | Free                         | Paid plans         |
 | -------------- | ---------------------------- | ------------------ |

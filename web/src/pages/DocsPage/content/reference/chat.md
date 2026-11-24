@@ -5,7 +5,7 @@ description: Paste notes or attach a file, ask for cards, work through a concept
 
 Chat is a study assistant built on Claude. Paste your notes or attach a file, then ask it to make cards, explain something, or work through a topic by going back and forth. Open it at [2anki.net/chat](https://2anki.net/chat). Sign-in required.
 
-**Plan:** Part of every paid plan — Subscription, Day Pass, and Lifetime. On a free account you can read your past conversations and download decks you already made, but sending messages requires a plan.
+**Plan:** Part of every paid plan — Subscription, Day Pass, Week Pass, Semester Pass, and Lifetime. On a free account you can read your past conversations and download decks you already made, but sending messages requires a plan.
 
 ## When to use this
 

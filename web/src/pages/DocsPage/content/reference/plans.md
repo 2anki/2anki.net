@@ -1,5 +1,5 @@
 ---
-title: Short plans and passes
+title: Plans and passes
 description: Day Pass, Week Pass, and Semester Pass — when a one-time pass makes sense.
 ---
 

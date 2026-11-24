@@ -1,5 +1,5 @@
 ---
-title: Kurze Pläne und Pässe
+title: Pläne und Pässe
 description: Day Pass, Week Pass und Semester Pass — wann ein einmaliger Pass sinnvoll ist.
 ---
 
