@@ -15,7 +15,7 @@ type Step = 'ask' | 'comment' | 'done';
 
 export function AiGiftFeedback() {
   const { t } = useTranslation('aiGift');
-  const gift = useAiGift();
+  const gift = useAiGift(true);
   const queryClient = useQueryClient();
   const titleId = useId();
   const commentId = useId();

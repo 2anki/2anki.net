@@ -107,7 +107,7 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
 
   const isSignedIn = userLocals?.user?.id != null;
   const isPaying = isPayingUser(userLocals?.locals);
-  const gift = useAiGift();
+  const gift = useAiGift(isSignedIn);
   const giftCredits =
     isSignedIn && gift?.state === 'claimed' && gift.credits > 0
       ? gift.credits

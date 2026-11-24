@@ -160,7 +160,7 @@ export function AiGiftPresent({
   align = 'end',
 }: Readonly<AiGiftPresentProps>) {
   const { t } = useTranslation('aiGift');
-  const gift = useAiGift();
+  const gift = useAiGift(isLoggedIn);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const panelId = useId();
