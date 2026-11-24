@@ -2,7 +2,11 @@ import { useTranslation } from 'react-i18next';
 import { AiCreditsState } from '../../../lib/hooks/useAiCredits';
 import type { AiGiftStatus } from '../../../lib/backend/aiGift';
 import { BuyCreditsButton } from '../../../components/BuyCreditsButton/BuyCreditsButton';
-import { useGiftBalanceText } from '../../../components/AiGift/useAiGiftBalanceLine';
+import {
+  spentPlanCreditsKey,
+  useActiveGiftBalance,
+  useGiftBalanceText,
+} from '../../../components/AiGift/useAiGiftBalanceLine';
 import pageStyles from '../UploadPage.module.css';
 
 const LOW_CREDITS_THRESHOLD = 25;
@@ -14,7 +18,8 @@ interface Props {
 
 export function AiCreditsReadout({ credits, gift = null }: Props) {
   const { t } = useTranslation('aicredits');
-  const giftLine = useGiftBalanceText(gift, true);
+  const giftBalance = useActiveGiftBalance(gift);
+  const giftLine = useGiftBalanceText(giftBalance, true);
 
   if (credits == null || credits.allowance === 0) {
     return null;
@@ -31,7 +36,7 @@ export function AiCreditsReadout({ credits, gift = null }: Props) {
       <>
         <span className={pageStyles.aiCreditsLine} data-testid="ai-credits">
           <span className={pageStyles.aiCreditsWarning}>
-            {t(credits.resets === 'pass' ? 'zeroPass' : 'zero')}
+            {t(spentPlanCreditsKey(credits, giftBalance != null))}
           </span>
           <BuyCreditsButton source="credits_badge" variant="link" compact />
         </span>

@@ -364,6 +364,10 @@
   margin-top: 0.5rem;
 }
 
+.identityAiCredits + .identityAiGift {
+  margin-top: -0.25rem;
+}
+
 .identityUsageUpgrade {
   display: block;
   font-size: var(--text-sm);

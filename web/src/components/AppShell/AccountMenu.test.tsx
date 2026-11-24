@@ -509,6 +509,37 @@ describe('AccountMenu free AI credits gift line', () => {
     expect(screen.queryByText(/free AI credit/)).not.toBeInTheDocument();
   });
 
+  it.each(['period' as const, 'pass' as const])(
+    'reads plain zero, not builds without AI, for a spent %s plan holding a gift',
+    async (resets) => {
+      vi.mocked(getAiCredits).mockResolvedValue({
+        ...planCredits,
+        credits: 0,
+        used: 300,
+        resets,
+      });
+      vi.mocked(getAiGift).mockResolvedValue(claimed(60));
+      renderMenu({ locals: { subscriber: true } });
+      openMenu();
+      expect(
+        await screen.findByText(`Plus 60 free AI credits until ${expiry()}.`)
+      ).toBeInTheDocument();
+      expect(screen.getByText('0 AI credits.')).toBeInTheDocument();
+      expect(screen.queryByText(/builds without AI/)).not.toBeInTheDocument();
+    }
+  );
+
+  it('says the next deck builds without AI for a spent plan with no gift', async () => {
+    vi.mocked(getAiCredits).mockResolvedValue({
+      ...planCredits,
+      credits: 0,
+      used: 300,
+    });
+    renderMenu({ locals: { subscriber: true } });
+    openMenu();
+    expect(await screen.findByText(/builds without AI/)).toBeInTheDocument();
+  });
+
   it('shows no gift line to a signed-out visitor', async () => {
     vi.mocked(getAiGift).mockResolvedValue(claimed(100));
     renderMenu({ locals: null });

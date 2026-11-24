@@ -1181,6 +1181,21 @@ describe('UploadPage checkout return', () => {
     fakeFeatures = undefined;
   });
 
+  it('refreshes the AI credits and the gift balance on return from a credits purchase', async () => {
+    fakeUser = { id: 42 };
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries');
+
+    render(buildPage('/upload?credits=added&session_id=cs_1', queryClient));
+
+    await waitFor(() =>
+      expect(invalidate).toHaveBeenCalledWith({ queryKey: ['aiGift'] })
+    );
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['aiCredits'] });
+  });
+
   it('keeps the checkout params in the URL and reports nothing while user locals load', () => {
     fakeLocalsLoading = true;
 

@@ -22,6 +22,7 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 
 import { StrictMode } from 'react';
 import UploadForm from './UploadForm';
+import { AI_GIFT_QUERY_KEY } from '../../../../lib/hooks/useAiGift';
 import {
   aiPreviewCheckoutMarked,
   clearAiPreviewCheckout,
@@ -8987,6 +8988,27 @@ describe('UploadForm deck result and resends of kept files', () => {
       expect(retiredRebuildEvents()).toEqual([]);
     }
   );
+
+  it('refreshes the AI credits and the gift balance once a deck is made', async () => {
+    stubServer([deckResponse(12)]);
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries');
+    const { container } = render(
+      <MemoryRouter>
+        <QueryClientProvider client={queryClient}>
+          <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+        </QueryClientProvider>
+      </MemoryRouter>
+    );
+    await submitFiles(container, ['notes.md']);
+
+    await waitFor(() =>
+      expect(invalidate).toHaveBeenCalledWith({ queryKey: AI_GIFT_QUERY_KEY })
+    );
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['aiCredits'] });
+  });
 
   it('says only how many cards came on a thin PDF deck once the plan has no AI credits left', async () => {
     const fetchMock = stubServer([deckResponse(2)], 0);

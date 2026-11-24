@@ -21,7 +21,7 @@ import {
 } from '../../lib/data_layer/aiChoice';
 import useQuery from '../../lib/hooks/useQuery';
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
-import { useAiGift } from '../../lib/hooks/useAiGift';
+import { useAiGift, AI_GIFT_QUERY_KEY } from '../../lib/hooks/useAiGift';
 import { hasSessionHint } from '../../lib/sessionHint';
 import {
   useAiCredits,
@@ -267,6 +267,7 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
         })
       );
       queryClient.invalidateQueries({ queryKey: AI_CREDITS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: AI_GIFT_QUERY_KEY });
       const next = new URLSearchParams(searchParams);
       next.delete('credits');
       next.delete('session_id');

@@ -5,7 +5,10 @@ import {
   type AiCreditsState,
 } from '../../../lib/hooks/useAiCredits';
 import { BuyCreditsButton } from '../../../components/BuyCreditsButton/BuyCreditsButton';
-import { useAiGiftBalanceLine } from '../../../components/AiGift/useAiGiftBalanceLine';
+import {
+  useGiftBalanceText,
+  useSignedInGiftBalance,
+} from '../../../components/AiGift/useAiGiftBalanceLine';
 import { formatLongDate } from '../utils/formatLongDate';
 import styles from '../AccountPage.module.css';
 
@@ -95,7 +98,10 @@ function usePlanLine(credits: AiCreditsState | null): PlanLine | null {
 export function AiCreditsAccountLine() {
   const credits = useAiCredits(true);
   const plan = usePlanLine(credits);
-  const giftLine = useAiGiftBalanceLine(true, plan != null);
+  const giftLine = useGiftBalanceText(
+    useSignedInGiftBalance(true),
+    plan != null
+  );
 
   if (plan == null && giftLine == null) {
     return null;

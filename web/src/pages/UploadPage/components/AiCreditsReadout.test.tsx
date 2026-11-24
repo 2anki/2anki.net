@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import i18n from '../../../lib/i18n';
@@ -102,13 +102,47 @@ describe('AiCreditsReadout with free AI credits from the gift', () => {
     );
   });
 
-  it('keeps the gift line once the plan credits are spent', () => {
+  it.each(['period' as const, 'pass' as const])(
+    'reads plain zero, not builds without AI, once a %s plan is spent and the gift has credits',
+    (resets) => {
+      render(
+        <AiCreditsReadout
+          credits={state({ credits: 0, resets })}
+          gift={claimed(40)}
+        />
+      );
+      expect(screen.getByTestId('ai-credits')).toHaveTextContent(
+        '0 AI credits.'
+      );
+      expect(screen.queryByText(/builds without AI/)).toBeNull();
+      expect(screen.getByTestId('ai-gift-credits')).toHaveTextContent(
+        plusLine(40)
+      );
+    }
+  );
+
+  it.each([
+    ['no gift', null],
+    ['an expired gift', claimed(40, '2026-11-24T19:14:00.000Z')],
+  ])('says the next deck builds without AI with %s', (_name, gift) => {
+    render(<AiCreditsReadout credits={state({ credits: 0 })} gift={gift} />);
+    expect(screen.getByText(/builds without AI/)).toBeInTheDocument();
+  });
+
+  it('drops the gift line and the plain zero once the gift expires on an open page', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-11-26T19:14:00.000Z'));
     render(
       <AiCreditsReadout credits={state({ credits: 0 })} gift={claimed(40)} />
     );
-    expect(screen.getByTestId('ai-gift-credits')).toHaveTextContent(
-      plusLine(40)
-    );
+    expect(screen.getByTestId('ai-gift-credits')).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(60_000);
+    });
+
+    expect(screen.queryByTestId('ai-gift-credits')).toBeNull();
+    expect(screen.getByText(/builds without AI/)).toBeInTheDocument();
   });
 
   it('renders nothing for an account with no plan, which the page covers', () => {

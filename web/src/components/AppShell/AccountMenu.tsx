@@ -8,7 +8,12 @@ import {
   type AiCreditsState,
 } from '../../lib/hooks/useAiCredits';
 import { useDialogFocus } from '../../lib/hooks/useDialogFocus';
-import { useAiGiftBalanceLine } from '../AiGift/useAiGiftBalanceLine';
+import {
+  spentPlanCreditsKey,
+  useGiftBalanceText,
+  useSignedInGiftBalance,
+  type ActiveGiftBalance,
+} from '../AiGift/useAiGiftBalanceLine';
 import { useLapsedPayment } from '../../lib/hooks/useLapsedPayment';
 import { STRIPE_CUSTOMER_PORTAL_URL } from '../../lib/stripePortal';
 import { track } from '../../lib/analytics/track';
@@ -43,13 +48,19 @@ function showsAiCreditsLine(credits: AiCreditsState | null): boolean {
 }
 
 function AiGiftBalanceLine({
-  signedIn,
+  balance,
   afterPlanLine,
-}: Readonly<{ signedIn: boolean; afterPlanLine: boolean }>) {
-  const line = useAiGiftBalanceLine(signedIn, afterPlanLine);
+}: Readonly<{ balance: ActiveGiftBalance | null; afterPlanLine: boolean }>) {
+  const line = useGiftBalanceText(balance, afterPlanLine);
   if (line == null) return null;
   return (
-    <span className={`${styles.identityUsage} ${styles.identityAiCredits}`}>
+    <span
+      className={
+        afterPlanLine
+          ? `${styles.identityUsage} ${styles.identityAiCredits} ${styles.identityAiGift}`
+          : `${styles.identityUsage} ${styles.identityAiCredits}`
+      }
+    >
       {line}
     </span>
   );
@@ -82,7 +93,8 @@ function CardUsageLine({ used, limit }: Readonly<CardUsageLineProps>) {
 
 function AiCreditsLine({
   credits,
-}: Readonly<{ credits: AiCreditsState | null }>) {
+  giftActive,
+}: Readonly<{ credits: AiCreditsState | null; giftActive: boolean }>) {
   const { t, i18n } = useTranslation('aicredits');
 
   if (credits == null) {
@@ -116,7 +128,7 @@ function AiCreditsLine({
       }
     >
       {credits.credits <= 0
-        ? t(credits.resets === 'pass' ? 'zeroPass' : 'zero')
+        ? t(spentPlanCreditsKey(credits, giftActive))
         : t('left', { count: credits.credits })}
       {low && (
         <Link
@@ -239,6 +251,7 @@ export function AccountMenu({
     : getPlanLabel(locals);
   const usage = useCardUsage(isLoggedIn && !paying);
   const credits = useAiCredits(isLoggedIn);
+  const giftBalance = useSignedInGiftBalance(isLoggedIn);
   const showUsage = usage != null && !usage.unlimited && !usage.loading;
   const usageForRing = showUsage && usage ? usage : null;
   const ring = usage?.loading ? null : pickBalanceRing(usageForRing, credits);
@@ -341,9 +354,9 @@ export function AccountMenu({
                 {t('nav.accountMenu.cardsUnlimited')}
               </span>
             )}
-            <AiCreditsLine credits={credits} />
+            <AiCreditsLine credits={credits} giftActive={giftBalance != null} />
             <AiGiftBalanceLine
-              signedIn={isLoggedIn}
+              balance={giftBalance}
               afterPlanLine={showsAiCreditsLine(credits)}
             />
             {pastDue && (
