@@ -23,6 +23,7 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { StrictMode } from 'react';
 import UploadForm from './UploadForm';
 import { AI_GIFT_QUERY_KEY } from '../../../../lib/hooks/useAiGift';
+import { readUploadZoneActivity } from '../../../../lib/upload/uploadZoneActivity';
 import {
   aiPreviewCheckoutMarked,
   clearAiPreviewCheckout,
@@ -264,6 +265,30 @@ describe('UploadForm', () => {
         'cs_gone',
         expect.any(Object)
       );
+    } finally {
+      restore();
+    }
+  });
+
+  test('tells the page the zone is busy while the pass-return notice is up', async () => {
+    stubPassReturn('cs_gone_notice');
+    const resumeAiPreview = vi.fn().mockResolvedValue({
+      status: 404,
+      redirected: false,
+      headers: new Headers(),
+    } as unknown as Response);
+    const claimHeldDeckWithPass = vi
+      .fn()
+      .mockResolvedValue(statusResponse(404));
+    const restore = installResumeApi(resumeAiPreview, claimHeldDeckWithPass);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      await screen.findByText(
+        'Your pass is active. Drop your file again to get every card.'
+      );
+
+      expect(readUploadZoneActivity()).toBe('busy');
     } finally {
       restore();
     }
@@ -2492,6 +2517,29 @@ describe('UploadForm analytics events', () => {
     expect(cancelledCalls[0][1]).toEqual({ stage: 'converting' });
   });
 
+  it('tells the page its upload zone is idle, busy while converting, and gone once unmounted', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(() => new Promise(() => {}))
+    );
+
+    const { container, unmount } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    expect(readUploadZoneActivity()).toBe('idle');
+
+    const form = container.querySelector('form')!;
+    await act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
+    });
+    expect(readUploadZoneActivity()).toBe('busy');
+
+    unmount();
+    expect(readUploadZoneActivity()).toBe('absent');
+  });
+
   async function submitAndGetHarness(response: Record<string, unknown>) {
     const { track } = await import('../../../../lib/analytics/track');
     const trackMock = vi.mocked(track);
@@ -2932,6 +2980,30 @@ describe('UploadForm analytics events', () => {
       'button[aria-label="Change upload source"]'
     );
     expect(changeBtn).not.toBeNull();
+    process.env.REACT_APP_DROPBOX_APP_KEY = previousKey;
+  });
+
+  it('tells the page the zone is busy while the Dropbox source is chosen, and idle back on the local one', async () => {
+    const previousKey = process.env.REACT_APP_DROPBOX_APP_KEY;
+    process.env.REACT_APP_DROPBOX_APP_KEY = 'test-key';
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    expect(readUploadZoneActivity()).toBe('idle');
+
+    await act(async () => {
+      within(container).getByRole('button', { name: 'Dropbox' }).click();
+    });
+    expect(readUploadZoneActivity()).toBe('busy');
+
+    await act(async () => {
+      (
+        container.querySelector(
+          'button[aria-label="Change upload source"]'
+        ) as HTMLButtonElement
+      ).click();
+    });
+    expect(readUploadZoneActivity()).toBe('idle');
     process.env.REACT_APP_DROPBOX_APP_KEY = previousKey;
   });
 
@@ -5428,6 +5500,23 @@ describe('limit state', () => {
     expect(screen.queryByText('Choose files')).not.toBeInTheDocument();
   });
 
+  it('tells the page the zone is busy while the monthly limit wall is up', () => {
+    setUserLocals(loggedInData);
+    mockUseCardUsage.mockReturnValue({
+      cards_used: 100,
+      cards_limit: 100,
+      unlimited: false,
+      loading: false,
+    });
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+
+    expect(
+      screen.getByText("You've used all 100 cards this month")
+    ).toBeInTheDocument();
+    expect(readUploadZoneActivity()).toBe('busy');
+  });
+
   it('explains the paused plan on the locked wall after a failed renewal', async () => {
     vi.stubGlobal(
       'fetch',
@@ -7517,6 +7606,15 @@ describe('UploadForm reattach recovery', () => {
     expect(banner.textContent).toContain('big.zip');
     expect(banner.textContent).toContain('to convert');
     expect(track).toHaveBeenCalledWith('upload_reattach_shown');
+  });
+
+  it('tells the page the zone is busy while it asks to re-attach a file', async () => {
+    globalThis.sessionStorage.setItem('upload_pending_filename', 'big.zip');
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+
+    await screen.findByText(/Re-attach/);
+    expect(readUploadZoneActivity()).toBe('busy');
   });
 
   it('shows no offer when nothing was pending', async () => {
@@ -11866,6 +11964,17 @@ describe('UploadForm deck result and resends of kept files', () => {
     expect(callsTo(fetchMock, '/api/upload/file')).toEqual([]);
   });
 
+  it('tells the page the zone is busy while it offers to continue an interrupted upload', async () => {
+    await saveInterruptedUpload({ ownerId: null, ownerUnknown: true });
+    setUserLocals(signedOut);
+    stubServer([new Promise<never>(() => {})]);
+    renderFormKeepingCache(false);
+
+    await screen.findByRole('button', { name: 'Continue' });
+
+    expect(readUploadZoneActivity()).toBe('busy');
+  });
+
   it('drops the closing line once a new file goes out', async () => {
     await saveInterruptedUpload({ ownerId: null, ownerUnknown: true });
     setUserLocals(signedOut);
@@ -14178,6 +14287,23 @@ describe('UploadForm last deck for a signed-out pass holder', () => {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
     resetLastDeckStoreForTests();
+  });
+
+  it('tells the page the zone is busy while the last deck is on offer, and idle without one', async () => {
+    showVisitor(signedOutVisitor);
+    stubRecovery(vi.fn());
+    const first = renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+    await act(async () => {
+      await getLastDeckStore().load();
+    });
+    expect(readUploadZoneActivity()).toBe('idle');
+    first.unmount();
+
+    await keepDeck();
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+    await screen.findByText(/Your last deck,/);
+
+    await waitFor(() => expect(readUploadZoneActivity()).toBe('busy'));
   });
 
   it('keeps the deck of a signed-out upload that used a pass', async () => {

@@ -110,6 +110,7 @@ describe('AiGiftPresent', () => {
     expect(track).toHaveBeenCalledWith('ai_gift_opened', {
       state: 'open',
       signed_in: false,
+      trigger: 'click',
     });
   });
 
@@ -127,6 +128,7 @@ describe('AiGiftPresent', () => {
     expect(track).toHaveBeenCalledWith('ai_gift_claim_clicked', {
       signed_in: false,
       page: '/register',
+      trigger: 'click',
     });
   });
 
@@ -179,6 +181,7 @@ describe('AiGiftPresent', () => {
     ).toHaveLength(1);
     expect(track).toHaveBeenCalledWith('ai_gift_claim_clicked', {
       signed_in: true,
+      trigger: 'click',
     });
   });
 

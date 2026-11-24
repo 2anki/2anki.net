@@ -205,6 +205,7 @@ export const KNOWN_EVENTS = new Set([
   'ai_gift_shown',
   'ai_gift_opened',
   'ai_gift_claim_clicked',
+  'ai_gift_dismissed',
   'ai_gift_claimed',
   'ai_gift_claim_refused',
   'ai_gift_first_use',

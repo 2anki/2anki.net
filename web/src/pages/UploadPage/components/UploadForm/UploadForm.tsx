@@ -36,6 +36,7 @@ import {
 } from './uploadResponse';
 import { LastDeckOffer } from './LastDeckOffer';
 import { keepLastDeck } from '../../../../lib/upload/lastDeck';
+import { reportUploadZoneActivity } from '../../../../lib/upload/uploadZoneActivity';
 import { BuyCreditsButton } from '../../../../components/BuyCreditsButton/BuyCreditsButton';
 import { getDownloadFileName } from '../../../DownloadsPage/helpers/getDownloadFileName';
 import { ImageDropNotice } from '../../../DownloadsPage/components/ImageDropNotice';
@@ -2502,6 +2503,25 @@ function UploadForm({
 
   const [resumeOffer, setResumeOffer] = useState<ResumeOffer | null>(null);
   const [resumeClosedKey, setResumeClosedKey] = useState<string | null>(null);
+  const [lastDeckOnOffer, setLastDeckOnOffer] = useState(false);
+
+  const zoneIdle =
+    zoneState === 'idle' &&
+    validation == null &&
+    !waitingForDeck &&
+    !isUploadLocked &&
+    !resumingPreview &&
+    resumeOffer == null &&
+    resumeClosedKey == null &&
+    !lastDeckOnOffer &&
+    passResumeNotice == null &&
+    source === 'local' &&
+    dropboxError == null &&
+    driveError == null;
+  useEffect(() => {
+    reportUploadZoneActivity(zoneIdle ? 'idle' : 'busy');
+  }, [zoneIdle]);
+  useEffect(() => () => reportUploadZoneActivity('absent'), []);
   const resumeCheckedRef = useRef(false);
   const resumedUploadRef = useRef(false);
 
@@ -4799,7 +4819,9 @@ function UploadForm({
       >
         {passReturnLine}
       </p>
-      {showSignInPrompt && zoneState === 'idle' && !sample && <LastDeckOffer />}
+      {showSignInPrompt && zoneState === 'idle' && !sample && (
+        <LastDeckOffer onShownChange={setLastDeckOnOffer} />
+      )}
       {resumeOffer?.kind === 'continue' &&
         zoneState === 'idle' &&
         !isUploadLocked && (

@@ -44,7 +44,11 @@ function noticeFor(error: unknown): DownloadNotice {
   return 'failed';
 }
 
-export function LastDeckOffer() {
+interface LastDeckOfferProps {
+  onShownChange?: (shown: boolean) => void;
+}
+
+export function LastDeckOffer({ onShownChange }: Readonly<LastDeckOfferProps>) {
   const { t, i18n } = useTranslation('lastDeck');
   const lineId = useId();
   const [lastDeck, setLastDeck] = useState<LastDeck | null>(null);
@@ -73,7 +77,13 @@ export function LastDeckOffer() {
     }
   }, [notice, downloading]);
 
-  if (lastDeck == null && notice == null) return null;
+  const shown = lastDeck != null || notice != null;
+  useEffect(() => {
+    onShownChange?.(shown);
+  }, [shown, onShownChange]);
+  useEffect(() => () => onShownChange?.(false), [onShownChange]);
+
+  if (!shown) return null;
 
   const handleDownload = async (deck: LastDeck) => {
     setDownloading(true);
