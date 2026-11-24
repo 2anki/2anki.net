@@ -523,6 +523,13 @@ export interface ConnectorPlanHolds {
   ): Promise<Date | null>;
 }
 
+export class DeckNotReadyError extends Error {
+  constructor() {
+    super('This deck has no .apkg to preview yet.');
+    this.name = 'DeckNotReadyError';
+  }
+}
+
 export interface ConvertInput {
   url?: string;
   text?: string;
@@ -751,7 +758,7 @@ export class McpToolsService {
     if (job) {
       const key = job.download_key;
       if (key == null || !APKG_KEY_PATTERN.test(key)) {
-        throw new Error('This deck has no .apkg to preview yet.');
+        throw new DeckNotReadyError();
       }
       return { key, job };
     }

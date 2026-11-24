@@ -123,7 +123,9 @@ function readToolResult(result, args) {
       if (item && item.type === 'text' && typeof item.text === 'string') text += item.text;
     });
   }
-  if (result && result.isError) {
+  // status marks an answer that made no deck, such as a reached monthly
+  // limit, which arrives as an ordinary result rather than an error.
+  if ((result && result.isError) || typeof sc.status === 'string') {
     return { view: 'error', message: typeof sc.message === 'string' ? sc.message : text };
   }
   if (sc.kind === 'processing') {

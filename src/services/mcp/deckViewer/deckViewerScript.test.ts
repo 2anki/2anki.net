@@ -182,6 +182,35 @@ describe('deck viewer helpers', () => {
     expect(helpers.hasNext(anonymous)).toBe(false);
   });
 
+  it.each([
+    [
+      'a reached monthly limit',
+      {
+        code: 'monthly_limit',
+        status: 'not_created',
+        reason: 'monthly_limit',
+        message: 'This deck would go over the free plan.',
+        next_step: { plans_url: 'https://2anki.net/pricing/?ref=mcp' },
+      },
+    ],
+    [
+      'a deck with no .apkg yet',
+      {
+        code: 'preview_failed',
+        status: 'not_ready',
+        reason: 'no_apkg_yet',
+        message: 'This deck has no .apkg to preview yet.',
+      },
+    ],
+  ])('shows %s as a notice, not an empty deck', (_label, sc) => {
+    expect(
+      helpers.readToolResult({
+        content: [{ type: 'text', text: sc.message }],
+        structuredContent: sc,
+      })
+    ).toEqual({ view: 'error', message: sc.message });
+  });
+
   it('reads errors, queued jobs and batches', () => {
     expect(
       helpers.readToolResult({

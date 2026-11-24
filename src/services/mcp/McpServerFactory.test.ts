@@ -165,7 +165,9 @@ describe('create_deck handler', () => {
       'create_deck'
     );
     await handler({ cards: [{ front: 'a', back: 'b', deck: 'X' }] });
-    expect(results).toEqual([{ success: true, props: { subdeckCount: 2 } }]);
+    expect(results).toEqual([
+      { success: true, props: { subdeckCount: 2, returned_as_error: false } },
+    ]);
   });
 
   it('records a subdeck count of 1 for a flat deck with no applied subdecks', async () => {
@@ -185,7 +187,7 @@ describe('create_deck handler', () => {
       'create_deck'
     );
     await handler({ cards: [{ front: 'a', back: 'b' }] });
-    expect(results).toEqual([{ subdeckCount: 1 }]);
+    expect(results).toEqual([{ subdeckCount: 1, returned_as_error: false }]);
   });
 
   it('renders a markdown card table in the text block by default', async () => {
@@ -448,7 +450,7 @@ describe('tool result metric', () => {
       'convert_to_deck'
     );
     await handler(input);
-    expect(props).toEqual([expected]);
+    expect(props).toEqual([{ ...expected, returned_as_error: false }]);
   });
 
   it('records create_deck success and failure results', async () => {
@@ -569,6 +571,7 @@ describe('monthly limit results', () => {
           cards_held_back: 5,
           held_for_plan: true,
           cards_delivered: 10,
+          returned_as_error: false,
         },
       ],
     ]);
@@ -616,6 +619,7 @@ describe('monthly limit results', () => {
           cards_held_back: 15,
           held_for_plan: true,
           cards_delivered: 0,
+          returned_as_error: false,
         },
       ],
     ]);
@@ -650,7 +654,12 @@ describe('monthly limit results', () => {
         'create_deck',
         false,
         'monthly_limit',
-        { cards_held_back: 2, held_for_plan: false, cards_delivered: 0 },
+        {
+          cards_held_back: 2,
+          held_for_plan: false,
+          cards_delivered: 0,
+          returned_as_error: false,
+        },
       ],
     ]);
   });

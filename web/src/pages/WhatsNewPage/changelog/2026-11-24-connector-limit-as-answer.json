@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-24-connector-limit-as-answer",
+  "date": "2026-11-24",
+  "type": "fix",
+  "title": "Claude and ChatGPT show the free monthly card limit as a plain answer with the plans link, not as a failed tool call"
+}
