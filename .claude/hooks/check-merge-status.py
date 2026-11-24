@@ -15,6 +15,11 @@ Denies the merge when ANY of these hold (see .claude/docs/autonomous-shipping.md
   5. No review-agent pass marker for the head SHA
      (`<!-- ship-review: pass sha=<headRefOid> -->`, full 40-char SHA, posted by
      /ship). Dependabot PRs are exempt — the /batch dependabot decision matrix is their review.
+     For every other PR the review ledger (`ship_ledger.head_violation`) must
+     also back a pass for the head SHA: required scopes, no unanswered block,
+     verbatim patch-id carry-over, the exact-revert rule. The merge command is
+     held to one exact form, so this is the point a marker posted by a script,
+     an alias, the web UI or a swapped file cannot route around.
   6. The PR came from a spec PR but the body has no `## Deviations from spec`
      heading — an implement PR must list where the code departs from the spec
      (issue #4427 item 4). "Came from a spec" needs BOTH the `<type>/spec-<slug>`
@@ -70,6 +75,7 @@ HOOKS_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HOOKS_DIR)
 
 import merge_command  # noqa: E402
+import ship_ledger  # noqa: E402
 
 
 def allow():
@@ -231,6 +237,19 @@ def review_marker_violation(pr_data):
     return (
         "no review-agent pass marker (`<!-- ship-review: pass sha=<head> -->`) on this PR "
         "— merge through /ship, which runs the review agent and posts the marker"
+    )
+
+
+def ledger_violation(number, pr_data, cwd):
+    head = as_text(pr_data.get("headRefOid"))
+    reason = ship_ledger.head_violation(number, head, cwd)
+    if reason is None:
+        return None
+    return (
+        f"the review ledger does not back a pass for head {head[:7]}: {reason}. A marker on the PR is "
+        "not enough on its own: run the /ship step 2 reviewers on this head in this checkout and record "
+        "each verdict with `python3 .claude/hooks/ship_ledger.py record <n> <full sha> <pass|block> "
+        "<scope>`"
     )
 
 
@@ -419,10 +438,11 @@ def main():
     if not is_gh_pr_merge(cmd):
         allow()
 
-    merge_command.deny_on_error(gate, cmd, deny)
+    cwd = data.get("cwd") if isinstance(data.get("cwd"), str) else os.getcwd()
+    merge_command.deny_on_error(lambda command: gate(command, cwd), cmd, deny)
 
 
-def gate(cmd):
+def gate(cmd, cwd):
     form_violation = merge_command.merge_form_violation(cmd)
     if form_violation:
         deny(form_violation)
@@ -447,6 +467,9 @@ def gate(cmd):
         marker_violation = review_marker_violation(pr_data)
         if marker_violation:
             violations.append(marker_violation)
+        backing_violation = ledger_violation(number, pr_data, cwd)
+        if backing_violation:
+            violations.append(backing_violation)
 
     spec_violation = deviations_violation(pr_data)
     if spec_violation:

@@ -25,9 +25,21 @@ It needs git 2.39 or later; on an older git no patch-id is computed and only
 the exact SHA counts (never `--stable`, which ignores whitespace and would let
 a pass carry to an indentation change).
 
-A marker for a change needs an `engineering` pass, plus a `security` pass when
-the change touches a hard rail (`hard_rails.py` on the changed files and the
-diff) or when the change could not be read.
+A head needs an `engineering` pass, plus `security` when the change touches a
+hard rail (`hard_rails.py` on the changed files and the diff), `migration`
+when a path starts with `migrations/` or `src/data_layer/public/`, and
+`reach` when the diff touches `src/` or `web/src/` and a commit subject in
+`<merge-base>..<sha>` is feat/fix/perf/refactor (or the subjects cannot be
+read). When the change itself cannot be read, all four are required.
+
+Exact revert: when the verbatim patch-id of `<merge-base>..<sha>` equals that
+of `git diff M M^` for one of the last 20 first-parent commits M of
+`origin/main`, and no changed path is under `migrations/`, no scope is
+required; a recorded block that no later same-scope pass answers still
+refuses. Git computes this; there is no label to claim.
+
+`head_violation` is the one check, used by `check-ship-review-ledger.py` when
+a marker is posted and by `check-merge-status.py` at merge time.
 """
 import datetime
 import os
@@ -44,7 +56,11 @@ LEDGER_NAME = "ship-review-ledger"
 VERDICTS = ("pass", "block")
 SCOPES = ("engineering", "security", "migration", "reach")
 BASE_SCOPES = ("engineering",)
-RAIL_SCOPES = ("engineering", "security")
+MIGRATION_ROOTS = ("migrations/", "src/data_layer/public/")
+REACH_ROOTS = ("src/", "web/src/")
+REACH_SUBJECT = re.compile(r"^(feat|fix|perf|refactor)(\([^)]*\))?!?:", re.IGNORECASE)
+REVERT_WINDOW = 20
+REVERT_EXCLUDED_ROOT = "migrations/"
 PR_NUMBER = re.compile(r"[1-9][0-9]{0,8}")
 FULL_SHA = re.compile(r"[0-9a-f]{40}")
 PATCH_ID = re.compile(r"[0-9a-f]{40}")
@@ -129,13 +145,7 @@ def pr_diff(base, sha, cwd):
     return run_git(["diff", "--no-ext-diff", "--no-textconv", "--no-color", "--no-renames", base, sha], cwd)
 
 
-def patch_id(sha, cwd):
-    if not supports_verbatim(git_version(cwd)):
-        return None
-    base = merge_base(sha, cwd)
-    if base is None:
-        return None
-    diff = pr_diff(base, sha, cwd)
+def verbatim_patch_id(diff, cwd):
     if not diff:
         return None
     output = run_git(["patch-id", "--verbatim"], cwd, stdin=diff)
@@ -147,25 +157,77 @@ def patch_id(sha, cwd):
     return None
 
 
-def changed_files(sha, cwd):
+def patch_id(sha, cwd):
+    if not supports_verbatim(git_version(cwd)):
+        return None
     base = merge_base(sha, cwd)
     if base is None:
         return None
+    return verbatim_patch_id(pr_diff(base, sha, cwd), cwd)
+
+
+def changed_names(base, sha, cwd):
     names = run_git(["-c", "core.quotePath=false", "diff", "--no-renames", "--name-only", base, sha], cwd)
-    diff = pr_diff(base, sha, cwd)
-    if names is None or diff is None:
+    return None if names is None else text(names).splitlines()
+
+
+def commit_subjects(base, sha, cwd):
+    output = run_git(["log", "--format=%s", f"{base}..{sha}"], cwd)
+    return None if output is None else text(output).splitlines()
+
+
+def read_change(sha, cwd):
+    base = merge_base(sha, cwd)
+    if base is None:
         return None
-    return text(names).splitlines(), diff.decode("utf-8", "replace")
+    paths = changed_names(base, sha, cwd)
+    diff = pr_diff(base, sha, cwd)
+    if paths is None or diff is None:
+        return None
+    return paths, diff.decode("utf-8", "replace"), commit_subjects(base, sha, cwd)
+
+
+def needs_reach(paths, subjects):
+    if not any(path.startswith(REACH_ROOTS) for path in paths):
+        return False
+    if subjects is None:
+        return True
+    return any(REACH_SUBJECT.match(subject.strip()) for subject in subjects)
 
 
 def required_scopes(sha, cwd):
-    change = changed_files(sha, cwd)
+    change = read_change(sha, cwd)
     if change is None:
-        return RAIL_SCOPES
-    paths, diff = change
+        return SCOPES
+    paths, diff, subjects = change
+    scopes = list(BASE_SCOPES)
     if hard_rails.rail_paths(paths) or hard_rails.rail_content_hits(diff):
-        return RAIL_SCOPES
-    return BASE_SCOPES
+        scopes.append("security")
+    if any(path.startswith(MIGRATION_ROOTS) for path in paths):
+        scopes.append("migration")
+    if needs_reach(paths, subjects):
+        scopes.append("reach")
+    return tuple(scopes)
+
+
+def reverted_commit(sha, cwd):
+    """The commit among origin/main's last REVERT_WINDOW first-parent commits that `sha` exactly reverts, or None."""
+    if not supports_verbatim(git_version(cwd)):
+        return None
+    base = merge_base(sha, cwd)
+    if base is None:
+        return None
+    paths = changed_names(base, sha, cwd)
+    if paths is None or any(path.startswith(REVERT_EXCLUDED_ROOT) for path in paths):
+        return None
+    target = verbatim_patch_id(pr_diff(base, sha, cwd), cwd)
+    if target is None:
+        return None
+    listed = run_git(["rev-list", "--first-parent", "-n", str(REVERT_WINDOW), BASE_REF], cwd)
+    for commit in text(listed or b"").splitlines():
+        if verbatim_patch_id(pr_diff(commit, commit + "^", cwd), cwd) == target:
+            return commit
+    return None
 
 
 def parse_line(line):
@@ -228,6 +290,34 @@ def marker_violation(entries, pr, sha, patch, required):
                 f"for {short} recorded after it; the fix needs a fresh `{entry.scope}` review"
             )
     return None
+
+
+def unparsable_reason(error):
+    return (
+        f"{error.path} line {error.line_number} does not parse, so the ledger cannot be read and a block "
+        "on that line could be missed; repair that line in place so it has the six tab-separated fields "
+        "the record command writes (time, PR, full SHA, pass or block, one of "
+        "engineering/security/migration/reach, patch-id or -), keeping its PR, SHA and verdict; never "
+        "delete a line and never turn a block into a pass"
+    )
+
+
+def head_violation(pr, sha, cwd):
+    """None when the ledger backs a pass for PR `pr` at `sha` (the marker hook and the merge gate share this)."""
+    path = ledger_path(cwd)
+    if path is None:
+        return "could not find this checkout's git dir to read the review ledger"
+    try:
+        entries = read_entries(path)
+    except LedgerError as error:
+        return unparsable_reason(error)
+    patch = patch_id(sha, cwd)
+    reason = marker_violation(entries, pr, sha, patch, required_scopes(sha, cwd))
+    if reason is None:
+        return None
+    if reverted_commit(sha, cwd) is not None:
+        return marker_violation(entries, pr, sha, patch, ())
+    return reason
 
 
 def normalise_scope(scope):

@@ -419,6 +419,7 @@ class MainWiringTest(unittest.TestCase):
         stdin = io.StringIO(json.dumps({"tool_name": "Bash", "tool_input": {"command": command}}))
         stdout = io.StringIO()
         with mock.patch.object(check_merge_status, "run_gh", fake_run_gh), \
+                mock.patch.object(check_merge_status.ship_ledger, "head_violation", return_value=None), \
                 mock.patch("subprocess.run", side_effect=fake_subprocess_run), \
                 mock.patch.dict(os.environ, {}, clear=False), \
                 mock.patch("sys.stdin", stdin), \
@@ -446,6 +447,7 @@ class MainWiringTest(unittest.TestCase):
         stdin = io.StringIO(json.dumps({"tool_name": "Bash", "tool_input": {"command": command}}))
         stdout = io.StringIO()
         with mock.patch.object(check_merge_status, "run_gh", run_gh), \
+                mock.patch.object(check_merge_status.ship_ledger, "head_violation", return_value=None), \
                 mock.patch("subprocess.run", side_effect=AssertionError("no REST call expected")), \
                 mock.patch.dict(os.environ, {}, clear=False), \
                 mock.patch("sys.stdin", stdin), \
@@ -620,6 +622,73 @@ class MainWiringTest(unittest.TestCase):
         self.assertIn("PR description template", reason)
         self.assertIn("gh pr edit 1 ", reason)
         self.assertIn("ship-body-1.txt", reason)
+
+
+_ledger_spec = importlib.util.spec_from_file_location(
+    "ship_review_ledger_tests",
+    os.path.join(HOOKS_DIR, "check-ship-review-ledger.test.py"),
+)
+ledger_tests = importlib.util.module_from_spec(_ledger_spec)
+_ledger_spec.loader.exec_module(ledger_tests)
+
+
+class MergeTimeLedgerTest(unittest.TestCase):
+    def setUp(self):
+        self.repo = ledger_tests.Repo()
+        self.addCleanup(self.repo.cleanup)
+        self.head = self.repo.commit("change.txt", "first\n", "chore: first")
+
+    def merge(self, author="alemayhu", comments=None):
+        marker = [{"body": f"<!-- ship-review: pass sha={self.head} -->"}]
+        pr = {
+            "number": 1,
+            "url": "https://github.com/2anki/2anki.net/pull/1",
+            "title": "chore: first",
+            "headRefOid": self.head,
+            "headRefName": "chore/first",
+            "body": "",
+            "author": {"login": author},
+            "files": [{"path": "change.txt"}],
+            "commits": [],
+            "statusCheckRollup": [],
+            "reviews": [],
+            "comments": marker if comments is None else comments,
+        }
+        payload = {"tool_name": "Bash", "tool_input": {"command": MERGE}, "cwd": self.repo.path}
+        stdout = io.StringIO()
+        with mock.patch.object(check_merge_status, "run_gh", lambda args, label: json.dumps(pr)), \
+                mock.patch.object(check_merge_status.merge_command, "fetch_rest_files", return_value=None), \
+                mock.patch.dict(os.environ, ledger_tests.ISOLATED_GIT_ENV, clear=False), \
+                mock.patch("sys.stdin", io.StringIO(json.dumps(payload))), \
+                mock.patch("sys.stdout", stdout):
+            os.environ.pop("CLAUDE_SKIP_SAFETY", None)
+            with self.assertRaises(SystemExit):
+                check_merge_status.main()
+        return json.loads(stdout.getvalue())
+
+    def test_a_valid_marker_with_an_empty_ledger_is_refused(self):
+        output = self.merge()
+        refusal = output["hookSpecificOutput"]["permissionDecisionReason"]
+        self.assertIn("review ledger does not back a pass", refusal)
+        self.assertNotIn("no review-agent pass marker", refusal)
+
+    def test_a_backed_ledger_lets_the_merge_through(self):
+        self.repo.passes(1, self.head, "engineering")
+        self.assertEqual(self.merge(), {"continue": True})
+
+    def test_a_block_recorded_after_the_marker_refuses_the_merge(self):
+        self.repo.passes(1, self.head, "engineering")
+        self.repo.record(1, self.head, "block", "security")
+        refusal = self.merge()["hookSpecificOutput"]["permissionDecisionReason"]
+        self.assertIn("`security` block", refusal)
+
+    def test_a_backed_ledger_does_not_replace_the_marker(self):
+        self.repo.passes(1, self.head, "engineering")
+        refusal = self.merge(comments=[])["hookSpecificOutput"]["permissionDecisionReason"]
+        self.assertIn("no review-agent pass marker", refusal)
+
+    def test_dependabot_still_needs_neither_marker_nor_ledger(self):
+        self.assertEqual(self.merge(author="app/dependabot", comments=[]), {"continue": True})
 
 
 if __name__ == "__main__":

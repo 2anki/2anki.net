@@ -1,34 +1,36 @@
 #!/usr/bin/env python3
 """
-PreToolUse hook: a `ship-review` pass marker is posted only when the /ship
-review ledger (`ship_ledger.py`) backs it.
+PreToolUse hook: early feedback on a `ship-review` pass marker. The real
+enforcement is at merge time: `check-merge-status.py` refuses a merge whose
+head the ledger does not back, whoever posted the marker and however. This
+hook only tells the orchestrator sooner, and cannot see a marker posted by a
+script or interpreter calling gh, through `xargs`, or from a file changed
+after the check.
 
-Body-file rule. A command that names `gh` and has `review` or `comment` as an
-argument, or names `gh` and `api` and sends a file (`--input`, `field=@file`),
-and takes a body from a file (`--body-file`, `-F`, `--input`, `field=@file`)
-must be alone in its Bash call and name an existing regular file. Refused,
-whether or not the file holds a marker: a `;`, `|`, `&`, `<`, `>` or newline
-anywhere (a trailing ` 2>&1` is the one exception); a file that is `-`, under
-`/dev/` or `/proc/`, missing, or not a regular file. Otherwise the hook could
-read one file while gh posts another (stdin, a file created in the same call,
-a path with a `;` stuck to it).
+Alias rule. `gh alias set`/`import` and `gh extension install`/`create` are
+refused: they define a gh command under a name no hook reads.
 
-Marker rule. A command of that kind, or any `gh` command with `review`,
-`comment` or `api` as an argument, that carries `ship-review: pass
-sha=<40 hex>` in its text or file must be exactly the step 2 form,
+Body-file rule. Any `gh` command that takes a body from a file
+(`--body-file`, `-F <path>`, `--input`, `field=@file`; `-F key=value` is a
+field, not a file) must be alone in its Bash call and name an existing
+regular file. Refused, whether or not the file holds a marker: a `;`, `|`,
+`&`, `<`, `>` or newline anywhere (a trailing ` 2>&1` is the one exception);
+a file that is `-`, under `/dev/` or `/proc/`, missing, or not a regular file.
+
+Marker rule. A `gh` command with `review`, `comment` or `api` as an argument
+that carries `ship-review: pass sha=<40 hex>` in its raw text, its shell
+tokens joined, its text with quotes removed, or its body file must be exactly
+the step 2 form,
 
     gh pr review <n> [--repo 2anki/server|--repo 2anki/2anki.net] --comment --body-file <file>
 
-and, for every SHA its marker names, the ledger for PR <n> must hold:
-  * no block for that SHA, or for a SHA whose PR diff has the same patch-id;
-  * an `engineering` pass for it, and a `security` pass too when the change
-    touches a hard rail or its files could not be read (`ship_ledger.required_scopes`);
-  * for every block recorded for the PR, a pass of the same scope for the
-    marker's change recorded after it.
-A ledger line that does not parse denies, naming the line.
+and `ship_ledger.head_violation` must pass for PR <n> at every SHA it names
+(required scopes, no unanswered block, verbatim patch-id carry-over, the
+exact-revert rule, a ledger that parses).
 
-Untouched: a review or comment with an inline body and no marker,
-`gh pr create`/`edit` bodies, and every command without `gh`. A short fake SHA
+Untouched: a review or comment with an inline body and no marker, a marker in
+a `gh pr create`/`edit` body (the merge gate never reads the PR body), and
+every command without `gh`. A short fake SHA
 (`sha=abc1234`) in an example is not a marker. Dependabot PRs need no marker
 (the merge gate exempts them, unchanged); a marker posted on one is checked
 like any other.
@@ -45,8 +47,11 @@ import sys
 
 HOOKS_DIR = os.path.dirname(os.path.abspath(__file__))
 
-POSTING_WORDS = frozenset({"review", "comment"})
-API_WORD = "api"
+MARKER_WORDS = frozenset({"review", "comment", "api"})
+ALIAS_ACTIONS = frozenset({"set", "import"})
+EXTENSION_WORDS = frozenset({"extension", "extensions", "ext"})
+EXTENSION_ACTIONS = frozenset({"install", "create"})
+UNQUOTE = re.compile(r"[\"'\\]")
 GH_WORD = re.compile(r"\bgh\b", re.I)
 MARKER_SHA = re.compile(r"ship-review:\s*pass\s+sha=([0-9a-fA-F]{40})", re.I)
 MARKER_POST = re.compile(
@@ -84,20 +89,20 @@ def tokens(cmd):
         return cmd.split()
 
 
-def value_file(flag, value, is_api):
+def value_file(flag, value):
     if "=@" in value:
         return value.split("=@", 1)[1]
-    if flag == "-F" and is_api and "=" in value:
+    if flag == "-F" and "=" in value:
         return None
     return value
 
 
-def referenced_files(parts, is_api):
+def referenced_files(parts):
     found = []
     for index, part in enumerate(parts):
         if part in BODY_FLAGS:
             if index + 1 < len(parts):
-                path = value_file(part, parts[index + 1], is_api)
+                path = value_file(part, parts[index + 1])
                 if path is not None:
                     found.append(path)
             else:
@@ -107,7 +112,7 @@ def referenced_files(parts, is_api):
         if long_flag:
             found.append(part[len(long_flag) + 1:])
         elif part.startswith("-F") and not part.startswith("--"):
-            path = value_file("-F", part[2:], is_api)
+            path = value_file("-F", part[2:])
             if path is not None:
                 found.append(path)
         elif "=@" in part:
@@ -145,6 +150,10 @@ def read_body(path, cwd):
         return ""
 
 
+def searchable_texts(cmd, parts):
+    return [cmd, " ".join(parts), "".join(parts), UNQUOTE.sub("", cmd)]
+
+
 def marker_shas(texts):
     shas = []
     for content in texts:
@@ -156,7 +165,7 @@ def marker_shas(texts):
 
 def body_file_violation(problem):
     return (
-        f"Refusing this command: it posts a review or comment body from a file, and {problem}. "
+        f"Refusing this command: it gives gh a body from a file, and {problem}. "
         "Write the body with the Write tool, then run the post alone in its own Bash call with "
         f"`--body-file <existing file>`; for the pass marker, exactly `{MARKER_FORM}` (/ship step 2)."
     )
@@ -179,31 +188,26 @@ def ledger_violation(pr, sha, reason):
     )
 
 
-def unparsable_ledger_violation(error):
+def alias_violation():
     return (
-        f"Refusing the ship-review marker: {error.path} line {error.line_number} does not parse, so the "
-        "ledger cannot be read and a block on that line could be missed. Repair that line in place so it "
-        "has the six tab-separated fields the record command writes (time, PR, full SHA, pass or block, "
-        "one of engineering/security/migration/reach, patch-id or -), keeping its PR, SHA and verdict. "
-        "Never delete a line and never turn a block into a pass."
+        "Refusing this command: `gh alias set`/`import` and `gh extension install`/`create` define a gh "
+        "command under a name no hook reads, so it could post a marker or land a PR unseen. Run the gh "
+        "command itself, written out in full; an alias or extension Alexander wants he adds in his own shell."
     )
+
+
+def defines_a_command(words):
+    if "alias" in words and words & ALIAS_ACTIONS:
+        return True
+    return bool(words & EXTENSION_WORDS and words & EXTENSION_ACTIONS)
 
 
 def check_ledger(pr, shas, cwd):
     sys.path.insert(0, HOOKS_DIR)
     import ship_ledger
 
-    path = ship_ledger.ledger_path(cwd)
-    if path is None:
-        deny(ledger_violation(pr, shas[0], "the hook could not find this checkout's git dir to read the ledger"))
-    try:
-        entries = ship_ledger.read_entries(path)
-    except ship_ledger.LedgerError as error:
-        deny(unparsable_ledger_violation(error))
     for sha in shas:
-        reason = ship_ledger.marker_violation(
-            entries, pr, sha, ship_ledger.patch_id(sha, cwd), ship_ledger.required_scopes(sha, cwd)
-        )
+        reason = ship_ledger.head_violation(pr, sha, cwd)
         if reason:
             deny(ledger_violation(pr, sha, reason))
 
@@ -213,16 +217,16 @@ def gate(cmd, cwd):
         allow()
     parts = tokens(cmd)
     words = {part.lower() for part in parts}
-    posts = bool(words & POSTING_WORDS)
-    is_api = API_WORD in words and not posts
-    if not (posts or is_api):
-        allow()
-    files = referenced_files(parts, is_api)
+    if defines_a_command(words):
+        deny(alias_violation())
+    files = referenced_files(parts)
     if files:
         problem = body_file_problem(cmd, files, cwd)
         if problem:
             deny(body_file_violation(problem))
-    shas = marker_shas([cmd] + [read_body(path, cwd) for path in files])
+    if not words & MARKER_WORDS:
+        allow()
+    shas = marker_shas(searchable_texts(cmd, parts) + [read_body(path, cwd) for path in files])
     if not shas:
         allow()
     match = MARKER_POST.fullmatch(cmd.strip(" \n"))

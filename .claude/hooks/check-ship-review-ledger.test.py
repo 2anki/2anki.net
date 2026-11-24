@@ -71,6 +71,18 @@ class Repo:
         self.git("cherry-pick", branch_tip)
         return self.git("rev-parse", "HEAD")
 
+    def commit_on_main(self, name, content, message):
+        self.git("checkout", "-q", "main")
+        sha = self.commit(name, content, message)
+        self.main = sha
+        self.git("update-ref", "refs/remotes/origin/main", sha)
+        return sha
+
+    def revert_branch(self, branch_name, commit):
+        self.git("checkout", "-q", "-b", branch_name, self.main)
+        self.git("revert", "--no-edit", commit)
+        return self.git("rev-parse", "HEAD")
+
     def record(self, pr, sha, verdict, scope):
         return subprocess.run(
             [sys.executable, LEDGER_CLI, "record", str(pr), sha, verdict, scope],
@@ -198,27 +210,60 @@ class RequiredScopeTest(LedgerTestCase):
         self.assertDenied(post(5, self.repo.marker_file(self.first)), "no `engineering` pass")
 
     def test_a_rail_path_also_needs_a_security_pass(self):
-        rail = self.repo.commit("migrations/20260101_add.js", "exports.up = () => {};\n", "feat: migration")
+        self.repo.branch_from_main("auth")
+        rail = self.repo.commit("src/services/AuthenticationService.ts", "export {};\n", "chore: auth")
         self.repo.passes(5, rail, "engineering")
         self.assertDenied(post(5, self.repo.marker_file(rail)), "no `security` pass")
         self.repo.passes(5, rail, "security")
         self.assertAllowed(post(5, self.repo.marker_file(rail)))
+
+    def test_a_migration_needs_engineering_security_and_migration(self):
+        for path in ("migrations/20260101_add.js", "src/data_layer/public/public/Users.ts"):
+            self.repo.branch_from_main("m-" + path.replace("/", "-"))
+            change = self.repo.commit(path, "exports.up = () => {};\n", "chore: schema")
+            self.assertEqual(
+                ship_ledger.required_scopes(change, self.repo.path), ("engineering", "security", "migration")
+            )
+        self.repo.passes(5, change, "engineering", "security")
+        self.assertDenied(post(5, self.repo.marker_file(change)), "no `migration` pass")
+        self.repo.passes(5, change, "migration")
+        self.assertAllowed(post(5, self.repo.marker_file(change)))
+
+    def test_a_feat_or_fix_touching_source_needs_reach(self):
+        for path, subject in (("src/lib/cards.ts", "feat: cards"), ("web/src/App.tsx", "fix(web): app")):
+            self.repo.branch_from_main("r-" + path.replace("/", "-"))
+            change = self.repo.commit(path, "export const x = 1;\n", subject)
+            self.assertEqual(ship_ledger.required_scopes(change, self.repo.path), ("engineering", "reach"), path)
+        self.repo.passes(5, change, "engineering")
+        self.assertDenied(post(5, self.repo.marker_file(change)), "no `reach` pass")
+        self.repo.passes(5, change, "reach")
+        self.assertAllowed(post(5, self.repo.marker_file(change)))
+
+    def test_reach_is_not_needed_for_a_chore_or_for_files_outside_source(self):
+        self.repo.branch_from_main("chore-src")
+        chore = self.repo.commit("src/lib/cards.ts", "export const x = 1;\n", "chore: tidy")
+        self.assertEqual(ship_ledger.required_scopes(chore, self.repo.path), ("engineering",))
+        self.assertEqual(ship_ledger.required_scopes(self.first, self.repo.path), ("engineering",))
+
+    def test_unreadable_subjects_require_reach(self):
+        self.assertTrue(ship_ledger.needs_reach(["src/lib/cards.ts"], None))
+        self.assertFalse(ship_ledger.needs_reach(["docs/x.md"], None))
 
     def test_a_rail_content_hit_also_needs_a_security_pass(self):
         hit = self.repo.commit("src/lib/limits.ts", "export const x = process.env.SECRET;\n", "feat: secret")
         self.repo.passes(5, hit, "engineering")
         self.assertDenied(post(5, self.repo.marker_file(hit)), "no `security` pass")
 
-    def test_an_unreadable_change_needs_both(self):
+    def test_an_unreadable_change_needs_all_four(self):
         unknown = "c" * 40
-        self.repo.passes(5, unknown, "engineering")
-        self.assertDenied(post(5, self.repo.marker_file(unknown)), "no `security` pass")
-        self.repo.passes(5, unknown, "security")
+        self.repo.passes(5, unknown, "engineering", "security", "migration")
+        self.assertDenied(post(5, self.repo.marker_file(unknown)), "no `reach` pass")
+        self.repo.passes(5, unknown, "reach")
         self.assertAllowed(post(5, self.repo.marker_file(unknown)))
 
     def test_required_scopes_reads_the_classifier(self):
         self.assertEqual(ship_ledger.required_scopes(self.first, self.repo.path), ("engineering",))
-        self.assertEqual(ship_ledger.required_scopes("d" * 40, self.repo.path), ("engineering", "security"))
+        self.assertEqual(ship_ledger.required_scopes("d" * 40, self.repo.path), ship_ledger.SCOPES)
 
 
 class PatchIdTest(LedgerTestCase):
@@ -426,6 +471,100 @@ class MarkerFormTest(LedgerTestCase):
         self.assertDenied(f"gh api repos/2anki/2anki.net/issues/5/comments --input {marker}", "form /ship does not use")
 
 
+class QuoteSplitMarkerTest(LedgerTestCase):
+    def test_a_marker_split_across_shell_quotes_is_still_a_marker(self):
+        self.repo.passes(7, self.first, "engineering")
+        head, tail = self.first[:20], self.first[20:]
+        for command in (
+            f"gh pr review 7 --comment --body '<!-- ship-review: pass sha='{self.first}' -->'",
+            f"gh pr review 7 --comment --body '<!-- ship-review: pass sha={head}''{tail} -->'",
+            f"gh pr review 7 --comment --body \"<!-- ship-review: pass sha=\"{head}\"{tail} -->\"",
+            f"gh api repos/2anki/2anki.net/issues/7/comments -f body='<!-- ship-review: pass sha='{self.first}' -->'",
+            f"gh api repos/2anki/2anki.net/issues/7/comments -f body='<!-- ship-review: '\"pass sha={head}\"'{tail} -->'",
+        ):
+            self.assertDenied(command, "form /ship does not use")
+
+
+class AliasAndExtensionTest(LedgerTestCase):
+    def test_defining_a_gh_command_is_refused(self):
+        for command in (
+            "gh alias set rv 'pr review'",
+            "gh alias set --shell rv 'gh pr review 7 --comment --body-file m.md'",
+            "gh alias import aliases.yml",
+            "gh extension install someone/gh-review",
+            "gh extension create gh-review",
+            "gh ext install someone/gh-review",
+            "gh extensions create gh-review",
+        ):
+            self.assertDenied(command, "no hook reads")
+
+    def test_listing_aliases_and_extensions_passes(self):
+        for command in ("gh alias list", "gh extension list", "gh alias delete rv"):
+            self.assertAllowed(command)
+
+
+class AnyGhBodyFileTest(LedgerTestCase):
+    def test_the_body_file_rule_applies_whatever_the_subcommand(self):
+        for command in (
+            "gh pr create --repo 2anki/server --base main --head ci/x --body-file missing.md",
+            "gh pr edit 7 --repo 2anki/server --body-file -",
+            "gh issue create --title x --body-file /dev/stdin",
+            "gh release create v1 -F missing-notes.md",
+        ):
+            self.assertDenied(command, "body file")
+        body = self.repo.write("body.md", "A body.\n")
+        self.assertDenied(f"gh pr create --repo 2anki/server --base main --head ci/x --body-file {body} | cat", "not alone")
+
+    def test_a_field_flag_is_not_a_file(self):
+        self.assertAllowed("gh workflow run deploy.yml -F ref=main")
+
+
+class ExactRevertTest(LedgerTestCase):
+    def head_violation(self, sha, pr="8"):
+        return ship_ledger.head_violation(pr, sha, self.repo.path)
+
+    def test_an_exact_revert_passes_with_an_empty_ledger(self):
+        landed = self.repo.commit_on_main("src/lib/cards.ts", "export const broken = 1;\n", "feat: cards")
+        revert = self.repo.revert_branch("revert-cards", landed)
+        self.assertEqual(ship_ledger.reverted_commit(revert, self.repo.path), landed)
+        self.assertIsNone(self.head_violation(revert))
+        self.assertAllowed(post(8, self.repo.marker_file(revert)))
+
+    def test_an_exact_revert_of_an_older_commit_inside_the_window_passes(self):
+        landed = self.repo.commit_on_main("src/lib/cards.ts", "export const broken = 1;\n", "feat: cards")
+        for index in range(5):
+            self.repo.commit_on_main(f"notes/{index}.txt", f"{index}\n", "docs: note")
+        revert = self.repo.revert_branch("revert-cards", landed)
+        self.assertIsNone(self.head_violation(revert))
+
+    def test_a_revert_with_one_extra_changed_line_needs_the_review(self):
+        landed = self.repo.commit_on_main("src/lib/cards.ts", "export const broken = 1;\n", "feat: cards")
+        self.repo.revert_branch("revert-cards", landed)
+        extra = self.repo.commit("src/lib/other.ts", "export const extra = 2;\n", "fix: extra")
+        self.assertIsNone(ship_ledger.reverted_commit(extra, self.repo.path))
+        self.assertIn("no `engineering` pass", self.head_violation(extra))
+
+    def test_a_revert_touching_a_migration_needs_the_review(self):
+        landed = self.repo.commit_on_main("migrations/20260101_add.js", "exports.up = () => {};\n", "feat: table")
+        revert = self.repo.revert_branch("revert-table", landed)
+        self.assertIsNone(ship_ledger.reverted_commit(revert, self.repo.path))
+        self.assertIn("no `engineering` pass", self.head_violation(revert))
+
+    def test_a_revert_of_a_commit_older_than_the_window_needs_the_review(self):
+        landed = self.repo.commit_on_main("src/lib/cards.ts", "export const broken = 1;\n", "feat: cards")
+        for index in range(ship_ledger.REVERT_WINDOW):
+            self.repo.commit_on_main(f"notes/{index}.txt", f"{index}\n", "docs: note")
+        revert = self.repo.revert_branch("revert-cards", landed)
+        self.assertIsNone(ship_ledger.reverted_commit(revert, self.repo.path))
+        self.assertIn("no `engineering` pass", self.head_violation(revert))
+
+    def test_an_unanswered_block_still_refuses_an_exact_revert(self):
+        landed = self.repo.commit_on_main("src/lib/cards.ts", "export const broken = 1;\n", "feat: cards")
+        revert = self.repo.revert_branch("revert-cards", landed)
+        self.repo.record(8, revert, "block", "engineering")
+        self.assertIn("`engineering` block", self.head_violation(revert))
+
+
 class DependabotTest(LedgerTestCase):
     def test_the_hook_reads_no_author_so_a_dependabot_marker_needs_a_ledger_pass_like_any_other(self):
         self.assertDenied(post(9, self.repo.marker_file(self.first)), "no `engineering` pass recorded for PR 9")
@@ -438,7 +577,7 @@ class UnparsableLedgerTest(LedgerTestCase):
         self.repo.passes(5, self.first, "engineering")
         with open(self.repo.ledger(), "a", encoding="utf-8") as ledger:
             ledger.write("2026-01-01T00:00:00Z\t5\tnot-a-sha\tblock\tengineering\t-\n")
-        self.assertDenied(post(5, self.repo.marker_file(self.first)), "line 2 does not parse", "Never delete a line")
+        self.assertDenied(post(5, self.repo.marker_file(self.first)), "line 2 does not parse", "never delete a line")
 
     def test_an_unknown_scope_on_a_line_denies(self):
         with open(self.repo.ledger(), "w", encoding="utf-8") as ledger:
