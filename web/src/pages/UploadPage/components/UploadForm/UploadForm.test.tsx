@@ -5606,6 +5606,23 @@ describe('limit state', () => {
       expect(readUploadZoneActivity()).toBe('idle');
     });
 
+    it('reports idle once the counts arrive for a paying account with no limit', () => {
+      setUserLocals(loggedInData);
+      mockUseCardUsage.mockReturnValue(loadingCounts);
+      const { rerender } = renderStable();
+      expect(readUploadZoneActivity()).toBe('busy');
+
+      mockUseCardUsage.mockReturnValue({
+        cards_used: 900,
+        cards_limit: 100,
+        unlimited: true,
+        loading: false,
+      });
+      rerender();
+
+      expect(readUploadZoneActivity()).toBe('idle');
+    });
+
     it('reports idle for a signed-out visitor once the session settles', () => {
       mockUseUserLocals.mockReturnValue(sessionLoading);
       const { rerender } = renderStable();
