@@ -69,6 +69,7 @@ const EMPTY_BACK_MESSAGE =
   'Some cards have an empty back. Every card needs both a front and a back.';
 const GENERIC_CONVERT_ERROR = 'Could not convert this input.';
 const MONTHLY_LIMIT_CODE = 'monthly_limit';
+export const MONTHLY_PHOTO_LIMIT_CODE = 'monthly_photo_limit';
 const HELD_FOR_PLAN_CODE = 'held_for_plan';
 const CARD_LIMIT_REDIRECT_PREFIX = '/limit?kind=card_count';
 // Directory review rules allow a link to an informational plans page, never a
@@ -542,7 +543,7 @@ export class JobEndedWithoutDeckError extends Error {
 
   constructor(jobStatus: string) {
     super(
-      'This conversion ended without a deck, so there is nothing to preview.'
+      'This conversion ended without a deck, so there is nothing to preview. Convert it again to make a deck.'
     );
     this.name = 'JobEndedWithoutDeckError';
     this.reason = `job_${jobStatus}`;
@@ -1210,6 +1211,18 @@ export class McpToolsService {
         monthlyLimitResult(owner, candidateCards)
       );
     }
+    const photoQuota = this.photoQuotaFromBody(res);
+    if (photoQuota != null) {
+      return {
+        kind: 'error',
+        code: MONTHLY_PHOTO_LIMIT_CODE,
+        message: new PhotoLimitReachedError(
+          owner,
+          photoQuota.used,
+          photoQuota.limit
+        ).message,
+      };
+    }
     const code = this.errorCode(res.body);
     return {
       kind: 'error',
@@ -1358,6 +1371,20 @@ export class McpToolsService {
       (body as { kind?: unknown }).kind === 'batch' &&
       Array.isArray((body as { decks?: unknown }).decks)
     );
+  }
+
+  private photoQuotaFromBody(
+    res: CapturingResponse
+  ): { used: number; limit: number } | null {
+    const body = res.body as { used?: unknown; limit?: unknown } | undefined;
+    if (
+      res.statusCode !== 429 ||
+      typeof body?.used !== 'number' ||
+      typeof body.limit !== 'number'
+    ) {
+      return null;
+    }
+    return { used: body.used, limit: body.limit };
   }
 
   private errorCode(body: unknown): string | undefined {

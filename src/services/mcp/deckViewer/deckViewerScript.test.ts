@@ -202,6 +202,16 @@ describe('deck viewer helpers', () => {
         message: 'This deck has no .apkg to preview yet.',
       },
     ],
+    [
+      'a job that ended without a deck',
+      {
+        code: 'preview_failed',
+        status: 'failed',
+        reason: 'job_failed',
+        message:
+          'This conversion ended without a deck, so there is nothing to preview. Convert it again to make a deck.',
+      },
+    ],
   ])('shows %s as a notice, not an empty deck', (_label, sc) => {
     expect(
       helpers.readToolResult({

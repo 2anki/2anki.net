@@ -5,6 +5,7 @@ import {
   DeckNotReadyError,
   JobEndedWithoutDeckError,
   McpToolsService,
+  MONTHLY_PHOTO_LIMIT_CODE,
   PhotoLimitReachedError,
 } from './McpToolsService';
 import type { McpNextStep } from './McpToolsService';
@@ -226,7 +227,10 @@ const MONTHLY_LIMIT_CODE = 'monthly_limit';
 
 // A reached free allowance is an expected answer, not a malfunction, so it
 // goes back as an ordinary result with the same text and structured fields.
-const NOT_CREATED_CODES = new Set([MONTHLY_LIMIT_CODE]);
+const NOT_CREATED_CODES = new Set([
+  MONTHLY_LIMIT_CODE,
+  MONTHLY_PHOTO_LIMIT_CODE,
+]);
 
 // What a monthly-limit outcome did with the cards over the limit. Empty for a
 // deck the limit never touched, so ordinary results record no extra props.
@@ -934,10 +938,10 @@ export function buildMcpServer(context: McpRequestContext): McpServer {
             outcomeResult(error.message, {
               code: 'photo_failed',
               status: 'not_created',
-              reason: 'monthly_photo_limit',
+              reason: MONTHLY_PHOTO_LIMIT_CODE,
             }),
             false,
-            'monthly_photo_limit'
+            MONTHLY_PHOTO_LIMIT_CODE
           );
         }
         return finish(

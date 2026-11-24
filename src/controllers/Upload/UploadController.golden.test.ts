@@ -2313,6 +2313,118 @@ describe('the connector at the monthly card limit', () => {
     expect(heldDecks.rows).toHaveLength(0);
   }, 20_000);
 
+  type ConnectorToolResult = {
+    content: { text: string }[];
+    structuredContent?: Record<string, unknown>;
+    isError?: boolean;
+  };
+
+  function connectorTool(
+    locals: Record<string, unknown>,
+    tool: string,
+    recorded: Record<string, unknown>[]
+  ): (args: Record<string, unknown>) => Promise<ConnectorToolResult> {
+    const server = buildMcpServer({
+      owner: String(OWNER),
+      locals,
+      toolsService: connector(),
+      recordToolCall: () => undefined,
+      recordToolResult: (name, success, code, extra) =>
+        recorded.push({ tool: name, success, code, ...extra }),
+    });
+    return (
+      server as unknown as {
+        _registeredTools: Record<
+          string,
+          {
+            handler: (
+              args: Record<string, unknown>
+            ) => Promise<ConnectorToolResult>;
+          }
+        >;
+      }
+    )._registeredTools[tool].handler;
+  }
+
+  it.each([
+    ['subscriber', { owner: OWNER, patreon: false, subscriber: true }],
+    [
+      'pass holder',
+      { owner: OWNER, patreon: false, subscriber: true, passKind: '24h' },
+    ],
+    ['lifetime account', { owner: OWNER, patreon: true, subscriber: false }],
+  ])(
+    'gives a %s past the free allowance the whole deck through the connector',
+    async (_label, locals) => {
+      population = { ...signedInFree, locals, cardsUsed: 100 };
+      __setFeatureFlagDependencies({ repository: inMemoryFlags({}) });
+      const recorded: Record<string, unknown>[] = [];
+
+      const result = await connectorTool(
+        locals,
+        'create_deck',
+        recorded
+      )({ cards, deckName: 'Golden Connector Deck' });
+
+      expect(result.isError).toBeUndefined();
+      expect(result.structuredContent).toMatchObject({
+        kind: 'deck',
+        cardCount: 15,
+      });
+      expect(result.structuredContent).not.toHaveProperty('status');
+      expect(result.structuredContent).not.toHaveProperty('reason');
+      expect(result.structuredContent).not.toHaveProperty('cards_held_back');
+      expect(recorded).toEqual([
+        {
+          tool: 'create_deck',
+          success: true,
+          code: undefined,
+          subdeckCount: 1,
+          returned_as_error: false,
+        },
+      ]);
+      expect(heldDecks.rows).toHaveLength(0);
+    },
+    20_000
+  );
+
+  it('answers a photo by URL at the free photo limit as the ordinary photo-limit result', async () => {
+    population = { ...signedInFree, photosUsedThisMonth: 5 };
+    __setFeatureFlagDependencies({ repository: inMemoryFlags({}) });
+    connectorFetch.body = ONE_PIXEL_PNG;
+    const claudeCallsBefore = claudeCalls.count;
+    const recorded: Record<string, unknown>[] = [];
+
+    const result = await connectorTool(
+      freeLocals,
+      'convert_to_deck',
+      recorded
+    )({ url: 'https://example.com/notes.png' });
+
+    const message = result.content[0].text;
+    expect(message).toMatch(
+      /^You've used all 5 free photos for this month\. The count resets on [A-Z][a-z]+ \d{1,2}\. Plan details: https:\/\/2anki\.net\/pricing\/\?ref=mcp&k=photo&a=b$/
+    );
+    expect(result.isError).toBeUndefined();
+    expect(result.structuredContent).toEqual({
+      code: 'monthly_photo_limit',
+      message,
+      status: 'not_created',
+      reason: 'monthly_photo_limit',
+    });
+    expect(recorded).toEqual([
+      {
+        tool: 'convert_to_deck',
+        success: false,
+        code: 'monthly_photo_limit',
+        inputSource: 'url',
+        inputFormat: 'other',
+        returned_as_error: false,
+      },
+    ]);
+    expect(claudeCalls.count).toBe(claudeCallsBefore);
+  }, 20_000);
+
   it.each([
     ['Google Drive', driveImport],
     ['Dropbox', dropboxImport],

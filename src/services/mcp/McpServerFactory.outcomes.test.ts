@@ -120,7 +120,14 @@ async function call(
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] });
   vi.setSystemTime(new Date('2026-10-18T12:00:00Z'));
+  anthropicCreate.mockReset();
+  anthropicConstructed.mockReset();
 });
+
+function expectNoModelCall() {
+  expect(anthropicConstructed).not.toHaveBeenCalled();
+  expect(anthropicCreate).not.toHaveBeenCalled();
+}
 
 afterEach(() => {
   vi.useRealTimers();
@@ -159,6 +166,7 @@ describe('a reached monthly card limit over the connector', () => {
           cards_held_back: 2,
         },
       });
+      expectNoModelCall();
     }
   );
 
@@ -187,39 +195,47 @@ describe('a reached monthly card limit over the connector', () => {
     ]);
   });
 
-  it('answers convert_to_deck the same way', async () => {
-    const { client, results } = await connect();
+  it.each([
+    ['7', 'a'],
+    ['8', 'b'],
+  ])(
+    'answers convert_to_deck for user %s (arm %s) the same way',
+    async (owner, arm) => {
+      const plansUrl = `https://2anki.net/pricing/?ref=mcp&k=limit&a=${arm}`;
+      const { client, results } = await connect({ owner });
 
-    const result = await call(client, 'convert_to_deck', {
-      text: 'Q :: A',
-    });
+      const result = await call(client, 'convert_to_deck', {
+        text: 'Q :: A',
+      });
 
-    const message = `This deck would go over the free plan's 100 cards for this month, so it wasn't created. The count resets on November 1. Plan details: ${PLANS_URL}`;
-    expect(result.isError).not.toBe(true);
-    expect(result.content).toEqual([{ type: 'text', text: message }]);
-    expect(result.structuredContent).toEqual({
-      code: 'monthly_limit',
-      message,
-      status: 'not_created',
-      reason: 'monthly_limit',
-      next_step: { plans_url: PLANS_URL, upgrade_url: PLANS_URL },
-    });
-    expect(results).toEqual([
-      {
-        tool: 'convert_to_deck',
-        success: false,
-        errorCode: 'monthly_limit',
-        props: {
-          inputSource: 'text',
-          inputFormat: 'none',
-          cards_held_back: 0,
-          held_for_plan: false,
-          cards_delivered: 0,
-          returned_as_error: false,
+      const message = `This deck would go over the free plan's 100 cards for this month, so it wasn't created. The count resets on November 1. Plan details: ${plansUrl}`;
+      expect(result.isError).not.toBe(true);
+      expect(result.content).toEqual([{ type: 'text', text: message }]);
+      expect(result.structuredContent).toEqual({
+        code: 'monthly_limit',
+        message,
+        status: 'not_created',
+        reason: 'monthly_limit',
+        next_step: { plans_url: plansUrl, upgrade_url: plansUrl },
+      });
+      expectNoModelCall();
+      expect(results).toEqual([
+        {
+          tool: 'convert_to_deck',
+          success: false,
+          errorCode: 'monthly_limit',
+          props: {
+            inputSource: 'text',
+            inputFormat: 'none',
+            cards_held_back: 0,
+            held_for_plan: false,
+            cards_delivered: 0,
+            returned_as_error: false,
+          },
         },
-      },
-    ]);
-  });
+      ]);
+    }
+  );
 });
 
 describe('genuine deck failures over the connector', () => {
@@ -325,6 +341,7 @@ describe('get_deck_preview over the connector', () => {
         props: { returned_as_error: false },
       },
     ]);
+    expectNoModelCall();
   });
 
   it.each([
@@ -343,7 +360,7 @@ describe('get_deck_preview over the connector', () => {
       });
 
       const message =
-        'This conversion ended without a deck, so there is nothing to preview.';
+        'This conversion ended without a deck, so there is nothing to preview. Convert it again to make a deck.';
       expect(result.isError).not.toBe(true);
       expect(result.content).toEqual([{ type: 'text', text: message }]);
       expect(result.structuredContent).toEqual({
@@ -360,6 +377,7 @@ describe('get_deck_preview over the connector', () => {
           props: { returned_as_error: false },
         },
       ]);
+      expectNoModelCall();
     }
   );
 
@@ -463,19 +481,22 @@ describe('deck_capabilities over the connector', () => {
   });
 });
 
-function photoUseCaseAtQuota(): PhotoToFlashcardsUseCase {
+function photoUseCaseWithUsage(used: number): PhotoToFlashcardsUseCase {
   const events = {
-    countByNameForUser: async () => FREE_PHOTO_QUOTA_PER_MONTH,
+    countByNameForUser: async () => used,
   } as unknown as IEventsRepository;
   return new PhotoToFlashcardsUseCase(events);
 }
 
-describe('photo_to_deck over the connector', () => {
-  beforeEach(() => {
-    anthropicCreate.mockReset();
-    anthropicConstructed.mockReset();
-  });
+function photoUseCaseAtQuota(): PhotoToFlashcardsUseCase {
+  return photoUseCaseWithUsage(FREE_PHOTO_QUOTA_PER_MONTH);
+}
 
+function photoUseCaseUnderQuota(): PhotoToFlashcardsUseCase {
+  return photoUseCaseWithUsage(0);
+}
+
+describe('photo_to_deck over the connector', () => {
   it.each([
     ['7', 'a'],
     ['8', 'b'],
@@ -508,17 +529,13 @@ describe('photo_to_deck over the connector', () => {
           props: { returned_as_error: false },
         },
       ]);
-      expect(anthropicConstructed).not.toHaveBeenCalled();
-      expect(anthropicCreate).not.toHaveBeenCalled();
+      expectNoModelCall();
     }
   );
 
   it('keeps an unreadable photo a tool error with no model call and records it', async () => {
-    const generateCards = vi.fn();
     const { client, results } = await connect({
-      photoToFlashcards: {
-        generateCards,
-      } as unknown as PhotoToFlashcardsUseCase,
+      photoToFlashcards: photoUseCaseUnderQuota(),
     });
 
     const result = await call(client, 'photo_to_deck', { image: '   ' });
@@ -527,7 +544,7 @@ describe('photo_to_deck over the connector', () => {
     expect(result.content[0].text).toBe(
       'Provide a photo as a base64 string or data URL.'
     );
-    expect(generateCards).not.toHaveBeenCalled();
+    expectNoModelCall();
     expect(results).toEqual([
       {
         tool: 'photo_to_deck',
@@ -562,5 +579,26 @@ describe('photo_to_deck over the connector', () => {
         props: { returned_as_error: false },
       },
     ]);
+  });
+});
+
+describe('the model-call sensor these tests rely on', () => {
+  it('sees the Anthropic client built and called when a photo under the quota reaches the model', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    anthropicCreate.mockRejectedValue(new Error('model unavailable'));
+    const { client } = await connect({
+      photoToFlashcards: photoUseCaseUnderQuota(),
+    });
+
+    const result = await call(client, 'photo_to_deck', {
+      image: ONE_PIXEL_PNG_BASE64,
+    });
+    errorSpy.mockRestore();
+    warnSpy.mockRestore();
+
+    expect(result.isError).toBe(true);
+    expect(anthropicConstructed).toHaveBeenCalledTimes(1);
+    expect(anthropicCreate).toHaveBeenCalled();
   });
 });
