@@ -12,7 +12,7 @@ export default defineConfig({
     globals: true,
     pool: 'forks',
     isolate: true,
-    include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+    include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'scripts/**/*.test.ts'],
     exclude: ['**/node_modules/**', 'web/**', '.claude/**', 'test/**'],
     setupFiles: ['src/test/vitest.setup.ts'],
     testTimeout: 5000,
