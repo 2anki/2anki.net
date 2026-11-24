@@ -28,6 +28,7 @@ interface AiGiftPresentProps {
   align?: 'start' | 'end';
   className?: string;
   labelFromWide?: boolean;
+  planCreditsFirst?: boolean;
 }
 
 const dateLocale = (language: string): string =>
@@ -69,6 +70,7 @@ interface PanelBodyProps {
   onSignIn: () => void;
   onUse: () => void;
   resultRef: RefCallback<HTMLParagraphElement>;
+  planCreditsFirst: boolean;
 }
 
 function PanelBody({
@@ -81,6 +83,7 @@ function PanelBody({
   onSignIn,
   onUse,
   resultRef,
+  planCreditsFirst,
 }: Readonly<PanelBodyProps>) {
   const { t } = useTranslation('aiGift');
   const language = useAppLanguage();
@@ -106,6 +109,7 @@ function PanelBody({
             date: formatGiftDate(gift.expiresAt, language),
           })}
         </p>
+        {planCreditsFirst && <p className={styles.note}>{t('planFirst')}</p>}
         {!onUploadPage && (
           <Link to={GIFT_RETURN_PATH} className={styles.link} onClick={onUse}>
             {t('useThem')}
@@ -172,6 +176,7 @@ export function AiGiftPresent({
   align = 'end',
   className,
   labelFromWide = false,
+  planCreditsFirst = false,
 }: Readonly<AiGiftPresentProps>) {
   const { t } = useTranslation('aiGift');
   const gift = useAiGift(isLoggedIn);
@@ -364,6 +369,7 @@ export function AiGiftPresent({
               onSignIn={() => leaveToAuth('/login')}
               onUse={() => setOpen(false)}
               resultRef={resultRef}
+              planCreditsFirst={planCreditsFirst}
             />
           </div>
           {!dismissed && (

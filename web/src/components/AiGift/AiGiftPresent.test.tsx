@@ -48,7 +48,7 @@ function Where() {
   return <p data-testid="where">{location.pathname + location.search}</p>;
 }
 
-function renderPresent(isLoggedIn: boolean) {
+function renderPresent(isLoggedIn: boolean, planCreditsFirst?: boolean) {
   return render(
     <QueryClientProvider
       client={
@@ -56,7 +56,10 @@ function renderPresent(isLoggedIn: boolean) {
       }
     >
       <MemoryRouter initialEntries={['/downloads']}>
-        <AiGiftPresent isLoggedIn={isLoggedIn} />
+        <AiGiftPresent
+          isLoggedIn={isLoggedIn}
+          planCreditsFirst={planCreditsFirst}
+        />
         <Routes>
           <Route path="*" element={<Where />} />
         </Routes>
@@ -177,6 +180,51 @@ describe('AiGiftPresent', () => {
     expect(track).toHaveBeenCalledWith('ai_gift_claim_clicked', {
       signed_in: true,
     });
+  });
+
+  test('tells an account with a plan allowance that its plan credits go first', async () => {
+    routeFetch({
+      state: 'claimed',
+      credits: 100,
+      expiresAt: '2026-11-27T12:00:00.000Z',
+      feedbackDue: false,
+    });
+    renderPresent(true, true);
+
+    fireEvent.click(await trigger());
+
+    expect(
+      await screen.findByText('Your plan credits are used first.')
+    ).toBeInTheDocument();
+  });
+
+  test('says nothing about spending order to an account without a plan', async () => {
+    routeFetch({
+      state: 'claimed',
+      credits: 100,
+      expiresAt: '2026-11-27T12:00:00.000Z',
+      feedbackDue: false,
+    });
+    renderPresent(true);
+
+    fireEvent.click(await trigger());
+
+    expect(
+      await screen.findByText('You have 100 AI credits from the gift.')
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Your plan credits are used first.')).toBeNull();
+  });
+
+  test('keeps the spending order out of the unclaimed offer', async () => {
+    routeFetch(OPEN);
+    renderPresent(true, true);
+
+    fireEvent.click(await trigger());
+
+    expect(
+      await screen.findByRole('button', { name: 'Claim 100 credits' })
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Your plan credits are used first.')).toBeNull();
   });
 
   test('says why a claim was refused', async () => {

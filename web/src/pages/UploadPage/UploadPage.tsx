@@ -21,7 +21,8 @@ import {
 } from '../../lib/data_layer/aiChoice';
 import useQuery from '../../lib/hooks/useQuery';
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
-import { useAiGift } from '../../lib/hooks/useAiGift';
+import { useAiGift, AI_GIFT_QUERY_KEY } from '../../lib/hooks/useAiGift';
+import { activeGiftBalance } from '../../components/AiGift/useAiGiftBalanceLine';
 import { hasSessionHint } from '../../lib/sessionHint';
 import {
   useAiCredits,
@@ -112,6 +113,7 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
     isSignedIn && gift?.state === 'claimed' && gift.credits > 0
       ? gift.credits
       : null;
+  const giftAfterPlan = isSignedIn && isPaying ? gift : null;
   const [aiFlag, setAiFlag] = useState(
     () => globalThis.localStorage?.getItem(AI_FLAG_KEY) === 'true'
   );
@@ -155,10 +157,13 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
   const japanese = i18n.resolvedLanguage === 'ja';
   const sentenceGap = japanese ? '' : ' ';
   const sentenceEnd = japanese ? '。' : '.';
-  // With no credits left, turning Claude on still builds the next deck
-  // without AI, which the credits line under the badge already says.
+  // With no plan credits and no gift credits left, turning Claude on still
+  // builds the next deck without AI, which the credits line already says.
   const outOfCredits =
-    aiCredits != null && aiCredits.allowance !== 0 && aiCredits.credits <= 0;
+    aiCredits != null &&
+    aiCredits.allowance !== 0 &&
+    aiCredits.credits <= 0 &&
+    activeGiftBalance(giftAfterPlan, Date.now()) == null;
 
   const aiChoiceOn = userLocalsLoading ? aiFlag : isAiOn;
 
@@ -266,6 +271,7 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
         })
       );
       queryClient.invalidateQueries({ queryKey: AI_CREDITS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: AI_GIFT_QUERY_KEY });
       const next = new URLSearchParams(searchParams);
       next.delete('credits');
       next.delete('session_id');
@@ -352,7 +358,7 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
               </Link>
               <span>{sentenceEnd}</span>
             </span>
-            <AiCreditsReadout credits={aiCredits} />
+            <AiCreditsReadout credits={aiCredits} gift={giftAfterPlan} />
           </>
         )}
         {aiBadgeState === 'onForPdfs' && (
@@ -382,7 +388,7 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
               </Link>
               <span>{sentenceEnd}</span>
             </span>
-            <AiCreditsReadout credits={aiCredits} />
+            <AiCreditsReadout credits={aiCredits} gift={giftAfterPlan} />
           </>
         )}
         {aiBadgeState === 'off' && (
@@ -428,7 +434,7 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
               </Link>
               <span>{sentenceEnd}</span>
             </span>
-            <AiCreditsReadout credits={aiCredits} />
+            <AiCreditsReadout credits={aiCredits} gift={giftAfterPlan} />
           </>
         )}
         {aiBadgeState === 'free' && (

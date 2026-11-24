@@ -13,6 +13,7 @@ import { HelmetProvider } from 'react-helmet-async';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 
 import i18n from '../../lib/i18n';
+import { formatGiftDate } from '../../components/AiGift/AiGiftPresent';
 import { UploadPage } from './UploadPage';
 
 let startPassDeck: (() => void) | undefined;
@@ -711,6 +712,54 @@ describe('UploadPage AI off badge for a paying account', () => {
     }
   );
 
+  describe('with free AI credits from the gift', () => {
+    const EXPIRES = '2026-11-26T19:15:00.000Z';
+
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-11-24T19:15:00.000Z'));
+      fakeGift = {
+        state: 'claimed',
+        credits: 100,
+        expiresAt: EXPIRES,
+        feedbackDue: false,
+      };
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+      fakeGift = null;
+    });
+
+    it('adds the gift under the plan credits for a paying account', async () => {
+      fakeLocals = { patreon: true, subscriber: false };
+      globalThis.localStorage.setItem('claude-ai-flashcards', 'false');
+      stubCredits(300);
+      renderPage();
+
+      expect(
+        await screen.findByText('300 AI credits left.')
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          `Plus 100 free AI credits until ${formatGiftDate(EXPIRES, 'en')}.`
+        )
+      ).toBeInTheDocument();
+    });
+
+    it('keeps the one gift line for a free account that also holds a credit pack', async () => {
+      fakeLocals = { patreon: false, subscriber: false };
+      globalThis.localStorage.setItem('claude-ai-flashcards', 'true');
+      stubCredits(300);
+      renderPage();
+
+      expect(
+        await screen.findByText('You have 100 AI credits from the gift.')
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/^Plus /)).not.toBeInTheDocument();
+    });
+  });
+
   it.each([
     {
       resets: 'pass' as const,
@@ -770,6 +819,31 @@ describe('UploadPage AI off badge for a paying account', () => {
       ).toHaveTextContent('AI is on for PDF and PowerPoint');
     } finally {
       fakeClaudeCardsByDefault = undefined;
+    }
+  });
+
+  it('keeps Turn on Claude cards when the plan is spent but gift credits remain', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-24T19:15:00.000Z'));
+    fakeLocals = { subscriber: true };
+    fakeGift = {
+      state: 'claimed',
+      credits: 60,
+      expiresAt: '2026-11-26T19:15:00.000Z',
+      feedbackDue: false,
+    };
+    globalThis.localStorage.setItem('claude-ai-flashcards', 'false');
+    try {
+      stubCredits(0);
+      renderPage();
+
+      expect(
+        await screen.findByRole('button', { name: 'Turn on Claude cards' })
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/builds without AI/)).toBeNull();
+    } finally {
+      fakeGift = null;
+      vi.useRealTimers();
     }
   });
 
@@ -1130,6 +1204,21 @@ describe('UploadPage checkout return', () => {
     fakeLocalsLoading = false;
     fakeUser = null;
     fakeFeatures = undefined;
+  });
+
+  it('refreshes the AI credits and the gift balance on return from a credits purchase', async () => {
+    fakeUser = { id: 42 };
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries');
+
+    render(buildPage('/upload?credits=added&session_id=cs_1', queryClient));
+
+    await waitFor(() =>
+      expect(invalidate).toHaveBeenCalledWith({ queryKey: ['aiGift'] })
+    );
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['aiCredits'] });
   });
 
   it('keeps the checkout params in the URL and reports nothing while user locals load', () => {

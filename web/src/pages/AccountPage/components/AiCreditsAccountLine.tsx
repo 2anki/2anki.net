@@ -1,12 +1,24 @@
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useAiCredits } from '../../../lib/hooks/useAiCredits';
+import {
+  useAiCredits,
+  type AiCreditsState,
+} from '../../../lib/hooks/useAiCredits';
 import { BuyCreditsButton } from '../../../components/BuyCreditsButton/BuyCreditsButton';
+import {
+  useGiftBalanceText,
+  useSignedInGiftBalance,
+} from '../../../components/AiGift/useAiGiftBalanceLine';
 import { formatLongDate } from '../utils/formatLongDate';
 import styles from '../AccountPage.module.css';
 
-export function AiCreditsAccountLine() {
+interface PlanLine {
+  line: ReactNode;
+  buy: boolean;
+}
+
+function usePlanLine(credits: AiCreditsState | null): PlanLine | null {
   const { t, i18n } = useTranslation('aicredits');
-  const credits = useAiCredits(true);
 
   if (credits == null) {
     return null;
@@ -18,22 +30,23 @@ export function AiCreditsAccountLine() {
         new Date(credits.windowEnd),
         i18n.language
       );
-      return (
-        <p className={styles.planMeta}>
-          {t('paused', { count: credits.credits, date: pausedThrough })}
-        </p>
-      );
+      return {
+        line: (
+          <p className={styles.planMeta}>
+            {t('paused', { count: credits.credits, date: pausedThrough })}
+          </p>
+        ),
+        buy: false,
+      };
     }
     return null;
   }
 
   if (credits.credits <= 0) {
-    return (
-      <>
-        <p className={styles.planMeta}>{t('planZero')}</p>
-        <BuyCreditsButton source="credits_account" variant="secondary" />
-      </>
-    );
+    return {
+      line: <p className={styles.planMeta}>{t('planZero')}</p>,
+      buy: true,
+    };
   }
 
   // Only the calendar-month window ends on a UTC-midnight boundary, so format
@@ -47,20 +60,26 @@ export function AiCreditsAccountLine() {
       : null;
 
   if (credits.used > 0) {
-    return (
-      <p className={styles.planMeta}>
-        <span className={styles.aiCreditsCount}>
-          {t('usedThisPeriod', { count: credits.used })}
-        </span>{' '}
-        {validThrough != null
-          ? t('remainingValid', { count: credits.credits, date: validThrough })
-          : t('remaining', { count: credits.credits })}
-      </p>
-    );
+    return {
+      line: (
+        <p className={styles.planMeta}>
+          <span className={styles.aiCreditsCount}>
+            {t('usedThisPeriod', { count: credits.used })}
+          </span>{' '}
+          {validThrough != null
+            ? t('remainingValid', {
+                count: credits.credits,
+                date: validThrough,
+              })
+            : t('remaining', { count: credits.credits })}
+        </p>
+      ),
+      buy: false,
+    };
   }
 
-  return (
-    <>
+  return {
+    line: (
       <p className={styles.planMeta}>
         <span className={styles.aiCreditsCount}>
           {validThrough != null
@@ -71,7 +90,30 @@ export function AiCreditsAccountLine() {
             : t('plan', { count: credits.credits })}
         </span>
       </p>
-      <BuyCreditsButton source="credits_account" variant="secondary" />
+    ),
+    buy: true,
+  };
+}
+
+export function AiCreditsAccountLine() {
+  const credits = useAiCredits(true);
+  const plan = usePlanLine(credits);
+  const giftLine = useGiftBalanceText(
+    useSignedInGiftBalance(true),
+    plan != null
+  );
+
+  if (plan == null && giftLine == null) {
+    return null;
+  }
+
+  return (
+    <>
+      {plan?.line}
+      {giftLine != null && <p className={styles.planMeta}>{giftLine}</p>}
+      {plan?.buy === true && (
+        <BuyCreditsButton source="credits_account" variant="secondary" />
+      )}
     </>
   );
 }

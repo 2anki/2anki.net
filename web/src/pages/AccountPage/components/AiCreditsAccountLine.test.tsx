@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import i18n from '../../../lib/i18n';
 import { AiCreditsState } from '../../../lib/hooks/useAiCredits';
 
@@ -8,16 +8,23 @@ vi.mock('../../../lib/hooks/useAiCredits', () => ({
   useAiCredits: vi.fn(),
 }));
 
+vi.mock('../../../lib/hooks/useAiGift', () => ({
+  useAiGift: vi.fn(),
+}));
+
 vi.mock('../utils/formatLongDate', () => ({
   formatLongDate: vi.fn(() => 'a date'),
 }));
 
 import { useAiCredits } from '../../../lib/hooks/useAiCredits';
+import { useAiGift } from '../../../lib/hooks/useAiGift';
 import { formatLongDate } from '../utils/formatLongDate';
+import { formatGiftDate } from '../../../components/AiGift/AiGiftPresent';
 import { AiCreditsAccountLine } from './AiCreditsAccountLine';
 
 const mockHook = vi.mocked(useAiCredits);
 const mockFormat = vi.mocked(formatLongDate);
+const mockGift = vi.mocked(useAiGift);
 
 const state = (over: Partial<AiCreditsState>): AiCreditsState => ({
   credits: 180,
@@ -33,6 +40,8 @@ describe('AiCreditsAccountLine', () => {
   beforeEach(async () => {
     await i18n.changeLanguage('en');
     mockHook.mockReset();
+    mockGift.mockReset();
+    mockGift.mockReturnValue(null);
     mockFormat.mockClear();
     mockFormat.mockReturnValue('a date');
   });
@@ -158,5 +167,78 @@ describe('AiCreditsAccountLine', () => {
     mockHook.mockReturnValue(state({ resets: 'pass' }));
     render(<AiCreditsAccountLine />);
     expect(mockFormat).toHaveBeenCalledWith(expect.any(Date), 'en', undefined);
+  });
+});
+
+describe('AiCreditsAccountLine free AI credits gift', () => {
+  const EXPIRES = '2026-11-26T19:15:00.000Z';
+  const expiry = () => formatGiftDate(EXPIRES, 'en');
+  const claimed = (credits: number, expiresAt = EXPIRES) => ({
+    state: 'claimed' as const,
+    credits,
+    expiresAt,
+    feedbackDue: false,
+  });
+
+  beforeEach(async () => {
+    await i18n.changeLanguage('en');
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-24T19:15:00.000Z'));
+    mockHook.mockReset();
+    mockGift.mockReset();
+    mockFormat.mockReturnValue('a date');
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('puts the gift under the plan line and before the buy action', () => {
+    mockHook.mockReturnValue(state({ credits: 300, windowEnd: null }));
+    mockGift.mockReturnValue(claimed(100));
+    render(<AiCreditsAccountLine />);
+    const plan = screen.getByText('300 AI credits.');
+    const gift = screen.getByText(
+      `Plus 100 free AI credits until ${expiry()}.`
+    );
+    const buy = screen.getByRole('button', { name: 'Buy 250 credits for $5' });
+    expect(
+      plan.compareDocumentPosition(gift) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(
+      gift.compareDocumentPosition(buy) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it('shows the gift alone for a free account with no plan', () => {
+    mockHook.mockReturnValue(
+      state({ usable: false, allowance: 0, credits: 0, windowEnd: null })
+    );
+    mockGift.mockReturnValue(claimed(100));
+    render(<AiCreditsAccountLine />);
+    expect(
+      screen.getByText(`100 free AI credits left until ${expiry()}.`)
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button')).toBeNull();
+  });
+
+  it('shows only the plan line without a gift', () => {
+    mockHook.mockReturnValue(state({ credits: 300, windowEnd: null }));
+    mockGift.mockReturnValue(null);
+    render(<AiCreditsAccountLine />);
+    expect(screen.getByText('300 AI credits.')).toBeInTheDocument();
+    expect(screen.queryByText(/free AI credit/)).toBeNull();
+  });
+
+  it.each([
+    ['the flag is off', { state: 'closed' as const, feedbackDue: false }],
+    ['the gift is spent', claimed(0)],
+    ['the gift expired', claimed(100, '2026-11-24T19:14:00.000Z')],
+  ])('shows no gift line when %s', (_name, gift) => {
+    mockHook.mockReturnValue(state({ credits: 300, windowEnd: null }));
+    mockGift.mockReturnValue(gift);
+    render(<AiCreditsAccountLine />);
+    expect(screen.getByText('300 AI credits.')).toBeInTheDocument();
+    expect(screen.queryByText(/free AI credit/)).toBeNull();
   });
 });
