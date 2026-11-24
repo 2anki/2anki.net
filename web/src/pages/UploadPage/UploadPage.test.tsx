@@ -822,6 +822,31 @@ describe('UploadPage AI off badge for a paying account', () => {
     }
   });
 
+  it('keeps Turn on Claude cards when the plan is spent but gift credits remain', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-24T19:15:00.000Z'));
+    fakeLocals = { subscriber: true };
+    fakeGift = {
+      state: 'claimed',
+      credits: 60,
+      expiresAt: '2026-11-26T19:15:00.000Z',
+      feedbackDue: false,
+    };
+    globalThis.localStorage.setItem('claude-ai-flashcards', 'false');
+    try {
+      stubCredits(0);
+      renderPage();
+
+      expect(
+        await screen.findByRole('button', { name: 'Turn on Claude cards' })
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/builds without AI/)).toBeNull();
+    } finally {
+      fakeGift = null;
+      vi.useRealTimers();
+    }
+  });
+
   it('leaves out Turn on Claude cards once the plan has no AI credits left', async () => {
     fakeLocals = { subscriber: true };
     globalThis.localStorage.setItem('claude-ai-flashcards', 'false');

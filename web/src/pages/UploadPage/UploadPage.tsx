@@ -22,6 +22,7 @@ import {
 import useQuery from '../../lib/hooks/useQuery';
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
 import { useAiGift, AI_GIFT_QUERY_KEY } from '../../lib/hooks/useAiGift';
+import { activeGiftBalance } from '../../components/AiGift/useAiGiftBalanceLine';
 import { hasSessionHint } from '../../lib/sessionHint';
 import {
   useAiCredits,
@@ -156,10 +157,13 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
   const japanese = i18n.resolvedLanguage === 'ja';
   const sentenceGap = japanese ? '' : ' ';
   const sentenceEnd = japanese ? '。' : '.';
-  // With no credits left, turning Claude on still builds the next deck
-  // without AI, which the credits line under the badge already says.
+  // With no plan credits and no gift credits left, turning Claude on still
+  // builds the next deck without AI, which the credits line already says.
   const outOfCredits =
-    aiCredits != null && aiCredits.allowance !== 0 && aiCredits.credits <= 0;
+    aiCredits != null &&
+    aiCredits.allowance !== 0 &&
+    aiCredits.credits <= 0 &&
+    activeGiftBalance(giftAfterPlan, Date.now()) == null;
 
   const aiChoiceOn = userLocalsLoading ? aiFlag : isAiOn;
 
