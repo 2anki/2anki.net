@@ -16,8 +16,10 @@ import {
   reportUploadZoneActivity,
   type UploadZoneActivity,
 } from '../../lib/upload/uploadZoneActivity';
+import { CookieBanner } from '../CookieBanner/CookieBanner';
 import { AiGiftPresent } from './AiGiftPresent';
 import {
+  hasGiftOpenedBefore,
   isCheckoutReturn,
   rememberClaimIntent,
   setGiftDismissed,
@@ -77,6 +79,48 @@ function onPage(activity: UploadZoneActivity) {
   act(() => reportUploadZoneActivity(activity));
 }
 
+const WIDE_QUERY = '(min-width: 640px)';
+
+function screenIs(width: 'wide' | 'narrow') {
+  const listeners = new Set<() => void>();
+  let wide = width === 'wide';
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn((query: string) => ({
+      get matches() {
+        return query === WIDE_QUERY && wide;
+      },
+      media: query,
+      addEventListener: (_type: string, listener: () => void) =>
+        listeners.add(listener),
+      removeEventListener: (_type: string, listener: () => void) =>
+        listeners.delete(listener),
+    }))
+  );
+  return {
+    resize(next: 'wide' | 'narrow') {
+      wide = next === 'wide';
+      act(() => {
+        for (const listener of listeners) listener();
+      });
+    },
+  };
+}
+
+function tabIs(state: 'visible' | 'hidden') {
+  Object.defineProperty(document, 'visibilityState', {
+    configurable: true,
+    get: () => state,
+  });
+}
+
+function tabBecomes(state: 'visible' | 'hidden') {
+  tabIs(state);
+  act(() => {
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+}
+
 beforeEach(async () => {
   await i18n.changeLanguage('en');
   localStorage.clear();
@@ -84,6 +128,8 @@ beforeEach(async () => {
   vi.mocked(track).mockClear();
   document.documentElement.dataset.consentRegion = 'other';
   reportUploadZoneActivity('idle');
+  screenIs('wide');
+  tabIs('visible');
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
 });
 
@@ -92,6 +138,8 @@ afterEach(() => {
   reportUploadZoneActivity('absent');
   delete document.documentElement.dataset.consentRegion;
   document.cookie = `${COOKIE_CONSENT_COOKIE}=; Max-Age=0; Path=/`;
+  Reflect.deleteProperty(document, 'visibilityState');
+  vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
 
@@ -303,6 +351,133 @@ describe('AiGiftPresent opening by itself', () => {
     ).toBeInTheDocument();
     expect(openedCalls()).toHaveLength(0);
     expect(screen.getByRole('status')).toHaveTextContent('');
+  });
+
+  test('leaves a phone-width screen alone without using up the one opening', async () => {
+    screenIs('narrow');
+    serveGift(OPEN);
+    const phone = await loadGift();
+    await elapse(GIFT_AUTO_OPEN_DELAY_MS * 3);
+
+    expect(panel()).toBeNull();
+    expect(
+      screen.getByRole('button', { name: 'Free AI credits gift' })
+    ).toHaveAttribute('aria-expanded', 'false');
+    expect(openedCalls()).toHaveLength(0);
+    expect(hasGiftOpenedBefore()).toBe(false);
+    phone.unmount();
+
+    screenIs('wide');
+    await loadGift();
+    await elapse(GIFT_AUTO_OPEN_DELAY_MS);
+
+    expect(panel()).not.toBeNull();
+  });
+
+  test('opens once the screen is 640px or wider', async () => {
+    const screenSize = screenIs('narrow');
+    serveGift(OPEN);
+    await loadGift();
+    await elapse(GIFT_AUTO_OPEN_DELAY_MS * 2);
+    expect(panel()).toBeNull();
+
+    screenSize.resize('wide');
+    await elapse(GIFT_AUTO_OPEN_DELAY_MS);
+
+    expect(panel()).not.toBeNull();
+  });
+
+  test('closes the opened-by-itself panel when an upload starts, recording it', async () => {
+    serveGift(OPEN);
+    await loadGift();
+    await elapse(GIFT_AUTO_OPEN_DELAY_MS);
+    expect(panel()).not.toBeNull();
+
+    onPage('busy');
+
+    expect(panel()).toBeNull();
+    expect(track).toHaveBeenCalledWith('ai_gift_dismissed', {
+      trigger: 'auto',
+      via: 'upload',
+      state: 'open',
+      signed_in: false,
+    });
+  });
+
+  test('keeps a panel the visitor opened by clicking open when an upload starts', async () => {
+    serveGift(OPEN);
+    await loadGift();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Free AI credits gift' })
+    );
+
+    onPage('busy');
+    await elapse(GIFT_AUTO_OPEN_DELAY_MS);
+
+    expect(panel()).not.toBeNull();
+    expect(
+      vi
+        .mocked(track)
+        .mock.calls.filter(([name]) => name === 'ai_gift_dismissed')
+    ).toHaveLength(0);
+  });
+
+  test('waits for a background tab to be looked at before opening', async () => {
+    tabIs('hidden');
+    serveGift(OPEN);
+    await loadGift();
+    await elapse(GIFT_AUTO_OPEN_DELAY_MS * 3);
+
+    expect(panel()).toBeNull();
+    expect(hasGiftOpenedBefore()).toBe(false);
+
+    tabBecomes('visible');
+    expect(panel()).not.toBeNull();
+
+    tabBecomes('hidden');
+    tabBecomes('visible');
+    expect(openedCalls()).toHaveLength(1);
+  });
+
+  test('checks again when a background tab comes back, and stays shut if an upload started meanwhile', async () => {
+    tabIs('hidden');
+    serveGift(OPEN);
+    await loadGift();
+    await elapse(GIFT_AUTO_OPEN_DELAY_MS * 2);
+
+    onPage('busy');
+    tabBecomes('visible');
+    await elapse(GIFT_AUTO_OPEN_DELAY_MS * 2);
+
+    expect(panel()).toBeNull();
+    expect(openedCalls()).toHaveLength(0);
+  });
+
+  test('never opens while the real cookie banner is on screen, and opens once it is answered', async () => {
+    delete document.documentElement.dataset.consentRegion;
+    serveGift(OPEN);
+    render(
+      <QueryClientProvider
+        client={
+          new QueryClient({ defaultOptions: { queries: { retry: false } } })
+        }
+      >
+        <MemoryRouter initialEntries={['/upload']}>
+          <AiGiftPresent isLoggedIn={false} />
+          <CookieBanner />
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+    await elapse(GIFT_AUTO_OPEN_DELAY_MS * 3);
+
+    expect(screen.getByTestId('cookie-banner')).toBeInTheDocument();
+    expect(panel()).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Only necessary' }));
+    expect(screen.queryByTestId('cookie-banner')).toBeNull();
+    await elapse(GIFT_AUTO_OPEN_DELAY_MS);
+
+    expect(panel()).not.toBeNull();
   });
 
   test('animates only when the visitor has not asked for reduced motion', () => {

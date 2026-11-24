@@ -21,13 +21,20 @@ import {
   rememberGiftOpened,
 } from './giftUiState';
 import { useGiftAutoOpen } from './useGiftAutoOpen';
+import { useUploadZoneActivity } from '../../lib/upload/uploadZoneActivity';
 import sharedStyles from '../../styles/shared.module.css';
 import styles from './AiGiftPresent.module.css';
 
 const GIFT_RETURN_PATH = '/upload';
 
 type GiftOpenTrigger = 'auto' | 'click' | 'return';
-type GiftDismissVia = 'escape' | 'outside' | 'close' | 'toggle' | 'hide';
+type GiftDismissVia =
+  | 'escape'
+  | 'outside'
+  | 'close'
+  | 'toggle'
+  | 'hide'
+  | 'upload';
 
 interface AiGiftPresentProps {
   isLoggedIn: boolean;
@@ -250,6 +257,13 @@ export function AiGiftPresent({
       setOpen(false);
     };
   });
+
+  const uploadZone = useUploadZoneActivity();
+  useEffect(() => {
+    if (open && openedBy === 'auto' && uploadZone === 'busy') {
+      closeAs.current('upload');
+    }
+  }, [open, openedBy, uploadZone]);
 
   useEffect(() => {
     if (!open) return;

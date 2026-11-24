@@ -1,3 +1,5 @@
+import { useSyncExternalStore } from 'react';
+
 export type UploadZoneActivity = 'absent' | 'idle' | 'busy';
 
 let current: UploadZoneActivity = 'absent';
@@ -18,4 +20,11 @@ export function subscribeUploadZoneActivity(listener: () => void): () => void {
   return () => {
     listeners.delete(listener);
   };
+}
+
+export function useUploadZoneActivity(): UploadZoneActivity {
+  return useSyncExternalStore(
+    subscribeUploadZoneActivity,
+    readUploadZoneActivity
+  );
 }

@@ -5452,6 +5452,23 @@ describe('limit state', () => {
     expect(screen.queryByText('Choose files')).not.toBeInTheDocument();
   });
 
+  it('tells the page the zone is busy while the monthly limit wall is up', () => {
+    setUserLocals(loggedInData);
+    mockUseCardUsage.mockReturnValue({
+      cards_used: 100,
+      cards_limit: 100,
+      unlimited: false,
+      loading: false,
+    });
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+
+    expect(
+      screen.getByText("You've used all 100 cards this month")
+    ).toBeInTheDocument();
+    expect(readUploadZoneActivity()).toBe('busy');
+  });
+
   it('explains the paused plan on the locked wall after a failed renewal', async () => {
     vi.stubGlobal(
       'fetch',
@@ -7541,6 +7558,15 @@ describe('UploadForm reattach recovery', () => {
     expect(banner.textContent).toContain('big.zip');
     expect(banner.textContent).toContain('to convert');
     expect(track).toHaveBeenCalledWith('upload_reattach_shown');
+  });
+
+  it('tells the page the zone is busy while it asks to re-attach a file', async () => {
+    globalThis.sessionStorage.setItem('upload_pending_filename', 'big.zip');
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+
+    await screen.findByText(/Re-attach/);
+    expect(readUploadZoneActivity()).toBe('busy');
   });
 
   it('shows no offer when nothing was pending', async () => {
@@ -11890,6 +11916,17 @@ describe('UploadForm deck result and resends of kept files', () => {
     expect(callsTo(fetchMock, '/api/upload/file')).toEqual([]);
   });
 
+  it('tells the page the zone is busy while it offers to continue an interrupted upload', async () => {
+    await saveInterruptedUpload({ ownerId: null, ownerUnknown: true });
+    setUserLocals(signedOut);
+    stubServer([new Promise<never>(() => {})]);
+    renderFormKeepingCache(false);
+
+    await screen.findByRole('button', { name: 'Continue' });
+
+    expect(readUploadZoneActivity()).toBe('busy');
+  });
+
   it('drops the closing line once a new file goes out', async () => {
     await saveInterruptedUpload({ ownerId: null, ownerUnknown: true });
     setUserLocals(signedOut);
@@ -14202,6 +14239,23 @@ describe('UploadForm last deck for a signed-out pass holder', () => {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
     resetLastDeckStoreForTests();
+  });
+
+  it('tells the page the zone is busy while the last deck is on offer, and idle without one', async () => {
+    showVisitor(signedOutVisitor);
+    stubRecovery(vi.fn());
+    const first = renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+    await act(async () => {
+      await getLastDeckStore().load();
+    });
+    expect(readUploadZoneActivity()).toBe('idle');
+    first.unmount();
+
+    await keepDeck();
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+    await screen.findByText(/Your last deck,/);
+
+    await waitFor(() => expect(readUploadZoneActivity()).toBe('busy'));
   });
 
   it('keeps the deck of a signed-out upload that used a pass', async () => {

@@ -1273,13 +1273,6 @@ function UploadForm({
     zoneStateRef.current = zoneState;
   }, [zoneState]);
 
-  const zoneIdle =
-    zoneState === 'idle' && validation == null && !waitingForDeck;
-  useEffect(() => {
-    reportUploadZoneActivity(zoneIdle ? 'idle' : 'busy');
-  }, [zoneIdle]);
-  useEffect(() => () => reportUploadZoneActivity('absent'), []);
-
   // The AI setting a signed-out submit carries. buildFormData and the folder/
   // Dropbox/Drive/retry paths all copy localStorage, which can hold a stale
   // `claude-ai-flashcards` from an old signed-in session or the AI landing
@@ -2510,6 +2503,21 @@ function UploadForm({
 
   const [resumeOffer, setResumeOffer] = useState<ResumeOffer | null>(null);
   const [resumeClosedKey, setResumeClosedKey] = useState<string | null>(null);
+  const [lastDeckOnOffer, setLastDeckOnOffer] = useState(false);
+
+  const zoneIdle =
+    zoneState === 'idle' &&
+    validation == null &&
+    !waitingForDeck &&
+    !isUploadLocked &&
+    !resumingPreview &&
+    resumeOffer == null &&
+    resumeClosedKey == null &&
+    !lastDeckOnOffer;
+  useEffect(() => {
+    reportUploadZoneActivity(zoneIdle ? 'idle' : 'busy');
+  }, [zoneIdle]);
+  useEffect(() => () => reportUploadZoneActivity('absent'), []);
   const resumeCheckedRef = useRef(false);
   const resumedUploadRef = useRef(false);
 
@@ -4807,7 +4815,9 @@ function UploadForm({
       >
         {passReturnLine}
       </p>
-      {showSignInPrompt && zoneState === 'idle' && !sample && <LastDeckOffer />}
+      {showSignInPrompt && zoneState === 'idle' && !sample && (
+        <LastDeckOffer onShownChange={setLastDeckOnOffer} />
+      )}
       {resumeOffer?.kind === 'continue' &&
         zoneState === 'idle' &&
         !isUploadLocked && (
