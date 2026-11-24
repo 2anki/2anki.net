@@ -338,9 +338,7 @@ export function LimitPage() {
   const showAnonymous = !isLoggedIn;
   const passFirst = userLocals?.features?.limitWallPassFirst === true;
   const passPrices = usePassPrices();
-  const unlimitedPrice = useUnlimitedMonthlyPrice(
-    isLoggedIn && userLocals?.features?.limitWallProPrice === true
-  );
+  const unlimitedPrice = useUnlimitedMonthlyPrice(isLoggedIn);
 
   useEffect(() => {
     if (isLoading || showAnonymous) return;

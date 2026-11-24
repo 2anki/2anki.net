@@ -64,7 +64,6 @@ import {
 import { MONTHLY_CARD_LIMIT } from '../lib/limits';
 import { getFeatureFlag } from '../lib/featureFlags/getFeatureFlag';
 import { THIN_DECK_AI_OFFER_FLAG } from '../lib/featureFlags/thinDeckAiOffer';
-import { LIMIT_WALL_PRO_PRICE_FLAG } from '../lib/featureFlags/limitWallProPrice';
 import { LIMIT_WALL_PASS_FIRST_FLAG } from '../lib/featureFlags/limitWallPassFirst';
 import {
   GetAiCreditsUseCase,
@@ -157,6 +156,7 @@ const KEPT_FEATURES_FOR_OLDER_TABS = {
   anonymousDayPassCard: true,
   anonymousAiPreview: true,
   anonymousAiChoice: true,
+  limitWallProPrice: true,
 } as const;
 
 class UsersController {
@@ -468,13 +468,6 @@ class UsersController {
       kiUI: false,
       ops: user?.email?.toLowerCase() === OPS_OWNER_EMAIL,
       ...KEPT_FEATURES_FOR_OLDER_TABS,
-      limitWallProPrice: await getFeatureFlag(
-        LIMIT_WALL_PRO_PRICE_FLAG,
-        false
-      ).catch((error: unknown) => {
-        console.error('[locals] feature flag read failed', error);
-        return false;
-      }),
       limitWallPassFirst: await getFeatureFlag(
         LIMIT_WALL_PASS_FIRST_FLAG,
         false
