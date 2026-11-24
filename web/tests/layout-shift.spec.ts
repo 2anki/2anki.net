@@ -91,6 +91,25 @@ test('pass prices arriving late in a short landing hero move nothing', async ({
   expect(await layoutShifts(page)).toEqual([]);
 });
 
+test('the signed-out image occlusion editor leaves no blank band above the footer', async ({
+  page,
+}) => {
+  await mockBackend(page);
+  await recordLayoutShifts(page);
+
+  await page.goto('/image-occlusion');
+
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  const editorBottom = await page
+    .locator('main > [class*="pageRoot"]')
+    .evaluate((editor) => editor.getBoundingClientRect().bottom);
+  const footerTop = await page
+    .locator('footer')
+    .evaluate((footer) => footer.getBoundingClientRect().top);
+  expect(footerTop - editorBottom).toBe(0);
+  expect(await layoutShifts(page)).toEqual([]);
+});
+
 test('the footer stays below the fold on a page shorter than the viewport', async ({
   page,
 }) => {

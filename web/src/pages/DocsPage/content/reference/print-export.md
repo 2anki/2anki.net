@@ -48,4 +48,4 @@ Uploaded `.apkg` files are removed within **2 hours** of the export. The PDF is 
 
 - [Note types and templates](/documentation/cards/templates) — templates that print well
 - [Limits and quotas](/documentation/help/limits) — plans and storage windows
-- [Short plans and passes](/documentation/reference/plans) — one-time access for a single export
+- [Plans and passes](/documentation/reference/plans) — one-time access for a single export

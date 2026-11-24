@@ -483,7 +483,7 @@ export function ImageOcclusionPage() {
 
   if (!hydrated) {
     return (
-      <div className={pageStyles.pageRoot}>
+      <div className={pageStyles.pageRoot} data-viewport-sized>
         <div className={pageStyles.pageChrome}>
           <h1 className={pageStyles.pageTitle}>{t('occlusion.title')}</h1>
           <p className={pageStyles.pageSubtitle}>{t('occlusion.restoring')}</p>
@@ -506,7 +506,7 @@ export function ImageOcclusionPage() {
   }
 
   return (
-    <div className={pageStyles.pageRoot}>
+    <div className={pageStyles.pageRoot} data-viewport-sized>
       {!mobileDismissed && (
         <div
           className={`${styles.notificationInfo} ${pageStyles.mobileBanner}`}

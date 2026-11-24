@@ -43,7 +43,7 @@ Die Kartenoption **Karteikarten mit Claude AI erstellen** ist eine Subscription-
 
 ## Chat
 
-Der Chat-Lernassistent ist Teil jedes bezahlten Plans — Subscription, Day Pass und Lifetime. Mit einem kostenlosen Konto bleiben bisherige Unterhaltungen lesbar und bereits erstellte Decks herunterladbar; zum Senden von Nachrichten brauchst du einen Plan.
+Der Chat-Lernassistent ist Teil jedes bezahlten Plans — Subscription, Day Pass, Week Pass, Semester Pass und Lifetime. Mit einem kostenlosen Konto bleiben bisherige Unterhaltungen lesbar und bereits erstellte Decks herunterladbar; zum Senden von Nachrichten brauchst du einen Plan.
 
 |                  | Free                               | Bezahlte Pläne   |
 | ---------------- | ---------------------------------- | ---------------- |

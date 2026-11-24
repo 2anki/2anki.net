@@ -47,4 +47,4 @@ Hochgeladene `.apkg`-Dateien werden innerhalb von **2 Stunden** nach dem Export 
 
 - [Notiztypen und Vorlagen](/documentation/cards/templates) — Vorlagen, die gut drucken
 - [Grenzen und Kontingente](/documentation/help/limits) — Pläne und Speicherfenster
-- [Kurze Pläne und Pässe](/documentation/reference/plans) — einmaliger Zugang für einen einzelnen Export
+- [Pläne und Pässe](/documentation/reference/plans) — einmaliger Zugang für einen einzelnen Export

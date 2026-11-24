@@ -118,6 +118,119 @@ describe('DayPassCreditOffer', () => {
     expect(button.className).not.toMatch(/btnPrimary/);
   });
 
+  test('names the offer with a heading so screen readers can jump to it', async () => {
+    routeFetch(response(200, OFFER));
+    renderOffer();
+
+    expect(
+      await screen.findByRole('heading', {
+        level: 2,
+        name: 'Move up to the Semester Pass for $23',
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('region', {
+        name: 'Move up to the Semester Pass for $23',
+      })
+    ).toBeInTheDocument();
+  });
+
+  describe('offer dates', () => {
+    const originalTimeZone = process.env.TZ;
+
+    beforeEach(() => {
+      process.env.TZ = 'UTC';
+    });
+
+    afterEach(async () => {
+      process.env.TZ = originalTimeZone;
+      await i18n.changeLanguage('en');
+    });
+
+    test('puts the day before the month in English', async () => {
+      routeFetch(response(200, OFFER));
+      renderOffer();
+
+      expect(
+        await screen.findByText('Offer ends Sat 14 Nov, 10:00.')
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          'The 120 days start when your Day Pass ends on Fri 13 Nov, 10:00.'
+        )
+      ).toBeInTheDocument();
+    });
+
+    test('keeps the order of the app language outside English', async () => {
+      await i18n.changeLanguage('de');
+      routeFetch(response(200, OFFER));
+      renderOffer();
+
+      expect(
+        await screen.findByText(/Sa\., 14\. Nov\., 10:00/)
+      ).toBeInTheDocument();
+    });
+  });
+
+  test('keeps keyboard focus on the button while checkout opens', async () => {
+    let openCheckout: (reply: Reply) => void = () => {};
+    const creditCalls: string[] = [];
+    globalThis.fetch = vi.fn(
+      async (url: string, init?: { method?: string }) => {
+        if (!String(url).includes('day-pass-credit')) {
+          return response(200, {});
+        }
+        const method = init?.method ?? 'GET';
+        creditCalls.push(method);
+        if (method === 'POST') {
+          return new Promise<Reply>((resolve) => {
+            openCheckout = resolve;
+          });
+        }
+        return response(200, OFFER);
+      }
+    ) as unknown as typeof fetch;
+    renderOffer();
+
+    const button = await screen.findByRole('button', { name: ctaName });
+    button.focus();
+    fireEvent.click(button);
+
+    const pendingButton = await screen.findByRole('button', {
+      name: 'Opening checkout',
+    });
+    expect(pendingButton).toBe(button);
+    expect(pendingButton).not.toBeDisabled();
+    expect(pendingButton).toHaveAttribute('aria-disabled', 'true');
+    expect(pendingButton).toHaveFocus();
+
+    fireEvent.click(pendingButton);
+    expect(creditCalls).toEqual(['GET', 'POST']);
+
+    openCheckout(response(503, { message: 'unavailable' }));
+    expect(
+      await screen.findByText("Checkout didn't open. Try again.")
+    ).toBeInTheDocument();
+    expect(button).toHaveFocus();
+    expect(button).not.toHaveAttribute('aria-disabled');
+  });
+
+  test('moves keyboard focus to the refusal when the offer is gone', async () => {
+    routeFetch(
+      response(200, OFFER),
+      response(409, { code: 'day_pass_credit_used' })
+    );
+    renderOffer();
+
+    const button = await screen.findByRole('button', { name: ctaName });
+    button.focus();
+    fireEvent.click(button);
+
+    const refusal = await screen.findByRole('alert');
+    expect(refusal).toHaveTextContent('This offer is no longer available.');
+    await waitFor(() => expect(refusal).toHaveFocus());
+  });
+
   test('renders nothing and records nothing when the account is not eligible', async () => {
     const creditCalls = routeFetch(response(200, { eligible: false }));
     const { container } = renderOffer();

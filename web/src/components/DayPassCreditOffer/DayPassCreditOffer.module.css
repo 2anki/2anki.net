@@ -31,3 +31,15 @@
   font-size: var(--text-sm);
   color: var(--color-text-secondary);
 }
+
+.refusal:focus {
+  outline: none;
+}
+
+.cta[aria-disabled='true'],
+.cta[aria-disabled='true']:hover {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+  background: var(--color-bg-primary);
+}

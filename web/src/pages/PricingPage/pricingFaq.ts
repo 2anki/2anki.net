@@ -61,7 +61,7 @@ export const buildPricingFaq = (
   {
     question: 'Is there an app?',
     answer:
-      'Yes — 2anki is free on the App Store for iPhone, iPad, and Mac, alongside the web app. Files are parsed on-device. The same plans apply: Day Pass, Week Pass, and Pro are available as in-app purchases.',
+      'Yes — 2anki is free on the App Store for iPhone, iPad, and Mac, alongside the web app. Files are parsed on-device. The same plans apply: Day Pass, Week Pass, Semester Pass, and Pro are available as in-app purchases.',
     questionKey: 'faq.q6.question',
     answerKey: 'faq.q6.answer',
   },

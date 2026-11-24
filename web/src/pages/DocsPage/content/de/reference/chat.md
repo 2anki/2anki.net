@@ -5,7 +5,7 @@ description: Notizen einfügen oder eine Datei anhängen, nach Karten fragen, ei
 
 Chat ist ein Lernassistent, gebaut auf Claude. Füge deine Notizen ein oder häng eine Datei an, dann bitte ihn, Karten zu machen, etwas zu erklären, oder arbeite ein Thema im Hin und Her durch. Öffne ihn unter [2anki.net/chat](https://2anki.net/chat). Anmeldung erforderlich.
 
-**Plan:** Teil jedes bezahlten Plans — Subscription, Day Pass und Lifetime. Mit einem kostenlosen Konto kannst du deine bisherigen Unterhaltungen lesen und bereits erstellte Decks herunterladen; zum Senden von Nachrichten brauchst du einen Plan.
+**Plan:** Teil jedes bezahlten Plans — Subscription, Day Pass, Week Pass, Semester Pass und Lifetime. Mit einem kostenlosen Konto kannst du deine bisherigen Unterhaltungen lesen und bereits erstellte Decks herunterladen; zum Senden von Nachrichten brauchst du einen Plan.
 
 ## Wann du das nutzt
 

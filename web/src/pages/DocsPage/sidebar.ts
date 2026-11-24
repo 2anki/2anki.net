@@ -86,7 +86,7 @@ export const sidebar: SidebarGroup[] = [
     items: [
       { label: 'Glossary', slug: 'reference/glossary' },
       { label: 'File formats', slug: 'reference/file-formats' },
-      { label: 'Short plans and passes', slug: 'reference/plans' },
+      { label: 'Plans and passes', slug: 'reference/plans' },
       { label: 'Chat — study assistant', slug: 'reference/chat' },
       { label: 'Print or export to PDF', slug: 'reference/print-export' },
       { label: 'Self-hosting', slug: 'reference/self-hosting' },
