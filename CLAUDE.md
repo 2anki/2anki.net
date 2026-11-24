@@ -57,6 +57,7 @@ Every PR is checked against it: does this make creating flashcards on 2anki.net 
   - **Recipe** (apply the migration first — kanel reads the live schema; env overrides for the stale `.env` `POSTGRES_USER`; git-add only the files your migration changed): see the kanel bullet in `.claude/docs/local-dev.md`.
   - **In a worktree that can't run kanel** (no local Postgres, no `POSTGRES_*`): do NOT hand-write and defer. Run `pnpm dlx kanel -c ./.kanelrc.js` from the **main checkout** (which has node_modules + the local DB) against the applied migration, then copy the regenerated `public/*` into the worktree branch before flipping the PR ready. Never edit `src/data_layer/public/` by hand.
 - Production deploys via the `deploy.2anki.net.yml` workflow; verify with `/deploy-status` after.
+- Read-only prod reads (windowed errors, post-deploy counts, SQL as the read-only database role, PR check wait) use `scripts/prod-errors.sh`, `prod-deploy-check.sh`, `prod-sql.sh` and `wait-pr.py`, never a rebuilt temp script: "Read-only checks" in `.claude/docs/prod-ops.md`. Their results never go into the repo, a PR or memory.
 
 ## Rules (loaded from .claude/rules/)
 

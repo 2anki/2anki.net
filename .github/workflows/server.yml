@@ -16,6 +16,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - name: Hook and prod check script tests
+        run: |
+          for test_file in .claude/hooks/*.test.py scripts/prod-*.test.py scripts/stall-read.test.py scripts/wait-pr.test.py; do
+            python3 "$test_file"
+          done
       - id: changes
         uses: ./.github/actions/changes
       - uses: ./.github/actions/setup
