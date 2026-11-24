@@ -159,7 +159,7 @@ export default function useJobs(
         statusOf(error) === 409 &&
         codeOf(error) === AI_GIFT_BUSY_WARNING_CODE
       ) {
-        setError(new UserNotice(t('aiGift:busy')));
+        setError(new UserNotice(t('aiGift:busyRestart')));
       } else {
         setError(error);
       }

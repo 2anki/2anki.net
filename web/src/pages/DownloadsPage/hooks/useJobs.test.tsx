@@ -228,7 +228,7 @@ describe('useJobs restart guard', () => {
     });
   });
 
-  const aiGiftLocales = import.meta.glob<{ default: { busy: string } }>(
+  const aiGiftLocales = import.meta.glob<{ default: { busyRestart: string } }>(
     '../../../lib/i18n/locales/*/aiGift.json',
     { eager: true }
   );
@@ -237,7 +237,7 @@ describe('useJobs restart guard', () => {
     const locale =
       aiGiftLocales[`../../../lib/i18n/locales/${language}/aiGift.json`];
     if (locale == null) throw new Error(`no aiGift locale for ${language}`);
-    return locale.default.busy;
+    return locale.default.busyRestart;
   }
 
   describe('a restart refused because another conversion uses the gift', () => {

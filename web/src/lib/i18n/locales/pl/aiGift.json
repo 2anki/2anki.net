@@ -33,5 +33,6 @@
     "thanks": "Dzięki. To pomaga nam ulepszać karty Claude.",
     "close": "Zamknij"
   },
-  "busy": "Inna konwersja korzysta z Twoich darmowych kredytów AI. Ta talia powstała bez Claude. Spróbuj ponownie, gdy tamta się zakończy."
+  "busy": "Inna konwersja korzysta z Twoich darmowych kredytów AI. Ta talia powstała bez Claude. Spróbuj ponownie, gdy tamta się zakończy.",
+  "busyRestart": "Inna konwersja korzysta z Twoich darmowych kredytów AI. Spróbuj ponownie, gdy się zakończy."
 }
