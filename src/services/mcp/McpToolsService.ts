@@ -69,6 +69,7 @@ const EMPTY_BACK_MESSAGE =
   'Some cards have an empty back. Every card needs both a front and a back.';
 const GENERIC_CONVERT_ERROR = 'Could not convert this input.';
 const MONTHLY_LIMIT_CODE = 'monthly_limit';
+export const MONTHLY_PHOTO_LIMIT_CODE = 'monthly_photo_limit';
 const HELD_FOR_PLAN_CODE = 'held_for_plan';
 const CARD_LIMIT_REDIRECT_PREFIX = '/limit?kind=card_count';
 // Directory review rules allow a link to an informational plans page, never a
@@ -135,18 +136,19 @@ function isFreePhotoQuotaError(
   );
 }
 
-function freePhotoQuotaError(
-  owner: string,
-  used: number,
-  limit: number
-): Error {
-  const plansUrl = connectorPlansUrl(owner, 'photo', null);
-  return Object.assign(
-    new Error(
-      `You've used all ${limit} free photos for this month. The count resets on ${nextMonthlyReset()}. Plan details: ${plansUrl}`
-    ),
-    { status: 429, used, limit }
-  );
+export class PhotoLimitReachedError extends Error {
+  readonly status = 429;
+
+  constructor(
+    owner: string,
+    readonly used: number,
+    readonly limit: number
+  ) {
+    super(
+      `You've used all ${limit} free photos for this month. The count resets on ${nextMonthlyReset()}. Plan details: ${connectorPlansUrl(owner, 'photo', null)}`
+    );
+    this.name = 'PhotoLimitReachedError';
+  }
 }
 
 // MCP owners are the OAuth user id as a string; anything else has no user row.
@@ -523,6 +525,31 @@ export interface ConnectorPlanHolds {
   ): Promise<Date | null>;
 }
 
+export class DeckNotReadyError extends Error {
+  constructor() {
+    super('This deck has no .apkg to preview yet.');
+    this.name = 'DeckNotReadyError';
+  }
+}
+
+const ENDED_WITHOUT_DECK_STATUSES = new Set([
+  'failed',
+  'interrupted',
+  'cancelled',
+]);
+
+export class JobEndedWithoutDeckError extends Error {
+  readonly reason: string;
+
+  constructor(jobStatus: string) {
+    super(
+      'This conversion ended without a deck, so there is nothing to preview. Convert it again to make a deck.'
+    );
+    this.name = 'JobEndedWithoutDeckError';
+    this.reason = `job_${jobStatus}`;
+  }
+}
+
 export interface ConvertInput {
   url?: string;
   text?: string;
@@ -653,7 +680,7 @@ export class McpToolsService {
       return await this.photoToFlashcards.generateCards(input);
     } catch (error) {
       if (isFreePhotoQuotaError(error)) {
-        throw freePhotoQuotaError(input.owner, error.used, error.limit);
+        throw new PhotoLimitReachedError(input.owner, error.used, error.limit);
       }
       throw error;
     }
@@ -751,7 +778,10 @@ export class McpToolsService {
     if (job) {
       const key = job.download_key;
       if (key == null || !APKG_KEY_PATTERN.test(key)) {
-        throw new Error('This deck has no .apkg to preview yet.');
+        if (ENDED_WITHOUT_DECK_STATUSES.has(job.status)) {
+          throw new JobEndedWithoutDeckError(job.status);
+        }
+        throw new DeckNotReadyError();
       }
       return { key, job };
     }
@@ -1181,6 +1211,18 @@ export class McpToolsService {
         monthlyLimitResult(owner, candidateCards)
       );
     }
+    const photoQuota = this.photoQuotaFromBody(res);
+    if (photoQuota != null) {
+      return {
+        kind: 'error',
+        code: MONTHLY_PHOTO_LIMIT_CODE,
+        message: new PhotoLimitReachedError(
+          owner,
+          photoQuota.used,
+          photoQuota.limit
+        ).message,
+      };
+    }
     const code = this.errorCode(res.body);
     return {
       kind: 'error',
@@ -1329,6 +1371,20 @@ export class McpToolsService {
       (body as { kind?: unknown }).kind === 'batch' &&
       Array.isArray((body as { decks?: unknown }).decks)
     );
+  }
+
+  private photoQuotaFromBody(
+    res: CapturingResponse
+  ): { used: number; limit: number } | null {
+    const body = res.body as { used?: unknown; limit?: unknown } | undefined;
+    if (
+      res.statusCode !== 429 ||
+      typeof body?.used !== 'number' ||
+      typeof body.limit !== 'number'
+    ) {
+      return null;
+    }
+    return { used: body.used, limit: body.limit };
   }
 
   private errorCode(body: unknown): string | undefined {

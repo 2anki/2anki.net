@@ -1,7 +1,13 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
-import { McpToolsService } from './McpToolsService';
+import {
+  DeckNotReadyError,
+  JobEndedWithoutDeckError,
+  McpToolsService,
+  MONTHLY_PHOTO_LIMIT_CODE,
+  PhotoLimitReachedError,
+} from './McpToolsService';
 import type { McpNextStep } from './McpToolsService';
 import {
   McpConvertOptions,
@@ -185,6 +191,14 @@ const DECK_VIEWER_SHAPE = {
   tts: z.boolean().optional(),
 };
 
+// A result that is not an error yet made nothing: status says what happened to
+// the deck and reason says why, so a host and the model can tell it apart from
+// a deck without reading the text.
+const OUTCOME_SHAPE = {
+  status: z.string().optional(),
+  reason: z.string().optional(),
+};
+
 const DECK_RESULT_SHAPE = {
   kind: z.string().optional(),
   jobId: z.string().optional(),
@@ -205,8 +219,18 @@ const DECK_RESULT_SHAPE = {
   cards_left_out: z.number().optional(),
   next_step: z.record(z.string(), z.unknown()).optional(),
   plan_notice: z.string().optional(),
+  ...OUTCOME_SHAPE,
   ...DECK_VIEWER_SHAPE,
 };
+
+const MONTHLY_LIMIT_CODE = 'monthly_limit';
+
+// A reached free allowance is an expected answer, not a malfunction, so it
+// goes back as an ordinary result with the same text and structured fields.
+const NOT_CREATED_CODES = new Set([
+  MONTHLY_LIMIT_CODE,
+  MONTHLY_PHOTO_LIMIT_CODE,
+]);
 
 // What a monthly-limit outcome did with the cards over the limit. Empty for a
 // deck the limit never touched, so ordinary results record no extra props.
@@ -218,7 +242,7 @@ function planOutcomeProps(result: {
   next_step?: McpNextStep;
 }): Record<string, unknown> {
   if (result.kind === 'error') {
-    return result.code === 'monthly_limit'
+    return result.code === MONTHLY_LIMIT_CODE
       ? {
           cards_held_back: result.next_step?.cards_held_back ?? 0,
           held_for_plan: false,
@@ -254,6 +278,37 @@ function deckOrHeldResult(
     textMarkdown: deckResultMarkdown(result, detail),
     trustedNotice: notice,
   });
+}
+
+function outcomeResult(
+  message: string,
+  fields: { code: string; status: string; reason: string },
+  nextStep?: McpNextStep
+): ToolResult {
+  const structuredContent: Record<string, unknown> = { ...fields, message };
+  if (nextStep) structuredContent.next_step = { ...nextStep };
+  return {
+    content: [{ type: 'text', text: message }],
+    structuredContent,
+  };
+}
+
+function deckRefusalResult(
+  result: { message: string; code?: string; next_step?: McpNextStep },
+  fallbackCode: string
+): ToolResult {
+  if (result.code != null && NOT_CREATED_CODES.has(result.code)) {
+    return outcomeResult(
+      result.message,
+      { code: result.code, status: 'not_created', reason: result.code },
+      result.next_step
+    );
+  }
+  return errorResult(
+    result.message,
+    result.code ?? fallbackCode,
+    result.next_step
+  );
 }
 
 function errorResult(
@@ -321,6 +376,37 @@ export function buildMcpServer(context: McpRequestContext): McpServer {
 
   registerDeckViewerResource(server);
 
+  const finish = (
+    toolName: string,
+    result: ToolResult,
+    success: boolean,
+    errorCode?: string,
+    props: Record<string, unknown> = {}
+  ): ToolResult => {
+    context.recordToolResult(toolName, success, errorCode, {
+      ...props,
+      returned_as_error: result.isError === true,
+    });
+    return result;
+  };
+
+  const thrownResult = (
+    toolName: string,
+    error: unknown,
+    errorCode: string,
+    props: Record<string, unknown> = {}
+  ): ToolResult => {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`[mcp] ${toolName} failed: ${sanitizeForLog(message)}`);
+    return finish(
+      toolName,
+      { content: [{ type: 'text', text: message }], isError: true },
+      false,
+      errorCode,
+      props
+    );
+  };
+
   registerTool<{ limit?: number }>(
     server,
     'list_my_decks',
@@ -350,11 +436,30 @@ export function buildMcpServer(context: McpRequestContext): McpServer {
     },
     async ({ limit }) => {
       context.recordToolCall('list_my_decks');
-      const result = await context.toolsService.listMyDecks(
-        context.owner,
-        limit ?? 20
+      let result: Awaited<ReturnType<McpToolsService['listMyDecks']>>;
+      try {
+        result = await context.toolsService.listMyDecks(
+          context.owner,
+          limit ?? 20
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error(`[mcp] list_my_decks failed: ${sanitizeForLog(message)}`);
+        return finish(
+          'list_my_decks',
+          {
+            content: [{ type: 'text', text: 'Could not load your decks.' }],
+            isError: true,
+          },
+          false,
+          'list_failed'
+        );
+      }
+      return finish(
+        'list_my_decks',
+        structuredResult(result as unknown as Record<string, unknown>),
+        true
       );
-      return structuredResult(result as unknown as Record<string, unknown>);
     }
   );
 
@@ -377,6 +482,9 @@ export function buildMcpServer(context: McpRequestContext): McpServer {
         note: z.string().optional(),
         title: z.string().optional(),
         downloadUrl: z.string().optional(),
+        code: z.string().optional(),
+        message: z.string().optional(),
+        ...OUTCOME_SHAPE,
         ...DECK_VIEWER_SHAPE,
       },
       _meta: deckViewerToolMeta(),
@@ -415,40 +523,79 @@ export function buildMcpServer(context: McpRequestContext): McpServer {
       context.recordToolCall('get_deck_preview');
       const identifier = jobId ?? key;
       if (identifier == null) {
-        return errorResult(
-          'Provide a jobId (from list_my_decks) or a deck key.',
+        return finish(
+          'get_deck_preview',
+          errorResult(
+            'Provide a jobId (from list_my_decks) or a deck key.',
+            'no_input'
+          ),
+          false,
           'no_input'
         );
       }
+      let preview: Awaited<ReturnType<McpToolsService['getDeckPreview']>>;
       try {
-        const preview = await context.toolsService.getDeckPreview(
+        preview = await context.toolsService.getDeckPreview(
           context.owner,
           identifier,
           page ?? 0,
           pageSize ?? 20
         );
-        const deckLabel =
-          preview.deckCount > 1
-            ? `${preview.cardCount} cards across ${preview.deckCount} decks`
-            : `${preview.cardCount} cards`;
-        const textMarkdown = renderDeckMarkdownTable({
-          headerLines: [`**${deckLabel}**`],
-          cards: preview.sampleCards,
-          totalCount: preview.cardCount,
-          note: preview.note,
-        });
-        return structuredResult(preview as unknown as Record<string, unknown>, {
-          untrusted: true,
-          textMarkdown,
-        });
       } catch (error) {
+        if (error instanceof JobEndedWithoutDeckError) {
+          return finish(
+            'get_deck_preview',
+            outcomeResult(error.message, {
+              code: 'preview_failed',
+              status: 'failed',
+              reason: error.reason,
+            }),
+            false,
+            error.reason
+          );
+        }
+        if (error instanceof DeckNotReadyError) {
+          return finish(
+            'get_deck_preview',
+            outcomeResult(error.message, {
+              code: 'preview_failed',
+              status: 'not_ready',
+              reason: 'no_apkg_yet',
+            }),
+            false,
+            'no_apkg_yet'
+          );
+        }
         const message =
           error instanceof Error ? error.message : 'Could not load the deck.';
         console.error(
           `[mcp] get_deck_preview failed for ${sanitizeForLog(identifier)}: ${message}`
         );
-        return errorResult(message, 'preview_failed');
+        return finish(
+          'get_deck_preview',
+          errorResult(message, 'preview_failed'),
+          false,
+          'preview_failed'
+        );
       }
+      const deckLabel =
+        preview.deckCount > 1
+          ? `${preview.cardCount} cards across ${preview.deckCount} decks`
+          : `${preview.cardCount} cards`;
+      const textMarkdown = renderDeckMarkdownTable({
+        headerLines: [`**${deckLabel}**`],
+        cards: preview.sampleCards,
+        totalCount: preview.cardCount,
+        note: preview.note,
+      });
+      return finish(
+        'get_deck_preview',
+        structuredResult(preview as unknown as Record<string, unknown>, {
+          untrusted: true,
+          textMarkdown,
+        }),
+        true
+      );
     }
   );
 
@@ -550,29 +697,36 @@ export function buildMcpServer(context: McpRequestContext): McpServer {
     async ({ url, text, filename, options, detail }) => {
       context.recordToolCall('convert_to_deck');
       const inputProps = convertInputProps({ url, text, filename });
-      const result = await context.toolsService.convertToDeck(
-        { url, text, filename, options },
-        context.owner,
-        context.locals
-      );
-      if (result.kind === 'error') {
-        context.recordToolResult('convert_to_deck', false, result.code, {
-          ...inputProps,
-          ...planOutcomeProps(result),
-        });
-        return errorResult(
-          result.message,
-          result.code ?? 'convert_failed',
-          result.next_step
+      let result: Awaited<ReturnType<McpToolsService['convertToDeck']>>;
+      try {
+        result = await context.toolsService.convertToDeck(
+          { url, text, filename, options },
+          context.owner,
+          context.locals
+        );
+      } catch (error) {
+        return thrownResult(
+          'convert_to_deck',
+          error,
+          'convert_failed',
+          inputProps
         );
       }
-      context.recordToolResult('convert_to_deck', true, undefined, {
-        ...inputProps,
-        ...planOutcomeProps(result),
-      });
-      return deckOrHeldResult(
-        result as unknown as Record<string, unknown>,
-        detail
+      if (result.kind === 'error') {
+        return finish(
+          'convert_to_deck',
+          deckRefusalResult(result, 'convert_failed'),
+          false,
+          result.code,
+          { ...inputProps, ...planOutcomeProps(result) }
+        );
+      }
+      return finish(
+        'convert_to_deck',
+        deckOrHeldResult(result as unknown as Record<string, unknown>, detail),
+        true,
+        undefined,
+        { ...inputProps, ...planOutcomeProps(result) }
       );
     }
   );
@@ -651,37 +805,37 @@ export function buildMcpServer(context: McpRequestContext): McpServer {
     },
     async ({ cards, deckName, options, detail }) => {
       context.recordToolCall('create_deck');
-      const result = await context.toolsService.createDeck(
-        cards,
-        deckName,
-        options,
-        context.owner,
-        context.locals
-      );
+      let result: Awaited<ReturnType<McpToolsService['createDeck']>>;
+      try {
+        result = await context.toolsService.createDeck(
+          cards,
+          deckName,
+          options,
+          context.owner,
+          context.locals
+        );
+      } catch (error) {
+        return thrownResult('create_deck', error, 'create_failed');
+      }
       if (result.kind === 'error') {
-        context.recordToolResult(
+        return finish(
           'create_deck',
+          deckRefusalResult(result, 'create_failed'),
           false,
           result.code,
           planOutcomeProps(result)
-        );
-        return errorResult(
-          result.message,
-          result.code ?? 'create_failed',
-          result.next_step
         );
       }
       const subdeckCount =
         result.kind === 'deck' && result.applied?.subdecks != null
           ? result.applied.subdecks.length
           : 1;
-      context.recordToolResult('create_deck', true, undefined, {
-        subdeckCount,
-        ...planOutcomeProps(result),
-      });
-      return deckOrHeldResult(
-        result as unknown as Record<string, unknown>,
-        detail
+      return finish(
+        'create_deck',
+        deckOrHeldResult(result as unknown as Record<string, unknown>, detail),
+        true,
+        undefined,
+        { subdeckCount, ...planOutcomeProps(result) }
       );
     }
   );
@@ -694,6 +848,9 @@ export function buildMcpServer(context: McpRequestContext): McpServer {
       outputSchema: {
         noteTypes: z.array(z.record(z.string(), z.unknown())),
         options: z.array(z.record(z.string(), z.unknown())),
+        inputKinds: z.array(z.string()),
+        inputFormats: z.record(z.string(), z.unknown()),
+        conventions: z.array(z.string()),
       },
       annotations: {
         readOnlyHint: true,
@@ -706,8 +863,12 @@ export function buildMcpServer(context: McpRequestContext): McpServer {
     },
     async () => {
       context.recordToolCall('deck_capabilities');
-      return structuredResult(
-        DECK_CAPABILITIES as unknown as Record<string, unknown>
+      return finish(
+        'deck_capabilities',
+        structuredResult(
+          DECK_CAPABILITIES as unknown as Record<string, unknown>
+        ),
+        true
       );
     }
   );
@@ -723,9 +884,12 @@ export function buildMcpServer(context: McpRequestContext): McpServer {
     {
       title: 'Photo to flashcards',
       outputSchema: {
-        cards: z.array(z.record(z.string(), z.unknown())),
-        count: z.number(),
-        summary: z.string(),
+        cards: z.array(z.record(z.string(), z.unknown())).optional(),
+        count: z.number().optional(),
+        summary: z.string().optional(),
+        code: z.string().optional(),
+        message: z.string().optional(),
+        ...OUTCOME_SHAPE,
       },
       annotations: {
         readOnlyHint: false,
@@ -760,29 +924,51 @@ export function buildMcpServer(context: McpRequestContext): McpServer {
     },
     async ({ image, density, mode, includeSourceImage }) => {
       context.recordToolCall('photo_to_deck');
+      let result: Awaited<ReturnType<McpToolsService['photoToDeck']>>;
       try {
-        const result = await context.toolsService.photoToDeck(
+        result = await context.toolsService.photoToDeck(
           { image, density, mode, includeSourceImage },
           context.owner,
           context.locals
         );
-        const textMarkdown = renderDeckMarkdownTable({
-          headerLines: [`**${result.summary}**`],
-          cards: result.cards,
-          totalCount: result.count,
-        });
-        return structuredResult(result as unknown as Record<string, unknown>, {
-          untrusted: true,
-          textMarkdown,
-        });
       } catch (error) {
-        return errorResult(
-          error instanceof Error
-            ? error.message
-            : 'Could not read cards from this photo.',
+        if (error instanceof PhotoLimitReachedError) {
+          return finish(
+            'photo_to_deck',
+            outcomeResult(error.message, {
+              code: 'photo_failed',
+              status: 'not_created',
+              reason: MONTHLY_PHOTO_LIMIT_CODE,
+            }),
+            false,
+            MONTHLY_PHOTO_LIMIT_CODE
+          );
+        }
+        return finish(
+          'photo_to_deck',
+          errorResult(
+            error instanceof Error
+              ? error.message
+              : 'Could not read cards from this photo.',
+            'photo_failed'
+          ),
+          false,
           'photo_failed'
         );
       }
+      const textMarkdown = renderDeckMarkdownTable({
+        headerLines: [`**${result.summary}**`],
+        cards: result.cards,
+        totalCount: result.count,
+      });
+      return finish(
+        'photo_to_deck',
+        structuredResult(result as unknown as Record<string, unknown>, {
+          untrusted: true,
+          textMarkdown,
+        }),
+        true
+      );
     }
   );
 
