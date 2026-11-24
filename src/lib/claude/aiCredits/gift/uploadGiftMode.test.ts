@@ -103,6 +103,19 @@ describe('restartAiGiftMode', () => {
     ).toBeNull();
   });
 
+  it('restarts a free account that claimed, while the switch is off, on a gift that pays for nothing and takes no marker', async () => {
+    expect(
+      await restartAiGiftMode(9, false, () => readers({ enabled: false }))
+    ).toBe('off');
+  });
+
+  it('never reads the switch for a free account that never claimed', async () => {
+    const deps = readers({ grant: null, enabled: false });
+
+    expect(await restartAiGiftMode(9, false, () => deps)).toBeNull();
+    expect(deps.isEnabled).not.toHaveBeenCalled();
+  });
+
   it('fails closed when the read fails', async () => {
     expect(
       await restartAiGiftMode(9, false, () => readers({ fails: true }))

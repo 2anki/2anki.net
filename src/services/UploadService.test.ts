@@ -144,6 +144,7 @@ import {
   CONVERSION_PROCESS_CRASHED_REASON,
 } from '../usecases/jobs/jobFailureReason';
 import { AiCreditsExhaustedError } from '../lib/claude/aiSpendGuard';
+import { jobFailureReasonFromError } from '../usecases/jobs/jobFailureReason';
 import { DeckTooLargeError } from '../lib/parser/exporters/DeckTooLargeError';
 import CustomExporter from '../lib/parser/exporters/CustomExporter';
 import UploadService, {
@@ -11149,6 +11150,109 @@ describe('UploadService.handleUpload — the free AI credits gift', () => {
     expect(jobs.create).toHaveBeenCalledTimes(1);
   });
 
+  function imageRequest(): express.Request {
+    return buildRequest({
+      files: [
+        {
+          originalname: 'slide.png',
+          mimetype: 'image/png',
+          size: 2048,
+          buffer: Buffer.from(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+            'base64'
+          ),
+        } as unknown as Express.Multer.File,
+      ],
+      body: { 'claude-ai-flashcards': 'true' },
+    });
+  }
+
+  it.each([
+    ['a gift-only account', false, 'only'],
+    ['a paying account whose plan is spent', true, 'fallback'],
+  ])(
+    'takes no gift marker for an image upload by %s, so a document upload at the same time still converts on the gift',
+    async (_label, subscriber, mode) => {
+      let finishImage: () => void = () => undefined;
+      let imageStarted: () => void = () => undefined;
+      const imageRunning = new Promise<void>((resolve) => {
+        imageStarted = resolve;
+      });
+      const vision = {
+        execute: vi.fn(() => {
+          imageStarted();
+          return new Promise((_resolve, reject) => {
+            finishImage = () => reject(new Error('vision stopped'));
+          });
+        }),
+      } as unknown as PhotoToFlashcardsUseCase;
+      const jobs = jobRepository();
+      const service = new UploadService(
+        buildRepository(),
+        jobs,
+        buildUsersRepo(),
+        ...fakeUploadServiceDeps({ photoToFlashcards: vision }),
+        undefined,
+        giftReaders({ planSpent: true })
+      );
+      const image = signedIn(subscriber);
+      const imageUpload = service
+        .handleUpload(imageRequest(), image.res)
+        .catch(() => undefined);
+      await imageRunning;
+
+      const document = signedIn(subscriber);
+      await service.handleUpload(aiRequest(), document.res);
+
+      expect(document.capturedStatus()).toBe(202);
+      const [, , , , , , context] = execute.mock.calls[0];
+      expect(context).toMatchObject({ aiGift: mode });
+      finishImage();
+      await imageUpload;
+    }
+  );
+
+  it.each(['notes.epub', 'outline.opml', 'export.xml', 'My Clippings.txt'])(
+    'takes no gift marker for %s, which never reaches Claude',
+    async (name) => {
+      let markerFree: boolean | null = null;
+      execute.mockImplementation(async () => {
+        const marker = takeGiftMarker(42);
+        markerFree = marker != null;
+        releaseGiftMarker(marker);
+        return { packages: [], warnings: [] };
+      });
+      const { res } = signedIn(false);
+
+      await serviceWith(jobRepository(), giftReaders({}))
+        .handleUpload(renamed(aiRequest(), name), res)
+        .catch(() => undefined);
+
+      expect(markerFree).toBe(true);
+      const [, , , , , , context] = execute.mock.calls[0];
+      expect(context ?? {}).not.toHaveProperty('aiGift');
+    }
+  );
+
+  it('still takes the gift marker for a zip, whose contents are only known after extraction', async () => {
+    let markerFree: boolean | null = null;
+    execute.mockImplementation(async () => {
+      const marker = takeGiftMarker(42);
+      markerFree = marker != null;
+      releaseGiftMarker(marker);
+      return { packages: [], warnings: [] };
+    });
+    const { res, capturedStatus } = signedIn(false);
+
+    await serviceWith(jobRepository(), giftReaders({})).handleUpload(
+      renamed(aiRequest(), 'export.zip'),
+      res
+    );
+
+    expect(capturedStatus()).toBe(202);
+    expect(markerFree).toBe(false);
+  });
+
   it('releases the marker when the upload stops before its job starts', async () => {
     const jobs = jobRepository();
     (jobs.create as Mock).mockRejectedValueOnce(new Error('insert failed'));
@@ -11285,6 +11389,45 @@ describe('UploadService.restartClaudeJob — the free AI credits gift', () => {
     await settled;
     await new Promise((resolve) => setImmediate(resolve));
     expect(takeGiftMarker(42)).not.toBeNull();
+  });
+
+  it('does not refuse a gift-only restart for gift-busy while the switch is off, and makes no gift-paid call', async () => {
+    const held = takeGiftMarker(42);
+    fs.writeFileSync(
+      path.join(base, 'job-ws', 'page.html'),
+      '<html><body><p>Notes</p></body></html>'
+    );
+    mockGenerateDeckInfo.mockClear();
+    const jobs = restartJobs();
+    let failed!: (reason: string) => void;
+    const failureReason = new Promise<string>((resolve) => {
+      failed = resolve;
+    });
+    (jobs.updateJobStatus as Mock).mockImplementation(
+      async (_id: string, _owner: string, status: string, reason: string) => {
+        if (status === 'failed') failed(reason);
+      }
+    );
+    const readers = restartReaders(false);
+    const { res, capturedStatus } = restartResponse(false);
+
+    await new UploadService(
+      buildRepository(),
+      jobs,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps(),
+      undefined,
+      () => ({ ...readers(), isEnabled: async () => false })
+    ).restartClaudeJob(restartRequest(), res);
+
+    expect(capturedStatus()).toBe(202);
+    expect(jobs.restartJob).toHaveBeenCalledTimes(1);
+    expect(await failureReason).toBe(
+      jobFailureReasonFromError(new AiCreditsExhaustedError(), 'job-ws')
+    );
+    expect(mockGenerateDeckInfo).not.toHaveBeenCalled();
+    expect(takeGiftMarker(42)).toBeNull();
+    releaseGiftMarker(held);
   });
 
   it('leaves a paying restart whose plan has credits off the marker', async () => {
