@@ -60,7 +60,12 @@ export function rememberGiftOpened(): void {
   }
 }
 
-const CHECKOUT_RETURN_PARAMS = ['checkout', 'session_id', 'credits'];
+const CHECKOUT_RETURN_PARAMS = [
+  'checkout',
+  'session_id',
+  'credits',
+  'pass_session',
+];
 
 export function isCheckoutReturn(search: string): boolean {
   const params = new URLSearchParams(search);

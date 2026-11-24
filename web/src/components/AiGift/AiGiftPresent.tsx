@@ -261,7 +261,9 @@ export function AiGiftPresent({
   const uploadZone = useUploadZoneActivity();
   useEffect(() => {
     if (open && openedBy === 'auto' && uploadZone === 'busy') {
+      const focusInside = rootRef.current?.contains(document.activeElement);
       closeAs.current('upload');
+      if (focusInside === true) triggerRef.current?.focus();
     }
   }, [open, openedBy, uploadZone]);
 

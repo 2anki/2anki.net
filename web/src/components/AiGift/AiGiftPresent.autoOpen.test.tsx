@@ -404,6 +404,35 @@ describe('AiGiftPresent opening by itself', () => {
     });
   });
 
+  test('hands focus to the present when an upload closes the panel while focus is inside it', async () => {
+    serveGift(OPEN);
+    await loadGift();
+    await elapse(GIFT_AUTO_OPEN_DELAY_MS);
+    screen.getByRole('button', { name: 'Sign up to claim' }).focus();
+
+    onPage('busy');
+
+    expect(panel()).toBeNull();
+    expect(
+      screen.getByRole('button', { name: 'Free AI credits gift' })
+    ).toHaveFocus();
+  });
+
+  test('leaves focus where it was when an upload closes the panel while focus is outside it', async () => {
+    serveGift(OPEN);
+    await loadGift();
+    const input = screen.getByRole('textbox', {
+      name: 'Somewhere on the page',
+    });
+    input.focus();
+    await elapse(GIFT_AUTO_OPEN_DELAY_MS);
+
+    onPage('busy');
+
+    expect(panel()).toBeNull();
+    expect(input).toHaveFocus();
+  });
+
   test('keeps a panel the visitor opened by clicking open when an upload starts', async () => {
     serveGift(OPEN);
     await loadGift();
@@ -493,6 +522,7 @@ describe('checkout returns', () => {
     ['?checkout=success&session_id=cs_1', true],
     ['?from=pass&session_id=cs_1', true],
     ['?credits=added&session_id=cs_1', true],
+    ['?pass_session=cs_1', true],
     ['?utm_source=x', false],
     ['', false],
   ])('treats %s as a checkout return: %s', (search, expected) => {

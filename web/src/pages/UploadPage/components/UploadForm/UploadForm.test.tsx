@@ -270,6 +270,30 @@ describe('UploadForm', () => {
     }
   });
 
+  test('tells the page the zone is busy while the pass-return notice is up', async () => {
+    stubPassReturn('cs_gone_notice');
+    const resumeAiPreview = vi.fn().mockResolvedValue({
+      status: 404,
+      redirected: false,
+      headers: new Headers(),
+    } as unknown as Response);
+    const claimHeldDeckWithPass = vi
+      .fn()
+      .mockResolvedValue(statusResponse(404));
+    const restore = installResumeApi(resumeAiPreview, claimHeldDeckWithPass);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      await screen.findByText(
+        'Your pass is active. Drop your file again to get every card.'
+      );
+
+      expect(readUploadZoneActivity()).toBe('busy');
+    } finally {
+      restore();
+    }
+  });
+
   test('an AI preview buyer gets the AI deck once the held claim finds nothing', async () => {
     stubPassReturn('cs_preview');
     const resumeAiPreview = vi.fn().mockResolvedValue(apkgResumeResponse());
@@ -2956,6 +2980,30 @@ describe('UploadForm analytics events', () => {
       'button[aria-label="Change upload source"]'
     );
     expect(changeBtn).not.toBeNull();
+    process.env.REACT_APP_DROPBOX_APP_KEY = previousKey;
+  });
+
+  it('tells the page the zone is busy while the Dropbox source is chosen, and idle back on the local one', async () => {
+    const previousKey = process.env.REACT_APP_DROPBOX_APP_KEY;
+    process.env.REACT_APP_DROPBOX_APP_KEY = 'test-key';
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    expect(readUploadZoneActivity()).toBe('idle');
+
+    await act(async () => {
+      within(container).getByRole('button', { name: 'Dropbox' }).click();
+    });
+    expect(readUploadZoneActivity()).toBe('busy');
+
+    await act(async () => {
+      (
+        container.querySelector(
+          'button[aria-label="Change upload source"]'
+        ) as HTMLButtonElement
+      ).click();
+    });
+    expect(readUploadZoneActivity()).toBe('idle');
     process.env.REACT_APP_DROPBOX_APP_KEY = previousKey;
   });
 

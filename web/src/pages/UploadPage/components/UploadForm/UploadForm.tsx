@@ -2513,7 +2513,11 @@ function UploadForm({
     !resumingPreview &&
     resumeOffer == null &&
     resumeClosedKey == null &&
-    !lastDeckOnOffer;
+    !lastDeckOnOffer &&
+    passResumeNotice == null &&
+    source === 'local' &&
+    dropboxError == null &&
+    driveError == null;
   useEffect(() => {
     reportUploadZoneActivity(zoneIdle ? 'idle' : 'busy');
   }, [zoneIdle]);
