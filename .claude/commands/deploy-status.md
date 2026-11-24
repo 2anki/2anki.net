@@ -13,6 +13,8 @@ The app runs **blue-green**, so the live process is `server-green` or `server-bl
 
 Every app line carries an ISO timestamp prefix (`log_date_format` in `ecosystem.blue-green.config.js`; the files are `~/.pm2/logs/server-<color>-{out,error}.log` plus dated rotations). To read a window — "errors in the last 5 days" — filter on that prefix. Never scope by file mtime or `find -newermt`: pm2 appends to whatever already sits at a log path, and after the 2026-08-22 daemon restart reused pm_ids appended fresh output onto July files, so mtime-scoped reads reported July's `NoActiveAnkifyClientError` as live and spawned two phantom fixes (#4203 → #4223, #4236 → #4251).
 
+For a windowed error read instead of the raw tail (crash lines, 5xx by route, status mix, collapsed error log, masked on the box), feed `scripts/prod-errors.sh` the same way as the stall read below; for the short post-deploy counts, `scripts/prod-deploy-check.sh`. Invocations and output: "Read-only checks" in `.claude/docs/prod-ops.md`.
+
 Then run the **stall-signal read** as a second SSH call. Run it every time: a stalled conversion queue produces no error line, so the error tail above is blind to it by construction. Between 2026-10-09 and 10-11, three stalls hung every upload for up to 88 minutes, and the only report was a customer email.
 
 ```bash

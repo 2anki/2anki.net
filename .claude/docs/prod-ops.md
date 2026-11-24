@@ -28,22 +28,23 @@ Each color logs to a fixed path — `~/.pm2/logs/server-<color>-{out,error}.log`
 
 ## Read-only prod psql
 
-For a one-off aggregate read (funnel questions, "how many owners did X"), run `psql` on the box against the app's connection string, and pull that one variable with `grep` — **never `source` or `set -a; . .env`**: the file holds multi-line PEM keys that bash then tries to execute, spraying key fragments into your terminal and session transcript (2026-09-10).
-
-Write `q.sh` next to `query.sql` with the Write tool:
-
-```bash
-U=$(grep -E "^DATABASE_URL=" ~/src/github.com/2anki/2anki.net/.env | cut -d= -f2- | tr -d "\"'")
-psql "$U" -q -f /tmp/q.sql
-rm -f /tmp/q.sql /tmp/q.sh
-```
-
-then copy both and run it (the merge hooks deny a Bash command that pairs `github` with `$(`, so the lookup lives in the file, not the command):
-
-```bash
-scp query.sql alemayhu@2anki.net:/tmp/q.sql
-scp q.sh alemayhu@2anki.net:/tmp/q.sh
-ssh alemayhu@2anki.net 'bash /tmp/q.sh'
-```
+For a one-off aggregate read (funnel questions, "how many owners did X"), write the query to a `.sql` file with the Write tool and run `scripts/prod-sql.sh query.sql` (see Read-only checks below). It pulls `DATABASE_URL` out of the app's env file with `grep` on the box — **never `source` or `set -a; . .env`**: the file holds multi-line PEM keys that bash then tries to execute, spraying key fragments into your terminal and session transcript (2026-09-10). If you ever run `psql` on the box by hand, give it `PGOPTIONS="-c default_transaction_read_only=on -c statement_timeout=120000"` and `-X -v ON_ERROR_STOP=1`.
 
 Aggregates only in anything that leaves the session (issue comments, PR bodies): counts, shares, medians — never rows, emails, filenames or deck titles (`.claude/rules/support-confidentiality.md`). Known gap: `uploads.dedupe_key` has never been populated and `uploads.filename` is the produced `.apkg` name, not the source file, so "edited re-upload" questions need a size/time proxy or the `conversion_succeeded.input_format` event prop (present on ~25% of events).
+
+## Read-only checks
+
+Four sanctioned scripts cover the reads agents used to rebuild from temp files each session. Use them instead of an inline ssh one-liner. The two log reads run on the box from `origin/main`, the same way the stall read does, so they work from any branch or worktree:
+
+| Script | Invocation | Prints |
+| --- | --- | --- |
+| `scripts/prod-errors.sh` | `git show origin/main:scripts/prod-errors.sh \| ssh -o ConnectTimeout=10 alemayhu@2anki.net 'bash -s -- 2026-11-24T09:30Z'` | `== window:` (since, until, out and error line counts), `== pm2 processes`, `== crashes: N` with the last 8 crash lines, `== 5xx by route`, `== status mix`, `== error log, collapsed (top 30)`, `== checkout, pass, webhook and credit events`, `== memory (last 3)` |
+| `scripts/prod-deploy-check.sh` | `git show origin/main:scripts/prod-deploy-check.sh \| ssh -o ConnectTimeout=10 alemayhu@2anki.net 'bash -s -- <deploy startedAt>'` | `== window:`, `== crashes: N`, `== 5xx: N` by route, `== status by route` for upload, claim, checkout, webhook and sign-in |
+| `scripts/prod-sql.sh` | `scripts/prod-sql.sh query.sql` (from your machine) | psql's output for one SQL file, run read-only |
+| `scripts/wait-pr.py` | `python3 -I scripts/wait-pr.py <pr> [old head sha] [--timeout 2400]` | the PR state, head and every check that is not green, once the checks finish; exit 0 green, 1 not green, 3 timed out |
+
+- The argument to the log reads is a UTC start to the minute or second (`2026-11-24T09:30`, or a GitHub timestamp such as `2026-11-24T09:30:12Z`); anything else exits 2. The window is scoped by each line's timestamp, never by file mtime, and merged lines are sorted by time before "last N" is taken. An empty window exits 3 and is a failed read, not a clean one.
+- The log reads read only the pm2 log files (and `pm2 list`), and mask on the box before anything leaves it: email addresses, IP addresses, query strings, bearer tokens and credentials, long tokens, ids, Stripe ids and upload file names print as `<email>`, `<ip>`, `<query>`, `<token>`, `<secret>`, `<blob>`, `<hex>`, `<id>`, `<file>` and `<name>`.
+- `prod-sql.sh` sets `default_transaction_read_only=on` with a statement and a lock timeout, which is the real guard, and refuses a file that writes, changes a setting or uses a shell-reaching psql meta-command before it connects. Keep queries to aggregates.
+- Query results and log reads stay in the conversation or the private Follow-ups board. They never go into the repo, a PR, an issue or a memory file.
+- Tests, no network or ssh needed: `python3 scripts/prod-errors.test.py`, `prod-deploy-check.test.py`, `prod-sql.test.py`, `wait-pr.test.py`.
