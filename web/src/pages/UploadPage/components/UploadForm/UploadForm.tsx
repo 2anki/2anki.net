@@ -36,6 +36,7 @@ import {
 } from './uploadResponse';
 import { LastDeckOffer } from './LastDeckOffer';
 import { keepLastDeck } from '../../../../lib/upload/lastDeck';
+import { reportUploadZoneActivity } from '../../../../lib/upload/uploadZoneActivity';
 import { BuyCreditsButton } from '../../../../components/BuyCreditsButton/BuyCreditsButton';
 import { getDownloadFileName } from '../../../DownloadsPage/helpers/getDownloadFileName';
 import { ImageDropNotice } from '../../../DownloadsPage/components/ImageDropNotice';
@@ -1271,6 +1272,13 @@ function UploadForm({
   useEffect(() => {
     zoneStateRef.current = zoneState;
   }, [zoneState]);
+
+  const zoneIdle =
+    zoneState === 'idle' && validation == null && !waitingForDeck;
+  useEffect(() => {
+    reportUploadZoneActivity(zoneIdle ? 'idle' : 'busy');
+  }, [zoneIdle]);
+  useEffect(() => () => reportUploadZoneActivity('absent'), []);
 
   // The AI setting a signed-out submit carries. buildFormData and the folder/
   // Dropbox/Drive/retry paths all copy localStorage, which can hold a stale

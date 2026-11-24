@@ -23,6 +23,7 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { StrictMode } from 'react';
 import UploadForm from './UploadForm';
 import { AI_GIFT_QUERY_KEY } from '../../../../lib/hooks/useAiGift';
+import { readUploadZoneActivity } from '../../../../lib/upload/uploadZoneActivity';
 import {
   aiPreviewCheckoutMarked,
   clearAiPreviewCheckout,
@@ -2490,6 +2491,29 @@ describe('UploadForm analytics events', () => {
     );
     expect(cancelledCalls).toHaveLength(1);
     expect(cancelledCalls[0][1]).toEqual({ stage: 'converting' });
+  });
+
+  it('tells the page its upload zone is idle, busy while converting, and gone once unmounted', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(() => new Promise(() => {}))
+    );
+
+    const { container, unmount } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    expect(readUploadZoneActivity()).toBe('idle');
+
+    const form = container.querySelector('form')!;
+    await act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
+    });
+    expect(readUploadZoneActivity()).toBe('busy');
+
+    unmount();
+    expect(readUploadZoneActivity()).toBe('absent');
   });
 
   async function submitAndGetHarness(response: Record<string, unknown>) {

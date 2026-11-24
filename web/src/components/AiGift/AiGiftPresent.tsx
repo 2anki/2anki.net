@@ -18,10 +18,16 @@ import {
   setGiftDismissed,
   forgetClaimIntent,
   hasClaimIntent,
+  rememberGiftOpened,
 } from './giftUiState';
+import { useGiftAutoOpen } from './useGiftAutoOpen';
+import sharedStyles from '../../styles/shared.module.css';
 import styles from './AiGiftPresent.module.css';
 
 const GIFT_RETURN_PATH = '/upload';
+
+type GiftOpenTrigger = 'auto' | 'click' | 'return';
+type GiftDismissVia = 'escape' | 'outside' | 'close' | 'toggle' | 'hide';
 
 interface AiGiftPresentProps {
   isLoggedIn: boolean;
@@ -188,6 +194,8 @@ export function AiGiftPresent({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const focusResultNext = useRef(false);
   const [openChoice, setOpen] = useState<boolean | null>(null);
+  const [openedBy, setOpenedBy] = useState<GiftOpenTrigger>('return');
+  const [announcement, setAnnouncement] = useState('');
   const [returnedToClaim] = useState(
     () => isLoggedIn && hasClaimIntent(Date.now())
   );
@@ -209,18 +217,54 @@ export function AiGiftPresent({
   const open = openChoice ?? openedOnReturn;
 
   useEffect(() => {
-    if (openedOnReturn) forgetClaimIntent();
+    if (!openedOnReturn) return;
+    forgetClaimIntent();
+    rememberGiftOpened();
   }, [openedOnReturn]);
+
+  useGiftAutoOpen(
+    gift?.state === 'open' && !open && !returnedToClaim && !dismissed,
+    () => {
+      track('ai_gift_opened', {
+        state: 'open',
+        signed_in: isLoggedIn,
+        trigger: 'auto',
+      });
+      rememberGiftOpened();
+      setOpenedBy('auto');
+      setAnnouncement(t('title'));
+      setOpen(true);
+    }
+  );
+
+  const giftState = gift?.state;
+  const closeAs = useRef<(via: GiftDismissVia) => void>(() => undefined);
+  useEffect(() => {
+    closeAs.current = (via) => {
+      track('ai_gift_dismissed', {
+        trigger: openedBy,
+        via,
+        state: giftState,
+        signed_in: isLoggedIn,
+      });
+      setOpen(false);
+    };
+  });
 
   useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
-      setOpen(false);
-      triggerRef.current?.focus();
+      const focusInside = rootRef.current?.contains(document.activeElement);
+      closeAs.current('escape');
+      if (openedBy !== 'auto' || focusInside === true) {
+        triggerRef.current?.focus();
+      }
     };
     const onPointer = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+      if (!rootRef.current?.contains(event.target as Node)) {
+        closeAs.current('outside');
+      }
     };
     document.addEventListener('keydown', onKey);
     document.addEventListener('pointerdown', onPointer);
@@ -228,12 +272,12 @@ export function AiGiftPresent({
       document.removeEventListener('keydown', onKey);
       document.removeEventListener('pointerdown', onPointer);
     };
-  }, [open]);
+  }, [open, openedBy]);
 
   if (!visible) return null;
 
-  const closeToTrigger = () => {
-    setOpen(false);
+  const closeToTrigger = (via: GiftDismissVia) => {
+    closeAs.current(via);
     triggerRef.current?.focus();
   };
 
@@ -245,14 +289,22 @@ export function AiGiftPresent({
   };
 
   const onToggle = () => {
-    if (!open) {
-      track('ai_gift_opened', { state: gift.state, signed_in: isLoggedIn });
+    if (open) {
+      closeAs.current('toggle');
+      return;
     }
-    setOpen(!open);
+    track('ai_gift_opened', {
+      state: gift.state,
+      signed_in: isLoggedIn,
+      trigger: 'click',
+    });
+    rememberGiftOpened();
+    setOpenedBy('click');
+    setOpen(true);
   };
 
   const onClaim = async () => {
-    track('ai_gift_claim_clicked', { signed_in: true });
+    track('ai_gift_claim_clicked', { signed_in: true, trigger: openedBy });
     setClaiming(true);
     setRefusal(null);
     const result = await claimAiGift();
@@ -284,7 +336,11 @@ export function AiGiftPresent({
   };
 
   const leaveToAuth = (page: '/register' | '/login') => {
-    track('ai_gift_claim_clicked', { signed_in: false, page });
+    track('ai_gift_claim_clicked', {
+      signed_in: false,
+      page,
+      trigger: openedBy,
+    });
     rememberClaimIntent(Date.now());
     setOpen(false);
     navigate(`${page}?redirect=${encodeURIComponent(GIFT_RETURN_PATH)}`);
@@ -293,12 +349,17 @@ export function AiGiftPresent({
   const onHide = () => {
     setGiftDismissed(true);
     setDismissed(true);
-    closeToTrigger();
+    closeToTrigger('hide');
   };
 
   const triggerClass = dismissed ? styles.triggerQuiet : styles.trigger;
-  const panelClass =
-    align === 'start' ? `${styles.panel} ${styles.panelStart}` : styles.panel;
+  const panelClass = [
+    styles.panel,
+    align === 'start' ? styles.panelStart : null,
+    openedBy === 'auto' ? styles.panelAuto : null,
+  ]
+    .filter((name) => name != null)
+    .join(' ');
 
   const textClass = labelFromWide
     ? `${styles.triggerText} ${styles.triggerTextWide}`
@@ -332,6 +393,9 @@ export function AiGiftPresent({
           </span>
         )}
       </button>
+      <p className={sharedStyles.srOnly} role="status">
+        {announcement}
+      </p>
       {open && (
         <div
           id={panelId}
@@ -353,7 +417,7 @@ export function AiGiftPresent({
               type="button"
               className={styles.closeButton}
               aria-label={t('close')}
-              onClick={closeToTrigger}
+              onClick={() => closeToTrigger('close')}
             >
               <span aria-hidden="true">×</span>
             </button>

@@ -123,6 +123,24 @@
   }
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  .panelAuto {
+    animation: giftPopIn 180ms ease-out;
+  }
+}
+
+@keyframes giftPopIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 .panelHeader {
   display: flex;
   align-items: flex-start;
