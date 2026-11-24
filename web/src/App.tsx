@@ -171,9 +171,21 @@ const SystemTab = lazyWithRetry(
   () => import('./pages/OpsPage/SystemTab'),
   './pages/OpsPage/SystemTab'
 );
-const ControlsTab = lazyWithRetry(
-  () => import('./pages/OpsPage/ControlsTab'),
-  './pages/OpsPage/ControlsTab'
+const CommandsTab = lazyWithRetry(
+  () => import('./pages/OpsPage/CommandsTab'),
+  './pages/OpsPage/CommandsTab'
+);
+const UsersTab = lazyWithRetry(
+  () => import('./pages/OpsPage/UsersTab'),
+  './pages/OpsPage/UsersTab'
+);
+const FlagsTab = lazyWithRetry(
+  () => import('./pages/OpsPage/FlagsTab'),
+  './pages/OpsPage/FlagsTab'
+);
+const ShowcaseTab = lazyWithRetry(
+  () => import('./pages/OpsPage/ShowcaseTab'),
+  './pages/OpsPage/ShowcaseTab'
 );
 const ErrorsTab = lazyWithRetry(
   () => import('./pages/OpsPage/ErrorsTab'),
@@ -584,7 +596,10 @@ function AppContent({
               <Route path="system" element={<SystemTab />} />
               <Route path="errors" element={<ErrorsTab />} />
               <Route path="messages" element={<ContactMessagesTab />} />
-              <Route path="commands" element={<ControlsTab />} />
+              <Route path="commands" element={<CommandsTab />} />
+              <Route path="users" element={<UsersTab />} />
+              <Route path="flags" element={<FlagsTab />} />
+              <Route path="showcase" element={<ShowcaseTab />} />
               <Route
                 path="conversions"
                 element={<Navigate to="/ops/growth" replace />}
@@ -600,14 +615,6 @@ function AppContent({
               <Route
                 path="performance"
                 element={<Navigate to="/ops/system" replace />}
-              />
-              <Route
-                path="flags"
-                element={<Navigate to="/ops/commands" replace />}
-              />
-              <Route
-                path="showcase"
-                element={<Navigate to="/ops/commands" replace />}
               />
             </Route>
             <Route path="/settings" element={requireAuth(<AccountPage />)} />

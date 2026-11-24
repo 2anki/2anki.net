@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { OPS_TABS } from './opsTabs';
 
 describe('OPS_TABS', () => {
-  it('lists the seven consolidated rows in order', () => {
+  it('lists the ops rows in order, with the split command pages last', () => {
     expect(OPS_TABS.map((tab) => tab.label)).toEqual([
       'Today',
       'Growth',
@@ -11,6 +11,9 @@ describe('OPS_TABS', () => {
       'Errors',
       'Messages',
       'Commands',
+      'Users',
+      'Flags',
+      'Showcase',
     ]);
   });
 
@@ -23,6 +26,9 @@ describe('OPS_TABS', () => {
       '/ops/errors',
       '/ops/messages',
       '/ops/commands',
+      '/ops/users',
+      '/ops/flags',
+      '/ops/showcase',
     ]);
   });
 
@@ -33,8 +39,6 @@ describe('OPS_TABS', () => {
       '/ops/upload-funnel',
       '/ops/return-rate',
       '/ops/performance',
-      '/ops/flags',
-      '/ops/showcase',
     ]) {
       expect(paths).not.toContain(redirected);
     }
@@ -66,6 +70,18 @@ describe('OPS_TABS', () => {
     const system = OPS_TABS.find((tab) => tab.to === '/ops/system');
     expect(system?.match('/ops/system')).toBe(true);
     expect(system?.match('/ops')).toBe(false);
+  });
+
+  it('matches each split command page only on its own route', () => {
+    for (const path of [
+      '/ops/commands',
+      '/ops/users',
+      '/ops/flags',
+      '/ops/showcase',
+    ]) {
+      const matching = OPS_TABS.filter((tab) => tab.match(path));
+      expect(matching.map((tab) => tab.to)).toEqual([path]);
+    }
   });
 
   it('matches a child row only on its own route', () => {

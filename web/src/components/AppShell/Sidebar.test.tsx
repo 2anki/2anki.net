@@ -231,7 +231,7 @@ describe('Sidebar Ops folder', () => {
     );
   });
 
-  it('lists the seven consolidated rows and none of the retired ones', () => {
+  it('lists every ops row and none of the retired ones', () => {
     renderSidebar({ ops: true, pathname: '/ops/errors' });
     for (const [label, href] of [
       ['Today', '/ops/today'],
@@ -241,6 +241,9 @@ describe('Sidebar Ops folder', () => {
       ['Errors', '/ops/errors'],
       ['Messages', '/ops/messages'],
       ['Commands', '/ops/commands'],
+      ['Users', '/ops/users'],
+      ['Flags', '/ops/flags'],
+      ['Showcase', '/ops/showcase'],
     ] as const) {
       expect(screen.getByRole('link', { name: label })).toHaveAttribute(
         'href',
@@ -253,8 +256,6 @@ describe('Sidebar Ops folder', () => {
       'Conversions',
       'Upload funnel',
       'Return rate',
-      'Flags',
-      'Showcase',
       'Interviews',
       'Pricing A/B',
       'Mindmaps',
