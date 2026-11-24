@@ -32,11 +32,11 @@ export const de: DeepPartial<EmailStrings> = {
       'Nicht angefordert? Ignoriere diese Nachricht. An deinem Konto wird nichts geändert.',
   },
   deckReady: {
-    subject: '2anki.net – Dein Stapel «{{filename}}» ist fertig',
+    subject: 'Dein Stapel «{{filename}}» ist fertig',
     heading: 'Dein Stapel ist fertig',
     bodyAttached:
       'Dein umgewandelter Stapel hängt an dieser E-Mail. Importiere ihn in Anki, um mit dem Lernen zu beginnen.',
-    bodyTrouble: 'Probleme? Antworte einfach auf diese E-Mail.',
+    bodyTrouble: 'Probleme? Antworte auf diese E-Mail.',
     disclaimerPrefix:
       'Diese Konvertierung nicht angefordert? Kontaktiere uns unter ',
     disclaimerSuffix: '.',
@@ -47,38 +47,40 @@ export const de: DeepPartial<EmailStrings> = {
   },
   reEngagement: {
     subject: 'Machst du Karten noch von Hand?',
-    title: '2anki.net – Machst du Karten noch von Hand?',
+    title: 'Machst du Karten noch von Hand?',
     heading: 'Machst du Karten noch von Hand?',
-    body: 'Hallo {{name}}, du hast dich vor ein paar Tagen bei 2anki angemeldet, aber noch keinen Stapel erstellt. Karten abzutippen ist der langsame Teil — 2anki verwandelt eine Notion-Seite oder eine hochgeladene Datei in unter einer Minute in einen Anki-Stapel.',
+    body: 'Hallo {{name}}, du hast dich vor ein paar Tagen bei 2anki angemeldet, aber noch keinen Stapel erstellt. Karten abzutippen ist der langsame Teil. 2anki verwandelt eine Notion-Seite oder eine hochgeladene Datei in unter einer Minute in einen Anki-Stapel.',
     videoCaption: 'Sieh dir an, wie es funktioniert (60 Sek.)',
     bodyPaste:
       'Füge eine Notion-Seiten-URL ein oder lade eine Datei auf 2anki.net hoch, um es auszuprobieren.',
     bodyReply:
-      'Irgendwo hängen geblieben? Antworte auf diese E-Mail — Alexander liest jede einzelne.',
+      'Irgendwo hängen geblieben? Antworte auf diese E-Mail. Alexander liest jede einzelne.',
     cta: 'Erzähl uns, was passiert ist',
-    text: 'Hallo {{name}},\n\nDu hast dich vor ein paar Tagen bei 2anki angemeldet, aber noch keinen Stapel erstellt. Karten abzutippen ist der langsame Teil — 2anki verwandelt eine Notion-Seite oder eine hochgeladene Datei in unter einer Minute in einen Anki-Stapel.\n\nFüge eine Notion-Seiten-URL ein oder lade eine Datei auf https://2anki.net hoch, um es auszuprobieren.\n\nIrgendwo hängen geblieben? Antworte auf diese E-Mail — Alexander liest jede einzelne.\n\nErzähl uns, was passiert ist: {{surveyUrl}}\n\nDas 2anki-Team',
+    text: 'Hallo {{name}},\n\nDu hast dich vor ein paar Tagen bei 2anki angemeldet, aber noch keinen Stapel erstellt. Karten abzutippen ist der langsame Teil. 2anki verwandelt eine Notion-Seite oder eine hochgeladene Datei in unter einer Minute in einen Anki-Stapel.\n\nFüge eine Notion-Seiten-URL ein oder lade eine Datei auf https://2anki.net hoch, um es auszuprobieren.\n\nIrgendwo hängen geblieben? Antworte auf diese E-Mail. Alexander liest jede einzelne.\n\nErzähl uns, was passiert ist: {{surveyUrl}}\n\nDas 2anki-Team',
   },
   inactivityWarning: {
-    subject: 'Deine Stapel auf 2anki — immer noch hier, wenn du sie brauchst',
-    title: '2anki.net – Deine Stapel, immer noch hier, wenn du sie brauchst',
+    subjectWithConversion: 'Deine Stapel auf 2anki sind noch da',
+    subjectNoConversion: 'Dein 2anki-Konto ist noch da',
     bodyWithConversion:
-      'Dein letzter Stapel auf 2anki war {{deckName}}. Wenn eine weitere Prüfung oder ein neues Kapitel ansteht, ist dein Konto bereit — füge einen Notion-Link ein oder lade eine Datei hoch, und du hast in unter einer Minute einen Stapel.',
+      'Dein letzter Stapel auf 2anki war {{deckName}}. Dein Konto ist bereit für die nächste Prüfung oder das nächste Kapitel. Füge einen Notion-Link ein oder lade eine Datei hoch, und du hast in unter einer Minute einen Stapel.',
     bodyNoConversion:
-      'Du hast dich bei 2anki angemeldet, aber noch keinen Stapel erstellt. Wenn du so weit bist, füge einen Notion-Link ein oder lade eine Datei auf 2anki.net hoch, und du hast in unter einer Minute einen Anki-Stapel.',
+      'Du hast dich bei 2anki angemeldet, aber noch keinen Stapel erstellt. Wenn du so weit bist, füge einen Notion-Link ein oder lade eine Datei auf 2anki.net hoch. In unter einer Minute hast du einen Anki-Stapel.',
     passLine:
-      'Wenn du es nur für einen Schub brauchst — ein Tagespass deckt einen ganzen Tag Konvertieren ab, ein Wochenpass eine ganze Woche. Einmal zahlen, kein Abo.',
+      'Brauchst du es nur für einen Endspurt? Ein Tagespass deckt einen ganzen Tag Konvertieren ab, ein Wochenpass eine ganze Woche. Einmal zahlen, kein Abo.',
     cta: '2anki öffnen',
-    housekeeping:
-      'Ein Hinweis zur Ordnung: Konten, die 6 Monate inaktiv sind, werden aufgeräumt, und wir entfernen deine hochgeladenen Stapel und Dateien nach 14 Tagen, wenn wir dich nicht sehen. Alles, was bereits in Anki heruntergeladen wurde, bleibt sicher. Einmal anmelden bewahrt alles.',
+    housekeepingWithConversion:
+      'Wir löschen Konten, die 6 Monate inaktiv waren. Wenn du dich nicht innerhalb von 14 Tagen anmeldest, löschen wir dein Konto mit allem, was darin ist, auch deine Stapel auf 2anki. Stapel, die du schon in Anki heruntergeladen hast, bleiben in Anki. Eine Anmeldung genügt, und dein Konto bleibt erhalten.',
+    housekeepingNoConversion:
+      'Wir löschen Konten, die 6 Monate inaktiv waren. Wenn du dich nicht innerhalb von 14 Tagen anmeldest, löschen wir dein Konto. Eine Anmeldung genügt, und es bleibt erhalten.',
     signoff: 'Das 2anki-Team',
   },
   abandonedCheckout: {
     subject: 'Dein Bezahlvorgang bei 2anki ist nicht abgeschlossen',
-    title: '2anki.net – Dein Bezahlvorgang ist nicht abgeschlossen',
+    title: 'Dein Bezahlvorgang ist nicht abgeschlossen',
     bodyStarted:
       'Du hast den Bezahlvorgang bei 2anki begonnen, aber nicht abgeschlossen. Dafür wurde dir nichts berechnet, und es wurde weder ein Abo noch ein Pass gestartet.',
     bodySnag:
-      'Die meisten, die hier aufhören, sind beim Bezahlen auf ein Problem gestoßen, nicht auf einen Sinneswandel. Wenn etwas nicht funktioniert hat oder du eine Frage hast, antworte auf diese E-Mail — Alexander liest jede einzelne.',
+      'Die meisten, die hier aufhören, sind beim Bezahlen auf ein Problem gestoßen, nicht auf einen Sinneswandel. Wenn etwas nicht funktioniert hat oder du eine Frage hast, antworte auf diese E-Mail. Alexander liest jede einzelne.',
     cta: 'Zurück zum Bezahlvorgang',
     signoff: 'Das 2anki-Team',
   },

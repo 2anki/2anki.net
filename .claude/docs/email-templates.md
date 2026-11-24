@@ -33,9 +33,10 @@ All templates live in `src/services/EmailService/templates/`. The reference is `
 }
 ```
 
-**Footer row** — identical tagline in all templates:
+**Footer row** — the site link on its own line, then the tagline as its own sentence, identical in all templates (commercial templates add `<br />` after the tagline, then the unsubscribe link):
 ```html
-2anki.net — Turn what you study into Anki flashcards
+<a href="https://2anki.net" style="color: #9ca3af; text-decoration: none;">2anki.net</a><br />
+Turn what you study into Anki flashcards.
 ```
 
 ## Color palette
@@ -51,6 +52,8 @@ All templates live in `src/services/EmailService/templates/`. The reference is `
 
 ## Copy rules (per VOICE.md)
 
+- No em dash and no en dash anywhere in an email: subject, `<title>`, body, button, fine print, footer, alt text, plain-text part, in every language. The owner reads them as machine-written. Do not swap one for a spaced hyphen, a colon chain, a middle dot or parentheses; rewrite the sentence as two short ones, or a question and an answer. Hyphens inside words and URLs are fine. `EmailCopyHasNoDashes.test.ts` enforces it over the i18n catalogs, the templates and every rendered send.
+- Subject and body agree for every variant. An email whose body changes with the recipient (for example the inactivity warning, with or without a deck) picks a subject per variant.
 - Sentence case on button labels — "Verify email", "Log in", "Reset password", "Download deck"
 - No "my" in button labels — "Verify email" not "Verify my email"
 - Sign-off: "The 2anki Team" — no "Happy learning", no "Happy studying", no exclamation marks

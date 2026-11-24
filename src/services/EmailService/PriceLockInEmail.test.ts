@@ -41,7 +41,7 @@ describe('EmailService.sendPriceLockInEmail', () => {
     expect(PRICE_LOCK_IN_TEMPLATE).toContain('{{ctaUrl}}');
     expect(PRICE_LOCK_IN_TEMPLATE).toContain('{{unsubscribeUrl}}');
     expect(PRICE_LOCK_IN_TEMPLATE).toContain(
-      '2anki.net — Turn what you study into Anki flashcards'
+      'Turn what you study into Anki flashcards.'
     );
     expect(PRICE_LOCK_IN_TEMPLATE).toContain('Lock in $6/month');
   });
