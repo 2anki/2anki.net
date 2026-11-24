@@ -9,14 +9,17 @@
 # application's role. The role's own privileges are the guard ("Read-only
 # database role" in .claude/docs/prod-ops.md describes it). Before psql starts
 # it also refuses a READONLY_DATABASE_URL with no host or no user, or with the
-# same user as DATABASE_URL (that line is read only to compare the user). Right
-# after BEGIN, before the caller's SQL, the session checks its own role and
-# ends the run with "the connected role is not read-only" unless the role is
-# not a superuser, cannot create roles or databases, has no replication or
-# bypassrls, is not a member of pg_write_all_data, pg_signal_backend,
+# same user as DATABASE_URL, and a DATABASE_URL it cannot parse (that line is
+# read only to compare the user). The session pins search_path to pg_catalog
+# first, and right after BEGIN, before the caller's SQL, checks every role it
+# could act as (session_user and every role it is a member of, inherited or
+# not) with schema-qualified catalog names. It ends the run with "the connected
+# role is not read-only" unless current_user is session_user and every one of
+# those roles is not a superuser, cannot create roles or databases, has no
+# replication or bypassrls, is not pg_write_all_data, pg_signal_backend,
 # pg_execute_server_program, pg_read_server_files or pg_write_server_files,
-# and neither owns nor can insert, update, delete or truncate any table outside
-# the system schemas.
+# and neither owns nor can write any table, view, materialized view, foreign
+# table or sequence outside the system schemas.
 #
 # The pre-flight below is a second layer, not a guarantee. The file is copied
 # once; the pre-flight checks that copy and the same copy is sent.
@@ -89,18 +92,19 @@ version
 
 session_preamble() {
   cat <<'SQL'
+SET search_path = pg_catalog, public;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SET default_transaction_read_only = on;
 \o /dev/null
-SELECT set_config('statement_timeout', '120000', false) FROM pg_settings WHERE name = 'statement_timeout' AND (setting::bigint = 0 OR setting::bigint > 120000);
-SELECT set_config('lock_timeout', '5000', false) FROM pg_settings WHERE name = 'lock_timeout' AND (setting::bigint = 0 OR setting::bigint > 5000);
-SELECT set_config('idle_in_transaction_session_timeout', '60000', false) FROM pg_settings WHERE name = 'idle_in_transaction_session_timeout' AND (setting::bigint = 0 OR setting::bigint > 60000);
+SELECT pg_catalog.set_config('statement_timeout', '120000', false) FROM pg_catalog.pg_settings WHERE name = 'statement_timeout' AND (setting::bigint = 0 OR setting::bigint > 120000);
+SELECT pg_catalog.set_config('lock_timeout', '5000', false) FROM pg_catalog.pg_settings WHERE name = 'lock_timeout' AND (setting::bigint = 0 OR setting::bigint > 5000);
+SELECT pg_catalog.set_config('idle_in_transaction_session_timeout', '60000', false) FROM pg_catalog.pg_settings WHERE name = 'idle_in_transaction_session_timeout' AND (setting::bigint = 0 OR setting::bigint > 60000);
 \o
 BEGIN TRANSACTION READ ONLY;
 \o /dev/null
 \set ON_ERROR_STOP 0
-SELECT 1 / count(*) FROM (SELECT 1 / (CASE WHEN NOT r.rolsuper AND NOT r.rolcreaterole AND NOT r.rolcreatedb AND NOT r.rolreplication AND NOT r.rolbypassrls AND NOT EXISTS (SELECT 1 FROM pg_roles g WHERE g.rolname IN ('pg_write_all_data','pg_signal_backend','pg_execute_server_program','pg_read_server_files','pg_write_server_files') AND pg_has_role(r.oid, g.oid, 'MEMBER')) AND NOT EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname NOT IN ('pg_catalog','information_schema') AND c.relkind IN ('r','p') AND (pg_has_role(r.oid, c.relowner, 'MEMBER') OR has_table_privilege(r.oid, c.oid, 'INSERT, UPDATE, DELETE, TRUNCATE'))) THEN 1 ELSE 0 END) AS role_is_read_only FROM pg_roles r WHERE r.rolname = session_user) AS role_check WHERE role_is_read_only = 1;
+SELECT 1 / pg_catalog.count(*) FROM (SELECT 1 / (CASE WHEN current_user = session_user AND pg_catalog.bool_and(NOT r.rolsuper AND NOT r.rolcreaterole AND NOT r.rolcreatedb AND NOT r.rolreplication AND NOT r.rolbypassrls AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles g WHERE g.rolname IN ('pg_write_all_data','pg_signal_backend','pg_execute_server_program','pg_read_server_files','pg_write_server_files') AND pg_catalog.pg_has_role(r.oid, g.oid, 'MEMBER')) AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname NOT IN ('pg_catalog','information_schema') AND c.relkind IN ('r','p','v','m','f','S') AND (pg_catalog.pg_has_role(r.oid, c.relowner, 'MEMBER') OR CASE WHEN c.relkind = 'S' THEN pg_catalog.has_sequence_privilege(r.oid, c.oid, 'USAGE, UPDATE') ELSE pg_catalog.has_table_privilege(r.oid, c.oid, 'INSERT, UPDATE, DELETE, TRUNCATE') END))) THEN 1 ELSE 0 END) AS role_is_read_only FROM pg_catalog.pg_roles r WHERE pg_catalog.pg_has_role(session_user, r.oid, 'MEMBER')) AS role_check WHERE role_is_read_only = 1;
 \set ON_ERROR_STOP 1
 \o
 \if :ERROR
@@ -374,7 +378,8 @@ my ($user, $password, $host, $port, $database, $query) = $url =~ $url_pattern;
 $fail->("refused: READONLY_DATABASE_URL is not a postgres URL") unless defined $host;
 $fail->("refused: READONLY_DATABASE_URL has no host or no user") unless length $host && defined $user && length $user;
 my ($application_user) = defined $found{DATABASE_URL} ? $found{DATABASE_URL} =~ $url_pattern : ();
-$fail->("refused: READONLY_DATABASE_URL uses the same database user as DATABASE_URL, so it is not a separate read-only role") if defined $application_user && lc($decode->($application_user)) eq lc($decode->($user));
+$fail->("refused: DATABASE_URL is missing or does not parse, so the read-only role cannot be compared with the application's user") unless defined $application_user && length $application_user;
+$fail->("refused: READONLY_DATABASE_URL uses the same database user as DATABASE_URL, so it is not a separate read-only role") if lc($decode->($application_user)) eq lc($decode->($user));
 delete $ENV{$_} for grep { /^PG/ } keys %ENV;
 $ENV{PGHOST} = $decode->($host) if length $host;
 $ENV{PGPORT} = $port if defined $port;

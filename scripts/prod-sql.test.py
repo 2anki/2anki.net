@@ -7,6 +7,7 @@ network.
 
 import concurrent.futures
 import os
+import re
 import stat
 import subprocess
 import tempfile
@@ -230,13 +231,39 @@ class RoleTest(Case):
             "pg_execute_server_program",
             "pg_read_server_files",
             "pg_write_server_files",
-            "pg_has_role(r.oid, c.relowner, 'MEMBER')",
-            "has_table_privilege(r.oid, c.oid, 'INSERT, UPDATE, DELETE, TRUNCATE')",
-            "SELECT 1 / count(*) FROM (",
+            "pg_catalog.pg_has_role(r.oid, c.relowner, 'MEMBER')",
+            "pg_catalog.has_table_privilege(r.oid, c.oid, 'INSERT, UPDATE, DELETE, TRUNCATE')",
+            "pg_catalog.has_sequence_privilege(r.oid, c.oid, 'USAGE, UPDATE')",
+            "c.relkind IN ('r','p','v','m','f','S')",
+            "FROM pg_catalog.pg_roles r WHERE pg_catalog.pg_has_role(session_user, r.oid, 'MEMBER')",
+            "current_user = session_user",
+            "pg_catalog.bool_and(",
+            "pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n",
+            "SELECT 1 / pg_catalog.count(*) FROM (",
             "\\o /dev/null",
             "\\if :ERROR",
         ):
             self.assertIn(verified, check_block)
+
+    def test_pins_search_path_first_and_qualifies_every_catalog_name(self):
+        self.assertTrue(PREAMBLE.startswith("SET search_path = pg_catalog, public;\n"))
+        unqualified = re.findall(
+            r"(?<!pg_catalog\.)\b(pg_roles|pg_class|pg_namespace|pg_settings|pg_has_role|has_table_privilege|has_sequence_privilege|set_config|bool_and|count)\b",
+            PREAMBLE,
+        )
+        self.assertEqual(unqualified, [])
+
+    def test_refuses_when_the_app_url_cannot_be_compared(self):
+        for name, app_line in (
+            ("missing", ""),
+            ("not a URL", 'DATABASE_URL="not-a-url"\n'),
+            ("no user", 'DATABASE_URL="postgres://db.internal.example.com/app"\n'),
+        ):
+            with self.subTest(name=name):
+                run = self.run_sql("select 1;\n", env_file=app_line + f'READONLY_DATABASE_URL="{READER_URL}"\n')
+                self.assertEqual(run.result.returncode, 6, run.result.stderr)
+                self.assertIn("DATABASE_URL is missing or does not parse", run.result.stderr)
+                self.assertIsNone(run.recorded("psql-args"))
 
     def test_a_failed_role_check_ends_with_a_clear_message(self):
         run = self.run_sql("select 1;\n", env_file=box_env(), role_check="fail")
@@ -254,7 +281,7 @@ class RoleTest(Case):
         for name, value in (("statement_timeout", "120000"), ("lock_timeout", "5000"), ("idle_in_transaction_session_timeout", "60000")):
             with self.subTest(name=name):
                 self.assertIn(
-                    f"SELECT set_config('{name}', '{value}', false) FROM pg_settings WHERE name = '{name}' "
+                    f"SELECT pg_catalog.set_config('{name}', '{value}', false) FROM pg_catalog.pg_settings WHERE name = '{name}' "
                     f"AND (setting::bigint = 0 OR setting::bigint > {value});",
                     stdin,
                 )
