@@ -2,7 +2,8 @@
 
 Usage: python3 -I scripts/wait-pr.py <pr> [old head sha] [--timeout SECONDS] [--interval SECONDS]
 
-Polls `gh pr view` until the head differs from the old sha (when one is given),
+Polls `gh pr view` until the head no longer starts with the old sha (when one
+is given, full or short),
 the branch is not BEHIND main, and every check has completed, then prints the
 state, the head and every check that is not green. A closed or landed PR ends
 the wait at once. It only reads: it never pushes, edits or lands anything.
@@ -25,6 +26,7 @@ import time
 GREEN = 0
 NOT_GREEN = 1
 TIMED_OUT = 3
+GH_TIMEOUT_SECONDS = 60
 
 RUNNING_STATES = {"PENDING", "EXPECTED"}
 BAD_CONCLUSIONS = {"FAILURE", "ERROR", "TIMED_OUT", "CANCELLED", "ACTION_REQUIRED", "STARTUP_FAILURE", "STALE"}
@@ -60,7 +62,7 @@ def decide(view, old_sha=None):
     merge_state = view.get("mergeStateStatus")
     head = view.get("headRefOid")
     settled = (
-        (old_sha is None or head != old_sha)
+        (old_sha is None or not (head or "").startswith(old_sha))
         and bool(checks)
         and not any(is_running(c) for c in checks)
         and merge_state not in UNSETTLED_MERGE_STATES
@@ -82,12 +84,16 @@ def decide(view, old_sha=None):
     return ("green" if not not_green else "not green"), report
 
 
-def fetch_view(pr):
-    completed = subprocess.run(
-        ["gh", "pr", "view", pr, "--repo", "2anki/server", "--json", "mergeStateStatus,headRefOid,statusCheckRollup,state"],
-        capture_output=True,
-        text=True,
-    )
+def fetch_view(pr, run=subprocess.run):
+    try:
+        completed = run(
+            ["gh", "pr", "view", pr, "--repo", "2anki/server", "--json", "mergeStateStatus,headRefOid,statusCheckRollup,state"],
+            capture_output=True,
+            text=True,
+            timeout=GH_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        return None
     if completed.returncode != 0:
         return None
     try:

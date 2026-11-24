@@ -1,7 +1,8 @@
 """Tests for scripts/prod-sql.sh. Run: python3 scripts/prod-sql.test.py
 
 A fake ssh runs the remote command locally, the way sshd hands it to the login
-shell, and a fake psql records what it was given, so nothing touches the network.
+shell; a fake timeout and psql record what they were given. Nothing touches the
+network.
 """
 
 import os
@@ -12,7 +13,10 @@ import unittest
 
 SCRIPT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "prod-sql.sh")
 
-DATABASE_URL = "postgres://app_user:s3cretPassw0rd@db.internal.example.com:5432/app"
+URL_SECRET = "fakeSecret%2FValue0"
+DECODED_URL_SECRET = "fakeSecret/Value0"
+APP_URL = f"postgres://app_user:{URL_SECRET}@db.internal.example.com:5432/app?sslmode=require&options=-c%20x%3Dy"
+READER_URL = "postgres://reader:fakeReaderValue1@db.internal.example.com/app"
 MULTI_LINE_VALUE = "first-line-of-a-fake-key\nsecond-line-of-a-fake-key"
 
 FAKE_SSH = """#!/bin/bash
@@ -29,13 +33,28 @@ shift
 exec bash -c "$*"
 """
 
+FAKE_TIMEOUT = """#!/bin/bash
+printf '%s\\n' "$@" > "$FAKE_DIR/timeout-args"
+while [ "$#" -gt 0 ] && [ "$1" != psql ]; do shift; done
+exec "$@"
+"""
+
 FAKE_PSQL = """#!/bin/bash
 printf '%s\\n' "$@" > "$FAKE_DIR/psql-args"
-printf '%s' "${PGOPTIONS-}" > "$FAKE_DIR/pgoptions"
+env | grep '^PG' | sort > "$FAKE_DIR/psql-env"
 cat > "$FAKE_DIR/psql-stdin"
 echo " count"
 echo "    42"
 """
+
+PREAMBLE = (
+    "SET statement_timeout = '120s';\n"
+    "SET lock_timeout = '5s';\n"
+    "SET idle_in_transaction_session_timeout = '60s';\n"
+    "SET default_transaction_read_only = on;\n"
+    "BEGIN TRANSACTION READ ONLY;\n"
+)
+EPILOGUE = "\n;\nROLLBACK;\n"
 
 
 def executable(path, body):
@@ -53,21 +72,23 @@ class Run:
         os.makedirs(bin_dir)
         os.makedirs(os.path.join(home, "src/github.com/2anki/2anki.net"))
         executable(os.path.join(bin_dir, "ssh"), FAKE_SSH)
+        executable(os.path.join(bin_dir, "timeout"), FAKE_TIMEOUT)
         executable(os.path.join(bin_dir, "psql"), FAKE_PSQL)
         if env_file is not None:
             with open(os.path.join(home, "src/github.com/2anki/2anki.net/.env"), "w") as f:
                 f.write(env_file)
         sql_path = os.path.join(root, "query.sql")
         if sql is not None:
-            with open(sql_path, "w") as f:
-                f.write(sql)
+            with open(sql_path, "wb") as f:
+                f.write(sql if isinstance(sql, bytes) else sql.encode())
         args = [sql_path] if raw_args is None else raw_args
+        environment = {k: v for k, v in os.environ.items() if not k.startswith("PG")}
         self.result = subprocess.run(
             ["bash", SCRIPT, *args],
             capture_output=True,
             text=True,
             stdin=subprocess.DEVNULL,
-            env={**os.environ, "HOME": home, "FAKE_DIR": root, "PATH": bin_dir + os.pathsep + os.environ["PATH"]},
+            env={**environment, "HOME": home, "FAKE_DIR": root, "PATH": bin_dir + os.pathsep + os.environ["PATH"]},
         )
 
     def recorded(self, name):
@@ -77,55 +98,98 @@ class Run:
         with open(path) as f:
             return f.read()
 
+    def psql_env(self):
+        lines = (self.recorded("psql-env") or "").splitlines()
+        return dict(line.split("=", 1) for line in lines)
+
     def close(self):
         self.root.cleanup()
 
 
-def env_with_url():
-    return f'NODE_ENV=production\nSIGNING_KEY="{MULTI_LINE_VALUE}"\nDATABASE_URL="{DATABASE_URL}"\nSECRET=other\n'
+def app_env(extra=""):
+    return f'NODE_ENV=production\nSIGNING_KEY="{MULTI_LINE_VALUE}"\nDATABASE_URL="{APP_URL}"\n{extra}SECRET=other\n'
 
 
-class ProdSqlTest(unittest.TestCase):
+class Case(unittest.TestCase):
     def run_sql(self, sql, **kwargs):
         run = Run(sql, **kwargs)
         self.addCleanup(run.close)
         return run
 
-    def test_runs_the_file_in_a_read_only_session(self):
-        run = self.run_sql("select count(*) from users;\n", env_file=env_with_url())
+    def assert_refused(self, sql):
+        run = self.run_sql(sql, env_file=app_env())
+        self.assertEqual(run.result.returncode, 5, run.result.stderr)
+        self.assertIn("refused:", run.result.stderr)
+        self.assertIsNone(run.recorded("ssh-args"))
+        return run
+
+
+class SessionTest(Case):
+    def test_runs_the_file_inside_one_read_only_transaction(self):
+        run = self.run_sql("select count(*) from users;\n", env_file=app_env())
 
         self.assertEqual(run.result.returncode, 0, run.result.stderr)
         self.assertEqual(run.result.stdout, " count\n    42\n")
-        options = run.recorded("pgoptions")
+        self.assertEqual(run.recorded("psql-stdin"), PREAMBLE + "select count(*) from users;\n" + EPILOGUE)
+
+    def test_a_last_statement_without_a_semicolon_is_still_closed_before_the_rollback(self):
+        run = self.run_sql("select 1", env_file=app_env())
+
+        self.assertEqual(run.recorded("psql-stdin"), PREAMBLE + "select 1" + EPILOGUE)
+
+    def test_sets_read_only_and_timeouts_in_pgoptions(self):
+        run = self.run_sql("select 1;\n", env_file=app_env())
+
+        options = run.psql_env()["PGOPTIONS"]
         self.assertIn("-c default_transaction_read_only=on", options)
         self.assertIn("-c statement_timeout=120000", options)
         self.assertIn("-c lock_timeout=5000", options)
 
-    def test_sends_the_session_settings_ahead_of_the_sql_on_stdin(self):
-        run = self.run_sql("select 1;\n", env_file=env_with_url())
+    def test_caps_the_whole_run_with_a_wall_clock_timeout(self):
+        run = self.run_sql("select 1;\n", env_file=app_env())
 
-        self.assertEqual(
-            run.recorded("psql-stdin"),
-            "SET default_transaction_read_only = on;\nSET statement_timeout = '120s';\nSET lock_timeout = '5s';\nselect 1;\n",
-        )
+        self.assertEqual(run.recorded("timeout-args").splitlines()[:4], ["-k", "10s", "300s", "psql"])
 
-    def test_psql_stops_on_the_first_error_and_skips_psqlrc(self):
-        run = self.run_sql("select 1;\n", env_file=env_with_url())
+    def test_psql_gets_no_url_and_no_secret_on_its_command_line(self):
+        run = self.run_sql("select 1;\n", env_file=app_env())
 
-        self.assertEqual(run.recorded("psql-args").splitlines(), [DATABASE_URL, "-X", "-q", "-v", "ON_ERROR_STOP=1", "-f", "-"])
+        args = run.recorded("psql-args")
+        self.assertEqual(args.splitlines(), ["-X", "-q", "-v", "ON_ERROR_STOP=1", "-f", "-"])
+        for leaked in (URL_SECRET, DECODED_URL_SECRET, "postgres://", "db.internal"):
+            self.assertNotIn(leaked, args)
+            self.assertNotIn(leaked, run.recorded("timeout-args"))
+            self.assertNotIn(leaked, run.recorded("ssh-args"))
+
+    def test_parses_the_connection_string_into_libpq_variables(self):
+        env = self.run_sql("select 1;\n", env_file=app_env()).psql_env()
+
+        self.assertEqual(env["PGHOST"], "db.internal.example.com")
+        self.assertEqual(env["PGPORT"], "5432")
+        self.assertEqual(env["PGUSER"], "app_user")
+        self.assertEqual(env["PGPASSWORD"], DECODED_URL_SECRET)
+        self.assertEqual(env["PGDATABASE"], "app")
+        self.assertEqual(env["PGSSLMODE"], "require")
+        self.assertNotIn("x=y", env["PGOPTIONS"])
+
+    def test_prefers_the_read_only_role_when_its_variable_is_set(self):
+        env = self.run_sql("select 1;\n", env_file=app_env(f'READONLY_DATABASE_URL="{READER_URL}"\n')).psql_env()
+
+        self.assertEqual(env["PGUSER"], "reader")
+        self.assertEqual(env["PGPASSWORD"], "fakeReaderValue1")
+        self.assertNotIn("PGPORT", env)
+
+    def test_never_prints_the_connection_details_or_other_env_values(self):
+        run = self.run_sql("select 1;\n", env_file=app_env())
+
+        for leaked in ("fakeSecret", "db.internal.example.com", "fake-key", "SECRET=other", "app_user"):
+            self.assertNotIn(leaked, run.result.stdout + run.result.stderr)
 
     def test_connects_to_the_named_host_without_prompting(self):
-        run = self.run_sql("select 1;\n", env_file=env_with_url())
+        run = self.run_sql("select 1;\n", env_file=app_env())
 
         self.assertEqual(run.recorded("ssh-host"), "alemayhu@2anki.net")
         self.assertIn("BatchMode=yes", run.recorded("ssh-args"))
         self.assertNotIn("select 1", run.recorded("ssh-args"))
-
-    def test_never_prints_the_connection_string_or_other_env_values(self):
-        run = self.run_sql("select 1;\n", env_file=env_with_url())
-
-        for leaked in ("s3cretPassw0rd", "db.internal.example.com", "fake-key", "SECRET=other"):
-            self.assertNotIn(leaked, run.result.stdout + run.result.stderr)
 
     def test_says_so_when_the_env_file_has_no_database_url(self):
         run = self.run_sql("select 1;\n", env_file=f'SIGNING_KEY="{MULTI_LINE_VALUE}"\n')
@@ -141,55 +205,124 @@ class ProdSqlTest(unittest.TestCase):
         self.assertEqual(run.result.returncode, 6)
         self.assertIn("not readable", run.result.stderr)
 
-    def test_allows_explain_analyze_and_display_meta_commands(self):
-        sql = "\\x on\n\\pset format csv\nexplain analyze select created_at, deleted_at from uploads where status = 'done';\n"
-        run = self.run_sql(sql, env_file=env_with_url())
 
-        self.assertEqual(run.result.returncode, 0, run.result.stderr)
-        self.assertTrue(run.recorded("psql-stdin").endswith(sql))
-
-    def test_refuses_statements_that_write_or_change_settings(self):
-        cases = [
-            "insert into users values (1);",
-            "update users set name = 'x';",
-            "delete from users;",
-            "truncate users;",
-            "alter table users add column x int;",
-            "drop table users;",
-            "create table t (id int);",
-            "grant select on users to public;",
-            "copy (select 1) to program 'id';",
-            "select * into backup from users;",
-            "set default_transaction_read_only = off;",
-            "SET SESSION CHARACTERISTICS AS TRANSACTION READ WRITE;",
-            "begin read write;",
-            "reset all;",
-            "select set_config('default_transaction_read_only', 'off', false);",
-            "do $$ begin perform 1; end $$;",
-            "select query_to_xml('select 1', true, true, '');",
-            "select pg_terminate_backend(42);",
-            "analyze users;",
-            "\\! id",
-            "\\copy users to 'out.csv'",
-            "\\o /tmp/out.txt",
-            "\\set default_transaction_read_only off",
-            "\\gexec",
-            "\\echo `id`",
-        ]
-        for sql in cases:
+class AcceptedTest(Case):
+    def test_accepts_plain_read_statements(self):
+        for sql in (
+            "select count(*) from users where created_at > now() - interval '7 days';",
+            "with recent as (select id from uploads) select count(*) from recent;",
+            "explain select 1;",
+            "explain (format json) select 1;",
+            "show statement_timeout;",
+            "table knex_migrations;",
+            "select 'café; with a semicolon' as label, pg_size_pretty(pg_total_relation_size('users'));",
+            'select "Weird Column", x::text from t where name = \'e\' and kind = \'it\'\'s\';',
+            "select case when a then 1 else 2 end from t;\nselect 2;\n",
+            "select deleted_at, updated_at, created_at from uploads order by 1 desc limit 5;",
+        ):
             with self.subTest(sql=sql):
-                run = self.run_sql("select 1;\n" + sql + "\n", env_file=env_with_url())
-                self.assertEqual(run.result.returncode, 5)
-                self.assertIn("refused:", run.result.stderr)
-                self.assertIn("on line 2", run.result.stderr)
-                self.assertIsNone(run.recorded("ssh-args"))
+                run = self.run_sql(sql, env_file=app_env())
+                self.assertEqual(run.result.returncode, 0, run.result.stderr)
 
+
+class RefusedTest(Case):
+    def test_refuses_each_reviewed_probe_before_anything_is_sent(self):
+        for sql in (
+            "select 1;\nbegin transaction read /* x */ write;\n",
+            "start transaction read -- x\nwrite;\n",
+            "do E'\\x62egin perform 1; end';\n",
+            "do /* x */ $$ begin perform 1; end $$;\n",
+            'select U&"\\0070g_sleep"(1);\n',
+            "select set_config('default_transaction_read_only', 'off', false);\n",
+            "select pg_terminate_backend(42);\n",
+            "with x as (insert into t values (1) returning *) select * from x;\n",
+            "with x as (delete from t returning *) select * from x;\n",
+            "select * into newtable from users;\n",
+            "explain analyze insert into t values (1);\n",
+            "copy (select 1) to program 'id';\n",
+            "select 'it''s'; delete from t; select '';\n",
+            "select 'a\\'; delete from t; select 1;\n",
+            "\\gexec\n",
+            "\\! id\n",
+        ):
+            with self.subTest(sql=sql):
+                self.assert_refused(sql)
+
+    def test_refuses_a_byte_order_mark_and_a_nul(self):
+        for sql in (b"\xef\xbb\xbfselect 1;\n", b"select 1;\x00\n"):
+            with self.subTest(sql=sql):
+                self.assert_refused(sql)
+
+    def test_refuses_statements_outside_the_allowlist(self):
+        for sql in (
+            "values (1);",
+            "set statement_timeout = 0;",
+            "reset all;",
+            "commit;",
+            "rollback;",
+            "end;",
+            "abort;",
+            "begin;",
+            "select 1; start transaction;",
+            "(select 1);",
+            "listen x;",
+            "vacuum users;",
+        ):
+            with self.subTest(sql=sql):
+                self.assert_refused(sql)
+
+    def test_refuses_calls_that_change_state_or_reach_outside(self):
+        for sql in (
+            "select pg_cancel_backend(1);",
+            "select pg_advisory_lock(1);",
+            "select pg_try_advisory_lock(1);",
+            "select nextval('s');",
+            "select setval('s', 1);",
+            "select lo_import('/etc/hosts');",
+            "select lo_export(1, '/tmp/x');",
+            "select pg_read_file('/etc/hosts');",
+            "select pg_read_binary_file('/etc/hosts');",
+            "select pg_ls_dir('.');",
+            "select dblink('x', 'y');",
+            "select pg_sleep(1);",
+            "select pg_catalog.pg_sleep (1);",
+            "select pg_reload_conf();",
+            "select pg_notify('c', 'x');",
+            "select query_to_xml('select 1', true, true, '');",
+            "select cron.schedule('a', 'b');",
+            'select "pg_sleep"(1);',
+            'select pg_catalog."pg_sleep" (1);',
+        ):
+            with self.subTest(sql=sql):
+                self.assert_refused(sql)
+
+    def test_refuses_row_locks_credential_catalogs_and_odd_text(self):
+        for sql in (
+            "select * from t for update;",
+            "select * from t for no key update;",
+            "select * from t for share;",
+            "table pg_authid;",
+            "select * from pg_shadow;",
+            "select 1 \u2215 2;",
+            "select $1;",
+            "select `id`;",
+            "select 'unterminated;",
+            'select "unterminated;',
+            "select u&'x';",
+            ";\n",
+        ):
+            with self.subTest(sql=sql):
+                self.assert_refused(sql)
+
+    def test_names_the_line_of_the_refusal(self):
+        run = self.assert_refused("select 1;\nselect 2;\nselect pg_sleep(1);\n")
+
+        self.assertIn("on line 3", run.result.stderr)
+
+
+class FileTest(Case):
     def test_refuses_a_missing_empty_or_oversized_file(self):
-        missing = self.run_sql(None)
-        empty = self.run_sql("")
-        oversized = self.run_sql("select 1;\n" + "-- padding\n" * 7000)
-
-        for run in (missing, empty, oversized):
+        for run in (self.run_sql(None), self.run_sql(""), self.run_sql("select 1;\n" + "select 2;\n" * 7000)):
             with self.subTest(stderr=run.result.stderr):
                 self.assertEqual(run.result.returncode, 2)
                 self.assertIsNone(run.recorded("ssh-args"))

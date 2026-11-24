@@ -40,6 +40,12 @@ class DecideTest(unittest.TestCase):
         self.assertEqual(wait_pr.decide(view([run("test")], head="aaaaaaa"), "aaaaaaa")[0], "wait")
         self.assertEqual(wait_pr.decide(view([run("test")], head="bbbbbbb"), "aaaaaaa")[0], "green")
 
+    def test_a_short_old_sha_matches_the_full_head(self):
+        full = "aaaaaaa1234567890abcdef1234567890abcdef0"
+        self.assertEqual(wait_pr.decide(view([run("test")], head=full), "aaaaaaa")[0], "wait")
+        self.assertEqual(wait_pr.decide(view([run("test")], head=full), "aaaaaaa1234")[0], "wait")
+        self.assertEqual(wait_pr.decide(view([run("test")], head="bbbbbbb" + full[7:]), "aaaaaaa")[0], "green")
+
     def test_waits_while_behind_or_unknown(self):
         for merge_state in ("BEHIND", "UNKNOWN"):
             with self.subTest(merge_state=merge_state):
@@ -128,6 +134,30 @@ class WaitTest(unittest.TestCase):
 
         self.assertEqual(code, wait_pr.TIMED_OUT)
         self.assertIn("gh never returned the PR", out)
+
+
+class FetchViewTest(unittest.TestCase):
+    def test_gh_gets_a_timeout(self):
+        calls = []
+
+        def fake_run(argv, **kwargs):
+            calls.append(kwargs)
+            return wait_pr.subprocess.CompletedProcess(argv, 0, stdout='{"state": "OPEN"}', stderr="")
+
+        self.assertEqual(wait_pr.fetch_view("5473", run=fake_run), {"state": "OPEN"})
+        self.assertEqual(calls[0]["timeout"], wait_pr.GH_TIMEOUT_SECONDS)
+
+    def test_a_hung_gh_call_counts_as_no_answer(self):
+        def hung_run(argv, **kwargs):
+            raise wait_pr.subprocess.TimeoutExpired(argv, kwargs["timeout"])
+
+        self.assertIsNone(wait_pr.fetch_view("5473", run=hung_run))
+
+    def test_a_failed_or_garbled_gh_call_counts_as_no_answer(self):
+        for code, stdout in ((1, ""), (0, "not json"), (0, "[]")):
+            with self.subTest(code=code, stdout=stdout):
+                result = wait_pr.subprocess.CompletedProcess([], code, stdout=stdout, stderr="")
+                self.assertIsNone(wait_pr.fetch_view("5473", run=lambda argv, **kwargs: result))
 
 
 class ArgumentTest(unittest.TestCase):

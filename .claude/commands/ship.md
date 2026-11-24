@@ -148,9 +148,9 @@ The pre-cutover smoke check (`scripts/prod-smoke.ts`) prints to the deploy run l
 
 ## 6b. Rail verification after deploy (only when step 1 hit)
 
-The reads below have sanctioned scripts ("Read-only checks" in `.claude/docs/prod-ops.md`): `scripts/prod-deploy-check.sh` with the deploy run's `startedAt` gives crashes, 5xx and the status mix on upload, claim, checkout, webhook and sign-in routes; `scripts/prod-errors.sh` gives the wider error read; `scripts/prod-sql.sh <file.sql>` runs the migration check read-only.
+The reads below have sanctioned scripts ("Read-only checks" in `.claude/docs/prod-ops.md`): `scripts/prod-deploy-check.sh` with the deploy run's `startedAt` gives crashes, 5xx and the status mix on upload, claim, checkout, webhook and sign-in routes; `scripts/prod-errors.sh` gives the wider error read; `scripts/prod-sql.sh <file.sql>` runs the migration check (plain `select` statements only; its pre-flight refuses anything else).
 
-- Migration: read-only prod psql (`PGOPTIONS="-c default_transaction_read_only=on"`) confirms the `knex_migrations` row and the new schema; pm2 logs show no query errors since the deploy.
+- Migration: `scripts/prod-sql.sh` confirms the `knex_migrations` row and the new schema; pm2 logs show no query errors since the deploy.
 - Stripe or webhooks: Stripe MCP shows webhook deliveries since the deploy succeeding (no new 4xx/5xx); pm2 logs show no Stripe errors; a checkout session can still be created if checkout changed.
 - Auth or token storage: pm2 logs show successful logins since the deploy and no spike in 401/500 on auth routes.
 - Apple in-app purchase: pm2 logs show no new errors on the `/iap` routes since the deploy.

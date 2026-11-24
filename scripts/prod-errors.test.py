@@ -26,6 +26,23 @@ SECRETS = [
     "hunter2pass",
     "Biology",
     "48213",
+    "lovelace",
+    "Zm9vOmJhcg",
+    "Zm9v ",
+    "q9w8e7",
+    "z1x2c3",
+    "r3s3tvalue",
+    "k3yvalue",
+    "pw-value",
+    "N9qo8uLOickgx2ZMRZoMye",
+    "Ada",
+    "Organic",
+    "Week 3",
+    "cus_abcdefghijklmnop",
+    "rk55z",
+    "sh44y",
+    "vf33x",
+    "Chemistry",
 ]
 
 PM2_TABLE = """\
@@ -52,6 +69,10 @@ def sensitive_out():
         access(ts(6), "GET", "/api/users/magic/9f8e7d6c5b4a39281706f5e4d3c2b1a0", 502),
         access(ts(7), "GET", "/api/download/Lecture%20Notes%20Week%203.pdf", 503),
         access(ts(7, 30), "GET", "/api/share/Biology%20Week%202", 500),
+        access(ts(7, 40), "GET", "/api/decks/Chemistry%20Unit%201/cards", 500),
+        access(ts(7, 45), "GET", "/api/users/reset/rk55z", 500),
+        access(ts(7, 50), "GET", "/share/sh44y", 500),
+        access(ts(7, 55), "GET", "/api/users/verify/vf33x", 500),
         f"{ts(8)}: [checkout] checkout.session_completed for ada.lovelace@example.com customer cus_Q8xY2zAbCdEf12",
         f"{ts(9)}: pass.granted user 48213 from ::ffff:192.0.2.9",
         f"{ts(10)}: [memory] rss_mb=400 heap_used_mb=200 pool_queue=0",
@@ -65,6 +86,13 @@ def sensitive_error():
         f"{ts(7, 30)}: Uncaught TypeError: cannot read x for cus_Q8xY2zAbCdEf12 token=QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVo0NTY3ODk=",
         f"{ts(8, 30)}: connect failed postgres://app:hunter2pass@db.example.com/app",
         f"{ts(9, 30)}: [upload] tempfile read {{ firstFile: 'Lecture Notes Week 3.pdf', readMs: 12 }}",
+        f"{ts(10, 30)}: login failed for ada.lovelace%40example.com Authorization: Basic Zm9v",
+        f"{ts(10, 40)}: proxy said authorization: Basic Zm9vOmJhcg==",
+        f"{ts(11, 30)}: headers cookie: connect.sid=s%3Aq9w8e7.r6t5; sid=z1x2c3 reset_token=r3s3tvalue stripe_key=k3yvalue password_reset: 'pw-value'",
+        f"{ts(12, 30)}: stored hash $2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy for login",
+        f"{ts(13, 30)}: sync failed {{ name: 'Ada Lovelace', deck: 'Organic Notes', deckName: 'Organic Notes II', title: 'Week 3' }}",
+        f"{ts(13, 40)}: sync owner {{ customer_name: 'Ada L', workspace_name: 'Ada Lab', originalname: 'notes', email: 'someone@example.com' }}",
+        f"{ts(13, 50)}: sync billing {{ customer: 'cus_abcdefghijklmnop', status: 'in_progress' }}",
     ]
 
 
@@ -119,13 +147,22 @@ class MaskingTest(unittest.TestCase):
         out = run("2026-01-31T10:00", out=sensitive_out(), error=sensitive_error())
 
         collapsed = "\n".join(section(out.stdout, "error log, collapsed"))
-        self.assertIn("filename: <name>", collapsed)
-        self.assertIn("email: '<email>'", collapsed)
-        self.assertIn("ip: '<ip>'", collapsed)
-        self.assertIn("authorization: <secret> <token> from <ip>", collapsed)
-        self.assertIn("postgres://<cred>@<host>/app", collapsed)
-        self.assertIn("cus_<id> token=<secret>", collapsed)
-        self.assertIn("firstFile: <name>", collapsed)
+        for expected in (
+            "filename: <name>, email: <name>, ip: '<ip>'",
+            "authorization: <secret> from <ip>",
+            "postgres://<cred>@<host>/app",
+            "cus_<id> token=<secret>",
+            "firstFile: <name>",
+            "login failed for <email> Authorization: <secret>",
+            "proxy said authorization: <secret>",
+            "cookie: <secret>; sid=<secret> reset_token=<secret> stripe_key=<secret> password_reset: <secret>",
+            "stored hash <hash> for login",
+            "name: <name>, deck: <name>, deckName: <name>, title: <name> }",
+            "customer_name: <name>, workspace_name: <name>, originalname: <name>, email: <name> }",
+            "customer: 'cus_<id>', status: 'in_progress' }",
+        ):
+            with self.subTest(expected=expected):
+                self.assertIn(expected, collapsed)
 
     def test_5xx_routes_drop_the_query_and_mask_tokens_and_names(self):
         out = run("2026-01-31T10:00", out=sensitive_out(), error=sensitive_error())
@@ -133,9 +170,13 @@ class MaskingTest(unittest.TestCase):
         self.assertEqual(
             sorted(section(out.stdout, "5xx by route")),
             [
+                "1 GET /api/decks/<enc>/cards 500",
                 "1 GET /api/download/<file> 503",
-                "1 GET /api/share/<enc> 500",
-                "1 GET /api/users/magic/<hex> 502",
+                "1 GET /api/share/<tok> 500",
+                "1 GET /api/users/magic/<tok> 502",
+                "1 GET /api/users/reset/<tok> 500",
+                "1 GET /api/users/verify/<tok> 500",
+                "1 GET /share/<tok> 500",
                 "1 POST /api/upload/file 500",
             ],
         )

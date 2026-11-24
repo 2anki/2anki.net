@@ -121,7 +121,7 @@ class DeployCheckTest(unittest.TestCase):
             section(out.stdout, "crashes"),
             [
                 "2026-01-31T10:20 Uncaught Error: checkout failed for <email> from <ip> session cs_<id>",
-                "2026-01-31T10:21 FATAL headers authorization: <secret> <token> file '<file>'",
+                "2026-01-31T10:21 FATAL headers authorization: <secret> file '<file>'",
             ],
         )
         for secret in SECRETS:
