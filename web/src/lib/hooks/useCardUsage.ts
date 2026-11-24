@@ -9,11 +9,17 @@ interface CardUsageState extends CardUsageResponse {
 }
 
 export const useCardUsage = (enabled: boolean): CardUsageState | null => {
-  const { data: userLocals } = useUserLocals();
+  const {
+    data: userLocals,
+    isLoading: sessionLoading,
+    isError: sessionFailed,
+  } = useUserLocals();
+  const accountKnown =
+    !sessionLoading && !(sessionFailed && userLocals == null);
   const { data, isFetching } = useQuery({
     queryKey: [...CARD_USAGE_QUERY_KEY, userLocals?.user?.id ?? null],
     queryFn: getCardUsage,
-    enabled,
+    enabled: enabled && accountKnown,
   });
 
   if (!enabled) {
@@ -25,7 +31,7 @@ export const useCardUsage = (enabled: boolean): CardUsageState | null => {
       cards_used: 0,
       cards_limit: 100,
       unlimited: false,
-      loading: isFetching,
+      loading: isFetching || sessionLoading,
     };
   }
 
