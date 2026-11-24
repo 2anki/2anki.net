@@ -36,7 +36,7 @@ import unicodedata
 import uuid
 
 from anki.collection import AddNoteRequest, Collection, ExportAnkiPackageOptions
-from anki.errors import InvalidInput
+from anki.errors import BackendError, InvalidInput
 from anki.notes import Note
 
 from helpers.media_names import (
@@ -226,6 +226,14 @@ def _export(collection, out_path):
     )
 
 
+def _run_media_check(collection, pinned_mods):
+    media_dir = collection.media.dir()
+    before = set(os.listdir(media_dir))
+    collection.media.check()
+    _pin_mods(collection, pinned_mods)
+    return len(before - set(os.listdir(media_dir)))
+
+
 def export_package(collection, out_path, pinned_mods):
     """
     Export the collection. If Anki still refuses a media name, run its own
@@ -234,12 +242,11 @@ def export_package(collection, out_path, pinned_mods):
     """
     try:
         _export(collection, out_path)
-    except InvalidInput:
-        media_dir = collection.media.dir()
-        before = set(os.listdir(media_dir))
-        collection.media.check()
-        renamed = len(before - set(os.listdir(media_dir)))
-        _pin_mods(collection, pinned_mods)
+    except InvalidInput as export_error:
+        try:
+            renamed = _run_media_check(collection, pinned_mods)
+        except (BackendError, OSError) as check_error:
+            raise export_error from check_error
         print(
             f"{MEDIA_NOTICE_PREFIX} export refused a media name; Anki's media check "
             f"renamed {renamed} media file(s) and the export was retried",

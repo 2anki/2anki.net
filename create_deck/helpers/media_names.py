@@ -11,7 +11,9 @@ does a name ending in a dot or a space. The Python package does not expose
 that function, but add_media_file applies it, so the stored name is read back
 from a throwaway probe collection instead of being reimplemented here.
 add_media_file also lowercases the name it stores, while the exporter accepts
-any case, so a name is accepted when it matches Anki's name ignoring case.
+any case, so an NFC name is accepted when it matches Anki's name ignoring case.
+A name that keeps only its extension would be stored as a dotfile, so it gets
+the content-hash name instead, as a name Anki keeps nothing of does.
 """
 
 import hashlib
@@ -19,11 +21,14 @@ import html
 import os
 import re
 import shutil
+import sys
 import tempfile
+import unicodedata
 
 from anki.collection import Collection
 from anki.errors import BackendError
 
+APPLE_FILESYSTEM = sys.platform == "darwin"
 MAX_PLAIN_NAME_BYTES = 120
 PLAIN_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]*(?:\.[A-Za-z0-9_-]+)*")
 WINDOWS_DEVICE_STEMS = frozenset(
@@ -69,8 +74,19 @@ def anki_stored_names(names):
 
 
 def is_accepted(name, stored_name):
-    """True when the exporter takes the name as it is."""
-    return stored_name is not None and stored_name.lower() == name.lower()
+    """
+    True when the exporter takes the name as it is. A name that is not NFC
+    (a decomposed accent, or a compatibility character such as the Kelvin
+    sign, which lowercases onto a plain letter) is refused, except on macOS,
+    where Anki takes a decomposed name whose NFC form it would accept because
+    the filesystem hands names back decomposed.
+    """
+    if stored_name is None:
+        return False
+    if unicodedata.is_normalized("NFC", name):
+        return stored_name.lower() == name.lower()
+    composed = unicodedata.normalize("NFC", name)
+    return APPLE_FILESYSTEM and stored_name.lower() == composed.lower()
 
 
 def _probe(probe, name):
@@ -86,7 +102,10 @@ def store_renamed(collection, name, stored_name, data):
     Anki gives a name that is already taken by different content a suffix of
     that content's SHA-1, so the result is the same on every build.
     """
-    desired = name if stored_name else _content_name(name, data)
+    keeps_a_name = stored_name and not (
+        stored_name.startswith(".") and not name.startswith(".")
+    )
+    desired = name if keeps_a_name else _content_name(name, data)
     return collection.media.write_data(desired, data)
 
 

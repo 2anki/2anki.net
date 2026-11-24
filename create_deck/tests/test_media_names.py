@@ -1,4 +1,5 @@
 import contextlib
+import hashlib
 import io
 import json
 import os
@@ -8,7 +9,8 @@ import tempfile
 import zipfile
 
 import pytest
-from anki.collection import Collection
+from anki.collection import Collection, ExportAnkiPackageOptions
+from anki.errors import InvalidInput
 
 import create_io_deck
 from helpers.media_names import anki_stored_names, is_accepted, is_plain_name
@@ -256,7 +258,6 @@ def test_a_plain_name_skips_the_probe_because_anki_accepts_it(name):
         ("CAFÉ.png", True),
         ("Con.png", False),
         ("A:B.png", False),
-        ("CAFÉ.png", False),
     ],
 )
 def test_case_alone_never_makes_a_name_refused(name, accepted):
@@ -269,6 +270,89 @@ def test_case_alone_never_makes_a_name_refused(name, accepted):
 )
 def test_a_name_that_might_change_is_not_plain(name):
     assert not is_plain_name(name)
+
+
+def _exporter_takes(name):
+    workdir = tempfile.mkdtemp()
+    collection = Collection(os.path.join(workdir, "collection.anki2"))
+    try:
+        note = collection.new_note(collection.models.by_name("Basic"))
+        note["Front"] = f'<img src="{name}">'
+        collection.add_note(note, 1)
+        with open(os.path.join(collection.media.dir(), name), "wb") as handle:
+            handle.write(b"bytes")
+        try:
+            collection.export_anki_package(
+                out_path=os.path.join(workdir, "out.apkg"),
+                options=ExportAnkiPackageOptions(with_media=True),
+                limit=None,
+            )
+            return True
+        except InvalidInput:
+            return False
+    finally:
+        collection.close()
+        shutil.rmtree(workdir, ignore_errors=True)
+
+
+@pytest.mark.parametrize(
+    ("label", "name"),
+    [
+        ("kelvin sign", "K.png"),
+        ("ohm sign", "Ω.png"),
+        ("angstrom sign", "Å.png"),
+        ("decomposed accent", "café.png"),
+        ("decomposed accent and a refused character", "café?.png"),
+        ("composed accent", "café.png"),
+        ("mixed case", "My Photo.PNG"),
+    ],
+)
+def test_a_name_counts_as_accepted_exactly_when_ankis_exporter_takes_it(label, name):
+    assert is_accepted(name, anki_stored_names([name])[name]) is _exporter_takes(name), label
+
+
+@pytest.mark.parametrize("name", ["K.png", "Ω.png", "Å.png", "café.png"])
+def test_a_compatibility_or_decomposed_name_always_builds_and_shows_its_picture(name):
+    apkg = _build([_note(f'<img src="{name}">')], [(name, b"bytes")])
+
+    [(stored, data)] = _media(apkg).items()
+    assert data == b"bytes"
+    assert _fields(apkg)[0][0] == f'<img src="{stored}">'
+
+
+@pytest.mark.parametrize("name", ["???.png", "​​.png"])
+def test_a_name_reduced_to_its_extension_gets_a_content_hash_name_not_a_dotfile(name):
+    stored_name = anki_stored_names([name])[name]
+
+    apkg = _build([_note(f'<img src="{name}">')], [(name, b"bytes")])
+
+    [stored] = _media(apkg)
+    if stored_name is not None and stored_name.startswith("."):
+        assert stored == hashlib.sha1(b"bytes").hexdigest() + ".png"
+    assert not stored.startswith(".")
+    assert _fields(apkg)[0][0] == f'<img src="{stored}">'
+
+
+def test_a_media_check_that_fails_leaves_the_original_export_error(monkeypatch):
+    workdir = tempfile.mkdtemp()
+    collection = Collection(os.path.join(workdir, "collection.anki2"))
+    try:
+        note = collection.new_note(collection.models.by_name("Basic"))
+        note["Front"] = '<img src="a:b.png">'
+        collection.add_note(note, 1)
+        with open(os.path.join(collection.media.dir(), "a:b.png"), "wb") as handle:
+            handle.write(b"bytes")
+
+        def failing_check():
+            raise OSError("media folder unreadable")
+
+        monkeypatch.setattr(collection.media, "check", failing_check)
+
+        with pytest.raises(InvalidInput):
+            export_package(collection, os.path.join(workdir, "out.apkg"), [])
+    finally:
+        collection.close()
+        shutil.rmtree(workdir, ignore_errors=True)
 
 
 def test_an_image_occlusion_upload_named_by_the_user_ships_under_a_name_anki_accepts():
