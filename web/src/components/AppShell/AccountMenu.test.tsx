@@ -1,12 +1,14 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { track } from '../../lib/analytics/track';
 import { getCardUsage } from '../../lib/backend/getCardUsage';
 import { getAiCredits } from '../../lib/backend/getAiCredits';
 import { getSubscriptionStatus } from '../../lib/backend/getSubscriptionStatus';
+import { getAiGift } from '../../lib/backend/aiGift';
+import { formatGiftDate } from '../AiGift/AiGiftPresent';
 import { STRIPE_CUSTOMER_PORTAL_URL } from '../../lib/stripePortal';
 import { AccountMenu } from './AccountMenu';
 
@@ -24,6 +26,11 @@ vi.mock('../../lib/backend/getCardUsage', () => ({
 
 vi.mock('../../lib/backend/getAiCredits', () => ({
   getAiCredits: vi.fn().mockResolvedValue(null),
+}));
+
+vi.mock('../../lib/backend/aiGift', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../lib/backend/aiGift')>()),
+  getAiGift: vi.fn(),
 }));
 
 vi.mock('../../lib/backend/getSubscriptionStatus', () => ({
@@ -91,6 +98,11 @@ beforeEach(() => {
   vi.mocked(getAiCredits).mockResolvedValue(null);
   vi.mocked(getSubscriptionStatus).mockReset();
   vi.mocked(getSubscriptionStatus).mockResolvedValue({ subscriptions: [] });
+  vi.mocked(getAiGift).mockReset();
+  vi.mocked(getAiGift).mockResolvedValue({
+    state: 'closed',
+    feedbackDue: false,
+  });
 });
 
 describe('AccountMenu trigger', () => {
@@ -394,6 +406,115 @@ describe('AccountMenu AI credits line', () => {
     renderMenu({ locals: null });
     await new Promise((r) => setTimeout(r, 10));
     expect(getAiCredits).not.toHaveBeenCalled();
+  });
+});
+
+describe('AccountMenu free AI credits gift line', () => {
+  const NOW = '2026-11-24T19:15:00.000Z';
+  const EXPIRES = '2026-11-26T19:15:00.000Z';
+  const expiry = () => formatGiftDate(EXPIRES, 'en');
+  const planCredits = {
+    credits: 300,
+    used: 0,
+    allowance: 300,
+    usable: true,
+    windowEnd: null,
+    resets: 'period' as const,
+  };
+  const noPlan = {
+    credits: 0,
+    used: 0,
+    allowance: 0,
+    usable: false,
+    windowEnd: null,
+    resets: 'month' as const,
+  };
+  const claimed = (credits: number, expiresAt = EXPIRES) => ({
+    state: 'claimed' as const,
+    credits,
+    expiresAt,
+    feedbackDue: false,
+  });
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(NOW));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const settle = () => new Promise((r) => setTimeout(r, 10));
+
+  it('adds the gift under the plan line for a plan account holding a gift', async () => {
+    vi.mocked(getAiCredits).mockResolvedValue(planCredits);
+    vi.mocked(getAiGift).mockResolvedValue(claimed(100));
+    renderMenu({ locals: { patreon: true } });
+    openMenu();
+    expect(await screen.findByText('300 AI credits left.')).toBeInTheDocument();
+    expect(
+      await screen.findByText(`Plus 100 free AI credits until ${expiry()}.`)
+    ).toBeInTheDocument();
+  });
+
+  it('shows the real remaining gift balance after some was spent', async () => {
+    vi.mocked(getAiCredits).mockResolvedValue(planCredits);
+    vi.mocked(getAiGift).mockResolvedValue(claimed(1));
+    renderMenu({ locals: { subscriber: true } });
+    openMenu();
+    expect(
+      await screen.findByText(`Plus 1 free AI credit until ${expiry()}.`)
+    ).toBeInTheDocument();
+  });
+
+  it('lets the gift line stand alone for a free account with no plan', async () => {
+    vi.mocked(getAiCredits).mockResolvedValue(noPlan);
+    vi.mocked(getAiGift).mockResolvedValue(claimed(100));
+    renderMenu();
+    openMenu();
+    expect(
+      await screen.findByText(`100 free AI credits left until ${expiry()}.`)
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/^Plus/)).not.toBeInTheDocument();
+  });
+
+  it('shows only the plan line for a plan account that never claimed', async () => {
+    vi.mocked(getAiCredits).mockResolvedValue(planCredits);
+    vi.mocked(getAiGift).mockResolvedValue({
+      state: 'open',
+      credits: 100,
+      expiresIfClaimedNow: EXPIRES,
+      claimClosesAt: '2026-12-04T20:00:00.000Z',
+      feedbackDue: false,
+    });
+    renderMenu({ locals: { patreon: true } });
+    openMenu();
+    expect(await screen.findByText('300 AI credits left.')).toBeInTheDocument();
+    await settle();
+    expect(screen.queryByText(/free AI credit/)).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['the flag is off', { state: 'closed' as const, feedbackDue: false }],
+    ['the gift is spent', claimed(0)],
+    ['the gift expired', claimed(100, '2026-11-24T19:14:00.000Z')],
+  ])('shows no gift line when %s', async (_name, gift) => {
+    vi.mocked(getAiCredits).mockResolvedValue(planCredits);
+    vi.mocked(getAiGift).mockResolvedValue(gift);
+    renderMenu({ locals: { patreon: true } });
+    openMenu();
+    expect(await screen.findByText('300 AI credits left.')).toBeInTheDocument();
+    await settle();
+    expect(screen.queryByText(/free AI credit/)).not.toBeInTheDocument();
+  });
+
+  it('shows no gift line to a signed-out visitor', async () => {
+    vi.mocked(getAiGift).mockResolvedValue(claimed(100));
+    renderMenu({ locals: null });
+    openMenu();
+    await settle();
+    expect(screen.queryByText(/free AI credit/)).not.toBeInTheDocument();
   });
 });
 

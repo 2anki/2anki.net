@@ -112,6 +112,7 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
     isSignedIn && gift?.state === 'claimed' && gift.credits > 0
       ? gift.credits
       : null;
+  const giftAfterPlan = isSignedIn && isPaying ? gift : null;
   const [aiFlag, setAiFlag] = useState(
     () => globalThis.localStorage?.getItem(AI_FLAG_KEY) === 'true'
   );
@@ -352,7 +353,7 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
               </Link>
               <span>{sentenceEnd}</span>
             </span>
-            <AiCreditsReadout credits={aiCredits} />
+            <AiCreditsReadout credits={aiCredits} gift={giftAfterPlan} />
           </>
         )}
         {aiBadgeState === 'onForPdfs' && (
@@ -382,7 +383,7 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
               </Link>
               <span>{sentenceEnd}</span>
             </span>
-            <AiCreditsReadout credits={aiCredits} />
+            <AiCreditsReadout credits={aiCredits} gift={giftAfterPlan} />
           </>
         )}
         {aiBadgeState === 'off' && (
@@ -428,7 +429,7 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
               </Link>
               <span>{sentenceEnd}</span>
             </span>
-            <AiCreditsReadout credits={aiCredits} />
+            <AiCreditsReadout credits={aiCredits} gift={giftAfterPlan} />
           </>
         )}
         {aiBadgeState === 'free' && (

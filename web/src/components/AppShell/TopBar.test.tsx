@@ -1,8 +1,10 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { getAiCredits } from '../../lib/backend/getAiCredits';
+import { getAiGift } from '../../lib/backend/aiGift';
 import { TopBar } from './TopBar';
 
 vi.mock('../../lib/analytics/track', () => ({
@@ -20,6 +22,21 @@ vi.mock('../../lib/backend/getCardUsage', () => ({
 vi.mock('../../lib/backend/getAiCredits', () => ({
   getAiCredits: vi.fn().mockResolvedValue(null),
 }));
+
+vi.mock('../../lib/backend/aiGift', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../lib/backend/aiGift')>()),
+  getAiGift: vi.fn(),
+}));
+
+beforeEach(() => {
+  vi.mocked(getAiCredits).mockReset();
+  vi.mocked(getAiCredits).mockResolvedValue(null);
+  vi.mocked(getAiGift).mockReset();
+  vi.mocked(getAiGift).mockResolvedValue({
+    state: 'closed',
+    feedbackDue: false,
+  });
+});
 
 function renderTopBar(overrides: Partial<Parameters<typeof TopBar>[0]> = {}) {
   const props = {
@@ -93,4 +110,56 @@ describe('TopBar', () => {
     expect(screen.getByText('reader@example.com')).toBeInTheDocument();
     expect(screen.getByText('Lifetime')).toBeInTheDocument();
   });
+});
+
+describe('TopBar gift panel spending order', () => {
+  const planCredits = (allowance: number) => ({
+    credits: allowance,
+    used: 0,
+    allowance,
+    usable: allowance > 0,
+    windowEnd: null,
+    resets: 'period' as const,
+  });
+
+  beforeEach(() => {
+    vi.mocked(getAiGift).mockResolvedValue({
+      state: 'claimed',
+      credits: 100,
+      expiresAt: '2099-11-26T19:15:00.000Z',
+      feedbackDue: false,
+    });
+  });
+
+  const openGift = async () =>
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Free AI credits gift' })
+    );
+
+  it('says plan credits go first for a paying account with an allowance', async () => {
+    vi.mocked(getAiCredits).mockResolvedValue(planCredits(300));
+    renderTopBar({ locals: { patreon: true } });
+    await openGift();
+    expect(
+      await screen.findByText('Your plan credits are used first.')
+    ).toBeInTheDocument();
+  });
+
+  it.each([
+    ['a free account', { patreon: false, subscriber: false }, 300],
+    ['a paying account with no allowance', { patreon: true }, 0],
+  ])(
+    'says nothing about spending order for %s',
+    async (_name, locals, allowance) => {
+      vi.mocked(getAiCredits).mockResolvedValue(planCredits(allowance));
+      renderTopBar({ locals });
+      await openGift();
+      expect(
+        await screen.findByText('You have 100 AI credits from the gift.')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText('Your plan credits are used first.')
+      ).toBeNull();
+    }
+  );
 });

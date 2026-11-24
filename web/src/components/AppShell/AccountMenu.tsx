@@ -8,6 +8,7 @@ import {
   type AiCreditsState,
 } from '../../lib/hooks/useAiCredits';
 import { useDialogFocus } from '../../lib/hooks/useDialogFocus';
+import { useAiGiftBalanceLine } from '../AiGift/useAiGiftBalanceLine';
 import { useLapsedPayment } from '../../lib/hooks/useLapsedPayment';
 import { STRIPE_CUSTOMER_PORTAL_URL } from '../../lib/stripePortal';
 import { track } from '../../lib/analytics/track';
@@ -33,6 +34,25 @@ function describeRing(ring: BalanceRing | null, t: TFunction): string | null {
     });
   }
   return t('aicredits:left', { count: ring.remaining });
+}
+
+function showsAiCreditsLine(credits: AiCreditsState | null): boolean {
+  if (credits == null) return false;
+  if (credits.usable) return true;
+  return credits.credits > 0 && credits.windowEnd != null;
+}
+
+function AiGiftBalanceLine({
+  signedIn,
+  afterPlanLine,
+}: Readonly<{ signedIn: boolean; afterPlanLine: boolean }>) {
+  const line = useAiGiftBalanceLine(signedIn, afterPlanLine);
+  if (line == null) return null;
+  return (
+    <span className={`${styles.identityUsage} ${styles.identityAiCredits}`}>
+      {line}
+    </span>
+  );
 }
 
 interface CardUsageLineProps {
@@ -322,6 +342,10 @@ export function AccountMenu({
               </span>
             )}
             <AiCreditsLine credits={credits} />
+            <AiGiftBalanceLine
+              signedIn={isLoggedIn}
+              afterPlanLine={showsAiCreditsLine(credits)}
+            />
             {pastDue && (
               <a
                 href={STRIPE_CUSTOMER_PORTAL_URL}

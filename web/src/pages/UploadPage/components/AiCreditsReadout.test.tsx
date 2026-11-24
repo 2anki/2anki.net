@@ -1,9 +1,10 @@
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import i18n from '../../../lib/i18n';
 import { AiCreditsReadout } from './AiCreditsReadout';
 import { AiCreditsState } from '../../../lib/hooks/useAiCredits';
+import { formatGiftDate } from '../../../components/AiGift/AiGiftPresent';
 
 const state = (over: Partial<AiCreditsState>): AiCreditsState => ({
   credits: 180,
@@ -65,5 +66,69 @@ describe('AiCreditsReadout', () => {
     expect(
       screen.getByRole('button', { name: 'Top up — $5' })
     ).toBeInTheDocument();
+  });
+});
+
+describe('AiCreditsReadout with free AI credits from the gift', () => {
+  const EXPIRES = '2026-11-26T19:15:00.000Z';
+  const plusLine = (count: number) =>
+    `Plus ${count} free AI credits until ${formatGiftDate(EXPIRES, 'en')}.`;
+  const claimed = (credits: number, expiresAt = EXPIRES) => ({
+    state: 'claimed' as const,
+    credits,
+    expiresAt,
+    feedbackDue: false,
+  });
+
+  beforeEach(async () => {
+    await i18n.changeLanguage('en');
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-24T19:15:00.000Z'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('adds the gift on its own line under the plan credits', () => {
+    render(
+      <AiCreditsReadout credits={state({ credits: 300 })} gift={claimed(100)} />
+    );
+    expect(screen.getByTestId('ai-credits')).toHaveTextContent(
+      '300 AI credits left.'
+    );
+    expect(screen.getByTestId('ai-gift-credits')).toHaveTextContent(
+      plusLine(100)
+    );
+  });
+
+  it('keeps the gift line once the plan credits are spent', () => {
+    render(
+      <AiCreditsReadout credits={state({ credits: 0 })} gift={claimed(40)} />
+    );
+    expect(screen.getByTestId('ai-gift-credits')).toHaveTextContent(
+      plusLine(40)
+    );
+  });
+
+  it('renders nothing for an account with no plan, which the page covers', () => {
+    const { container } = render(
+      <AiCreditsReadout
+        credits={state({ allowance: 0, credits: 0 })}
+        gift={claimed(100)}
+      />
+    );
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it.each([
+    ['there is no gift', null],
+    ['the flag is off', { state: 'closed' as const, feedbackDue: false }],
+    ['the gift is spent', claimed(0)],
+    ['the gift expired', claimed(100, '2026-11-24T19:14:00.000Z')],
+  ])('shows only the plan line when %s', (_name, gift) => {
+    render(<AiCreditsReadout credits={state({ credits: 300 })} gift={gift} />);
+    expect(screen.getByText('300 AI credits left.')).toBeInTheDocument();
+    expect(screen.queryByTestId('ai-gift-credits')).toBeNull();
   });
 });
