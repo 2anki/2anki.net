@@ -7,6 +7,7 @@ const PASS_FIRST_WALL_DESCRIPTION =
   'Pass-first limit wall: the Semester Pass and Day Pass lead /limit, the held-deck gate and the upload limit wall, with free sign-up as a text link, and a free sign-up claim releases only the 21-card preview of a held deck (the rest is saved for a pass). Off restores the sign-up-first wall and the up-to-100-card claim; flip from /ops.';
 
 exports.up = async (knex) => {
+  await knex.raw("SET LOCAL lock_timeout = '5s'");
   await knex.schema.alterTable('held_decks', (table) => {
     table.text('pass_first_arm').nullable();
   });
