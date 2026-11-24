@@ -37,9 +37,11 @@ of `git diff M M^` for one of the last 20 first-parent commits M of
 `origin/main`, and no changed path is under `migrations/`, no scope is
 required; a recorded block that no later same-scope pass answers still
 refuses. Git computes this; there is no label to claim. A re-land is not a
-revert: when the PR's patch-id also equals the forward patch (`git diff N^ N`)
-of one of the last 200 first-parent commits N (a revert of a revert brings
-back a change that was rolled back), the normal scopes apply. The PR title
+revert: when the PR's patch-id also equals the forward patch of any
+first-parent commit in the whole history of the PR's changed paths (one
+streamed `git log -p` into `git patch-id --verbatim`; a revert of a revert
+brings back a change that was rolled back), the normal scopes apply. Any git
+error or a timeout counts as a re-land. The PR title
 counts as a subject for `reach` when the caller passes it (the merge gate
 does; the marker hook cannot read it without a network call).
 
@@ -65,7 +67,11 @@ MIGRATION_ROOTS = ("migrations/", "src/data_layer/public/")
 REACH_ROOTS = ("src/", "web/src/")
 REACH_SUBJECT = re.compile(r"^(feat|fix|perf|refactor)(\([^)]*\))?!?:", re.IGNORECASE)
 REVERT_WINDOW = 20
-RELAND_WINDOW = 200
+RELAND_TIMEOUT_SECONDS = 25
+RELAND_LOG_ARGS = (
+    "log", "--first-parent", "--diff-merges=first-parent", "--full-diff", "-p",
+    "--no-ext-diff", "--no-textconv", "--no-color", "--no-renames", "--format=commit %H",
+)
 REVERT_EXCLUDED_ROOT = "migrations/"
 PR_NUMBER = re.compile(r"[1-9][0-9]{0,8}")
 FULL_SHA = re.compile(r"[0-9a-f]{40}")
@@ -234,19 +240,46 @@ def reverted_commit(sha, cwd):
     listed = run_git(["rev-list", "--first-parent", "-n", str(REVERT_WINDOW), BASE_REF], cwd)
     for commit in text(listed or b"").splitlines():
         if verbatim_patch_id(pr_diff(commit, commit + "^", cwd), cwd) == target:
-            return None if relands_a_commit(target, cwd) else commit
+            return None if relands_a_commit(target, paths, cwd) else commit
     return None
 
 
-def relands_a_commit(target, cwd):
-    """True when `target` is the forward patch of one of origin/main's last RELAND_WINDOW first-parent commits."""
-    listed = run_git(["rev-list", "--first-parent", "-n", str(RELAND_WINDOW), BASE_REF], cwd)
-    if listed is None:
+def forward_patch_ids(paths, cwd):
+    """Verbatim patch-ids of every first-parent commit on origin/main touching `paths`, or None on any git failure."""
+    log_args = ["git", *RELAND_LOG_ARGS, BASE_REF, "--", *paths]
+    try:
+        log = subprocess.Popen(log_args, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    except OSError:
+        return None
+    try:
+        ids = subprocess.Popen(
+            ["git", "patch-id", "--verbatim"], cwd=cwd, stdin=log.stdout,
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+        )
+    except OSError:
+        log.kill()
+        log.wait()
+        return None
+    log.stdout.close()
+    try:
+        output, _ = ids.communicate(timeout=RELAND_TIMEOUT_SECONDS)
+        log.wait(timeout=RELAND_TIMEOUT_SECONDS)
+    except subprocess.TimeoutExpired:
+        for process in (log, ids):
+            process.kill()
+            process.wait()
+        return None
+    if log.returncode != 0 or ids.returncode != 0:
+        return None
+    return {line.split()[0] for line in text(output).splitlines() if line.split()}
+
+
+def relands_a_commit(target, paths, cwd):
+    """True when `target` is the forward patch of any first-parent commit on origin/main (fails closed to True)."""
+    if not paths:
         return True
-    for commit in text(listed).splitlines():
-        if verbatim_patch_id(pr_diff(commit + "^", commit, cwd), cwd) == target:
-            return True
-    return False
+    forward = forward_patch_ids(paths, cwd)
+    return forward is None or target in forward
 
 
 def parse_line(line):

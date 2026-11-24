@@ -592,6 +592,37 @@ class ExactRevertTest(LedgerTestCase):
         self.assertIn("no `engineering` pass", self.head_violation(re_land))
         self.assertDenied(post(8, self.repo.marker_file(re_land)), "no `engineering` pass")
 
+    def test_a_re_land_of_a_commit_far_older_than_any_window_needs_the_review(self):
+        landed = self.repo.commit_on_main("src/lib/cards.ts", "export const surface = 1;\n", "chore: surface")
+        self.repo.git("checkout", "-q", "main")
+        for index in range(205):
+            self.repo.git("commit", "-q", "--allow-empty", "-m", f"chore: filler {index}")
+        self.repo.main = self.repo.git("rev-parse", "HEAD")
+        self.repo.git("update-ref", "refs/remotes/origin/main", self.repo.main)
+        removed = self.repo.revert_on_main(landed)
+        re_land = self.repo.revert_branch("re-land-surface", removed)
+        self.assertIsNone(ship_ledger.reverted_commit(re_land, self.repo.path))
+        self.assertIn("no `engineering` pass", self.head_violation(re_land))
+
+    def test_a_pure_emergency_revert_of_the_newest_commit_needs_no_scope(self):
+        self.repo.commit_on_main("src/lib/cards.ts", "export const ok = 1;\n", "feat: cards")
+        newest = self.repo.commit_on_main("src/lib/cards.ts", "export const ok = 2;\n", "fix: cards")
+        revert = self.repo.revert_branch("revert-newest", newest)
+        self.assertEqual(ship_ledger.reverted_commit(revert, self.repo.path), newest)
+        self.assertIsNone(self.head_violation(revert))
+
+    def test_a_git_failure_in_the_re_land_check_counts_as_a_re_land(self):
+        self.assertIsNone(ship_ledger.forward_patch_ids(["src/lib/cards.ts"], tempfile.gettempdir()))
+        self.assertTrue(ship_ledger.relands_a_commit("e" * 40, [], self.repo.path))
+        with mock.patch.object(ship_ledger, "forward_patch_ids", return_value=None):
+            self.assertTrue(ship_ledger.relands_a_commit("e" * 40, ["src/lib/cards.ts"], self.repo.path))
+
+    def test_a_slow_history_read_times_out_closed(self):
+        slow = subprocess.TimeoutExpired("git", ship_ledger.RELAND_TIMEOUT_SECONDS)
+        with mock.patch.object(subprocess.Popen, "communicate", side_effect=slow):
+            self.assertIsNone(ship_ledger.forward_patch_ids(["change.txt"], self.repo.path))
+        self.assertLess(ship_ledger.RELAND_TIMEOUT_SECONDS, 60)
+
     def test_an_unanswered_block_still_refuses_an_exact_revert(self):
         landed = self.repo.commit_on_main("src/lib/cards.ts", "export const broken = 1;\n", "feat: cards")
         revert = self.repo.revert_branch("revert-cards", landed)
