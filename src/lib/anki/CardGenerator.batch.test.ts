@@ -32,7 +32,8 @@ const mockedWriteFileSync = fs.writeFileSync as MockedFunction<
 
 function makeProcessStub(
   stdout: string,
-  exitCode: number = 0
+  exitCode: number = 0,
+  stderr: string = ''
 ): childProcess.ChildProcess {
   const proc = new EventEmitter() as childProcess.ChildProcess;
   const stdoutEmitter = new EventEmitter();
@@ -43,12 +44,47 @@ function makeProcessStub(
     stderrEmitter;
 
   setImmediate(() => {
+    if (stderr) stderrEmitter.emit('data', Buffer.from(stderr));
     stdoutEmitter.emit('data', Buffer.from(stdout));
     proc.emit('close', exitCode);
   });
 
   return proc;
 }
+
+describe('CardGenerator media-name notices', () => {
+  const workspace = '/tmp/test-workspace';
+  const notice = '[media-names] renamed 2 media file(s) to names Anki accepts';
+  const stderr = `Skipping media outside the working directory: /tmp/x.png\n${notice}\n`;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockedExistsSync.mockReturnValue(false);
+  });
+
+  it('logs the deck writer media-name line after a successful single build', async () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+    mockedSpawn.mockReturnValue(makeProcessStub('/ws/deck.apkg', 0, stderr));
+
+    await new CardGenerator(workspace).run();
+
+    expect(info.mock.calls).toContainEqual([notice]);
+    expect(info.mock.calls.flat().join('\n')).not.toContain('/tmp/x.png');
+    info.mockRestore();
+  });
+
+  it('logs the deck writer media-name line after a successful batch build', async () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+    mockedSpawn.mockReturnValue(makeProcessStub('/ws/a/out.apkg\n', 0, stderr));
+
+    await new CardGenerator(workspace).runBatch([
+      { input: '/ws/a/deck_info.json', output: '/ws/a/out.apkg' },
+    ]);
+
+    expect(info.mock.calls).toContainEqual([notice]);
+    info.mockRestore();
+  });
+});
 
 describe('CardGenerator.runBatch', () => {
   const workspace = '/tmp/test-workspace';
