@@ -8,6 +8,7 @@ Disallow: /downloads
 Disallow: /chat
 Disallow: /delete-account
 Disallow: /account
+Allow: /account/email-change
 Disallow: /import
 Disallow: /ankify
 Disallow: /ops

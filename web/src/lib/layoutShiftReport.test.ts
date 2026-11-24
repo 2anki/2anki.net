@@ -37,6 +37,18 @@ describe('shiftPath', () => {
     ['/Upload', '/:id'],
     ['/preview/apkg/My%20Deck', '/preview/apkg/:id'],
     ['/a/b/c/d/e/f', '/a/b/c/d'],
+    ['/step1-anki', '/step1-anki'],
+    ['/anki-from-medical-lecture-slides', '/anki-from-medical-lecture-slides'],
+    [
+      '/documentation/start-here/what-is-2anki',
+      '/documentation/start-here/what-is-2anki',
+    ],
+    ['/users/r/3f9c1a7e-5b2d-4c1e-9a7f-0d2e4b6c8a1f', '/users/r/:id'],
+    ['/users/r/abcdef12', '/users/r/:id'],
+    [`/users/r/${'ab'.repeat(32)}`, '/users/r/:id'],
+    ['/abcdefghijklmnopqrstuvwxyz', '/:id'],
+    [`/${'word-'.repeat(9)}end`, '/:id'],
+    ['/step-', '/:id'],
   ])('reports %s as %s', (pathname, expected) => {
     expect(shiftPath(pathname)).toBe(expected);
   });

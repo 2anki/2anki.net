@@ -10,6 +10,7 @@ import { RegisterPage } from './RegisterPage/RegisterPage';
 import { ForgotPasswordPage } from './ForgotPasswordPage/ForgotPasswordPage';
 import MagicLinkPage from './MagicLinkPage/MagicLinkPage';
 import AccountEmailChangePage from './AccountEmailChangePage/AccountEmailChangePage';
+import { NewPasswordPage } from './NewPasswordPage/NewsPasswordPage';
 
 vi.mock('../lib/hooks/useUserLocals', () => ({
   useUserLocals: () => ({ data: undefined, isLoading: false, isError: false }),
@@ -21,6 +22,9 @@ vi.mock('../components/forms/RegisterForm', () => ({
   default: () => <div />,
 }));
 vi.mock('../components/forms/ForgotPasswordForm/ForgotPasswordForm', () => ({
+  default: () => <div />,
+}));
+vi.mock('../components/forms/NewPasswordForm', () => ({
   default: () => <div />,
 }));
 vi.mock('../components/AuthPageBackground', () => ({
@@ -62,6 +66,10 @@ describe('auth pages are kept out of the index', () => {
     [
       '/account/email-change?token=abc',
       <AccountEmailChangePage key="email-change" />,
+    ],
+    [
+      '/users/r/3f9c1a7e-5b2d-4c1e-9a7f-0d2e4b6c8a1f',
+      <NewPasswordPage key="reset-password" setErrorMessage={vi.fn()} />,
     ],
   ])('%s carries a noindex robots meta', async (path, page) => {
     renderAt(path, page);

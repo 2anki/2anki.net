@@ -122,6 +122,43 @@ describe('legacyDocsRedirectTarget', () => {
     expect(legacyDocsRedirectTarget(path)).toBeUndefined();
   });
 
+  it('lists no slug in both the legacy and the retired map', () => {
+    const shared = Object.keys(RETIRED_DOC_REDIRECTS).filter(
+      (slug) => slug in LEGACY_DOC_REDIRECTS
+    );
+    expect(shared).toEqual([]);
+  });
+
+  it('redirects no slug that still has a docs page, which the redirect would hide', () => {
+    const contentDir = join(__dirname, '../../web/src/pages/DocsPage/content');
+    const hidden = [
+      ...Object.keys(LEGACY_DOC_REDIRECTS),
+      ...Object.keys(RETIRED_DOC_REDIRECTS),
+    ].filter((slug) =>
+      ['', 'de/'].some((locale) =>
+        ['.md', '.mdx'].some((extension) =>
+          existsSync(join(contentDir, `${locale}${slug}${extension}`))
+        )
+      )
+    );
+    expect(hidden).toEqual([]);
+  });
+
+  it('keeps every redirected slug out of the docs sidebar pages', () => {
+    const sidebarSlugs = new Set(
+      [...readFileSync(SIDEBAR_TS, 'utf8').matchAll(/\{[^{}]*\}/g)]
+        .map(([item]) => item)
+        .filter((item) => !item.includes('href:'))
+        .flatMap((item) => /slug: '([^']+)'/.exec(item)?.slice(1) ?? [])
+    );
+    expect(sidebarSlugs.size).toBeGreaterThan(20);
+    const linked = [
+      ...Object.keys(LEGACY_DOC_REDIRECTS),
+      ...Object.keys(RETIRED_DOC_REDIRECTS),
+    ].filter((slug) => sidebarSlugs.has(slug));
+    expect(linked).toEqual([]);
+  });
+
   it('points every internal target at a page that exists', () => {
     const contentDir = join(__dirname, '../../web/src/pages/DocsPage/content');
     const missing = [
