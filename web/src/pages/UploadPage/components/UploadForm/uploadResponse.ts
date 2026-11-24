@@ -12,6 +12,7 @@ import type {
   AiPreviewCard,
   BatchResult,
   HeldDeckState,
+  PassFirstArm,
   ZoneState,
 } from './hooks/useUploadFormState';
 
@@ -123,8 +124,13 @@ function isBatchResult(value: unknown): value is BatchResult {
   );
 }
 
-interface HeldResult extends HeldDeckState {
+interface HeldResult extends Omit<HeldDeckState, 'passFirstArm'> {
   kind: 'held';
+  passFirstArm?: unknown;
+}
+
+function isPassFirstArm(value: unknown): value is PassFirstArm {
+  return value === 'control' || value === 'pass_first';
 }
 
 function isHeldResult(value: unknown): value is HeldResult {
@@ -197,6 +203,9 @@ export async function applyConversionSuccess(
           ? { savedForHours: body.savedForHours }
           : {}),
         ...(body.cookieMinted === true ? { cookieMinted: true } : {}),
+        ...(isPassFirstArm(body.passFirstArm)
+          ? { passFirstArm: body.passFirstArm }
+          : {}),
       });
       handlers.setProgressWidth(100);
       handlers.setZoneState('heldForSignup');

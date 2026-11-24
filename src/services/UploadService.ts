@@ -136,6 +136,11 @@ import {
   readRecoveryToken,
 } from '../lib/upload/anonymousRecovery';
 import {
+  passFirstArmFor,
+  passFirstArmProps,
+  type PassFirstTestArm,
+} from '../lib/upload/passFirstArm';
+import {
   generateDeckInfo,
   DeckInfo,
   AiCreditsTrippedWithSalvage,
@@ -268,6 +273,7 @@ export interface HeldUploadResponse {
   savedForHours: number;
   dayPassCard?: boolean;
   cookieMinted?: boolean;
+  passFirstArm?: PassFirstTestArm;
 }
 
 export interface AiPreviewUploadResponse {
@@ -2984,6 +2990,7 @@ class UploadService {
       storage,
       res.locals.requestId
     );
+    const passFirstArm = await passFirstArmFor(anonId);
     track('conversion_succeeded', {
       userId: null,
       anonymousId: analyticsAnonId(req, anonId),
@@ -2994,6 +3001,7 @@ class UploadService {
         cards_held_back: cardsHeldBack,
         ...(cardsLeftOut > 0 ? { cards_left_out: cardsLeftOut } : {}),
         held: true,
+        ...passFirstArmProps(passFirstArm),
       },
     });
     const totalCards = cardCount + cardsHeldBack;
@@ -3016,6 +3024,7 @@ class UploadService {
       savedForHours: HELD_DECK_TTL_MS / HOUR_MS,
       ...(dayPassCard ? { dayPassCard: true } : {}),
       ...(cookieMinted ? { cookieMinted: true } : {}),
+      ...(passFirstArm === 'off' ? {} : { passFirstArm }),
     };
     return res.status(200).json(body);
   }

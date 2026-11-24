@@ -53,6 +53,7 @@ import { SendAbandonedCheckoutRecoveryOnExpiryUseCase } from '../usecases/ops/Se
 import { UserVisibleErrorsRepository } from '../data_layer/UserVisibleErrorsRepository';
 import { RecordUserVisibleErrorUseCase } from '../usecases/observability/RecordUserVisibleErrorUseCase';
 import { recordStripeWebhook } from '../services/stripeWebhookTimestamp';
+import { isPassFirstTestArm } from '../lib/upload/passFirstArm';
 import { AiCreditGrantsRepository } from '../data_layer/AiCreditGrantsRepository';
 import {
   CREDIT_PACK_CREDITS,
@@ -427,6 +428,9 @@ const WebhooksRouter = () => {
                 ? { variant: pricingVariant }
                 : {}),
               ...(surface != null && surface !== '' ? { surface } : {}),
+              ...(isPassFirstTestArm(sessionMeta.pass_first_arm)
+                ? { pass_first_arm: sessionMeta.pass_first_arm }
+                : {}),
               ...(billingInterval != null && billingInterval !== ''
                 ? { interval: billingInterval }
                 : {}),

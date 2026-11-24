@@ -14,6 +14,7 @@ import { MonthlyLimitError } from '../../usecases/users/CheckMonthlyCardLimitUse
 import { EmptyDeckError } from '../../usecases/jobs/EmptyDeckError';
 import { ClaimHeldDeckController } from './ClaimHeldDeckController';
 import { track } from '../../services/events/track';
+import { resolvePassFirstArm } from '../../lib/upload/passFirstArm';
 
 const trackMock = track as Mock;
 const ANON = 'anon-controller-1';
@@ -300,6 +301,51 @@ describe('ClaimHeldDeckController', () => {
       props: { arm: 'treatment' },
     });
   });
+
+  it.each([
+    ['pass-first', ANON, 'pass_first'],
+    ['control', 'anon-controller-3', 'control'],
+  ])(
+    'records the %s arm of the split test on anonymous_partial_claimed, for a visitor who declined analytics too',
+    async (_label, anonId, arm) => {
+      expect(resolvePassFirstArm(anonId, true)).toBe(arm);
+      const repo = new InMemoryHeldDeckRepository();
+      await repo.insert({
+        storageKey: 'held/x.html',
+        anonId,
+        filename: 'notes.html',
+        cardCount: 21,
+        cardsHeldBack: 13,
+        expiresAt: new Date(Date.now() + 60_000),
+      });
+      const store: HeldFileStore = {
+        getFileContents: vi
+          .fn()
+          .mockResolvedValue({ Body: Buffer.from('<html></html>') }),
+      };
+      const converter: HeldDeckConverter = {
+        convertHeldFileForOwner: vi.fn().mockResolvedValue({
+          downloadKey: 'owner-key.apkg',
+          cardCount: 21,
+          cardsHeldBack: 13,
+          deckName: 'notes',
+        }),
+      };
+      const controller = new ClaimHeldDeckController(
+        new ClaimHeldDeckUseCase(repo, store, converter, async () => true)
+      );
+      const { res, capturedJson } = buildResponse(7);
+
+      await controller.claim(buildRequest(anonId, 'denied'), res);
+
+      expect(trackMock).toHaveBeenCalledWith('anonymous_partial_claimed', {
+        userId: 7,
+        anonymousId: null,
+        props: { arm: 'treatment', pass_first_arm: arm },
+      });
+      expect(capturedJson()).not.toHaveProperty('passFirstArm');
+    }
+  );
 
   it('claims the hold for a visitor who declined analytics, keeping the arm but not the anonymous id on the event', async () => {
     const repo = new InMemoryHeldDeckRepository();

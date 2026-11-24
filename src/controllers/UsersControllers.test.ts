@@ -3191,34 +3191,42 @@ describe('UsersController.getLocals', () => {
     expect(flagsRead).not.toContain('limit_wall_pro_price');
   });
 
-  it('reads the pass-first limit wall flag, off when unread', async () => {
-    vi.mocked(getFeatureFlag).mockImplementation(async (key: string) =>
-      key === 'limit_wall_pass_first' ? true : false
-    );
-    const userService = {
-      getSubscriptionLinkedEmail: vi.fn().mockResolvedValue(null),
-    } as unknown as UsersService;
-    const authService = {
-      getUserFrom: vi.fn().mockResolvedValue(null),
-    } as unknown as AuthenticationService;
-    const controller = new UsersController(
-      userService,
-      authService,
-      {} as ReturnType<typeof import('../data_layer').getDatabase>
-    );
-    const req = { cookies: {} } as unknown as express.Request;
-    const res = {
-      locals: {},
-      json: vi.fn(),
-    } as unknown as express.Response & { json: Mock };
+  it.each([true, false])(
+    'turns on no pass-first wall outside the held-deck gate when the split test flag is %s',
+    async (flagOn) => {
+      vi.mocked(getFeatureFlag).mockImplementation(async (key: string) =>
+        key === 'limit_wall_pass_first' ? flagOn : false
+      );
+      const userService = {
+        getSubscriptionLinkedEmail: vi.fn().mockResolvedValue(null),
+      } as unknown as UsersService;
+      const authService = {
+        getUserFrom: vi.fn().mockResolvedValue(null),
+      } as unknown as AuthenticationService;
+      const controller = new UsersController(
+        userService,
+        authService,
+        {} as ReturnType<typeof import('../data_layer').getDatabase>
+      );
+      const req = {
+        cookies: { anon_id: 'fresh-anon' },
+      } as unknown as express.Request;
+      const res = {
+        locals: {},
+        json: vi.fn(),
+      } as unknown as express.Response & { json: Mock };
 
-    await controller.getLocals(req, res);
+      await controller.getLocals(req, res);
 
-    const { features } = res.json.mock.calls[0][0];
-    expect(features.limitWallPassFirst).toBe(true);
-    expect(getFeatureFlag).toHaveBeenCalledWith('limit_wall_pass_first', false);
-    vi.mocked(getFeatureFlag).mockReset().mockResolvedValue(false);
-  });
+      const { features } = res.json.mock.calls[0][0];
+      expect(features).not.toHaveProperty('limitWallPassFirst');
+      expect(getFeatureFlag).not.toHaveBeenCalledWith(
+        'limit_wall_pass_first',
+        false
+      );
+      vi.mocked(getFeatureFlag).mockReset().mockResolvedValue(false);
+    }
+  );
 
   it('includes email_verified in the user object', async () => {
     const mockUser = {

@@ -9,6 +9,11 @@ import {
   MonthlyLimitError,
 } from '../users/CheckMonthlyCardLimitUseCase';
 import { isPreviewHoldKey } from '../../lib/upload/anonymousAiPreview';
+import {
+  resolvePassFirstArm,
+  type PassFirstArm,
+  type PassFirstTestArm,
+} from '../../lib/upload/passFirstArm';
 
 export class NoHeldDeckError extends Error {
   constructor() {
@@ -77,6 +82,7 @@ export interface ClaimResult {
   alsoClaimed?: number;
   // Set when the claimed deck was saved by the connector.
   source?: HeldDeckSource;
+  passFirstArm?: PassFirstTestArm;
 }
 
 export interface ClaimParams {
@@ -172,24 +178,23 @@ export class ClaimHeldDeckUseCase {
     private readonly repository: IHeldDeckRepository,
     private readonly store: HeldFileStore,
     private readonly converter: HeldDeckConverter,
-    private readonly passFirst: () => Promise<boolean> = async () => false
+    private readonly passFirstTestLive: () => Promise<boolean> = async () =>
+      false
   ) {}
 
-  // With the pass-first wall on, a free sign-up releases the same 21-card
-  // preview an anonymous visitor gets; the full deck takes a plan claim (a
-  // pass or Pro). A failed flag read keeps the old up-to-100-card claim.
-  private async capsSignupToPreview(
-    kind: HoldKind,
-    paying: boolean
-  ): Promise<boolean> {
-    if (kind !== 'signup' || paying) {
-      return false;
+  // While the pass-first test runs, a sign-up hold's arm comes from the anon
+  // id it was held under, the same one the upload hashed. A free sign-up in
+  // the pass-first arm releases the 21-card preview; the full deck takes a
+  // plan claim. A failed flag read keeps the up-to-100-card claim.
+  private async signupArm(kind: HoldKind, key: string): Promise<PassFirstArm> {
+    if (kind !== 'signup') {
+      return 'off';
     }
     try {
-      return await this.passFirst();
+      return resolvePassFirstArm(key, await this.passFirstTestLive());
     } catch (error) {
       console.error('[ClaimHeldDeck] pass-first flag read failed', error);
-      return false;
+      return 'off';
     }
   }
 
@@ -221,7 +226,8 @@ export class ClaimHeldDeckUseCase {
       throw new NoHeldDeckError();
     }
     const { hold, kind } = found;
-    const capToPreview = await this.capsSignupToPreview(kind, paying);
+    const arm = await this.signupArm(kind, hold.anon_id);
+    const capToPreview = arm === 'pass_first' && !paying;
     const claimed = await this.repository.markClaimed(
       hold.id,
       Number(owner),
@@ -274,6 +280,7 @@ export class ClaimHeldDeckUseCase {
               cutAt: capToPreview ? ('preview' as const) : ('month' as const),
             }
           : {}),
+        ...(arm === 'off' ? {} : { passFirstArm: arm }),
       };
     } catch (error) {
       // Deterministic refusals consume the hold: a monthly-limit refusal, a

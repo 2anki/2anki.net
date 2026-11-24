@@ -26,6 +26,7 @@ interface GateHeld {
   savedForHours?: number;
   dayPassCard?: boolean;
   cookieMinted?: boolean;
+  passFirstArm?: 'control' | 'pass_first';
 }
 
 function renderGate(
@@ -358,16 +359,12 @@ describe('AnonymousPartialGate when the anon id cookie was minted on the upload'
 
   it('warns the pass-first arm too and drops its no-re-upload promise', () => {
     clearAnonIdCookie();
-    render(
-      <QueryClientProvider client={new QueryClient()}>
-        <MemoryRouter>
-          <AnonymousPartialGate
-            held={{ ...mintedHeld, cardsHeldBack: 163, totalCards: 184 }}
-            passFirst
-          />
-        </MemoryRouter>
-      </QueryClientProvider>
-    );
+    renderGate({
+      ...mintedHeld,
+      cardsHeldBack: 163,
+      totalCards: 184,
+      passFirstArm: 'pass_first',
+    });
     expect(
       screen.getByText(
         `${COOKIE_LOST} After paying, drop the file again to get all 184 cards.`
@@ -384,23 +381,37 @@ describe('AnonymousPartialGate when the anon id cookie was minted on the upload'
   });
 });
 
-describe('AnonymousPartialGate — pass-first', () => {
+describe('AnonymousPartialGate — pass-first arm', () => {
   function renderPassFirst(
-    held: {
-      cardCount: number;
-      cardsHeldBack: number;
-      totalCards: number;
-      dayPassCard?: boolean;
-    } = { cardCount: 21, cardsHeldBack: 163, totalCards: 184 }
+    held: GateHeld = { cardCount: 21, cardsHeldBack: 163, totalCards: 184 }
   ) {
-    return render(
-      <QueryClientProvider client={new QueryClient()}>
-        <MemoryRouter>
-          <AnonymousPartialGate held={held} passFirst />
-        </MemoryRouter>
-      </QueryClientProvider>
-    );
+    return renderGate({ ...held, passFirstArm: 'pass_first' });
   }
+
+  beforeEach(() => {
+    vi.mocked(track).mockClear();
+  });
+
+  it('names the arm on the gate-shown event', () => {
+    renderPassFirst();
+    expect(track).toHaveBeenCalledWith('anonymous_partial_gate_shown', {
+      cards_held_back: 163,
+      pass_first_arm: 'pass_first',
+    });
+  });
+
+  it.each([
+    ['Create a free account for the first 21 cards', 'free_signup'],
+    ['Sign in', 'sign_in'],
+  ])('names the arm on the %s click', (name, plan) => {
+    renderPassFirst();
+    fireEvent.click(screen.getByRole('link', { name }));
+    expect(track).toHaveBeenCalledWith('paywall_upgrade_clicked', {
+      surface: HELD_DECK_CHECKOUT_SURFACE,
+      plan,
+      pass_first_arm: 'pass_first',
+    });
+  });
 
   it('takes precedence over the Day Pass card arm', () => {
     renderPassFirst({
@@ -458,6 +469,54 @@ describe('AnonymousPartialGate — pass-first', () => {
   });
 });
 
+describe('AnonymousPartialGate — control arm', () => {
+  const overMonth: GateHeld = {
+    cardCount: 21,
+    cardsHeldBack: 163,
+    totalCards: 184,
+    passFirstArm: 'control',
+  };
+
+  beforeEach(() => {
+    vi.mocked(track).mockClear();
+  });
+
+  it('shows the sign-up-first gate and its 100-card free account', () => {
+    renderGate(overMonth);
+    expect(screen.getByText('All 184 cards are ready')).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', {
+        name: 'Or create a free account for the first 100 cards',
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Semester Pass/ })
+    ).not.toBeInTheDocument();
+  });
+
+  it('names the arm on the gate-shown event', () => {
+    renderGate(overMonth);
+    expect(track).toHaveBeenCalledWith('anonymous_partial_gate_shown', {
+      cards_held_back: 163,
+      pass_first_arm: 'control',
+    });
+  });
+
+  it('names the arm on the free sign-up click', () => {
+    renderGate(overMonth);
+    fireEvent.click(
+      screen.getByRole('link', {
+        name: 'Or create a free account for the first 100 cards',
+      })
+    );
+    expect(track).toHaveBeenCalledWith('paywall_upgrade_clicked', {
+      surface: HELD_DECK_CHECKOUT_SURFACE,
+      plan: 'free_signup',
+      pass_first_arm: 'control',
+    });
+  });
+});
+
 describe('AnonymousPartialGate checkout surface', () => {
   beforeEach(() => {
     startPassCheckout.mockReset();
@@ -465,21 +524,13 @@ describe('AnonymousPartialGate checkout surface', () => {
   });
 
   function renderArm(passFirst: boolean, dayPassCard: boolean) {
-    return render(
-      <QueryClientProvider client={new QueryClient()}>
-        <MemoryRouter>
-          <AnonymousPartialGate
-            held={{
-              cardCount: 21,
-              cardsHeldBack: 163,
-              totalCards: 184,
-              dayPassCard,
-            }}
-            passFirst={passFirst}
-          />
-        </MemoryRouter>
-      </QueryClientProvider>
-    );
+    return renderGate({
+      cardCount: 21,
+      cardsHeldBack: 163,
+      totalCards: 184,
+      dayPassCard,
+      ...(passFirst ? { passFirstArm: 'pass_first' as const } : {}),
+    });
   }
 
   it('is the surface the server releases held decks for', () => {

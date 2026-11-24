@@ -6,6 +6,10 @@ import { readGaMeasurement } from '../usecases/checkout/gaClientId';
 import { readCheckoutAttribution } from '../lib/attribution/adClick';
 import { checkoutRequestProps } from '../lib/analytics/checkoutRequestProps';
 import { trackingAllowedFor } from '../lib/http/consentRegion';
+import {
+  checkoutPassFirstArm,
+  passFirstArmProps,
+} from '../lib/upload/passFirstArm';
 import type { PassKind } from '../data_layer/UserPassRepository';
 import type { EventsSink } from '../services/events/EventsSink';
 
@@ -26,6 +30,7 @@ class PassCheckoutController {
     const { gaClientId, gaSessionId } = readGaMeasurement(req);
     const adClick = readCheckoutAttribution(req);
     const anonIdTrackingAllowed = trackingAllowedFor(req);
+    const passFirstArm = await checkoutPassFirstArm(surface, anonId ?? null);
 
     const result = await this.useCase.execute({
       userId,
@@ -38,6 +43,7 @@ class PassCheckoutController {
       gaClientId,
       gaSessionId,
       adClick,
+      ...(passFirstArm === 'off' ? {} : { passFirstArm }),
     });
 
     // `plan` carries the pass kind so this joins to checkout_completed, which
@@ -53,6 +59,7 @@ class PassCheckoutController {
         plan: this.passKind,
         ...(surface == null ? {} : { surface }),
         ...(variant == null ? {} : { variant }),
+        ...passFirstArmProps(passFirstArm),
         ...checkoutRequestProps(req),
       },
     });
