@@ -160,14 +160,26 @@ def rail_paths(paths):
     return [p for p in paths if is_rail_path(p)]
 
 
+# Every line that starts with "+" or "-" is scanned, the "--- a/" and "+++ b/"
+# file headers included: a removed "--max-old-space-size" line reads "---" in a
+# diff, and a trigger word in a file name only costs an extra review. Lines
+# split on "\n" alone, because splitlines() also breaks on a bare carriage
+# return or U+2028 and left everything after it unscanned. The fragments
+# splitlines() finds after such a break are still scanned, so no diff railed
+# before stops railing now.
+def _changed_lines(diff_text):
+    for line in diff_text.split("\n"):
+        if line.endswith("\r"):
+            line = line[:-1]
+        if line.startswith(("+", "-")):
+            yield line[1:]
+        for fragment in line.splitlines()[1:]:
+            if fragment.startswith(("+", "-")):
+                yield fragment[1:]
+
+
 def rail_content_hits(diff_text):
-    changed_lines = [
-        line[1:]
-        for line in diff_text.splitlines()
-        if (line.startswith("+") or line.startswith("-"))
-        and not line.startswith("+++")
-        and not line.startswith("---")
-    ]
+    changed_lines = list(_changed_lines(diff_text))
     hits = []
     for trigger in CONTENT_TRIGGERS:
         if any(trigger in line for line in changed_lines):

@@ -18,6 +18,7 @@ SCRIPT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "prod-sql.sh")
 SUFFIX = uuid.uuid4().hex[:8]
 DATABASE = f"prodsql_check_{SUFFIX}"
 OWNED_DATABASE = f"prodsql_owned_{SUFFIX}"
+PUBLIC_DEFINER_DATABASE = f"prodsql_public_definer_{SUFFIX}"
 EPILOGUE = "\n;\nROLLBACK;\n"
 CALLER_MARKER = "caller sql ran"
 REFUSAL = "the connected role is not read-only"
@@ -89,6 +90,8 @@ SETUP = [
     f"create role {role('definer_caller')} login",
     f"create database {OWNED_DATABASE} owner {role('database_owner')}",
     f"revoke temporary on database {DATABASE} from public",
+    f"create database {PUBLIC_DEFINER_DATABASE}",
+    f"revoke temporary on database {PUBLIC_DEFINER_DATABASE} from public",
     f"grant create on database {DATABASE} to {role('database_creator')}",
     f"grant temporary on database {DATABASE} to {role('temp_creator')}",
     f"grant {role('writer')} to {role('set_role_member')}",
@@ -127,6 +130,11 @@ DATABASE_SETUP = [
     f"grant select on all tables in schema shadow to {role('shadowed')}",
 ]
 
+PUBLIC_DEFINER_DATABASE_SETUP = [
+    "revoke create on schema public from public",
+    "create function public_definer_answer() returns int language sql security definer as 'select 1'",
+]
+
 ROLES = [
     "select_only", "inserter", "owner", "writer", "set_role_member", "noinherit_member", "shadowed", "sequence_user",
     "trigger_holder", "references_holder", "schema_owner", "database_owner", "function_owner", "public_creator",
@@ -152,11 +160,17 @@ class RealRoleCheckTest(unittest.TestCase):
             if result.returncode != 0:
                 cls.tearDownClass()
                 raise RuntimeError(f"setup failed: {statement}: {result.stderr}")
+        for statement in PUBLIC_DEFINER_DATABASE_SETUP:
+            result = psql("-c", statement, database=PUBLIC_DEFINER_DATABASE)
+            if result.returncode != 0:
+                cls.tearDownClass()
+                raise RuntimeError(f"setup failed: {statement}: {result.stderr}")
 
     @classmethod
     def tearDownClass(cls):
         psql("-c", f"drop database if exists {DATABASE}")
         psql("-c", f"drop database if exists {OWNED_DATABASE}")
+        psql("-c", f"drop database if exists {PUBLIC_DEFINER_DATABASE}")
         for name in ROLES:
             psql("-c", f"drop role if exists {role(name)}")
 
@@ -241,6 +255,13 @@ class RealRoleCheckTest(unittest.TestCase):
 
     def test_refuses_a_role_that_can_execute_a_security_definer_function(self):
         self.assert_refused(role("definer_caller"), "can execute the security definer function public.definer_answer")
+
+    def test_refuses_a_select_only_role_when_public_can_execute_a_security_definer_function(self):
+        self.assert_refused(
+            role("select_only"),
+            "can execute the security definer function public.public_definer_answer",
+            database=PUBLIC_DEFINER_DATABASE,
+        )
 
 
 if __name__ == "__main__":
