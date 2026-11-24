@@ -741,6 +741,91 @@ class AwkwardPathTest(unittest.TestCase):
             self.repo.land_on_main(base_tree, "chore: reset " + label)
 
 
+class WorkingDirectoryTest(unittest.TestCase):
+    def setUp(self):
+        self.repo = Repo()
+        self.addCleanup(self.repo.cleanup)
+        self.repo.commit_on_main("web/README.md", "web\n", "chore: web")
+        self.web = os.path.join(self.repo.path, "web")
+
+    def re_land(self):
+        landed = self.repo.commit_on_main("src/guard.ts", "export const guard = true;\n", "chore: guard")
+        removed = self.repo.revert_on_main(landed)
+        return self.repo.revert_branch("re-land-guard", removed)
+
+    def test_a_re_land_checked_from_a_subdirectory_is_still_refused(self):
+        re_land = self.re_land()
+        self.assertTrue(os.path.isdir(self.web))
+        self.assertIn("no `engineering` pass", ship_ledger.head_violation("8", re_land, self.web))
+        self.assertEqual(self.repo.run_hook(post(8, self.repo.marker_file(re_land)))["hookSpecificOutput"]["permissionDecision"], "deny")
+
+    def test_required_scopes_from_a_subdirectory_match_the_root(self):
+        self.repo.branch_from_main("schema")
+        head = self.repo.commit("migrations/20260101_add.js", "exports.up = () => {};\n", "feat: table")
+        self.assertEqual(
+            ship_ledger.required_scopes(head, self.web), ship_ledger.required_scopes(head, self.repo.path)
+        )
+        self.repo.passes(5, head, "engineering", "security", "migration")
+        self.assertIsNone(ship_ledger.head_violation("5", head, self.web))
+
+    def test_record_from_a_subdirectory_writes_the_same_patch_id(self):
+        self.repo.branch_from_main("cards")
+        head = self.repo.commit("src/lib/cards.ts", "export const x = 1;\n", "chore: cards")
+        result = subprocess.run(
+            [sys.executable, LEDGER_CLI, "record", "5", head, "pass", "engineering"],
+            cwd=self.web, env=test_env(), capture_output=True, text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        with open(self.repo.ledger(), encoding="utf-8") as ledger:
+            recorded = ledger.read().rstrip("\n").split("\t")[5]
+        self.assertEqual(recorded, ship_ledger.patch_id(head, self.repo.path))
+
+    def test_user_diff_settings_do_not_change_names_or_patch_ids(self):
+        re_land = self.re_land()
+        self.repo.branch_from_main("plain")
+        plain = self.repo.commit("src/lib/cards.ts", "export const x = 1;\n", "chore: cards")
+        base = ship_ledger.merge_base(plain, self.repo.path)
+        before = (
+            ship_ledger.changed_names(base, plain, self.repo.path),
+            ship_ledger.patch_id(plain, self.repo.path),
+            ship_ledger.forward_patch_ids(["src/guard.ts"], self.repo.path),
+            ship_ledger.reverted_commit(re_land, self.repo.path),
+        )
+        for key, value in (
+            ("diff.relative", "true"), ("diff.noprefix", "true"), ("diff.mnemonicPrefix", "true"),
+            ("diff.algorithm", "histogram"), ("diff.context", "1"), ("diff.renames", "copies"),
+            ("diff.suppressBlankEmpty", "true"), ("log.showSignature", "true"), ("log.follow", "true"),
+        ):
+            self.repo.git("config", key, value)
+        for cwd in (self.repo.path, self.web):
+            after = (
+                ship_ledger.changed_names(base, plain, cwd),
+                ship_ledger.patch_id(plain, cwd),
+                ship_ledger.forward_patch_ids(["src/guard.ts"], self.repo.path),
+                ship_ledger.reverted_commit(re_land, self.repo.path),
+            )
+            self.assertEqual(after, before, cwd)
+        self.assertIsNone(before[3])
+
+
+class GitHubFileListTest(LedgerTestCase):
+    def test_a_path_only_github_reports_widens_the_scopes(self):
+        local = ship_ledger.required_scopes(self.first, self.repo.path)
+        widened = ship_ledger.required_scopes(self.first, self.repo.path, (), ["change.txt", "migrations/1_x.js"])
+        self.assertEqual(local, ("engineering",))
+        self.assertEqual(widened, ("engineering", "security", "migration"))
+
+    def test_a_path_only_github_reports_voids_the_exact_revert_exemption(self):
+        landed = self.repo.commit_on_main("src/lib/cards.ts", "export const broken = 1;\n", "chore: cards")
+        revert = self.repo.revert_branch("revert-cards", landed)
+        self.assertEqual(ship_ledger.reverted_commit(revert, self.repo.path), landed)
+        self.assertIsNone(ship_ledger.reverted_commit(revert, self.repo.path, ["src/lib/cards.ts", "migrations/1_x.js"]))
+        self.assertIn(
+            "no `engineering` pass",
+            ship_ledger.head_violation("8", revert, self.repo.path, (), ["src/lib/cards.ts", "migrations/1_x.js"]),
+        )
+
+
 class SlowGitTest(unittest.TestCase):
     def setUp(self):
         self.repo = Repo()
@@ -790,6 +875,14 @@ class UnparsableLedgerTest(LedgerTestCase):
             ledger.write("2026-01-01T00:00:00Z\t5\tnot-a-sha\tblock\tengineering\t-\n")
         self.assertDenied(post(5, self.repo.marker_file(self.first)), "line 2 does not parse", "never delete a line")
 
+    def test_a_non_utf8_byte_in_the_ledger_is_a_malformed_line_not_a_crash(self):
+        self.repo.passes(5, self.first, "engineering")
+        with open(self.repo.ledger(), "ab") as ledger:
+            ledger.write(b"2026-01-01T00:00:00Z\t5\t" + self.first.encode() + b"\tblock\tengin\xffeering\t-\n")
+        output = self.repo.run_hook(post(5, self.repo.marker_file(self.first)))
+        self.assertIn("line 2 does not parse", reason(output))
+        self.assertNotIn("ledger hook failed", reason(output))
+
     def test_an_unknown_scope_on_a_line_denies(self):
         with open(self.repo.ledger(), "w", encoding="utf-8") as ledger:
             ledger.write(f"2026-01-01T00:00:00Z\t5\t{self.first}\tblock\tux-voice\t-\n")
@@ -830,7 +923,7 @@ class FailClosedTest(LedgerTestCase):
                                 capture_output=True, text=True)
         output = json.loads(result.stdout)
         self.assertEqual(decision(output), "deny")
-        self.assertIn("could not find this checkout's git dir", reason(output))
+        self.assertIn("could not find this checkout's top level", reason(output))
 
 
 class RecordCommandTest(LedgerTestCase):

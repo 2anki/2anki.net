@@ -706,6 +706,19 @@ class MergeTimeLedgerTest(unittest.TestCase):
         self.assertEqual(self.merge(title="fix: keep the cards", files=files), {"continue": True})
 
 
+    def test_a_migration_github_lists_but_the_local_diff_lacks_widens_the_scopes(self):
+        self.repo.passes(1, self.head, "engineering")
+        self.assertEqual(self.merge(), {"continue": True})
+        files = ("change.txt", "migrations/20260101_add.js")
+        refusal = self.merge(files=files)["hookSpecificOutput"]["permissionDecisionReason"]
+        self.assertIn("no `security` pass", refusal)
+        self.repo.passes(1, self.head, "security")
+        refusal = self.merge(files=files)["hookSpecificOutput"]["permissionDecisionReason"]
+        self.assertIn("no `migration` pass", refusal)
+        self.repo.passes(1, self.head, "migration")
+        self.assertEqual(self.merge(files=files), {"continue": True})
+
+
 class HelperImportFailureTest(unittest.TestCase):
     def run_alone(self, command):
         lonely = tempfile.mkdtemp(prefix="merge-status-alone-")

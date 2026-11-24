@@ -248,7 +248,8 @@ def review_marker_violation(pr_data):
 
 def ledger_violation(number, pr_data, cwd):
     head = as_text(pr_data.get("headRefOid"))
-    reason = ship_ledger.head_violation(number, head, cwd, [as_text(pr_data.get("title"))])
+    github_paths = [as_text(f.get("path")) for f in entries(pr_data.get("files")) if as_text(f.get("path"))]
+    reason = ship_ledger.head_violation(number, head, cwd, [as_text(pr_data.get("title"))], github_paths)
     if reason is None:
         return None
     return (

@@ -70,8 +70,24 @@ REACH_ROOTS = ("src/", "web/src/")
 REACH_SUBJECT = re.compile(r"^(feat|fix|perf|refactor)(\([^)]*\))?!?:", re.IGNORECASE)
 REVERT_WINDOW = 20
 RELAND_TIMEOUT_SECONDS = 25
+PINNED_GIT_CONFIG = (
+    "diff.relative=false",
+    "diff.noprefix=false",
+    "diff.mnemonicPrefix=false",
+    "diff.renames=false",
+    "core.quotePath=false",
+    "diff.algorithm=myers",
+    "diff.context=3",
+    "diff.interHunkContext=0",
+    "diff.indentHeuristic=true",
+    "diff.suppressBlankEmpty=false",
+    "diff.submodule=short",
+    "log.follow=false",
+    "log.showSignature=false",
+)
+UNSET_GIT_ENV = ("GIT_DIFF_OPTS", "GIT_EXTERNAL_DIFF", "GIT_DIFF_PATH_COUNTER", "GIT_DIFF_PATH_TOTAL")
 RELAND_LOG_ARGS = (
-    "log", "--first-parent", "--diff-merges=first-parent", "--full-diff", "-p",
+    "log", "-O/dev/null", "--first-parent", "--diff-merges=first-parent", "--full-diff", "-p",
     "--no-ext-diff", "--no-textconv", "--no-color", "--no-renames", "--format=commit %H",
 )
 REVERT_EXCLUDED_ROOT = "migrations/"
@@ -131,14 +147,24 @@ def check_budget(seconds):
         Budget.deadline = previous
 
 
+def git_command(args):
+    pinned = [part for setting in PINNED_GIT_CONFIG for part in ("-c", setting)]
+    return ["git", *pinned, *args]
+
+
+def git_env():
+    return {key: value for key, value in os.environ.items() if key not in UNSET_GIT_ENV}
+
+
 def run_git(args, cwd, stdin=None):
     timeout = seconds_left(GIT_TIMEOUT_SECONDS)
     if timeout <= 0:
         return None
     try:
         result = subprocess.run(
-            ["git", *args],
+            git_command(args),
             cwd=cwd,
+            env=git_env(),
             input=stdin,
             capture_output=True,
             timeout=timeout,
@@ -166,6 +192,14 @@ def supports_verbatim(version):
     return version is not None and version >= VERBATIM_MIN_GIT
 
 
+def toplevel(cwd):
+    output = run_git(["rev-parse", "--show-toplevel"], cwd)
+    if output is None:
+        return None
+    root = os.fsdecode(output.rstrip(b"\n"))
+    return root or None
+
+
 def ledger_path(cwd):
     output = run_git(["rev-parse", "--path-format=absolute", "--git-common-dir"], cwd)
     if output is None:
@@ -180,7 +214,13 @@ def merge_base(sha, cwd):
 
 
 def pr_diff(base, sha, cwd):
-    return run_git(["diff", "--no-ext-diff", "--no-textconv", "--no-color", "--no-renames", base, sha], cwd)
+    return run_git(
+        [
+            "diff", "--no-relative", "-O/dev/null", "--no-ext-diff", "--no-textconv", "--no-color", "--no-renames",
+            base, sha,
+        ],
+        cwd,
+    )
 
 
 def verbatim_patch_id(diff, cwd):
@@ -206,7 +246,7 @@ def patch_id(sha, cwd):
 
 def changed_names(base, sha, cwd):
     """Every path changed between `base` and `sha`, byte-exact: NUL-separated, never stripped or C-quoted."""
-    names = run_git(["-c", "core.quotePath=false", "diff", "--no-renames", "--name-only", "-z", base, sha], cwd)
+    names = run_git(["diff", "--no-relative", "--no-renames", "--name-only", "-z", base, sha], cwd)
     if names is None:
         return None
     return [os.fsdecode(name) for name in names.split(b"\0") if name]
@@ -236,11 +276,12 @@ def needs_reach(paths, subjects):
     return any(REACH_SUBJECT.match(subject.strip()) for subject in subjects)
 
 
-def required_scopes(sha, cwd, extra_subjects=()):
+def required_scopes(sha, cwd, extra_subjects=(), extra_paths=()):
     change = read_change(sha, cwd)
     if change is None:
         return SCOPES
-    paths, diff, subjects = change
+    local_paths, diff, subjects = change
+    paths = local_paths + [path for path in extra_paths if isinstance(path, str) and path not in local_paths]
     if subjects is not None:
         subjects = subjects + [subject for subject in extra_subjects if isinstance(subject, str)]
     scopes = list(BASE_SCOPES)
@@ -253,8 +294,12 @@ def required_scopes(sha, cwd, extra_subjects=()):
     return tuple(scopes)
 
 
-def reverted_commit(sha, cwd):
-    """The commit among origin/main's last REVERT_WINDOW first-parent commits that `sha` exactly reverts, or None."""
+def reverted_commit(sha, cwd, extra_paths=()):
+    """The commit among origin/main's last REVERT_WINDOW first-parent commits that `sha` exactly reverts, or None.
+
+    `extra_paths` is the file list GitHub reports; a path it names that the local diff lacks means the local
+    `origin/main` is stale, so the PR is not treated as an exact revert.
+    """
     if not supports_verbatim(git_version(cwd)):
         return None
     base = merge_base(sha, cwd)
@@ -262,6 +307,8 @@ def reverted_commit(sha, cwd):
         return None
     paths = changed_names(base, sha, cwd)
     if paths is None or any(path.startswith(REVERT_EXCLUDED_ROOT) for path in paths):
+        return None
+    if any(path not in paths for path in extra_paths):
         return None
     target = verbatim_patch_id(pr_diff(base, sha, cwd), cwd)
     if target is None:
@@ -279,14 +326,14 @@ def forward_patch_ids(paths, cwd):
     if budget <= 0:
         return None
     deadline = time.monotonic() + budget
-    log_args = ["git", "--literal-pathspecs", *RELAND_LOG_ARGS, BASE_REF, "--", *paths]
+    log_args = git_command(["--literal-pathspecs", *RELAND_LOG_ARGS, BASE_REF, "--", *paths])
     try:
-        log = subprocess.Popen(log_args, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        log = subprocess.Popen(log_args, cwd=cwd, env=git_env(), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     except OSError:
         return None
     try:
         ids = subprocess.Popen(
-            ["git", "patch-id", "--verbatim"], cwd=cwd, stdin=log.stdout,
+            git_command(["patch-id", "--verbatim"]), cwd=cwd, env=git_env(), stdin=log.stdout,
             stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
         )
     except OSError:
@@ -330,12 +377,16 @@ def parse_line(line):
 
 def read_entries(path):
     try:
-        with open(path, encoding="utf-8") as ledger:
-            lines = ledger.readlines()
+        with open(path, "rb") as ledger:
+            raw_lines = ledger.read().split(b"\n")
     except FileNotFoundError:
         return []
     entries = []
-    for number, line in enumerate(lines, start=1):
+    for number, raw in enumerate(raw_lines, start=1):
+        try:
+            line = raw.decode("utf-8")
+        except UnicodeDecodeError:
+            raise LedgerError(path, number) from None
         if not line.strip():
             continue
         entry = parse_line(line)
@@ -388,13 +439,18 @@ def unparsable_reason(error):
     )
 
 
-def head_violation(pr, sha, cwd, extra_subjects=()):
+def head_violation(pr, sha, cwd, extra_subjects=(), extra_paths=()):
     """None when the ledger backs a pass for PR `pr` at `sha` (the marker hook and the merge gate share this).
 
-    `extra_subjects` are subjects the squash commit may take that are not commits (the PR title, at merge time).
-    Every git call shares one CHECK_BUDGET_SECONDS deadline; a call that runs out fails toward more review.
+    `extra_subjects` are subjects the squash commit may take that are not commits (the PR title, at merge time);
+    `extra_paths` is GitHub's file list for the PR, unioned with the local diff so a stale `origin/main` cannot
+    narrow it. Every git call runs from the checkout's top level, whatever directory the session is in, and
+    shares one CHECK_BUDGET_SECONDS deadline; a call that runs out fails toward more review.
     """
     with check_budget(CHECK_BUDGET_SECONDS):
+        cwd = toplevel(cwd)
+        if cwd is None:
+            return "could not find this checkout's top level, so the review ledger cannot be checked"
         path = ledger_path(cwd)
         if path is None:
             return "could not find this checkout's git dir to read the review ledger"
@@ -403,10 +459,10 @@ def head_violation(pr, sha, cwd, extra_subjects=()):
         except LedgerError as error:
             return unparsable_reason(error)
         patch = patch_id(sha, cwd)
-        reason = marker_violation(entries, pr, sha, patch, required_scopes(sha, cwd, extra_subjects))
+        reason = marker_violation(entries, pr, sha, patch, required_scopes(sha, cwd, extra_subjects, extra_paths))
         if reason is None:
             return None
-        if reverted_commit(sha, cwd) is not None:
+        if reverted_commit(sha, cwd, extra_paths) is not None:
             return marker_violation(entries, pr, sha, patch, ())
         return reason
 
@@ -432,7 +488,8 @@ def record(pr, sha, verdict, scope, cwd, now):
     error = validation_error(pr, sha, verdict, scope)
     if error:
         raise ValueError(error)
-    path = ledger_path(cwd)
+    cwd = toplevel(cwd)
+    path = ledger_path(cwd) if cwd else None
     if path is None:
         raise ValueError("not inside a git checkout; run this from the repository root")
     line = format_line(pr, sha, verdict, scope, patch_id(sha, cwd), now)
