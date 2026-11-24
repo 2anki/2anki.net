@@ -137,7 +137,7 @@ describe('useCardUsage with the real session', () => {
     expect(result.current).toEqual({ ...usage(0), loading: false });
   });
 
-  it('stops loading without asking for counts when the session read fails', async () => {
+  it('reports no counts and asks for none when the session read fails', async () => {
     sessionAnswer = () => json({ message: 'down' }, 500);
     const queryClient = newClient();
 
@@ -145,7 +145,8 @@ describe('useCardUsage with the real session', () => {
       wrapper: wrapperFor(queryClient),
     });
 
-    await waitFor(() => expect(result.current?.loading).toBe(false), {
+    expect(result.current?.loading).toBe(true);
+    await waitFor(() => expect(result.current).toBeNull(), {
       timeout: 6000,
     });
     expect(usageRequests()).toBe(0);
@@ -183,6 +184,38 @@ describe('useCardUsage with the real session', () => {
 
     expect(usedAfterSignOut).not.toContain(42);
     expect(result.current?.cards_used).toBe(0);
+  });
+
+  it('returns nothing after signing out when the caller turns counts off, as search and the upload form do', async () => {
+    sessionAnswer = () => json(signedInAs(7));
+    usageAnswer = () => json(usage(42));
+    const queryClient = newClient();
+    const readsAfterSignOut: Array<number | null> = [];
+    let signedOutNow = false;
+
+    const { result } = renderHook(
+      () => {
+        const session = useUserLocals().data;
+        const value = useCardUsage(session?.user?.id != null);
+        if (signedOutNow && session?.user == null) {
+          readsAfterSignOut.push(value?.cards_used ?? null);
+        }
+        return value;
+      },
+      { wrapper: wrapperFor(queryClient) }
+    );
+    await waitFor(() => expect(result.current?.cards_used).toBe(42));
+
+    sessionAnswer = () => json(signedOut);
+    signedOutNow = true;
+    await act(async () => {
+      await queryClient.invalidateQueries({ queryKey: ['userLocals'] });
+    });
+    await waitFor(() => expect(result.current).toBeNull());
+
+    expect(readsAfterSignOut.length).toBeGreaterThan(0);
+    expect(readsAfterSignOut).toEqual(readsAfterSignOut.map(() => null));
+    expect(usageRequests()).toBe(1);
   });
 
   it('shares one request between the account menu and the upload form once the session is loaded', async () => {

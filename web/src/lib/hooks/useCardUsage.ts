@@ -14,15 +14,14 @@ export const useCardUsage = (enabled: boolean): CardUsageState | null => {
     isLoading: sessionLoading,
     isError: sessionFailed,
   } = useUserLocals();
-  const accountKnown =
-    !sessionLoading && !(sessionFailed && userLocals == null);
+  const sessionUnknown = sessionFailed && userLocals == null;
   const { data, isFetching } = useQuery({
     queryKey: [...CARD_USAGE_QUERY_KEY, userLocals?.user?.id ?? null],
     queryFn: getCardUsage,
-    enabled: enabled && accountKnown,
+    enabled: enabled && !sessionLoading && !sessionUnknown,
   });
 
-  if (!enabled) {
+  if (!enabled || sessionUnknown) {
     return null;
   }
 

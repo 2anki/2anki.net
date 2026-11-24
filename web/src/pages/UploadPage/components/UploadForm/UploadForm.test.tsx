@@ -5643,6 +5643,53 @@ describe('limit state', () => {
       expect(readUploadZoneActivity()).toBe('idle');
     });
 
+    it('reports idle for a signed-out pass holder once the session check ends', () => {
+      storePassToken('cs_zone_pass');
+      try {
+        mockUseUserLocals.mockReturnValue(sessionLoading);
+        const { rerender } = renderStable();
+        expect(readUploadZoneActivity()).toBe('busy');
+
+        setUserLocals({
+          ...anonymousData,
+          locals: {
+            ...anonymousData?.locals,
+            passKind: '24h',
+            passExpiresAt: '2099-01-01T00:00:00.000Z',
+          },
+        } as unknown as ReturnType<typeof useUserLocals>['data']);
+        rerender();
+
+        expect(readUploadZoneActivity()).toBe('idle');
+      } finally {
+        clearPassToken();
+      }
+    });
+
+    it('reports idle once the counts arrive for a signed-in pass holder', () => {
+      setUserLocals({
+        ...loggedInData,
+        locals: {
+          ...loggedInData?.locals,
+          passKind: '7d',
+          passExpiresAt: '2099-01-01T00:00:00.000Z',
+        },
+      } as unknown as ReturnType<typeof useUserLocals>['data']);
+      mockUseCardUsage.mockReturnValue(loadingCounts);
+      const { rerender } = renderStable();
+      expect(readUploadZoneActivity()).toBe('busy');
+
+      mockUseCardUsage.mockReturnValue({
+        cards_used: 250,
+        cards_limit: 100,
+        unlimited: true,
+        loading: false,
+      });
+      rerender();
+
+      expect(readUploadZoneActivity()).toBe('idle');
+    });
+
     it('reports idle for a signed-out visitor once the session settles', () => {
       mockUseUserLocals.mockReturnValue(sessionLoading);
       const { rerender } = renderStable();
