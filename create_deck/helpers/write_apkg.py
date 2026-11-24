@@ -20,8 +20,11 @@ What this module pins on top of Anki's defaults, and why:
   page order survives too.
 - A note whose `mod` is pinned gets it written after the add, because the add
   itself always stamps the current time.
-- Media is copied into the collection's media folder under its own basename.
-  Anki then packages every file a note or template actually references.
+- Media is copied into the collection's media folder under its own basename
+  when Anki accepts that name. A name Anki would refuse (helpers/media_names)
+  is stored under the name Anki gives it, and the note fields are pointed at
+  that name before the notes are added. Anki then packages every file a note
+  or template actually references.
 """
 
 import os
@@ -33,9 +36,21 @@ import unicodedata
 import uuid
 
 from anki.collection import AddNoteRequest, Collection, ExportAnkiPackageOptions
+from anki.errors import BackendError, InvalidInput
 from anki.notes import Note
 
+from helpers.media_names import (
+    anki_stored_names,
+    is_accepted,
+    is_plain_name,
+    rewrite_name_list,
+    rewrite_references,
+    store_renamed,
+)
+
 FIRST_CARD_POSITION = 1
+MEDIA_LIST_FIELD = "MyMedia"
+MEDIA_NOTICE_PREFIX = "[media-names]"
 NEXT_CARD_POSITION_KEY = "nextPos"
 
 EXPORT_OPTIONS = ExportAnkiPackageOptions(
@@ -85,12 +100,26 @@ def _add_deck(collection, deck_payload):
     return deck["id"]
 
 
-def _add_notes(collection, deck_id, n2a_notes, registered):
+def _renamed_fields(n2a_note, renames):
+    if not renames:
+        return list(n2a_note.fields)
+    field_names = [entry["name"] for entry in n2a_note.model.fields]
+    renamed = []
+    for index, value in enumerate(n2a_note.fields):
+        is_name_list = index < len(field_names) and field_names[index] == MEDIA_LIST_FIELD
+        if is_name_list:
+            renamed.append(rewrite_name_list(value, renames))
+        else:
+            renamed.append(rewrite_references(value, renames))
+    return renamed
+
+
+def _add_notes(collection, deck_id, n2a_notes, registered, renames):
     requests = []
     for n2a_note in n2a_notes:
         notetype = _register_notetype(collection, registered, n2a_note.model)
         note = Note(collection, model=notetype)
-        note.fields = list(n2a_note.fields)
+        note.fields = _renamed_fields(n2a_note, renames)
         note.tags = list(n2a_note.tags)
         if n2a_note.guid:
             note.guid = n2a_note.guid
@@ -116,9 +145,9 @@ def _normalize_media_entry(entry):
     return entry, os.path.basename(entry)
 
 
-def _copy_media(collection, media_files):
-    media_dir = collection.media.dir()
+def _sources_by_name(media_files):
     cwd_real = os.path.realpath(os.getcwd())
+    sources = {}
     for source_path, bundled_name in media_files:
         source_real = os.path.realpath(source_path)
         if source_real != cwd_real and not source_real.startswith(cwd_real + os.sep):
@@ -127,27 +156,103 @@ def _copy_media(collection, media_files):
                 file=sys.stderr,
             )
             continue
-        shutil.copyfile(source_real, os.path.join(media_dir, bundled_name))
+        sources[bundled_name] = source_real
+    return sources
+
+
+def _copy_media(collection, media_files):
+    """
+    Copy every media file into the collection and return {bundled name: new
+    name} for the files Anki would refuse under their own name. Names Anki
+    accepts are copied first and unchanged, so a renamed file can never take
+    the name of a file that already had it.
+    """
+    media_dir = collection.media.dir()
+    sources = _sources_by_name(media_files)
+    stored_names = anki_stored_names(
+        [name for name in sources if not is_plain_name(name)]
+    )
+    refused = [
+        name for name in stored_names if not is_accepted(name, stored_names[name])
+    ]
+    refused_names = set(refused)
+    for name, source in sources.items():
+        if name not in refused_names:
+            shutil.copyfile(source, os.path.join(media_dir, name))
+    renames = {}
+    for name in refused:
+        with open(sources[name], "rb") as handle:
+            data = handle.read()
+        renames[name] = store_renamed(collection, name, stored_names[name], data)
+    if renames:
+        print(
+            f"{MEDIA_NOTICE_PREFIX} renamed {len(renames)} media file(s) to names Anki accepts",
+            file=sys.stderr,
+        )
+    return renames
 
 
 def fill_collection(collection, deck_payloads, media_files):
-    """Add every deck, notetype, note and media file to the collection."""
+    """
+    Add every deck, notetype, note and media file to the collection. Returns
+    the (mod, note id) pairs that pin a note's mod.
+    """
     collection.models.remove_all_notetypes()
     collection.set_config(NEXT_CARD_POSITION_KEY, FIRST_CARD_POSITION)
+    renames = _copy_media(collection, media_files)
 
     registered = {}
     pinned_mods = []
     for deck_payload in deck_payloads:
         deck_id = _add_deck(collection, deck_payload)
         pinned_mods.extend(
-            _add_notes(collection, deck_id, deck_payload["notes"], registered)
+            _add_notes(collection, deck_id, deck_payload["notes"], registered, renames)
         )
 
+    _pin_mods(collection, pinned_mods)
+    return pinned_mods
+
+
+def _pin_mods(collection, pinned_mods):
     if pinned_mods:
         collection.db.executemany(
             "update notes set mod = ? where id = ?", pinned_mods
         )
-    _copy_media(collection, media_files)
+
+
+def _export(collection, out_path):
+    collection.export_anki_package(
+        out_path=out_path, options=EXPORT_OPTIONS, limit=None
+    )
+
+
+def _run_media_check(collection, pinned_mods):
+    media_dir = collection.media.dir()
+    before = set(os.listdir(media_dir))
+    collection.media.check()
+    _pin_mods(collection, pinned_mods)
+    return len(before - set(os.listdir(media_dir)))
+
+
+def export_package(collection, out_path, pinned_mods):
+    """
+    Export the collection. If Anki still refuses a media name, run its own
+    media check (which renames the files and the references to them), restore
+    the pinned note mods the check overwrote, and export once more.
+    """
+    try:
+        _export(collection, out_path)
+    except InvalidInput as export_error:
+        try:
+            renamed = _run_media_check(collection, pinned_mods)
+        except (BackendError, OSError) as check_error:
+            raise export_error from check_error
+        print(
+            f"{MEDIA_NOTICE_PREFIX} export refused a media name; Anki's media check "
+            f"renamed {renamed} media file(s) and the export was retried",
+            file=sys.stderr,
+        )
+        _export(collection, out_path)
 
 
 def write_package_to_temp_file(deck_payloads, media_files):
@@ -162,10 +267,8 @@ def write_package_to_temp_file(deck_payloads, media_files):
     try:
         collection = Collection(os.path.join(collection_dir, "collection.anki2"))
         try:
-            fill_collection(collection, deck_payloads, media_files)
-            collection.export_anki_package(
-                out_path=temp_path, options=EXPORT_OPTIONS, limit=None
-            )
+            pinned_mods = fill_collection(collection, deck_payloads, media_files)
+            export_package(collection, temp_path, pinned_mods)
         finally:
             collection.close()
     except Exception as e:

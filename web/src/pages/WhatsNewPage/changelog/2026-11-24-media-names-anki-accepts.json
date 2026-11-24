@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-24-media-names-anki-accepts",
+  "date": "2026-11-24",
+  "type": "fix",
+  "title": "Decks whose images have brackets, colons, question marks or very long file names download with every picture in place"
+}

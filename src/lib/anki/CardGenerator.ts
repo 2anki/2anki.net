@@ -1,5 +1,6 @@
 import { existsSync, writeFileSync } from 'node:fs';
 import { deckWriterEnv } from './deckWriterEnv';
+import { logMediaNameNotices } from './logMediaNameNotices';
 import { execFileSync, spawn } from 'node:child_process';
 import { homedir } from 'node:os';
 import path from 'node:path';
@@ -140,6 +141,7 @@ class CardGenerator {
             })
           );
         }
+        logMediaNameNotices(stderrData.join(''));
         const output = stdoutData.join('').trim();
         const lastLine = output.split('\n').pop();
         if (!lastLine?.endsWith('.apkg')) {
@@ -208,6 +210,7 @@ class CardGenerator {
             })
           );
         }
+        logMediaNameNotices(stderrData.join(''));
         const lines = stdoutData
           .join('')
           .split('\n')
