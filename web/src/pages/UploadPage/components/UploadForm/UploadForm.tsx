@@ -4296,7 +4296,7 @@ function UploadForm({
   const renderHeldForSignupState = () =>
     heldDeck == null ? null : (
       <div className={formStyles.stateContent}>
-        <AnonymousPartialGate held={heldDeck} passFirst={passFirst} />
+        <AnonymousPartialGate held={heldDeck} />
       </div>
     );
 
@@ -4741,7 +4741,10 @@ function UploadForm({
         { total: heldDeck.totalCards }
       )}`;
     }
-    if (zoneState === 'heldForSignup' && heldDeck != null && passFirst) {
+    if (
+      zoneState === 'heldForSignup' &&
+      heldDeck?.passFirstArm === 'pass_first'
+    ) {
       return `${t('passFirst:readyTotal', { total: heldDeck.totalCards })}. ${t(
         'passFirst:gateBody',
         { cap: ANONYMOUS_CARD_CAP }

@@ -5166,6 +5166,7 @@ describe('held-deck gate screen-reader announcement', () => {
     cardsHeldBack: number;
     totalCards: number;
     cookieMinted?: boolean;
+    passFirstArm?: 'control' | 'pass_first';
   }) {
     vi.stubGlobal(
       'fetch',
@@ -5183,6 +5184,7 @@ describe('held-deck gate screen-reader announcement', () => {
     cardsHeldBack: number;
     totalCards: number;
     cookieMinted?: boolean;
+    passFirstArm?: 'control' | 'pass_first';
   }) {
     stubHeldFetch(held);
     const { container } = renderUploadForm(
@@ -5238,21 +5240,12 @@ describe('held-deck gate screen-reader announcement', () => {
 
     it('announces the cookie loss on the pass-first gate too', async () => {
       clearAnonIdCookie();
-      mockUseUserLocals.mockReturnValue({
-        data: {
-          ...anonymousLocals,
-          features: { kiUI: false, limitWallPassFirst: true },
-        },
-        isLoading: false,
-        error: null,
-        isError: false,
-        refetch: vi.fn(),
-      } as unknown as ReturnType<typeof useUserLocals>);
       const container = await submitHeld({
         cardCount: 21,
         cardsHeldBack: 13,
         totalCards: 34,
         cookieMinted: true,
+        passFirstArm: 'pass_first',
       });
       await waitFor(() => {
         const live = container.querySelector('output[aria-live="polite"]');
@@ -5291,21 +5284,30 @@ describe('held-deck gate screen-reader announcement', () => {
     });
   });
 
-  it('shows the pass-first gate and announces the preview, not the free month, when the flag is on', async () => {
-    mockUseUserLocals.mockReturnValue({
-      data: {
-        ...anonymousLocals,
-        features: { kiUI: false, limitWallPassFirst: true },
-      },
-      isLoading: false,
-      error: null,
-      isError: false,
-      refetch: vi.fn(),
-    } as unknown as ReturnType<typeof useUserLocals>);
+  it('keeps the sign-up-first gate for a hold the server put in the control arm', async () => {
+    const container = await submitHeld({
+      cardCount: 21,
+      cardsHeldBack: 100,
+      totalCards: 121,
+      passFirstArm: 'control',
+    });
+    await waitFor(() => {
+      const live = container.querySelector('output[aria-live="polite"]');
+      expect(live?.textContent).toBe(
+        'All 121 cards are ready. A Day Pass gets all of them now, or a free account gets the first 100.'
+      );
+    });
+    expect(
+      screen.queryByRole('button', { name: /Semester Pass/ })
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows the pass-first gate and announces the preview, not the free month, for a hold in the pass-first arm', async () => {
     const container = await submitHeld({
       cardCount: 21,
       cardsHeldBack: 163,
       totalCards: 184,
+      passFirstArm: 'pass_first',
     });
     await waitFor(() => {
       const live = container.querySelector('output[aria-live="polite"]');

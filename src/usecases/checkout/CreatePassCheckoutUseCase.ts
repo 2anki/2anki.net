@@ -3,6 +3,7 @@ import type { PassKind } from '../../data_layer/UserPassRepository';
 import { anonIdConsentMetadata, optionalMetadata } from './checkoutMetadata';
 import type { AdClickAttribution } from '../../lib/attribution/adClick';
 import { createCheckoutSession } from './createCheckoutSession';
+import type { PassFirstTestArm } from '../../lib/upload/passFirstArm';
 import {
   CheckoutCustomerRefresher,
   recoverWith,
@@ -31,6 +32,7 @@ export class CreatePassCheckoutUseCase {
     gaClientId?: string;
     gaSessionId?: string;
     adClick?: AdClickAttribution;
+    passFirstArm?: PassFirstTestArm;
   }): Promise<CreatePassCheckoutResult> {
     const appUrl = process.env.APP_URL ?? 'https://2anki.net';
     const isAnonymous = input.userId == null;
@@ -53,6 +55,7 @@ export class CreatePassCheckoutUseCase {
         surface: input.surface,
         ga_client_id: input.gaClientId,
         ga_session_id: input.gaSessionId,
+        pass_first_arm: input.passFirstArm,
         ...input.adClick,
       }),
       anonIdConsentMetadata(input.anonIdTrackingAllowed === true)

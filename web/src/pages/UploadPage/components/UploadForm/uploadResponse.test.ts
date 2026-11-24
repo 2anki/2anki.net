@@ -251,6 +251,45 @@ describe('applyConversionSuccess', () => {
     });
   });
 
+  it.each(['control', 'pass_first'])(
+    'keeps the %s arm the server assigned to the hold',
+    async (arm) => {
+      const handlers = buildHandlers();
+
+      await applyConversionSuccess(
+        heldWithPreview({ passFirstArm: arm }),
+        handlers
+      );
+
+      expect(handlers.setHeldDeck).toHaveBeenCalledWith({
+        cardCount: 21,
+        cardsHeldBack: 13,
+        totalCards: 34,
+        dayPassCard: false,
+        passFirstArm: arm,
+      });
+    }
+  );
+
+  it.each([['treatment'], ['off'], [true]])(
+    'drops an arm the pass-first test never assigns (%s)',
+    async (arm) => {
+      const handlers = buildHandlers();
+
+      await applyConversionSuccess(
+        heldWithPreview({ passFirstArm: arm }),
+        handlers
+      );
+
+      expect(handlers.setHeldDeck).toHaveBeenCalledWith({
+        cardCount: 21,
+        cardsHeldBack: 13,
+        totalCards: 34,
+        dayPassCard: false,
+      });
+    }
+  );
+
   it('does not fire conversion_success on the single-deck success path', async () => {
     const gtag = (globalThis as AnalyticsGlobals).gtag!;
     const hj = (globalThis as AnalyticsGlobals).hj!;

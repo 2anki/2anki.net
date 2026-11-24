@@ -1105,6 +1105,70 @@ describe('WebhookRouter — checkout_completed funnel join', () => {
     );
   });
 
+  it.each(['control', 'pass_first'])(
+    'carries the %s arm of the pass-first test from session metadata onto checkout_completed',
+    async (arm) => {
+      mockWebhookEvent = {
+        type: 'checkout.session.completed',
+        data: {
+          object: {
+            id: 'cs_pass_first',
+            mode: 'payment',
+            metadata: {
+              pass_kind: '24h',
+              pass_anonymous: '1',
+              surface: 'anonymous-gate',
+              pass_first_arm: arm,
+            },
+          },
+        },
+      };
+
+      const res = await postWebhook();
+      expect(res.status).toBe(200);
+      expect(mockTrack).toHaveBeenCalledWith(
+        'checkout_completed',
+        expect.objectContaining({
+          props: expect.objectContaining({
+            surface: 'anonymous-gate',
+            pass_first_arm: arm,
+          }),
+        })
+      );
+    }
+  );
+
+  it.each([
+    ['no arm', {}],
+    ['an arm the test never assigns', { pass_first_arm: 'treatment' }],
+  ])(
+    'puts no pass-first arm on checkout_completed for a session with %s',
+    async (_label, extra) => {
+      mockWebhookEvent = {
+        type: 'checkout.session.completed',
+        data: {
+          object: {
+            id: 'cs_no_arm',
+            mode: 'payment',
+            metadata: {
+              pass_kind: '24h',
+              pass_anonymous: '1',
+              surface: 'anonymous-gate',
+              ...extra,
+            },
+          },
+        },
+      };
+
+      const res = await postWebhook();
+      expect(res.status).toBe(200);
+      const call = mockTrack.mock.calls.find(
+        ([name]) => name === 'checkout_completed'
+      );
+      expect(call?.[1].props).not.toHaveProperty('pass_first_arm');
+    }
+  );
+
   it('emits checkout_completed with the interval a subscription was bought on', async () => {
     mockWebhookEvent = {
       type: 'checkout.session.completed',

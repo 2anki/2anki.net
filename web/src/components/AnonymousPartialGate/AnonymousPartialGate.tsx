@@ -20,7 +20,12 @@ const SURFACE = HELD_DECK_CHECKOUT_SURFACE;
 
 interface Props {
   readonly held: HeldDeckState;
-  readonly passFirst?: boolean;
+}
+
+function passFirstArmProps(held: HeldDeckState): {
+  pass_first_arm?: 'control' | 'pass_first';
+} {
+  return held.passFirstArm == null ? {} : { pass_first_arm: held.passFirstArm };
 }
 
 function errorText(error: unknown): string {
@@ -110,7 +115,13 @@ function HeldDeckSummary({
   );
 }
 
-function FreeSignupLink({ monthly }: { readonly monthly: number }) {
+function FreeSignupLink({
+  monthly,
+  held,
+}: {
+  readonly monthly: number;
+  readonly held: HeldDeckState;
+}) {
   const { t } = useTranslation('anonymousPartial');
   return (
     <p className={styles.freeLink}>
@@ -120,6 +131,7 @@ function FreeSignupLink({ monthly }: { readonly monthly: number }) {
           track('paywall_upgrade_clicked', {
             surface: SURFACE,
             plan: 'free_signup',
+            ...passFirstArmProps(held),
           })
         }
       >
@@ -160,6 +172,7 @@ function PassFirstGate({
             track('paywall_upgrade_clicked', {
               surface: SURFACE,
               plan: 'free_signup',
+              ...passFirstArmProps(held),
             })
           }
         >
@@ -171,6 +184,7 @@ function PassFirstGate({
             track('paywall_upgrade_clicked', {
               surface: SURFACE,
               plan: 'sign_in',
+              ...passFirstArmProps(held),
             })
           }
         >
@@ -181,7 +195,7 @@ function PassFirstGate({
   );
 }
 
-export function AnonymousPartialGate({ held, passFirst = false }: Props) {
+export function AnonymousPartialGate({ held }: Props) {
   const { t } = useTranslation('anonymousPartial');
   const shownRef = useRef(false);
   const [error, setError] = useState('');
@@ -195,10 +209,11 @@ export function AnonymousPartialGate({ held, passFirst = false }: Props) {
     track('anonymous_partial_gate_shown', {
       cards_held_back: held.cardsHeldBack,
       ...(cookieLost ? { cookie_lost: true } : {}),
+      ...passFirstArmProps(held),
     });
-  }, [held.cardsHeldBack, cookieLost]);
+  }, [held, cookieLost]);
 
-  if (passFirst) {
+  if (held.passFirstArm === 'pass_first') {
     return <PassFirstGate held={held} cookieLost={cookieLost} />;
   }
 
@@ -265,7 +280,7 @@ export function AnonymousPartialGate({ held, passFirst = false }: Props) {
       ) : (
         <>
           {dayPassOffer}
-          <FreeSignupLink monthly={FREE_MONTHLY_CARDS} />
+          <FreeSignupLink monthly={FREE_MONTHLY_CARDS} held={held} />
         </>
       )}
     </section>

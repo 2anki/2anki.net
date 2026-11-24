@@ -342,6 +342,28 @@ describe('CreatePassCheckoutUseCase', () => {
       const call = mockStripeCreateSession.mock.calls[0][0];
       expect(call.metadata.surface).toBeUndefined();
     });
+
+    it('stamps the pass-first arm beside the surface and changes nothing else', async () => {
+      mockStripeCreateSession.mockResolvedValue({
+        url: 'https://checkout.stripe.com/s',
+      });
+
+      const uc = new CreatePassCheckoutUseCase(
+        makeStripe(),
+        'price_24h',
+        '24h'
+      );
+      await uc.execute({ surface: 'anonymous-gate', passFirstArm: 'control' });
+
+      const call = mockStripeCreateSession.mock.calls[0][0];
+      expect(call.metadata).toEqual({
+        pass_kind: '24h',
+        pass_anonymous: '1',
+        surface: 'anonymous-gate',
+        pass_first_arm: 'control',
+      });
+      expect(call.line_items).toEqual([{ price: 'price_24h', quantity: 1 }]);
+    });
   });
 
   describe('anonymous mode (no userId / no userEmail)', () => {

@@ -56,7 +56,12 @@ export class ClaimHeldDeckController {
         track('anonymous_partial_claimed', {
           userId: Number(owner),
           anonymousId: analyticsAnonId(req, anonIdCookie(req)),
-          props: { arm: 'treatment' },
+          props: {
+            arm: 'treatment',
+            ...(result.passFirstArm == null
+              ? {}
+              : { pass_first_arm: result.passFirstArm }),
+          },
         });
       }
       return res.status(200).json({

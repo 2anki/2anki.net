@@ -27,6 +27,8 @@ export type ZoneState =
   | 'aiPreviewGate'
   | 'choosePdfMode';
 
+export type PassFirstArm = 'control' | 'pass_first';
+
 export interface HeldDeckState {
   cardCount: number;
   cardsHeldBack: number;
@@ -35,6 +37,7 @@ export interface HeldDeckState {
   savedForHours?: number;
   dayPassCard?: boolean;
   cookieMinted?: boolean;
+  passFirstArm?: PassFirstArm;
 }
 
 export interface AiPreviewCard {

@@ -4,6 +4,12 @@ import geoip from 'geoip-lite';
 import PassCheckoutController from './PassCheckoutController';
 import { CreatePassCheckoutUseCase } from '../usecases/checkout/CreatePassCheckoutUseCase';
 import type { PassKind } from '../data_layer/UserPassRepository';
+import {
+  __resetFeatureFlagModuleForTests,
+  __setFeatureFlagDependencies,
+} from '../lib/featureFlags/getFeatureFlag';
+import { LIMIT_WALL_PASS_FIRST_FLAG } from '../lib/featureFlags/limitWallPassFirst';
+import { resolvePassFirstArm } from '../lib/upload/passFirstArm';
 
 vi.mock('geoip-lite', () => ({ default: { lookup: vi.fn() } }));
 
@@ -250,6 +256,110 @@ describe('PassCheckoutController', () => {
     ).rejects.toThrow('stripe down');
 
     expect(record).not.toHaveBeenCalled();
+  });
+});
+
+describe('PassCheckoutController pass-first split test', () => {
+  const PASS_FIRST_ANON = 'fresh-anon';
+  const CONTROL_ANON = 'golden-anon';
+
+  function flagOn(on: boolean) {
+    __setFeatureFlagDependencies({
+      repository: {
+        getAll: () => Promise.resolve([]),
+        get: (key: string) =>
+          Promise.resolve(key === LIMIT_WALL_PASS_FIRST_FLAG ? on : null),
+        set: () => Promise.resolve(null),
+      },
+    });
+  }
+
+  afterEach(() => __resetFeatureFlagModuleForTests());
+
+  it('uses one anon id from each arm', () => {
+    expect(resolvePassFirstArm(PASS_FIRST_ANON, true)).toBe('pass_first');
+    expect(resolvePassFirstArm(CONTROL_ANON, true)).toBe('control');
+  });
+
+  it.each([
+    [
+      'a signed-out pass-first visitor on the held-deck gate',
+      PASS_FIRST_ANON,
+      {},
+      'anonymous-gate',
+      'pass_first',
+    ],
+    [
+      'a signed-out control visitor on the held-deck gate',
+      CONTROL_ANON,
+      {},
+      'anonymous-gate',
+      'control',
+    ],
+    [
+      'a pass-first sign-up on the 21-card claim offer',
+      PASS_FIRST_ANON,
+      { owner: 42, email: 'a@b.test' },
+      'held-preview',
+      'pass_first',
+    ],
+  ])(
+    'tags the checkout of %s with the arm the server assigns',
+    async (_label, anonId, locals, surface, arm) => {
+      flagOn(true);
+      const execute = resolving();
+      const { controller, record } = makeController(execute);
+      const req = {
+        cookies: { anon_id: anonId },
+        body: { surface, pass_first_arm: 'control', passFirstArm: 'control' },
+      } as never;
+
+      await controller.createSession(req, makeRes(locals));
+
+      expect(execute).toHaveBeenCalledWith(
+        expect.objectContaining({ surface, passFirstArm: arm })
+      );
+      expect(recordedProps(record)).toMatchObject({
+        surface,
+        pass_first_arm: arm,
+      });
+    }
+  );
+
+  it('puts a held-deck checkout with no anon id in control', async () => {
+    flagOn(true);
+    const execute = resolving();
+    const { controller, record } = makeController(execute);
+
+    await controller.createSession(
+      { body: { surface: 'anonymous-gate' } } as never,
+      makeRes({})
+    );
+
+    expect(execute).toHaveBeenCalledWith(
+      expect.objectContaining({ passFirstArm: 'control' })
+    );
+    expect(recordedProps(record)).toMatchObject({ pass_first_arm: 'control' });
+  });
+
+  it.each([
+    ['the flag is off', false, 'anonymous-gate'],
+    ['the checkout is not from a held deck', true, 'limit'],
+  ])('tags nothing when %s', async (_label, on, surface) => {
+    flagOn(on);
+    const execute = resolving();
+    const { controller, record } = makeController(execute);
+
+    await controller.createSession(
+      {
+        cookies: { anon_id: PASS_FIRST_ANON },
+        body: { surface, pass_first_arm: 'pass_first' },
+      } as never,
+      makeRes({})
+    );
+
+    expect(execute.mock.calls[0][0].passFirstArm).toBeUndefined();
+    expect(recordedProps(record)).not.toHaveProperty('pass_first_arm');
   });
 });
 

@@ -229,7 +229,7 @@ exports[`what each population gets back from /api/upload/file > signed-out over 
 }
 `;
 
-exports[`what each population gets back from /api/upload/file > signed-out over the cap, pass-first wall on 1`] = `
+exports[`what each population gets back from /api/upload/file > signed-out over the cap, pass-first test on, control arm 1`] = `
 {
   "body": {
     "cardCount": 21,
@@ -237,6 +237,29 @@ exports[`what each population gets back from /api/upload/file > signed-out over 
     "dayPassCard": true,
     "deckName": "Golden Large",
     "kind": "held",
+    "passFirstArm": "control",
+    "savedForHours": 24,
+    "totalCards": 120,
+  },
+  "cardsCharged": [],
+  "contentType": "application/json",
+  "headers": {},
+  "status": 200,
+  "storedObjects": [
+    "held source file",
+  ],
+}
+`;
+
+exports[`what each population gets back from /api/upload/file > signed-out over the cap, pass-first test on, pass-first arm 1`] = `
+{
+  "body": {
+    "cardCount": 21,
+    "cardsHeldBack": 99,
+    "dayPassCard": true,
+    "deckName": "Golden Large",
+    "kind": "held",
+    "passFirstArm": "pass_first",
     "savedForHours": 24,
     "totalCards": 120,
   },

@@ -358,6 +358,14 @@ const signedOut: Population = {
   flags: {},
 };
 
+const PASS_FIRST_ANON = 'golden-pass-first';
+
+const signedOutPassFirstArm: Population = {
+  ...signedOut,
+  cookies: { anon_id: PASS_FIRST_ANON },
+  flags: { [LIMIT_WALL_PASS_FIRST_FLAG]: true },
+};
+
 const signedInFree: Population = {
   locals: { owner: OWNER, patreon: false, subscriber: false },
   cookies: { token: 'session', anon_id: 'golden-anon' },
@@ -379,7 +387,12 @@ const cases: [string, keyof typeof UPLOADS, Population][] = [
   ['signed-out under the anonymous cap', 'small', signedOut],
   ['signed-out over the cap', 'large', signedOut],
   [
-    'signed-out over the cap, pass-first wall on',
+    'signed-out over the cap, pass-first test on, pass-first arm',
+    'large',
+    signedOutPassFirstArm,
+  ],
+  [
+    'signed-out over the cap, pass-first test on, control arm',
     'large',
     { ...signedOut, flags: { [LIMIT_WALL_PASS_FIRST_FLAG]: true } },
   ],
@@ -1641,10 +1654,7 @@ describe('a plan hold claimed after paying', () => {
 
   it('saves the deck of a pass-first claim with no free cards left at the cap', async () => {
     await seedWaitingPlanHolds(MAX_PLAN_HOLDS);
-    await upload('large', {
-      ...signedOut,
-      flags: { [LIMIT_WALL_PASS_FIRST_FLAG]: true },
-    });
+    await upload('large', signedOutPassFirstArm);
     population = { ...signedInFree, cardsUsed: 100 };
 
     await expect(
@@ -1654,7 +1664,7 @@ describe('a plan hold claimed after paying', () => {
         goldenService(),
         () => Promise.resolve(true)
       ).execute({
-        anonId: 'golden-anon',
+        anonId: PASS_FIRST_ANON,
         owner: String(OWNER),
         paying: false,
         requestId: 'golden-signup-claim',
@@ -1716,15 +1726,13 @@ describe('a plan hold claimed after paying', () => {
     expect(heldDecks.rows[0].card_options ?? {}).not.toHaveProperty('files');
   }, 20_000);
 
-  it('keeps the options of a pass-first sign-up claim for the later plan claim', async () => {
+  it('releases the free month, not the preview, to a control sign-up while the pass-first test runs', async () => {
     await upload('large', {
       ...signedOut,
       flags: { [LIMIT_WALL_PASS_FIRST_FLAG]: true },
     });
-    population = {
-      ...signedInFree,
-      accountCardOptions: { reversed: 'true', 'font-size': '32' },
-    };
+    population = signedInFree;
+
     const signupClaim = await new ClaimHeldDeckUseCase(
       heldDecks,
       new StorageHandler(),
@@ -1736,11 +1744,43 @@ describe('a plan hold claimed after paying', () => {
       paying: false,
       requestId: 'golden-signup-claim',
     });
+
+    expect(signupClaim).toMatchObject({
+      kind: 'signup',
+      cardCount: 100,
+      cutAt: 'month',
+      passFirstArm: 'control',
+    });
+  }, 20_000);
+
+  it('keeps the options of a pass-first sign-up claim for the later plan claim', async () => {
+    await upload('large', signedOutPassFirstArm);
+    population = {
+      ...signedInFree,
+      accountCardOptions: { reversed: 'true', 'font-size': '32' },
+    };
+    const signupClaim = await new ClaimHeldDeckUseCase(
+      heldDecks,
+      new StorageHandler(),
+      goldenService(),
+      () => Promise.resolve(true)
+    ).execute({
+      anonId: PASS_FIRST_ANON,
+      owner: String(OWNER),
+      paying: false,
+      requestId: 'golden-signup-claim',
+    });
     const planHold = heldDecks.rows.find((row) =>
       row.anon_id.startsWith('plan:')
     );
 
-    expect(signupClaim).toMatchObject({ kind: 'signup', heldForPlan: true });
+    expect(signupClaim).toMatchObject({
+      kind: 'signup',
+      heldForPlan: true,
+      cutAt: 'preview',
+      cardCount: 21,
+      passFirstArm: 'pass_first',
+    });
     expect(planHold?.card_options).toMatchObject({
       reversed: 'true',
       'font-size': '32',

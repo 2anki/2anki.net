@@ -52,6 +52,12 @@ vi.mock('../lib/featureFlags/getFeatureFlag', () => ({
   getFeatureFlag: (...args: unknown[]) => mockGetFeatureFlag(...args),
 }));
 
+function everyFlagOnButThePassFirstTest() {
+  mockGetFeatureFlag.mockImplementation((key: unknown) =>
+    Promise.resolve(key !== LIMIT_WALL_PASS_FIRST_FLAG)
+  );
+}
+
 // A blank location resolves to the working directory, so a conversion that
 // writes into its workspace would drop files into the repo root.
 let mockWorkspaceLocation = fs.mkdtempSync(
@@ -136,6 +142,7 @@ import UploadService, {
 } from './UploadService';
 import { anonRecoveryKey } from '../lib/upload/anonymousRecovery';
 import { LIMIT_WALL_PASS_FIRST_FLAG } from '../lib/featureFlags/limitWallPassFirst';
+import { resolvePassFirstArm } from '../lib/upload/passFirstArm';
 import { previewHoldKey } from '../lib/upload/anonymousAiPreview';
 import { AiPreviewRateLimiter } from '../lib/upload/aiPreviewRateLimiter';
 import { ASYNC_PDF_MIN_BYTES } from '../lib/upload/asyncSlowUploads';
@@ -8678,7 +8685,7 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
   });
 
   it('holds the deck behind an account step', async () => {
-    mockGetFeatureFlag.mockResolvedValue(true);
+    everyFlagOnButThePassFirstTest();
     const execute = mockPartial([{ name: 'deck', cardCount: 21 }], 13);
     const heldDeck = new InMemoryHeldDeckRepository();
     const req = buildEligibleRequest(TREATMENT_ID);
@@ -8827,7 +8834,7 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
   });
 
   it('holds a single zip upload', async () => {
-    mockGetFeatureFlag.mockResolvedValue(true);
+    everyFlagOnButThePassFirstTest();
     const execute = mockPartial([{ name: 'deck', cardCount: 21 }], 13);
     const heldDeck = new InMemoryHeldDeckRepository();
     const req = buildRequest({
@@ -9787,7 +9794,7 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
   });
 
   it('holds an over-cap upload whose anonymous id was minted on this request', async () => {
-    mockGetFeatureFlag.mockResolvedValue(true);
+    everyFlagOnButThePassFirstTest();
     const execute = mockPartial([{ name: 'deck', cardCount: 21 }], 9);
     const heldDeck = new InMemoryHeldDeckRepository();
     const req = buildEligibleRequest();
@@ -10129,25 +10136,31 @@ describe('UploadService.handleSyncUpload — held deck after the preview cards t
       expect(recoveryKeysStored()).toEqual([]);
       expect(heldEventProps()).not.toHaveProperty('preview_cards_arm');
       expect(heldEventProps()).not.toHaveProperty('preview_cards_delivered');
+      expect(heldEventProps()).not.toHaveProperty('pass_first_arm');
     }
   );
 
-  it('holds the full deck the same way while the pass-first wall is on', async () => {
-    flagsOn(LIMIT_WALL_PASS_FIRST_FLAG);
-    heldPackages();
-    const heldDeck = new InMemoryHeldDeckRepository();
-    const { res, capturedStatus, capturedJson } = buildResponse();
+  it.each([
+    ['pass-first', 'anon-split-1', 'pass_first'],
+    ['control', 'anon-split-2', 'control'],
+  ])(
+    'holds the full deck the same way for the %s arm of the split test and names the arm',
+    async (_label, anonId, arm) => {
+      expect(resolvePassFirstArm(anonId, true)).toBe(arm);
+      flagsOn(LIMIT_WALL_PASS_FIRST_FLAG);
+      heldPackages();
+      const heldDeck = new InMemoryHeldDeckRepository();
+      const { res, capturedStatus, capturedJson } = buildResponse();
 
-    await serviceUnderTest(heldDeck).handleUpload(
-      heldRequest(FORMER_TREATMENT_ID),
-      res
-    );
+      await serviceUnderTest(heldDeck).handleUpload(heldRequest(anonId), res);
 
-    expect(capturedStatus()).toBe(200);
-    expect(capturedJson()).toEqual(HELD_BODY);
-    expect(heldDeck.rows).toHaveLength(1);
-    expect(recoveryKeysStored()).toEqual([]);
-  });
+      expect(capturedStatus()).toBe(200);
+      expect(capturedJson()).toEqual({ ...HELD_BODY, passFirstArm: arm });
+      expect(heldDeck.rows).toHaveLength(1);
+      expect(recoveryKeysStored()).toEqual([]);
+      expect(heldEventProps()).toMatchObject({ pass_first_arm: arm });
+    }
+  );
 });
 
 describe('UploadService.respondToBrokenUpload', () => {

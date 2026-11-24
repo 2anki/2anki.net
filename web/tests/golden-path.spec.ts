@@ -473,6 +473,85 @@ test.describe('golden path @golden', () => {
     expect(realErrors(errors)).toEqual([]);
   });
 
+  for (const arm of ['pass_first', 'control'] as const) {
+    test(`the held-deck gate for the ${arm} arm of the pass-first test renders its wall and names the arm at 375px`, async ({
+      page,
+    }) => {
+      const errors = collectConsoleErrors(page);
+      const gateShown: unknown[] = [];
+      await mockBackend(page);
+      await page.route('**/api/events/track', async (route) => {
+        const body = route.request().postDataJSON() as {
+          name: string;
+          props?: unknown;
+        };
+        if (body.name === 'anonymous_partial_gate_shown') {
+          gateShown.push(body.props);
+        }
+        await route.fulfill({ status: 204 });
+      });
+      await page.route('**/api/users/debug/locals**', (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ locals: {}, user: {}, features: {} }),
+        })
+      );
+      await page.route('**/api/upload/file', (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            kind: 'held',
+            cardCount: 21,
+            cardsHeldBack: 163,
+            totalCards: 184,
+            deckName: 'Organic Chemistry Ch. 4',
+            savedForHours: 24,
+            dayPassCard: true,
+            passFirstArm: arm,
+          }),
+        })
+      );
+
+      await page.goto('/upload');
+      await page.setInputFiles('#pakker', {
+        name: 'notes.txt',
+        mimeType: 'text/plain',
+        buffer: Buffer.from('notes'),
+      });
+
+      if (arm === 'pass_first') {
+        await expect(
+          page.getByText('184 cards ready', { exact: true })
+        ).toBeVisible({ timeout: 10_000 });
+        await expect(
+          page.getByRole('button', { name: /Semester Pass/ })
+        ).toBeVisible();
+        await expect(
+          page.getByRole('link', {
+            name: 'Create a free account for the first 21 cards',
+          })
+        ).toBeVisible();
+      } else {
+        await expect(
+          page.getByText('All 184 cards are ready', { exact: true })
+        ).toBeVisible({ timeout: 10_000 });
+        await expect(
+          page.getByRole('button', { name: /Semester Pass/ })
+        ).toHaveCount(0);
+      }
+      await expect
+        .poll(() => gateShown)
+        .toEqual([{ cards_held_back: 163, pass_first_arm: arm }]);
+      const scrollWidth = await page.evaluate(
+        () => document.documentElement.scrollWidth
+      );
+      expect(scrollWidth).toBeLessThanOrEqual(376);
+      expect(realErrors(errors)).toEqual([]);
+    });
+  }
+
   test('a held deck that fits a free month offers sign-up and no first-cards download at 375px', async ({
     page,
   }) => {
