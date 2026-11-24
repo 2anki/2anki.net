@@ -2509,6 +2509,8 @@ function UploadForm({
     zoneState === 'idle' &&
     validation == null &&
     !waitingForDeck &&
+    !userLocalsLoading &&
+    cardUsage?.loading !== true &&
     !isUploadLocked &&
     !resumingPreview &&
     resumeOffer == null &&

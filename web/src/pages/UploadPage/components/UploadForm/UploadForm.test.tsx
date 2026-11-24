@@ -23,7 +23,11 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { StrictMode } from 'react';
 import UploadForm from './UploadForm';
 import { AI_GIFT_QUERY_KEY } from '../../../../lib/hooks/useAiGift';
-import { readUploadZoneActivity } from '../../../../lib/upload/uploadZoneActivity';
+import {
+  readUploadZoneActivity,
+  subscribeUploadZoneActivity,
+  type UploadZoneActivity,
+} from '../../../../lib/upload/uploadZoneActivity';
 import {
   aiPreviewCheckoutMarked,
   clearAiPreviewCheckout,
@@ -5515,6 +5519,114 @@ describe('limit state', () => {
       screen.getByText("You've used all 100 cards this month")
     ).toBeInTheDocument();
     expect(readUploadZoneActivity()).toBe('busy');
+  });
+
+  describe('zone activity while the session and counts load', () => {
+    const loadingCounts = {
+      cards_used: 0,
+      cards_limit: 100,
+      unlimited: false,
+      loading: true,
+    };
+    const sessionLoading = {
+      data: undefined,
+      isLoading: true,
+      error: null,
+      isError: false,
+      refetch: vi.fn(),
+    };
+    let reported: UploadZoneActivity[] = [];
+    let stopListening: () => void = () => {};
+
+    beforeEach(() => {
+      reported = [];
+      stopListening = subscribeUploadZoneActivity(() => {
+        reported.push(readUploadZoneActivity());
+      });
+    });
+
+    afterEach(() => {
+      stopListening();
+    });
+
+    function renderStable() {
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      });
+      const tree = () => (
+        <MemoryRouter>
+          <QueryClientProvider client={queryClient}>
+            <UploadForm setErrorMessage={vi.fn()} />
+          </QueryClientProvider>
+        </MemoryRouter>
+      );
+      const result = render(tree());
+      return { rerender: () => result.rerender(tree()) };
+    }
+
+    it('never reports idle before the wall for an account at its limit with slow counts', () => {
+      mockUseUserLocals.mockReturnValue(sessionLoading);
+      const { rerender } = renderStable();
+      expect(readUploadZoneActivity()).toBe('busy');
+
+      setUserLocals(loggedInData);
+      mockUseCardUsage.mockReturnValue(loadingCounts);
+      rerender();
+      expect(readUploadZoneActivity()).toBe('busy');
+
+      mockUseCardUsage.mockReturnValue({
+        cards_used: 100,
+        cards_limit: 100,
+        unlimited: false,
+        loading: false,
+      });
+      rerender();
+
+      expect(
+        screen.getByText("You've used all 100 cards this month")
+      ).toBeInTheDocument();
+      expect(reported).not.toContain('idle');
+      expect(readUploadZoneActivity()).toBe('busy');
+    });
+
+    it('reports idle once the counts arrive for a signed-in account under its limit', () => {
+      setUserLocals(loggedInData);
+      mockUseCardUsage.mockReturnValue(loadingCounts);
+      const { rerender } = renderStable();
+      expect(readUploadZoneActivity()).toBe('busy');
+
+      mockUseCardUsage.mockReturnValue({
+        cards_used: 10,
+        cards_limit: 100,
+        unlimited: false,
+        loading: false,
+      });
+      rerender();
+
+      expect(readUploadZoneActivity()).toBe('idle');
+    });
+
+    it('reports idle for a signed-out visitor once the session settles', () => {
+      mockUseUserLocals.mockReturnValue(sessionLoading);
+      const { rerender } = renderStable();
+      expect(readUploadZoneActivity()).toBe('busy');
+
+      setUserLocals(anonymousData);
+      rerender();
+
+      expect(readUploadZoneActivity()).toBe('idle');
+    });
+
+    it('reports idle when the counts fetch failed and settled without data', () => {
+      setUserLocals(loggedInData);
+      mockUseCardUsage.mockReturnValue(loadingCounts);
+      const { rerender } = renderStable();
+
+      mockUseCardUsage.mockReturnValue({ ...loadingCounts, loading: false });
+      rerender();
+
+      expect(readUploadZoneActivity()).toBe('idle');
+    });
   });
 
   it('explains the paused plan on the locked wall after a failed renewal', async () => {
