@@ -43,6 +43,9 @@ SECRETS = [
     "sh44y",
     "vf33x",
     "Chemistry",
+    "Lovelace",
+    "Ltd",
+    "Lab Space",
 ]
 
 PM2_TABLE = """\
@@ -93,6 +96,9 @@ def sensitive_error():
         f"{ts(13, 30)}: sync failed {{ name: 'Ada Lovelace', deck: 'Organic Notes', deckName: 'Organic Notes II', title: 'Week 3' }}",
         f"{ts(13, 40)}: sync owner {{ customer_name: 'Ada L', workspace_name: 'Ada Lab', originalname: 'notes', email: 'someone@example.com' }}",
         f"{ts(13, 50)}: sync billing {{ customer: 'cus_abcdefghijklmnop', status: 'in_progress' }}",
+        f"{ts(13, 55)}: stripe event for cus_abcdefghijklmnop status in_progress",
+        f"{ts(14, 10)}: notion sync {{ workspace: 'Ada Lab Space', customer: Ada Lovelace Ltd, deck: Organic Chemistry Week 3 }}",
+        f"{ts(14, 20)}: export done title=Organic Chemistry Week 3, status=ok",
     ]
 
 
@@ -159,7 +165,10 @@ class MaskingTest(unittest.TestCase):
             "stored hash <hash> for login",
             "name: <name>, deck: <name>, deckName: <name>, title: <name> }",
             "customer_name: <name>, workspace_name: <name>, originalname: <name>, email: <name> }",
-            "customer: 'cus_<id>', status: 'in_progress' }",
+            "customer: <name>, status: 'in_progress' }",
+            "stripe event for cus_<id> status in_progress",
+            "notion sync { workspace: <name>, customer: <name>, deck: <name>}",
+            "export done title=<name>, status=ok",
         ):
             with self.subTest(expected=expected):
                 self.assertIn(expected, collapsed)

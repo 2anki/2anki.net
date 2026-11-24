@@ -5,6 +5,7 @@ shell; a fake timeout and psql record what they were given. Nothing touches the
 network.
 """
 
+import concurrent.futures
 import os
 import stat
 import subprocess
@@ -69,7 +70,9 @@ class Run:
         root = self.root.name
         bin_dir = os.path.join(root, "bin")
         home = os.path.join(root, "home")
+        self.tmp_dir = os.path.join(root, "tmp")
         os.makedirs(bin_dir)
+        os.makedirs(self.tmp_dir)
         os.makedirs(os.path.join(home, "src/github.com/2anki/2anki.net"))
         executable(os.path.join(bin_dir, "ssh"), FAKE_SSH)
         executable(os.path.join(bin_dir, "timeout"), FAKE_TIMEOUT)
@@ -88,7 +91,13 @@ class Run:
             capture_output=True,
             text=True,
             stdin=subprocess.DEVNULL,
-            env={**environment, "HOME": home, "FAKE_DIR": root, "PATH": bin_dir + os.pathsep + os.environ["PATH"]},
+            env={
+                **environment,
+                "HOME": home,
+                "FAKE_DIR": root,
+                "TMPDIR": self.tmp_dir,
+                "PATH": bin_dir + os.pathsep + os.environ["PATH"],
+            },
         )
 
     def recorded(self, name):
@@ -115,6 +124,26 @@ class Case(unittest.TestCase):
         run = Run(sql, **kwargs)
         self.addCleanup(run.close)
         return run
+
+    def run_many(self, sqls):
+        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
+            runs = list(pool.map(lambda sql: Run(sql, env_file=app_env()), sqls))
+        for run in runs:
+            self.addCleanup(run.close)
+        return runs
+
+    def assert_each_refused(self, sqls):
+        for sql, run in zip(sqls, self.run_many(sqls)):
+            with self.subTest(sql=sql):
+                self.assertEqual(run.result.returncode, 5, run.result.stderr)
+                self.assertIn("refused:", run.result.stderr)
+                self.assertIsNone(run.recorded("ssh-args"))
+
+    def assert_each_accepted(self, sqls):
+        for sql, run in zip(sqls, self.run_many(sqls)):
+            with self.subTest(sql=sql):
+                self.assertEqual(run.result.returncode, 0, run.result.stderr)
+                self.assertTrue(run.recorded("psql-stdin").startswith(PREAMBLE + sql))
 
     def assert_refused(self, sql):
         run = self.run_sql(sql, env_file=app_env())
@@ -207,27 +236,63 @@ class SessionTest(Case):
 
 
 class AcceptedTest(Case):
-    def test_accepts_plain_read_statements(self):
-        for sql in (
-            "select count(*) from users where created_at > now() - interval '7 days';",
-            "with recent as (select id from uploads) select count(*) from recent;",
+    def test_accepts_each_family_on_the_function_list(self):
+        self.assert_each_accepted((
+            "select count(*), sum(n), avg(n), min(n), max(n), bool_and(b), bool_or(b) from t;",
+            "select array_agg(x), string_agg(x, ','), jsonb_agg(x), mode() within group (order by x) from t;",
+            "select percentile_cont(0.5) within group (order by n), percentile_disc(0.9) within group (order by n) from t;",
+            "select coalesce(a, 0), nullif(a, 0), greatest(a, b), least(a, b), cast(a as integer) from t;",
+            "select now(), date_trunc('week', d), date_part('hour', d), extract(epoch from d), age(d) from t;",
+            "select make_interval(days => 3), to_char(d, 'YYYY-MM'), to_timestamp(0), timezone('UTC', d) from t;",
+            "select lower(s), upper(s), length(s), left(s, 2), right(s, 2), substr(s, 1, 2), substring(s from 1 for 2) from t;",
+            "select position('a' in s), strpos(s, 'a'), split_part(s, '.', 1), trim(both 'x' from s), btrim(s) from t;",
+            "select ltrim(s), rtrim(s), replace(s, 'a', 'b'), regexp_replace(s, '[0-9]+', 'N', 'g'), regexp_match(s, 'a') from t;",
+            "select concat(a, b), concat_ws('-', a, b), format('%s', a), md5(s) from t;",
+            "select round(n, 2), floor(n), ceil(n), abs(n), width_bucket(n, 0, 100, 10) from t;",
+            "select jsonb_array_length(j), jsonb_typeof(j), jsonb_extract_path_text(j, 'k'), to_jsonb(s) from t;",
+            "select k from t, jsonb_object_keys(j) as k;",
+            "select e from t, jsonb_array_elements(j) as e, jsonb_array_elements_text(j) as x;",
+            "select g from generate_series(1, 3) as g(n), unnest(array[1, 2]) as u(v);",
+            "select row_number() over (order by d), rank() over w, dense_rank() over w, ntile(4) over w from t window w as (order by d);",
+            "select lag(n) over (order by d), lead(n) over (order by d), first_value(n) over (order by d), last_value(n) over (order by d) from t;",
+            "select pg_size_pretty(pg_total_relation_size('users')), pg_relation_size('users'), pg_database_size(current_database());",
+            "select pg_has_role('x', 'member'), version();",
+            "select pg_catalog.count(*) from t;",
+        ))
+
+    def test_accepts_keywords_that_look_like_calls(self):
+        self.assert_each_accepted((
+            "select 1 from t where a in (1, 2) and exists (select 1) and b = any (array[1]) and c > all (select 1);",
+            "select count(*) filter (where a) from t;",
+            "select x from (values (1), (2)) as v(x);",
+            "with recent (id) as (select id from t) select id from recent;",
+            "with recent as (select id from t) select * from t join recent on (t.id = recent.id) join u using (id);",
+            "select now() - interval '7 days', n::numeric(10,2), s::varchar(20), d::timestamp(0) from t;",
+            "select cast(n as numeric(10, 2)), d::timestamptz from t where (a or b) and not (c);",
+            "select case when (a) then (1) else (2) end from t group by rollup (a);",
+            "select a[1:2], a[1 : 2] from t;",
+        ))
+
+    def test_accepts_other_statement_starts_and_explain_options(self):
+        self.assert_each_accepted((
             "explain select 1;",
             "explain (format json) select 1;",
+            "explain (costs off, verbose, settings on, format yaml) with x as (select 1) select * from x;",
             "show statement_timeout;",
             "table knex_migrations;",
-            "select 'café; with a semicolon' as label, pg_size_pretty(pg_total_relation_size('users'));",
-            'select "Weird Column", x::text from t where name = \'e\' and kind = \'it\'\'s\';',
-            "select case when a then 1 else 2 end from t;\nselect 2;\n",
-            "select deleted_at, updated_at, created_at from uploads order by 1 desc limit 5;",
-        ):
-            with self.subTest(sql=sql):
-                run = self.run_sql(sql, env_file=app_env())
-                self.assertEqual(run.result.returncode, 0, run.result.stderr)
+        ))
+
+    def test_accepts_quoted_identifiers_and_string_contents_with_any_words(self):
+        self.assert_each_accepted((
+            'select "createdAt", "userId" from "Events" where "type" = \'x\';',
+            "select 'café; with a semicolon', 'insert pg_sleep(1) set' as label from t where name = 'e' and kind = 'it''s';",
+            "select deleted_at, updated_at, created_at from uploads order by 1 desc limit 5;\nselect 2",
+        ))
 
 
 class RefusedTest(Case):
-    def test_refuses_each_reviewed_probe_before_anything_is_sent(self):
-        for sql in (
+    def test_refuses_each_earlier_probe_before_anything_is_sent(self):
+        self.assert_each_refused((
             "select 1;\nbegin transaction read /* x */ write;\n",
             "start transaction read -- x\nwrite;\n",
             "do E'\\x62egin perform 1; end';\n",
@@ -244,9 +309,101 @@ class RefusedTest(Case):
             "select 'a\\'; delete from t; select 1;\n",
             "\\gexec\n",
             "\\! id\n",
-        ):
+        ))
+
+    def test_refuses_functions_that_are_not_on_the_list(self):
+        self.assert_each_refused((
+            "select * from crosstab('select 1');",
+            "select * from crosstab2('select 1');",
+            "select * from connectby('t', 'a', 'b', '1', 0);",
+            "select query_to_xml('select 1', true, true, '');",
+            "select table_to_xml('t', true, true, '');",
+            "select schema_to_xml('public', true, true, '');",
+            "select database_to_xml(true, true, '');",
+            "select cursor_to_xml('c', 1, true, true, '');",
+            "select brin_summarize_new_values('i');",
+            "select brin_summarize_range('i', 0);",
+            "select gin_clean_pending_list('i');",
+            "select pg_sleep(1);",
+            "select pg_catalog.pg_sleep\n  (1);",
+            "select pg_advisory_lock(1);",
+            "select nextval('s');",
+            "select lo_export(1, '/tmp/x');",
+            "select pg_read_file('/etc/hosts');",
+            "select dblink('x', 'y');",
+            "select pg_notify('c', 'x');",
+            "select pg_reload_conf();",
+            "select operator(pg_catalog.+) 1;",
+        ))
+
+    def test_refuses_an_app_defined_function_by_name(self):
+        for sql in ("select similarity('a', 'b');", "select set_limit(0.5);", "select show_trgm('a');"):
             with self.subTest(sql=sql):
-                self.assert_refused(sql)
+                run = self.assert_refused(sql)
+                self.assertIn("not on the function list", run.result.stderr)
+                self.assertIn("add it to ALLOWED_FUNCTIONS in a reviewed PR", run.result.stderr)
+
+    def test_names_the_function_and_its_line(self):
+        run = self.assert_refused("select 1;\nselect 2;\nselect similarity('a', 'b');\n")
+
+        self.assertIn("calls similarity on line 3", run.result.stderr)
+
+    def test_reads_quoted_identifiers_by_their_contents(self):
+        self.assert_each_refused((
+            'select "pg_sleep"(1);',
+            'select "PG_SLEEP" (1);',
+            'select "count"(*) from "pg_authid";',
+            'select * from "PG_SHADOW";',
+            'select * from pg_catalog."pg_stats";',
+            'explain ("analyze") select 1;',
+            'explain ("ANALYZE" true) select 1;',
+            'select "insert" from t;',
+            'select * from "public".t where "set" = 1;',
+        ))
+
+    def test_refuses_a_schema_other_than_pg_catalog_before_a_call(self):
+        self.assert_each_refused((
+            "select public.lower('x');",
+            "select cron.schedule('a', 'b');",
+            'select "public".similarity(\'a\', \'b\');',
+            'select "pg_catalog"."pg_sleep"(1);',
+            'select "my_schema"."count"(*) from t;',
+            "select db.pg_catalog.count(*) from t;",
+        ))
+
+    def test_refuses_role_credential_and_statistics_catalogs(self):
+        self.assert_each_refused((
+            "table pg_authid;",
+            "select * from pg_shadow;",
+            "select * from pg_user_mappings;",
+            "select * from pg_largeobject;",
+            "select * from pg_statistic;",
+            "select * from pg_stats;",
+            "select * from pg_catalog.pg_hba_file_rules;",
+        ))
+
+    def test_refuses_explain_options_beyond_format_costs_verbose_and_settings(self):
+        self.assert_each_refused((
+            "explain analyze select 1;",
+            "explain analyse select 1;",
+            "explain (analyze) select 1;",
+            "explain (analyse true) select 1;",
+            "explain (buffers) select 1;",
+            "explain (timing off) select 1;",
+            "explain (wal) select 1;",
+            "explain (summary) select 1;",
+            "explain verbose select 1;",
+            "explain (format 'json') select 1;",
+            "explain (costs maybe) select 1;",
+            "explain (format json select 1;",
+            "explain values (1);",
+        ))
+
+    def test_refuses_psql_variables(self):
+        for sql in ("select :foo;", "select :'foo';", 'select :"foo";', "select :{?foo};", "select a:b from t;"):
+            with self.subTest(sql=sql):
+                run = self.assert_refused(sql)
+                self.assertIn("psql reads as a variable", run.result.stderr)
 
     def test_refuses_a_byte_order_mark_and_a_nul(self):
         for sql in (b"\xef\xbb\xbfselect 1;\n", b"select 1;\x00\n"):
@@ -254,7 +411,7 @@ class RefusedTest(Case):
                 self.assert_refused(sql)
 
     def test_refuses_statements_outside_the_allowlist(self):
-        for sql in (
+        self.assert_each_refused((
             "values (1);",
             "set statement_timeout = 0;",
             "reset all;",
@@ -267,57 +424,25 @@ class RefusedTest(Case):
             "(select 1);",
             "listen x;",
             "vacuum users;",
-        ):
-            with self.subTest(sql=sql):
-                self.assert_refused(sql)
+            '"select" 1;',
+        ))
 
-    def test_refuses_calls_that_change_state_or_reach_outside(self):
-        for sql in (
-            "select pg_cancel_backend(1);",
-            "select pg_advisory_lock(1);",
-            "select pg_try_advisory_lock(1);",
-            "select nextval('s');",
-            "select setval('s', 1);",
-            "select lo_import('/etc/hosts');",
-            "select lo_export(1, '/tmp/x');",
-            "select pg_read_file('/etc/hosts');",
-            "select pg_read_binary_file('/etc/hosts');",
-            "select pg_ls_dir('.');",
-            "select dblink('x', 'y');",
-            "select pg_sleep(1);",
-            "select pg_catalog.pg_sleep (1);",
-            "select pg_reload_conf();",
-            "select pg_notify('c', 'x');",
-            "select query_to_xml('select 1', true, true, '');",
-            "select cron.schedule('a', 'b');",
-            'select "pg_sleep"(1);',
-            'select pg_catalog."pg_sleep" (1);',
-        ):
-            with self.subTest(sql=sql):
-                self.assert_refused(sql)
-
-    def test_refuses_row_locks_credential_catalogs_and_odd_text(self):
-        for sql in (
+    def test_refuses_row_locks_and_odd_text(self):
+        self.assert_each_refused((
             "select * from t for update;",
             "select * from t for no key update;",
             "select * from t for share;",
-            "table pg_authid;",
-            "select * from pg_shadow;",
+            "select * from t for key share;",
             "select 1 \u2215 2;",
             "select $1;",
             "select `id`;",
             "select 'unterminated;",
             'select "unterminated;',
             "select u&'x';",
+            "select e'x';",
+            "select \"caf\u00e9\" from t;",
             ";\n",
-        ):
-            with self.subTest(sql=sql):
-                self.assert_refused(sql)
-
-    def test_names_the_line_of_the_refusal(self):
-        run = self.assert_refused("select 1;\nselect 2;\nselect pg_sleep(1);\n")
-
-        self.assertIn("on line 3", run.result.stderr)
+        ))
 
 
 class FileTest(Case):
@@ -326,6 +451,12 @@ class FileTest(Case):
             with self.subTest(stderr=run.result.stderr):
                 self.assertEqual(run.result.returncode, 2)
                 self.assertIsNone(run.recorded("ssh-args"))
+
+    def test_removes_its_copy_of_the_file(self):
+        for sql in ("select 1;\n", "select pg_sleep(1);\n"):
+            with self.subTest(sql=sql):
+                run = self.run_sql(sql, env_file=app_env())
+                self.assertEqual(os.listdir(run.tmp_dir), [])
 
     def test_refuses_a_directory_or_extra_arguments(self):
         for args in ([], ["/"], ["a.sql", "b.sql"]):
