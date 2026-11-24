@@ -72,7 +72,7 @@ function main(): number {
   }
   if (grown.length > 0) {
     console.error(
-      `debt: ${grown.length} file(s) grew past ${BASELINE_PATH}. That file lists debt that existed on 2026-11-24 and may only shrink; never add an entry or raise a count to make this pass (.claude/rules/code-quality.md)`
+      `debt: ${grown.length} new finding(s) above ${BASELINE_PATH}. That file lists debt that existed on 2026-11-24 and may only shrink; never add an entry or raise a count to make this pass (.claude/rules/code-quality.md)`
     );
     return 1;
   }

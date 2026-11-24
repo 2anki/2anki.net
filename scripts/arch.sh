@@ -50,7 +50,7 @@ fi
 
 if [ "${1:-}" = "--shrink" ]; then
   "$DEPCRUISE" src --config .dependency-cruiser.cjs --baseline "$KNOWN_VIOLATIONS" --baseline-mode shrink-only || exit 1
-  echo "arch: removed the fixed edges from $KNOWN_VIOLATIONS (shrink-only, nothing was added). Commit it, and lower KNOWN_LAYER_SKIP_CEILING in scripts/debt-ratchet.test.ts to the new count"
+  echo "arch: removed the fixed edges from $KNOWN_VIOLATIONS (shrink-only, nothing was added). Commit it, and lower KNOWN_LAYER_SKIP_CEILING in scripts/debt-ratchet/ratchet.test.ts to the new count"
   exit "$status"
 fi
 
