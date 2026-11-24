@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-25-card-count-follows-account-switch",
+  "date": "2026-11-25",
+  "type": "fix",
+  "title": "The monthly card count and limit belong to the account you are signed in to, even right after switching accounts"
+}

@@ -11,16 +11,30 @@ function buildWrapper() {
     createElement(QueryClientProvider, { client: queryClient }, children);
 }
 
+function stubFetch(answerUsage: () => Promise<Response>) {
+  const fetchMock = vi.fn((url: string) => {
+    if (url === '/api/users/usage') return answerUsage();
+    return Promise.resolve(
+      new Response(JSON.stringify({ locals: {}, user: { id: 1 } }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  return fetchMock;
+}
+
+const usageRequests = (fetchMock: ReturnType<typeof stubFetch>) =>
+  fetchMock.mock.calls.filter(([url]) => url === '/api/users/usage');
+
 describe('useCardUsage', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
 
   it('reports loading while the counts are on their way', () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(() => new Promise(() => {}))
-    );
+    stubFetch(() => new Promise(() => {}));
 
     const { result } = renderHook(() => useCardUsage(true), {
       wrapper: buildWrapper(),
@@ -47,7 +61,7 @@ describe('useCardUsage', () => {
         ),
     ],
   ])('stops loading when %s', async (_case, respond) => {
-    vi.stubGlobal('fetch', vi.fn(respond));
+    stubFetch(respond);
 
     const { result } = renderHook(() => useCardUsage(true), {
       wrapper: buildWrapper(),
@@ -63,14 +77,13 @@ describe('useCardUsage', () => {
   });
 
   it('returns nothing for a visitor with no session', () => {
-    const fetchMock = vi.fn();
-    vi.stubGlobal('fetch', fetchMock);
+    const fetchMock = stubFetch(() => new Promise(() => {}));
 
     const { result } = renderHook(() => useCardUsage(false), {
       wrapper: buildWrapper(),
     });
 
     expect(result.current).toBeNull();
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(usageRequests(fetchMock)).toHaveLength(0);
   });
 });

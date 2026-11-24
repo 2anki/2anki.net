@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { getCardUsage, CardUsageResponse } from '../backend/getCardUsage';
+import { useUserLocals } from './useUserLocals';
 
 export const CARD_USAGE_QUERY_KEY = ['cardUsage'] as const;
 
@@ -8,8 +9,9 @@ interface CardUsageState extends CardUsageResponse {
 }
 
 export const useCardUsage = (enabled: boolean): CardUsageState | null => {
+  const { data: userLocals } = useUserLocals();
   const { data, isFetching } = useQuery({
-    queryKey: CARD_USAGE_QUERY_KEY,
+    queryKey: [...CARD_USAGE_QUERY_KEY, userLocals?.user?.id ?? null],
     queryFn: getCardUsage,
     enabled,
   });

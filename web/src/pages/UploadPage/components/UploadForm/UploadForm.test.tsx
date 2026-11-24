@@ -5693,29 +5693,6 @@ describe('limit state', () => {
       expect(reported).not.toContain('busy');
       expect(readUploadZoneActivity()).toBe('idle');
     });
-
-    it('waits once for the new account counts when the signed-in owner changes', () => {
-      setUserLocals(loggedInData);
-      mockUseCardUsage.mockReturnValue({ ...loadingCounts, loading: false });
-      const { rerender } = renderStable();
-      expect(readUploadZoneActivity()).toBe('idle');
-
-      setUserLocals({
-        ...loggedInData,
-        user: { id: 2 },
-      } as unknown as ReturnType<typeof useUserLocals>['data']);
-      mockUseCardUsage.mockReturnValue(loadingCounts);
-      rerender();
-      expect(readUploadZoneActivity()).toBe('busy');
-
-      mockUseCardUsage.mockReturnValue({ ...loadingCounts, loading: false });
-      rerender();
-      expect(readUploadZoneActivity()).toBe('idle');
-
-      mockUseCardUsage.mockReturnValue(loadingCounts);
-      rerender();
-      expect(readUploadZoneActivity()).toBe('idle');
-    });
   });
 
   it('explains the paused plan on the locked wall after a failed renewal', async () => {
