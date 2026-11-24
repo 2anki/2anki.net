@@ -156,6 +156,36 @@ describe('UploadForm zone activity with the real session and counts', () => {
     expect(pendingUsage).toHaveLength(0);
   });
 
+  it('ends idle without asking for counts when the session read fails', async () => {
+    session = { message: 'down' };
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockImplementation((input) => {
+      const url = String(input);
+      if (url.includes('users/debug/locals')) {
+        return Promise.resolve(
+          new Response(JSON.stringify(session), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        );
+      }
+      return Promise.resolve(jsonResponse(null));
+    });
+    const queryClient = renderForm();
+    expect(readUploadZoneActivity()).toBe('busy');
+
+    await waitFor(
+      () =>
+        expect(queryClient.getQueryState(['userLocals'])?.status).toBe('error'),
+      { timeout: 6000 }
+    );
+
+    await waitFor(() => expect(readUploadZoneActivity()).toBe('idle'));
+    expect(
+      fetchMock.mock.calls.filter(([url]) => url === '/api/users/usage')
+    ).toHaveLength(0);
+  }, 10000);
+
   it('waits once for the counts when a visitor signs in mid-page', async () => {
     const queryClient = renderForm();
     await waitFor(() => expect(readUploadZoneActivity()).toBe('idle'));

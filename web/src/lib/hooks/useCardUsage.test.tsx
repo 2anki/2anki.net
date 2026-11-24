@@ -76,7 +76,7 @@ describe('useCardUsage', () => {
     });
   });
 
-  it('returns nothing for a visitor with no session', () => {
+  it('returns nothing and asks for no counts when the caller turns counts off', () => {
     const fetchMock = stubFetch(() => new Promise(() => {}));
 
     const { result } = renderHook(() => useCardUsage(false), {
