@@ -8,6 +8,7 @@ PNPM="${PNPM:-pnpm}"
 legs=(
   "typecheck"
   "arch"
+  "debt"
   "--filter 2anki-web typecheck"
   "--filter 2anki-web test:run"
   "--filter 2anki-web lint"

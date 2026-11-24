@@ -1,0 +1,4099 @@
+[
+  {
+    "type": "dependency",
+    "from": "src/controllers/ApkgController.ts",
+    "to": "src/data_layer/JobRepository.ts",
+    "unresolvedTo": "../data_layer/JobRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/ContactMessagesController.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/DownloadController.ts",
+    "to": "src/data_layer/JobRepository.ts",
+    "unresolvedTo": "../data_layer/JobRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/EmailPreferencesController.ts",
+    "to": "src/data_layer/EmailPreferencesRepository.ts",
+    "unresolvedTo": "../data_layer/EmailPreferencesRepository",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/EmojiFeedbackController.ts",
+    "to": "src/data_layer/EmojiFeedbackRepository.ts",
+    "unresolvedTo": "../data_layer/EmojiFeedbackRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/FavoritesController.ts",
+    "to": "src/data_layer/BlocksCacheRepository.ts",
+    "unresolvedTo": "../data_layer/BlocksCacheRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/FavoritesController.ts",
+    "to": "src/data_layer/FavoritesRepository.ts",
+    "unresolvedTo": "../data_layer/FavoritesRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/FavoritesController.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/FavoritesController.ts",
+    "to": "src/data_layer/NotionRespository.ts",
+    "unresolvedTo": "../data_layer/NotionRespository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/FeatureInterestController.ts",
+    "to": "src/data_layer/FeatureInterestRepository.ts",
+    "unresolvedTo": "../data_layer/FeatureInterestRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/helpers/mapEntitlement.ts",
+    "to": "src/data_layer/UserPassRepository.ts",
+    "unresolvedTo": "../../data_layer/UserPassRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/IapController.ts",
+    "to": "src/data_layer/UserPassRepository.ts",
+    "unresolvedTo": "../data_layer/UserPassRepository",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/IndexController/IndexController.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/IoDraftController.ts",
+    "to": "src/data_layer/IoDraftRepository.ts",
+    "unresolvedTo": "../data_layer/IoDraftRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/IoDraftController.ts",
+    "to": "src/data_layer/NotionRespository.ts",
+    "unresolvedTo": "../data_layer/NotionRespository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/JobController.ts",
+    "to": "src/data_layer/JobRepository.ts",
+    "unresolvedTo": "../data_layer/JobRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/MindmapController.ts",
+    "to": "src/data_layer/public/Mindmaps.ts",
+    "unresolvedTo": "../data_layer/public/Mindmaps",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/MindmapController.ts",
+    "to": "src/data_layer/public/Users.ts",
+    "unresolvedTo": "../data_layer/public/Users",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/NotionController.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/NotionController.ts",
+    "to": "src/data_layer/JobRepository.ts",
+    "unresolvedTo": "../data_layer/JobRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/NotionController.ts",
+    "to": "src/data_layer/NotionRespository.ts",
+    "unresolvedTo": "../data_layer/NotionRespository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/NotionController.ts",
+    "to": "src/data_layer/UsersRepository.ts",
+    "unresolvedTo": "../data_layer/UsersRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/OpsController.ts",
+    "to": "src/data_layer/ShowcaseRepository.ts",
+    "unresolvedTo": "../data_layer/ShowcaseRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/OpsErrorsController.ts",
+    "to": "src/data_layer/ErrorEventRepository.ts",
+    "unresolvedTo": "../data_layer/ErrorEventRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/ParserRulesController.ts",
+    "to": "src/data_layer/ParserRulesRepository.ts",
+    "unresolvedTo": "../data_layer/ParserRulesRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/PassCheckoutController.ts",
+    "to": "src/data_layer/UserPassRepository.ts",
+    "unresolvedTo": "../data_layer/UserPassRepository",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/PitchController.ts",
+    "to": "src/data_layer/PitchDismissalsRepository.ts",
+    "unresolvedTo": "../data_layer/PitchDismissalsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/ReEngagementController.ts",
+    "to": "src/data_layer/EmailPreferencesRepository.ts",
+    "unresolvedTo": "../data_layer/EmailPreferencesRepository",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/ReEngagementController.ts",
+    "to": "src/data_layer/ReEngagementRepository.ts",
+    "unresolvedTo": "../data_layer/ReEngagementRepository",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/ShowcaseController.ts",
+    "to": "src/data_layer/ShowcaseRepository.ts",
+    "unresolvedTo": "../data_layer/ShowcaseRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/StripeController/StripeController.ts",
+    "to": "src/data_layer/UserPassRepository.ts",
+    "unresolvedTo": "../../data_layer/UserPassRepository",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/Upload/helpers/createGoogleDriveDownloadLink.ts",
+    "to": "src/data_layer/GoogleDriveRepository.ts",
+    "unresolvedTo": "../../../data_layer/GoogleDriveRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/Upload/helpers/handleDropbox.ts",
+    "to": "src/data_layer/DropboxRepository.ts",
+    "unresolvedTo": "../../../data_layer/DropboxRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/Upload/helpers/handleDropbox.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../../../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/Upload/helpers/handleGoogleDrive.ts",
+    "to": "src/data_layer/GoogleDriveRepository.ts",
+    "unresolvedTo": "../../../data_layer/GoogleDriveRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/Upload/helpers/handleGoogleDrive.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../../../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/Upload/helpers/handleUploadLimitError.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../../../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/Upload/helpers/handleUploadLimitError.ts",
+    "to": "src/data_layer/UsersRepository.ts",
+    "unresolvedTo": "../../../data_layer/UsersRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/UserPreferencesController.ts",
+    "to": "src/data_layer/UserPreferencesRepository.ts",
+    "unresolvedTo": "../data_layer/UserPreferencesRepository",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/UsersControllers.ts",
+    "to": "src/data_layer/EmailChangeTokenRepository.ts",
+    "unresolvedTo": "../data_layer/EmailChangeTokenRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/UsersControllers.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../data_layer",
+    "dependencyTypes": [
+      "local",
+      "type-import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/UsersControllers.ts",
+    "to": "src/data_layer/NotionRespository.ts",
+    "unresolvedTo": "../data_layer/NotionRespository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/UsersControllers.ts",
+    "to": "src/data_layer/OauthIdentitiesRepository.ts",
+    "unresolvedTo": "../data_layer/OauthIdentitiesRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/UsersControllers.ts",
+    "to": "src/data_layer/public/Users.ts",
+    "unresolvedTo": "../data_layer/public/Users",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/controllers/UsersControllers.ts",
+    "to": "src/data_layer/UsersRepository.ts",
+    "unresolvedTo": "../data_layer/UsersRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/AiGiftRouter.ts",
+    "to": "src/data_layer/AiCreditGiftsRepository.ts",
+    "unresolvedTo": "../data_layer/AiCreditGiftsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/AiGiftRouter.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/AnkifyRouter.ts",
+    "to": "src/data_layer/ankify/AnkifyClientsRepository.ts",
+    "unresolvedTo": "../data_layer/ankify/AnkifyClientsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/AnkifyRouter.ts",
+    "to": "src/data_layer/ankify/AnkifyExportSchedulesRepository.ts",
+    "unresolvedTo": "../data_layer/ankify/AnkifyExportSchedulesRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/AnkifyRouter.ts",
+    "to": "src/data_layer/ankify/AnkifyNotionSubscriptionsRepository.ts",
+    "unresolvedTo": "../data_layer/ankify/AnkifyNotionSubscriptionsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/AnkifyRouter.ts",
+    "to": "src/data_layer/ankify/AnkifySessionTokensRepository.ts",
+    "unresolvedTo": "../data_layer/ankify/AnkifySessionTokensRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/AnkifyRouter.ts",
+    "to": "src/data_layer/ankify/AnkifySyncConflictsRepository.ts",
+    "unresolvedTo": "../data_layer/ankify/AnkifySyncConflictsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/AnkifyRouter.ts",
+    "to": "src/data_layer/ankify/AnkifySyncLogsRepository.ts",
+    "unresolvedTo": "../data_layer/ankify/AnkifySyncLogsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/AnkifyRouter.ts",
+    "to": "src/data_layer/ankify/AnkifySyncMappingsRepository.ts",
+    "unresolvedTo": "../data_layer/ankify/AnkifySyncMappingsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/AnkifyRouter.ts",
+    "to": "src/data_layer/DownloadRepository.ts",
+    "unresolvedTo": "../data_layer/DownloadRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/AnkifyRouter.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/AnkifyRouter.ts",
+    "to": "src/data_layer/NotionRespository.ts",
+    "unresolvedTo": "../data_layer/NotionRespository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/AnkifyRouter.ts",
+    "to": "src/data_layer/SettingsRepository.ts",
+    "unresolvedTo": "../data_layer/SettingsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/AnkifyRouter.ts",
+    "to": "src/data_layer/TokenRepository.ts",
+    "unresolvedTo": "../data_layer/TokenRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/AnkifyRouter.ts",
+    "to": "src/data_layer/UnsupportedNotionBlockRepository.ts",
+    "unresolvedTo": "../data_layer/UnsupportedNotionBlockRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/AnkifyRouter.ts",
+    "to": "src/data_layer/UploadRespository.ts",
+    "unresolvedTo": "../data_layer/UploadRespository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/AnkifyRouter.ts",
+    "to": "src/data_layer/UsersRepository.ts",
+    "unresolvedTo": "../data_layer/UsersRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/AnkifySessionProxyRouter.ts",
+    "to": "src/data_layer/ankify/AnkifyClientsRepository.ts",
+    "unresolvedTo": "../data_layer/ankify/AnkifyClientsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/AnkifySessionProxyRouter.ts",
+    "to": "src/data_layer/ankify/AnkifySessionTokensRepository.ts",
+    "unresolvedTo": "../data_layer/ankify/AnkifySessionTokensRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/AnkifySessionProxyRouter.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/AnkifySessionProxyRouter.ts",
+    "to": "src/data_layer/TokenRepository.ts",
+    "unresolvedTo": "../data_layer/TokenRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/AnkifySessionProxyRouter.ts",
+    "to": "src/data_layer/UsersRepository.ts",
+    "unresolvedTo": "../data_layer/UsersRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/AnkifyWebhookRouter.ts",
+    "to": "src/data_layer/ankify/AnkifyClientsRepository.ts",
+    "unresolvedTo": "../data_layer/ankify/AnkifyClientsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/AnkifyWebhookRouter.ts",
+    "to": "src/data_layer/ankify/AnkifyNotionSubscriptionsRepository.ts",
+    "unresolvedTo": "../data_layer/ankify/AnkifyNotionSubscriptionsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/AnkifyWebhookRouter.ts",
+    "to": "src/data_layer/ankify/AnkifySyncConflictsRepository.ts",
+    "unresolvedTo": "../data_layer/ankify/AnkifySyncConflictsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/AnkifyWebhookRouter.ts",
+    "to": "src/data_layer/ankify/AnkifySyncLogsRepository.ts",
+    "unresolvedTo": "../data_layer/ankify/AnkifySyncLogsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/AnkifyWebhookRouter.ts",
+    "to": "src/data_layer/ankify/AnkifySyncMappingsRepository.ts",
+    "unresolvedTo": "../data_layer/ankify/AnkifySyncMappingsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/AnkifyWebhookRouter.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/AnkifyWebhookRouter.ts",
+    "to": "src/data_layer/NotionRespository.ts",
+    "unresolvedTo": "../data_layer/NotionRespository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/AnkifyWebhookRouter.ts",
+    "to": "src/data_layer/SettingsRepository.ts",
+    "unresolvedTo": "../data_layer/SettingsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/AnkifyWebhookRouter.ts",
+    "to": "src/data_layer/UnsupportedNotionBlockRepository.ts",
+    "unresolvedTo": "../data_layer/UnsupportedNotionBlockRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/AnkifyWebhookRouter.ts",
+    "to": "src/data_layer/UsersRepository.ts",
+    "unresolvedTo": "../data_layer/UsersRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/ApkgRouter.ts",
+    "to": "src/data_layer/BlocksCacheRepository.ts",
+    "unresolvedTo": "../data_layer/BlocksCacheRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/ApkgRouter.ts",
+    "to": "src/data_layer/DownloadRepository.ts",
+    "unresolvedTo": "../data_layer/DownloadRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/ApkgRouter.ts",
+    "to": "src/data_layer/ErrorEventRepository.ts",
+    "unresolvedTo": "../data_layer/ErrorEventRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/ApkgRouter.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/ApkgRouter.ts",
+    "to": "src/data_layer/JobRepository.ts",
+    "unresolvedTo": "../data_layer/JobRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/ApkgRouter.ts",
+    "to": "src/data_layer/NotionRespository.ts",
+    "unresolvedTo": "../data_layer/NotionRespository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/ApkgRouter.ts",
+    "to": "src/data_layer/UsersRepository.ts",
+    "unresolvedTo": "../data_layer/UsersRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/ChatRouter.ts",
+    "to": "src/data_layer/ChatAttachmentsRepository.ts",
+    "unresolvedTo": "../data_layer/ChatAttachmentsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/ChatRouter.ts",
+    "to": "src/data_layer/ChatMessagesRepository.ts",
+    "unresolvedTo": "../data_layer/ChatMessagesRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/ChatRouter.ts",
+    "to": "src/data_layer/ConversationsRepository.ts",
+    "unresolvedTo": "../data_layer/ConversationsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/ChatRouter.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/ChatRouter.ts",
+    "to": "src/data_layer/UsersRepository.ts",
+    "unresolvedTo": "../data_layer/UsersRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/CheckoutRouter.ts",
+    "to": "src/data_layer/AbandonedCheckoutRecoveryRepository.ts",
+    "unresolvedTo": "../data_layer/AbandonedCheckoutRecoveryRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/CheckoutRouter.ts",
+    "to": "src/data_layer/DayPassCreditRepository.ts",
+    "unresolvedTo": "../data_layer/DayPassCreditRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/CheckoutRouter.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/CheckoutRouter.ts",
+    "to": "src/data_layer/TokenRepository.ts",
+    "unresolvedTo": "../data_layer/TokenRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/CheckoutRouter.ts",
+    "to": "src/data_layer/UserPassRepository.ts",
+    "unresolvedTo": "../data_layer/UserPassRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/CheckoutRouter.ts",
+    "to": "src/data_layer/UsersRepository.ts",
+    "unresolvedTo": "../data_layer/UsersRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/DownloadRouter.ts",
+    "to": "src/data_layer/DownloadRepository.ts",
+    "unresolvedTo": "../data_layer/DownloadRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/DownloadRouter.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/DownloadRouter.ts",
+    "to": "src/data_layer/JobRepository.ts",
+    "unresolvedTo": "../data_layer/JobRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/EmailRedirectRouter.ts",
+    "to": "src/data_layer/InactivityEmailRepository.ts",
+    "unresolvedTo": "../data_layer/InactivityEmailRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/EmailRedirectRouter.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/EmailRedirectRouter.ts",
+    "to": "src/data_layer/PassWinbackRepository.ts",
+    "unresolvedTo": "../data_layer/PassWinbackRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/EmailRedirectRouter.ts",
+    "to": "src/data_layer/PriceLockInEmailRepository.ts",
+    "unresolvedTo": "../data_layer/PriceLockInEmailRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/EmailRedirectRouter.ts",
+    "to": "src/data_layer/ReEngagementRepository.ts",
+    "unresolvedTo": "../data_layer/ReEngagementRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/EmojiFeedbackRouter.ts",
+    "to": "src/data_layer/EmojiFeedbackRepository.ts",
+    "unresolvedTo": "../data_layer/EmojiFeedbackRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/EmojiFeedbackRouter.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/EmojiFeedbackRouter.ts",
+    "to": "src/data_layer/JobRepository.ts",
+    "unresolvedTo": "../data_layer/JobRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/EmojiFeedbackRouter.ts",
+    "to": "src/data_layer/LowRatingContextRepository.ts",
+    "unresolvedTo": "../data_layer/LowRatingContextRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/EmojiFeedbackRouter.ts",
+    "to": "src/data_layer/UploadRespository.ts",
+    "unresolvedTo": "../data_layer/UploadRespository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/EventsRouter.ts",
+    "to": "src/data_layer/ErrorEventRepository.ts",
+    "unresolvedTo": "../data_layer/ErrorEventRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/EventsRouter.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/FavoriteRouter.ts",
+    "to": "src/data_layer/FavoritesRepository.ts",
+    "unresolvedTo": "../data_layer/FavoritesRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/FavoriteRouter.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/FeatureInterestRouter.ts",
+    "to": "src/data_layer/FeatureInterestRepository.ts",
+    "unresolvedTo": "../data_layer/FeatureInterestRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/FeatureInterestRouter.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/IapRouter.ts",
+    "to": "src/data_layer/AiCreditGrantsRepository.ts",
+    "unresolvedTo": "../data_layer/AiCreditGrantsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/IapRouter.ts",
+    "to": "src/data_layer/AppleTransactionsRepository.ts",
+    "unresolvedTo": "../data_layer/AppleTransactionsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/IapRouter.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/IapRouter.ts",
+    "to": "src/data_layer/UserPassRepository.ts",
+    "unresolvedTo": "../data_layer/UserPassRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/ImageOcclusionRouter.ts",
+    "to": "src/data_layer/EventsRepository.ts",
+    "unresolvedTo": "../data_layer/EventsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/ImageOcclusionRouter.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/ImageOcclusionRouter.ts",
+    "to": "src/data_layer/IoDraftRepository.ts",
+    "unresolvedTo": "../data_layer/IoDraftRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/ImageOcclusionRouter.ts",
+    "to": "src/data_layer/NotionRespository.ts",
+    "unresolvedTo": "../data_layer/NotionRespository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/McpDeckDownloadRouter.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/McpDeckDownloadRouter.ts",
+    "to": "src/data_layer/UploadRespository.ts",
+    "unresolvedTo": "../data_layer/UploadRespository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/McpRouter.ts",
+    "to": "src/data_layer/AiCardFingerprintRepository.ts",
+    "unresolvedTo": "../data_layer/AiCardFingerprintRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/McpRouter.ts",
+    "to": "src/data_layer/AiUsageMetricsRepository.ts",
+    "unresolvedTo": "../data_layer/AiUsageMetricsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/McpRouter.ts",
+    "to": "src/data_layer/CardGuidLedgerRepository.ts",
+    "unresolvedTo": "../data_layer/CardGuidLedgerRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/McpRouter.ts",
+    "to": "src/data_layer/ConversionOutputStatsRepository.ts",
+    "unresolvedTo": "../data_layer/ConversionOutputStatsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/McpRouter.ts",
+    "to": "src/data_layer/ConversionRuleScoresRepository.ts",
+    "unresolvedTo": "../data_layer/ConversionRuleScoresRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/McpRouter.ts",
+    "to": "src/data_layer/DownloadRepository.ts",
+    "unresolvedTo": "../data_layer/DownloadRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/McpRouter.ts",
+    "to": "src/data_layer/EventsRepository.ts",
+    "unresolvedTo": "../data_layer/EventsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/McpRouter.ts",
+    "to": "src/data_layer/HeldDeckRepository.ts",
+    "unresolvedTo": "../data_layer/HeldDeckRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/McpRouter.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/McpRouter.ts",
+    "to": "src/data_layer/JobRepository.ts",
+    "unresolvedTo": "../data_layer/JobRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/McpRouter.ts",
+    "to": "src/data_layer/McpAuthorizationCodeRepository.ts",
+    "unresolvedTo": "../data_layer/McpAuthorizationCodeRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/McpRouter.ts",
+    "to": "src/data_layer/McpOAuthClientRepository.ts",
+    "unresolvedTo": "../data_layer/McpOAuthClientRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/McpRouter.ts",
+    "to": "src/data_layer/McpTokenRepository.ts",
+    "unresolvedTo": "../data_layer/McpTokenRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/McpRouter.ts",
+    "to": "src/data_layer/ParsePathSignatureRepository.ts",
+    "unresolvedTo": "../data_layer/ParsePathSignatureRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/McpRouter.ts",
+    "to": "src/data_layer/SettingsRepository.ts",
+    "unresolvedTo": "../data_layer/SettingsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/McpRouter.ts",
+    "to": "src/data_layer/TokenRepository.ts",
+    "unresolvedTo": "../data_layer/TokenRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/McpRouter.ts",
+    "to": "src/data_layer/UploadRespository.ts",
+    "unresolvedTo": "../data_layer/UploadRespository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/McpRouter.ts",
+    "to": "src/data_layer/UsersRepository.ts",
+    "unresolvedTo": "../data_layer/UsersRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/middleware/configureUserLocal.ts",
+    "to": "src/data_layer/AnonymousPassRepository.ts",
+    "unresolvedTo": "../../data_layer/AnonymousPassRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/middleware/configureUserLocal.ts",
+    "to": "src/data_layer/UserPassRepository.ts",
+    "unresolvedTo": "../../data_layer/UserPassRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/middleware/ensureIsLoggedIn.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/middleware/ensureIsLoggedIn.ts",
+    "to": "src/data_layer/TokenRepository.ts",
+    "unresolvedTo": "../../data_layer/TokenRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/middleware/ensureIsLoggedIn.ts",
+    "to": "src/data_layer/UsersRepository.ts",
+    "unresolvedTo": "../../data_layer/UsersRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/middleware/ErrorCaptureMiddleware.ts",
+    "to": "src/data_layer/ErrorEventRepository.ts",
+    "unresolvedTo": "../../data_layer/ErrorEventRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/middleware/optionalAuthMiddleware.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/middleware/optionalAuthMiddleware.ts",
+    "to": "src/data_layer/TokenRepository.ts",
+    "unresolvedTo": "../../data_layer/TokenRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/middleware/optionalAuthMiddleware.ts",
+    "to": "src/data_layer/UsersRepository.ts",
+    "unresolvedTo": "../../data_layer/UsersRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/middleware/PrintQuotaMiddleware.ts",
+    "to": "src/data_layer/UsersRepository.ts",
+    "unresolvedTo": "../../data_layer/UsersRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/middleware/RejectDuplicatePurchase.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/middleware/RejectDuplicatePurchase.ts",
+    "to": "src/data_layer/TokenRepository.ts",
+    "unresolvedTo": "../../data_layer/TokenRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/middleware/RejectDuplicatePurchase.ts",
+    "to": "src/data_layer/UserPassRepository.ts",
+    "unresolvedTo": "../../data_layer/UserPassRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/middleware/RejectDuplicatePurchase.ts",
+    "to": "src/data_layer/UsersRepository.ts",
+    "unresolvedTo": "../../data_layer/UsersRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/middleware/RequireAllowedOrigin.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/middleware/RequireAllowedOrigin.ts",
+    "to": "src/data_layer/TokenRepository.ts",
+    "unresolvedTo": "../../data_layer/TokenRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/middleware/RequireAllowedOrigin.ts",
+    "to": "src/data_layer/UsersRepository.ts",
+    "unresolvedTo": "../../data_layer/UsersRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/middleware/RequireAnkifyAccess.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/middleware/RequireAnkifyAccess.ts",
+    "to": "src/data_layer/TokenRepository.ts",
+    "unresolvedTo": "../../data_layer/TokenRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/middleware/RequireAnkifyAccess.ts",
+    "to": "src/data_layer/UsersRepository.ts",
+    "unresolvedTo": "../../data_layer/UsersRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/middleware/RequireAuthentication.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/middleware/RequireAuthentication.ts",
+    "to": "src/data_layer/TokenRepository.ts",
+    "unresolvedTo": "../../data_layer/TokenRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/middleware/RequireAuthentication.ts",
+    "to": "src/data_layer/UsersRepository.ts",
+    "unresolvedTo": "../../data_layer/UsersRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/middleware/RequireOpsAccess.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/middleware/RequireOpsAccess.ts",
+    "to": "src/data_layer/TokenRepository.ts",
+    "unresolvedTo": "../../data_layer/TokenRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/middleware/RequireOpsAccess.ts",
+    "to": "src/data_layer/UsersRepository.ts",
+    "unresolvedTo": "../../data_layer/UsersRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/middleware/RequirePaying.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/middleware/RequirePaying.ts",
+    "to": "src/data_layer/TokenRepository.ts",
+    "unresolvedTo": "../../data_layer/TokenRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/middleware/RequirePaying.ts",
+    "to": "src/data_layer/UsersRepository.ts",
+    "unresolvedTo": "../../data_layer/UsersRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/middleware/ResolveStripeCustomer.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/middleware/ResolveStripeCustomer.ts",
+    "to": "src/data_layer/UsersRepository.ts",
+    "unresolvedTo": "../../data_layer/UsersRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/MindmapRouter.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/MindmapRouter.ts",
+    "to": "src/data_layer/MindmapRepository.ts",
+    "unresolvedTo": "../data_layer/MindmapRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/NotionRouter.ts",
+    "to": "src/data_layer/BlocksCacheRepository.ts",
+    "unresolvedTo": "../data_layer/BlocksCacheRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/NotionRouter.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/NotionRouter.ts",
+    "to": "src/data_layer/NotionRespository.ts",
+    "unresolvedTo": "../data_layer/NotionRespository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/NotionRouter.ts",
+    "to": "src/data_layer/NotionTopLevelPagesRepository.ts",
+    "unresolvedTo": "../data_layer/NotionTopLevelPagesRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/NotionRouter.ts",
+    "to": "src/data_layer/UsersRepository.ts",
+    "unresolvedTo": "../data_layer/UsersRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsErrorsRouter.ts",
+    "to": "src/data_layer/ErrorEventRepository.ts",
+    "unresolvedTo": "../data_layer/ErrorEventRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsErrorsRouter.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsRouter.ts",
+    "to": "src/data_layer/AccountDeletionPreviewRepository.ts",
+    "unresolvedTo": "../data_layer/AccountDeletionPreviewRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsRouter.ts",
+    "to": "src/data_layer/AiUsageMetricsRepository.ts",
+    "unresolvedTo": "../data_layer/AiUsageMetricsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsRouter.ts",
+    "to": "src/data_layer/AnonymousPassRepository.ts",
+    "unresolvedTo": "../data_layer/AnonymousPassRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsRouter.ts",
+    "to": "src/data_layer/BehavioralDropoffRepository.ts",
+    "unresolvedTo": "../data_layer/BehavioralDropoffRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsRouter.ts",
+    "to": "src/data_layer/BlocksCacheRepository.ts",
+    "unresolvedTo": "../data_layer/BlocksCacheRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsRouter.ts",
+    "to": "src/data_layer/BusinessMetricsCacheRepository.ts",
+    "unresolvedTo": "../data_layer/BusinessMetricsCacheRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsRouter.ts",
+    "to": "src/data_layer/CancellationFeedbackRepository.ts",
+    "unresolvedTo": "../data_layer/CancellationFeedbackRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsRouter.ts",
+    "to": "src/data_layer/ConversionOutputStatsRepository.ts",
+    "unresolvedTo": "../data_layer/ConversionOutputStatsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsRouter.ts",
+    "to": "src/data_layer/ConversionRuleScoresRepository.ts",
+    "unresolvedTo": "../data_layer/ConversionRuleScoresRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsRouter.ts",
+    "to": "src/data_layer/DownloadRepository.ts",
+    "unresolvedTo": "../data_layer/DownloadRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsRouter.ts",
+    "to": "src/data_layer/EmailDeliveryMetricsRepository.ts",
+    "unresolvedTo": "../data_layer/EmailDeliveryMetricsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsRouter.ts",
+    "to": "src/data_layer/EmojiFeedbackRepository.ts",
+    "unresolvedTo": "../data_layer/EmojiFeedbackRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsRouter.ts",
+    "to": "src/data_layer/ErrorEventRepository.ts",
+    "unresolvedTo": "../data_layer/ErrorEventRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsRouter.ts",
+    "to": "src/data_layer/EventsMetricsRepository.ts",
+    "unresolvedTo": "../data_layer/EventsMetricsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsRouter.ts",
+    "to": "src/data_layer/EventsRepository.ts",
+    "unresolvedTo": "../data_layer/EventsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsRouter.ts",
+    "to": "src/data_layer/FeatureFlagsRepository.ts",
+    "unresolvedTo": "../data_layer/FeatureFlagsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsRouter.ts",
+    "to": "src/data_layer/InactivityEmailRepository.ts",
+    "unresolvedTo": "../data_layer/InactivityEmailRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsRouter.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsRouter.ts",
+    "to": "src/data_layer/JobLockRepository.ts",
+    "unresolvedTo": "../data_layer/JobLockRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsRouter.ts",
+    "to": "src/data_layer/JobsMetricsRepository.ts",
+    "unresolvedTo": "../data_layer/JobsMetricsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsRouter.ts",
+    "to": "src/data_layer/LandingPageYieldRepository.ts",
+    "unresolvedTo": "../data_layer/LandingPageYieldRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsRouter.ts",
+    "to": "src/data_layer/NotionRespository.ts",
+    "unresolvedTo": "../data_layer/NotionRespository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsRouter.ts",
+    "to": "src/data_layer/OauthIdentitiesRepository.ts",
+    "unresolvedTo": "../data_layer/OauthIdentitiesRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsRouter.ts",
+    "to": "src/data_layer/ObservabilityRepository.ts",
+    "unresolvedTo": "../data_layer/ObservabilityRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsRouter.ts",
+    "to": "src/data_layer/OrphanedSubscriptionsRepository.ts",
+    "unresolvedTo": "../data_layer/OrphanedSubscriptionsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsRouter.ts",
+    "to": "src/data_layer/PaidValueSubscriptionsRepository.ts",
+    "unresolvedTo": "../data_layer/PaidValueSubscriptionsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsRouter.ts",
+    "to": "src/data_layer/ParsePathSignatureRepository.ts",
+    "unresolvedTo": "../data_layer/ParsePathSignatureRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsRouter.ts",
+    "to": "src/data_layer/public/Users.ts",
+    "unresolvedTo": "../data_layer/public/Users",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsRouter.ts",
+    "to": "src/data_layer/ReEngagementFeedbackRepository.ts",
+    "unresolvedTo": "../data_layer/ReEngagementFeedbackRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsRouter.ts",
+    "to": "src/data_layer/ShowcaseRepository.ts",
+    "unresolvedTo": "../data_layer/ShowcaseRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsRouter.ts",
+    "to": "src/data_layer/SubscriptionRecoveryNotificationsRepository.ts",
+    "unresolvedTo": "../data_layer/SubscriptionRecoveryNotificationsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsRouter.ts",
+    "to": "src/data_layer/SubscriptionsSourceRepository.ts",
+    "unresolvedTo": "../data_layer/SubscriptionsSourceRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsRouter.ts",
+    "to": "src/data_layer/SuppressionEventsRepository.ts",
+    "unresolvedTo": "../data_layer/SuppressionEventsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsRouter.ts",
+    "to": "src/data_layer/TokenRepository.ts",
+    "unresolvedTo": "../data_layer/TokenRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsRouter.ts",
+    "to": "src/data_layer/UnprovenPlanAccountsRepository.ts",
+    "unresolvedTo": "../data_layer/UnprovenPlanAccountsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsRouter.ts",
+    "to": "src/data_layer/UnsupportedNotionBlockRepository.ts",
+    "unresolvedTo": "../data_layer/UnsupportedNotionBlockRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsRouter.ts",
+    "to": "src/data_layer/UploadRespository.ts",
+    "unresolvedTo": "../data_layer/UploadRespository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsRouter.ts",
+    "to": "src/data_layer/UserPassRepository.ts",
+    "unresolvedTo": "../data_layer/UserPassRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsRouter.ts",
+    "to": "src/data_layer/UserPreferencesRepository.ts",
+    "unresolvedTo": "../data_layer/UserPreferencesRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsRouter.ts",
+    "to": "src/data_layer/UsersRepository.ts",
+    "unresolvedTo": "../data_layer/UsersRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/OpsRouter.ts",
+    "to": "src/data_layer/UserVisibleErrorsRepository.ts",
+    "unresolvedTo": "../data_layer/UserVisibleErrorsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/ParserRulesRouter.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/ParserRulesRouter.ts",
+    "to": "src/data_layer/ParserRulesRepository.ts",
+    "unresolvedTo": "../data_layer/ParserRulesRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/PitchRouter.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/PitchRouter.ts",
+    "to": "src/data_layer/JobRepository.ts",
+    "unresolvedTo": "../data_layer/JobRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/PitchRouter.ts",
+    "to": "src/data_layer/PitchDismissalsRepository.ts",
+    "unresolvedTo": "../data_layer/PitchDismissalsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/ReEngagementRouter.ts",
+    "to": "src/data_layer/EmailPreferencesRepository.ts",
+    "unresolvedTo": "../data_layer/EmailPreferencesRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/ReEngagementRouter.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/ReEngagementRouter.ts",
+    "to": "src/data_layer/ReEngagementRepository.ts",
+    "unresolvedTo": "../data_layer/ReEngagementRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/SendgridWebhookRouter.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/SendgridWebhookRouter.ts",
+    "to": "src/data_layer/SuppressionEventsRepository.ts",
+    "unresolvedTo": "../data_layer/SuppressionEventsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/SettingsRouter.ts",
+    "to": "src/data_layer/BlocksCacheRepository.ts",
+    "unresolvedTo": "../data_layer/BlocksCacheRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/SettingsRouter.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/SettingsRouter.ts",
+    "to": "src/data_layer/NotionRespository.ts",
+    "unresolvedTo": "../data_layer/NotionRespository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/SettingsRouter.ts",
+    "to": "src/data_layer/NotionTopLevelPagesRepository.ts",
+    "unresolvedTo": "../data_layer/NotionTopLevelPagesRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/SettingsRouter.ts",
+    "to": "src/data_layer/ParserRulesRepository.ts",
+    "unresolvedTo": "../data_layer/ParserRulesRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/SettingsRouter.ts",
+    "to": "src/data_layer/SettingsRepository.ts",
+    "unresolvedTo": "../data_layer/SettingsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/ShareRouter.ts",
+    "to": "src/data_layer/DownloadRepository.ts",
+    "unresolvedTo": "../data_layer/DownloadRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/ShareRouter.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/ShareRouter.ts",
+    "to": "src/data_layer/ShareRepository.ts",
+    "unresolvedTo": "../data_layer/ShareRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/ShareRouter.ts",
+    "to": "src/data_layer/UploadRespository.ts",
+    "unresolvedTo": "../data_layer/UploadRespository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/ShowcaseRouter.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/ShowcaseRouter.ts",
+    "to": "src/data_layer/ShowcaseRepository.ts",
+    "unresolvedTo": "../data_layer/ShowcaseRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/SubscriptionClaimRouter.ts",
+    "to": "src/data_layer/AnonymousPassRepository.ts",
+    "unresolvedTo": "../data_layer/AnonymousPassRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/SubscriptionClaimRouter.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/SubscriptionClaimRouter.ts",
+    "to": "src/data_layer/PassClaimTokensRepository.ts",
+    "unresolvedTo": "../data_layer/PassClaimTokensRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/SubscriptionClaimRouter.ts",
+    "to": "src/data_layer/SubscriptionClaimAuditRepository.ts",
+    "unresolvedTo": "../data_layer/SubscriptionClaimAuditRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/SubscriptionClaimRouter.ts",
+    "to": "src/data_layer/SubscriptionClaimTokensRepository.ts",
+    "unresolvedTo": "../data_layer/SubscriptionClaimTokensRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/SubscriptionClaimRouter.ts",
+    "to": "src/data_layer/UserPassRepository.ts",
+    "unresolvedTo": "../data_layer/UserPassRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/SubscriptionClaimRouter.ts",
+    "to": "src/data_layer/UsersRepository.ts",
+    "unresolvedTo": "../data_layer/UsersRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/TemplatesRouter.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/TemplatesRouter.ts",
+    "to": "src/data_layer/TemplatesRepository.ts",
+    "unresolvedTo": "../data_layer/TemplatesRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/UploadRouter.ts",
+    "to": "src/data_layer/AiCardFingerprintRepository.ts",
+    "unresolvedTo": "../data_layer/AiCardFingerprintRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/UploadRouter.ts",
+    "to": "src/data_layer/AiUsageMetricsRepository.ts",
+    "unresolvedTo": "../data_layer/AiUsageMetricsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/UploadRouter.ts",
+    "to": "src/data_layer/AnonymousPassRepository.ts",
+    "unresolvedTo": "../data_layer/AnonymousPassRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/UploadRouter.ts",
+    "to": "src/data_layer/BlocksCacheRepository.ts",
+    "unresolvedTo": "../data_layer/BlocksCacheRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/UploadRouter.ts",
+    "to": "src/data_layer/CardGuidLedgerRepository.ts",
+    "unresolvedTo": "../data_layer/CardGuidLedgerRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/UploadRouter.ts",
+    "to": "src/data_layer/ConversionOutputStatsRepository.ts",
+    "unresolvedTo": "../data_layer/ConversionOutputStatsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/UploadRouter.ts",
+    "to": "src/data_layer/ConversionRuleScoresRepository.ts",
+    "unresolvedTo": "../data_layer/ConversionRuleScoresRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/UploadRouter.ts",
+    "to": "src/data_layer/DropboxRepository.ts",
+    "unresolvedTo": "../data_layer/DropboxRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/UploadRouter.ts",
+    "to": "src/data_layer/EventsRepository.ts",
+    "unresolvedTo": "../data_layer/EventsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/UploadRouter.ts",
+    "to": "src/data_layer/GoogleDriveRepository.ts",
+    "unresolvedTo": "../data_layer/GoogleDriveRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/UploadRouter.ts",
+    "to": "src/data_layer/HeldDeckRepository.ts",
+    "unresolvedTo": "../data_layer/HeldDeckRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/UploadRouter.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/UploadRouter.ts",
+    "to": "src/data_layer/JobRepository.ts",
+    "unresolvedTo": "../data_layer/JobRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/UploadRouter.ts",
+    "to": "src/data_layer/NotionRespository.ts",
+    "unresolvedTo": "../data_layer/NotionRespository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/UploadRouter.ts",
+    "to": "src/data_layer/NotionTopLevelPagesRepository.ts",
+    "unresolvedTo": "../data_layer/NotionTopLevelPagesRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/UploadRouter.ts",
+    "to": "src/data_layer/ParsePathSignatureRepository.ts",
+    "unresolvedTo": "../data_layer/ParsePathSignatureRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/UploadRouter.ts",
+    "to": "src/data_layer/SettingsRepository.ts",
+    "unresolvedTo": "../data_layer/SettingsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/UploadRouter.ts",
+    "to": "src/data_layer/UploadRespository.ts",
+    "unresolvedTo": "../data_layer/UploadRespository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/UploadRouter.ts",
+    "to": "src/data_layer/UsersRepository.ts",
+    "unresolvedTo": "../data_layer/UsersRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/UserRouter.ts",
+    "to": "src/data_layer/EmailPreferencesRepository.ts",
+    "unresolvedTo": "../data_layer/EmailPreferencesRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/UserRouter.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/UserRouter.ts",
+    "to": "src/data_layer/MagicTokenRepository.ts",
+    "unresolvedTo": "../data_layer/MagicTokenRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/UserRouter.ts",
+    "to": "src/data_layer/TokenRepository.ts",
+    "unresolvedTo": "../data_layer/TokenRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/UserRouter.ts",
+    "to": "src/data_layer/UserPreferencesRepository.ts",
+    "unresolvedTo": "../data_layer/UserPreferencesRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/UserRouter.ts",
+    "to": "src/data_layer/UsersRepository.ts",
+    "unresolvedTo": "../data_layer/UsersRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/UserRouter.ts",
+    "to": "src/data_layer/UserVisibleErrorsRepository.ts",
+    "unresolvedTo": "../data_layer/UserVisibleErrorsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/WebhookRouter.ts",
+    "to": "src/data_layer/AbandonedCheckoutRecoveryRepository.ts",
+    "unresolvedTo": "../data_layer/AbandonedCheckoutRecoveryRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/WebhookRouter.ts",
+    "to": "src/data_layer/AiCreditGrantsRepository.ts",
+    "unresolvedTo": "../data_layer/AiCreditGrantsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/WebhookRouter.ts",
+    "to": "src/data_layer/AnonymousPassRepository.ts",
+    "unresolvedTo": "../data_layer/AnonymousPassRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/WebhookRouter.ts",
+    "to": "src/data_layer/DayPassCreditRepository.ts",
+    "unresolvedTo": "../data_layer/DayPassCreditRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/WebhookRouter.ts",
+    "to": "src/data_layer/DeveloperSubscriptionsRepository.ts",
+    "unresolvedTo": "../data_layer/DeveloperSubscriptionsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/WebhookRouter.ts",
+    "to": "src/data_layer/index.ts",
+    "unresolvedTo": "../data_layer",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/WebhookRouter.ts",
+    "to": "src/data_layer/PassClaimTokensRepository.ts",
+    "unresolvedTo": "../data_layer/PassClaimTokensRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/WebhookRouter.ts",
+    "to": "src/data_layer/RefundedPaymentIntentsRepository.ts",
+    "unresolvedTo": "../data_layer/RefundedPaymentIntentsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/WebhookRouter.ts",
+    "to": "src/data_layer/TokenRepository.ts",
+    "unresolvedTo": "../data_layer/TokenRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/WebhookRouter.ts",
+    "to": "src/data_layer/UserPassRepository.ts",
+    "unresolvedTo": "../data_layer/UserPassRepository",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/WebhookRouter.ts",
+    "to": "src/data_layer/UsersRepository.ts",
+    "unresolvedTo": "../data_layer/UsersRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/routes/WebhookRouter.ts",
+    "to": "src/data_layer/UserVisibleErrorsRepository.ts",
+    "unresolvedTo": "../data_layer/UserVisibleErrorsRepository",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "warn",
+      "name": "no-layer-skip-to-data-layer"
+    }
+  }
+]

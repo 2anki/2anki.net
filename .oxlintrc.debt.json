@@ -1,0 +1,53 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript"],
+  "categories": {
+    "correctness": "off"
+  },
+  "rules": {
+    "no-console": [
+      "error",
+      {
+        "allow": [
+          "info",
+          "warn",
+          "error",
+          "debug",
+          "trace",
+          "time",
+          "timeEnd",
+          "timeLog",
+          "table",
+          "dir",
+          "group",
+          "groupEnd",
+          "count",
+          "assert"
+        ]
+      }
+    ],
+    "no-debugger": "error",
+    "typescript/no-explicit-any": "error",
+    "typescript/ban-ts-comment": [
+      "error",
+      {
+        "ts-ignore": true,
+        "ts-expect-error": false,
+        "ts-nocheck": false,
+        "ts-check": false
+      }
+    ]
+  },
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/coverage/**",
+    "**/data_layer/public/**",
+    "**/migrations/**",
+    "**/templates/**",
+    "**/fixtures/**",
+    "**/generated/**",
+    "**/react-app-env.d.ts"
+  ]
+}

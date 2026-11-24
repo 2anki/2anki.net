@@ -15,8 +15,9 @@
  *   knex value-import outside data_layer: 0 (16 type-only imports fixed)
  *   circular dependencies:                10
  *   data_layer importing upward:          1  (ShowcaseRepository)
- *   routes/controllers -> data_layer:     288 import edges (warn — debt frozen,
- *     not blocked; new code should go through a use case or service).
+ *   routes/controllers -> data_layer:     288 import edges (292 on 2026-11-24,
+ *     now an error rule over a known-violations baseline: existing edges are
+ *     ignored, a new one fails the build).
  */
 module.exports = {
   forbidden: [
@@ -57,8 +58,8 @@ module.exports = {
     {
       name: 'no-layer-skip-to-data-layer',
       comment:
-        'Route -> controller -> use case -> service -> data layer. Routes and controllers should not reach into data_layer directly. Baseline 2026-10-28: 288 skip edges (warn — debt frozen; new code goes through a use case or service instead of growing it). The count is only honest when no stale compiled .js sits in src/ — the arch script purges them first; a run reporting ~36 means the purge was skipped and the cruiser resolved .js siblings instead of the .ts sources.',
-      severity: 'warn',
+        'Route -> controller -> use case -> service -> data layer. Routes and controllers must not reach into data_layer directly; go through a use case or service. The 292 edges that existed on 2026-11-24 are listed in .dependency-cruiser-known-violations.json and ignored; any edge not in that file fails pnpm arch. Never regenerate that file to admit a new edge: pnpm arch:shrink only removes fixed ones. The count is only honest when no stale compiled .js sits in src/ — the arch script purges them first; a run reporting ~36 means the purge was skipped and the cruiser resolved .js siblings instead of the .ts sources.',
+      severity: 'error',
       from: { path: '^src/(routes|controllers)' },
       to: { path: '^src/data_layer' },
     },

@@ -2,9 +2,14 @@
 # Runs dependency-cruiser over src/ and fails when it checked nothing.
 # Under an unsupported TypeScript it prints missing-tsc-transpiler, cruises
 # 0 modules and still exits 0, which passed CI silently for two weeks (#5048).
+#
+# Known violations (the layer-skip edges that existed when the baseline was
+# written) are ignored; a new one fails. `--shrink` (pnpm arch:shrink) drops
+# baseline entries that no longer occur and never adds one.
 set -uo pipefail
 
 DEPCRUISE="${DEPCRUISE:-depcruise}"
+KNOWN_VIOLATIONS=".dependency-cruiser-known-violations.json"
 # A partly blind cruise (stale .js beside the .ts sources) keeps a module
 # count but loses most of its edges, and every error rule passes (#5071).
 # Measured 1282 modules and 4319 dependencies on 2026-10-28: lower these
@@ -15,7 +20,7 @@ MIN_DEPENDENCIES=3000
 # Paths are relative to the working directory, which pnpm sets to the repo root.
 git clean -fX -q src || exit 1
 
-output=$("$DEPCRUISE" src --config .dependency-cruiser.cjs 2>&1)
+output=$("$DEPCRUISE" src --config .dependency-cruiser.cjs --ignore-known "$KNOWN_VIOLATIONS" 2>&1)
 status=$?
 printf '%s\n' "$output"
 
@@ -37,5 +42,19 @@ dependencies=$(awk '{print $3}' <<<"$counts")
 if [ -z "$modules" ] || [ "$modules" -lt "$MIN_MODULES" ] || [ "${dependencies:-0}" -lt "$MIN_DEPENDENCIES" ]; then
   echo "arch: FAILED, dependency-cruiser cruised ${modules:-?} modules and ${dependencies:-?} dependencies, below the floor of $MIN_MODULES and $MIN_DEPENDENCIES. Stale .js beside the .ts sources blinds the cruise; check for a concurrent build" >&2
   exit 1
+fi
+
+if grep -q 'error no-layer-skip-to-data-layer' <<<"$output"; then
+  echo "arch: FAILED, a route or controller imports src/data_layer directly (each 'error no-layer-skip-to-data-layer' line above names the file and the repository). Call a use case or service instead. Do not add the edge to $KNOWN_VIOLATIONS: that file only lists the edges that existed on 2026-11-24 and may only shrink. If you moved or renamed a file, rename its baseline entry to the new path; that is the only allowed edit" >&2
+fi
+
+if [ "${1:-}" = "--shrink" ]; then
+  "$DEPCRUISE" src --config .dependency-cruiser.cjs --baseline "$KNOWN_VIOLATIONS" --baseline-mode shrink-only || exit 1
+  echo "arch: removed the fixed edges from $KNOWN_VIOLATIONS (shrink-only, nothing was added). Commit it, and lower KNOWN_LAYER_SKIP_CEILING in scripts/debt-ratchet/ratchet.test.ts to the new count"
+  exit "$status"
+fi
+
+if grep -q 'stale known violations' <<<"$output"; then
+  echo "arch: some edges in $KNOWN_VIOLATIONS no longer exist. Not a failure; run pnpm arch:shrink and commit the smaller file so they cannot come back unnoticed"
 fi
 exit "$status"
