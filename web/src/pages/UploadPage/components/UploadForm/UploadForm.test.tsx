@@ -5623,6 +5623,26 @@ describe('limit state', () => {
       expect(readUploadZoneActivity()).toBe('idle');
     });
 
+    it('reports idle once the counts arrive for a lifetime account past the free count', () => {
+      setUserLocals({
+        ...loggedInData,
+        user: { id: 1, patreon: true },
+      } as unknown as ReturnType<typeof useUserLocals>['data']);
+      mockUseCardUsage.mockReturnValue(loadingCounts);
+      const { rerender } = renderStable();
+      expect(readUploadZoneActivity()).toBe('busy');
+
+      mockUseCardUsage.mockReturnValue({
+        cards_used: 300,
+        cards_limit: 100,
+        unlimited: false,
+        loading: false,
+      });
+      rerender();
+
+      expect(readUploadZoneActivity()).toBe('idle');
+    });
+
     it('reports idle for a signed-out visitor once the session settles', () => {
       mockUseUserLocals.mockReturnValue(sessionLoading);
       const { rerender } = renderStable();
@@ -5642,6 +5662,58 @@ describe('limit state', () => {
       mockUseCardUsage.mockReturnValue({ ...loadingCounts, loading: false });
       rerender();
 
+      expect(readUploadZoneActivity()).toBe('idle');
+    });
+
+    it('stays idle when the counts refetch in the background after settling', () => {
+      setUserLocals(loggedInData);
+      mockUseCardUsage.mockReturnValue({ ...loadingCounts, loading: false });
+      const { rerender } = renderStable();
+      expect(readUploadZoneActivity()).toBe('idle');
+
+      mockUseCardUsage.mockReturnValue(loadingCounts);
+      rerender();
+
+      expect(reported).not.toContain('busy');
+      expect(readUploadZoneActivity()).toBe('idle');
+    });
+
+    it('stays idle when a failed session call retries after settling', () => {
+      mockUseUserLocals.mockReturnValue({
+        ...sessionLoading,
+        isLoading: false,
+        isError: true,
+      });
+      const { rerender } = renderStable();
+      expect(readUploadZoneActivity()).toBe('idle');
+
+      mockUseUserLocals.mockReturnValue(sessionLoading);
+      rerender();
+
+      expect(reported).not.toContain('busy');
+      expect(readUploadZoneActivity()).toBe('idle');
+    });
+
+    it('waits once for the new account counts when the signed-in owner changes', () => {
+      setUserLocals(loggedInData);
+      mockUseCardUsage.mockReturnValue({ ...loadingCounts, loading: false });
+      const { rerender } = renderStable();
+      expect(readUploadZoneActivity()).toBe('idle');
+
+      setUserLocals({
+        ...loggedInData,
+        user: { id: 2 },
+      } as unknown as ReturnType<typeof useUserLocals>['data']);
+      mockUseCardUsage.mockReturnValue(loadingCounts);
+      rerender();
+      expect(readUploadZoneActivity()).toBe('busy');
+
+      mockUseCardUsage.mockReturnValue({ ...loadingCounts, loading: false });
+      rerender();
+      expect(readUploadZoneActivity()).toBe('idle');
+
+      mockUseCardUsage.mockReturnValue(loadingCounts);
+      rerender();
       expect(readUploadZoneActivity()).toBe('idle');
     });
   });
