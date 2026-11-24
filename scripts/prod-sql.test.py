@@ -236,6 +236,10 @@ class RoleTest(Case):
             "FROM pg_catalog.pg_shdepend d WHERE d.deptype = 'o' AND d.refclassid = 1260 AND pg_catalog.pg_has_role(r.oid, d.refobjid, 'MEMBER')",
             "d.dbid IN (0, (SELECT oid FROM pg_catalog.pg_database WHERE datname = pg_catalog.current_database()))",
             "pg_catalog.has_schema_privilege(r.oid, n2.oid, 'CREATE')",
+            "OR pg_catalog.has_any_column_privilege(r.oid, c.oid, 'INSERT, UPDATE, REFERENCES')",
+            "NOT EXISTS (SELECT 1 FROM pg_catalog.pg_proc p JOIN pg_catalog.pg_namespace pn ON pn.oid = p.pronamespace "
+            "WHERE p.prosecdef AND pn.nspname NOT IN ('pg_catalog','information_schema') "
+            "AND pg_catalog.has_function_privilege(r.oid, p.oid, 'EXECUTE'))",
             "NOT pg_catalog.has_database_privilege(r.oid, pg_catalog.current_database(), 'CREATE, TEMPORARY')",
             "pg_catalog.has_sequence_privilege(r.oid, c.oid, 'USAGE, UPDATE')",
             "c.relkind IN ('r','p','v','m','f','S')",
@@ -252,7 +256,7 @@ class RoleTest(Case):
     def test_pins_search_path_first_and_qualifies_every_catalog_name(self):
         self.assertTrue(PREAMBLE.startswith("SET search_path = pg_catalog, public;\n"))
         unqualified = re.findall(
-            r"(?<!pg_catalog\.)\b(pg_roles|pg_class|pg_namespace|pg_settings|pg_shdepend|pg_database|pg_has_role|has_table_privilege|has_sequence_privilege|has_schema_privilege|has_database_privilege|current_database|pg_describe_object|set_config|bool_and|count|left)\b",
+            r"(?<!pg_catalog\.)\b(pg_roles|pg_class|pg_namespace|pg_settings|pg_shdepend|pg_database|pg_has_role|has_table_privilege|has_sequence_privilege|has_schema_privilege|has_database_privilege|has_any_column_privilege|has_function_privilege|pg_proc|current_database|pg_describe_object|set_config|bool_and|count|left)\b",
             PREAMBLE,
         )
         self.assertEqual(unqualified, [])
@@ -276,6 +280,9 @@ class RoleTest(Case):
         self.assertIn("ROLLBACK;\nBEGIN TRANSACTION READ ONLY;\n", failure_branch)
         self.assertIn("AS role_check_reason", failure_branch)
         self.assertIn("\\warn :role_check_reason", failure_branch)
+        self.assertEqual(failure_branch.count("OR pg_catalog.has_any_column_privilege(r.oid, c.oid, 'INSERT, UPDATE, REFERENCES')"), 1)
+        self.assertIn("can execute the security definer function", failure_branch)
+        self.assertEqual(failure_branch.count("if that comes from PUBLIC, as on a fresh database, revoke CREATE on"), 2)
         self.assertTrue(failure_branch.rstrip().endswith("SELECT 'the connected role is not read-only'::pg_catalog.int4;"))
         self.assertEqual(stdin.count("role_check_reason"), 2)
         self.assertLess(stdin.index("\\endif"), stdin.index("select count(*) from users;"))

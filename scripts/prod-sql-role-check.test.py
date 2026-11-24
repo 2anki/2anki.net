@@ -82,6 +82,11 @@ SETUP = [
     f"create role {role('public_creator')} login",
     f"create role {role('database_creator')} login",
     f"create role {role('temp_creator')} login",
+    f"create role {role('column_updater')} login",
+    f"create role {role('column_inserter')} login",
+    f"create role {role('column_referencer')} login",
+    f"create role {role('column_reader')} login",
+    f"create role {role('definer_caller')} login",
     f"create database {OWNED_DATABASE} owner {role('database_owner')}",
     f"revoke temporary on database {DATABASE} from public",
     f"grant create on database {DATABASE} to {role('database_creator')}",
@@ -101,6 +106,14 @@ DATABASE_SETUP = [
     "create function plain_answer() returns int language sql as 'select 1'",
     f"alter function plain_answer() owner to {role('function_owner')}",
     f"grant create on schema public to {role('public_creator')}",
+    "create table wide (id int, label text)",
+    f"grant select (id), update (label) on wide to {role('column_updater')}",
+    f"grant select (id), insert (label) on wide to {role('column_inserter')}",
+    f"grant select (id), references (id) on wide to {role('column_referencer')}",
+    f"grant select (id, label) on wide to {role('column_reader')}",
+    "create function definer_answer() returns int language sql security definer as 'select 1'",
+    "revoke execute on function definer_answer() from public",
+    f"grant execute on function definer_answer() to {role('definer_caller')}",
     "create sequence s",
     f"grant select on t to {role('select_only')}, {role('inserter')}, {role('writer')}, {role('shadowed')}, {role('sequence_user')}",
     f"grant insert on t to {role('inserter')}, {role('writer')}, {role('shadowed')}",
@@ -117,7 +130,8 @@ DATABASE_SETUP = [
 ROLES = [
     "select_only", "inserter", "owner", "writer", "set_role_member", "noinherit_member", "shadowed", "sequence_user",
     "trigger_holder", "references_holder", "schema_owner", "database_owner", "function_owner", "public_creator",
-    "database_creator", "temp_creator",
+    "database_creator", "temp_creator", "column_updater", "column_inserter", "column_referencer", "column_reader",
+    "definer_caller",
 ]
 
 
@@ -208,6 +222,25 @@ class RealRoleCheckTest(unittest.TestCase):
 
     def test_refuses_temporary_on_the_database(self):
         self.assert_refused(role("temp_creator"), "can create or make temporary tables in this database")
+
+
+    def test_refuses_a_column_level_update(self):
+        self.assert_refused(role("column_updater"), "can own or write public.wide")
+
+    def test_refuses_a_column_level_insert(self):
+        self.assert_refused(role("column_inserter"), "can own or write public.wide")
+
+    def test_refuses_a_column_level_references(self):
+        self.assert_refused(role("column_referencer"), "can own or write public.wide")
+
+    def test_a_role_with_only_column_level_select_passes(self):
+        result = self.run_as(role("column_reader"))
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(CALLER_MARKER, result.stdout)
+
+    def test_refuses_a_role_that_can_execute_a_security_definer_function(self):
+        self.assert_refused(role("definer_caller"), "can execute the security definer function public.definer_answer")
 
 
 if __name__ == "__main__":
