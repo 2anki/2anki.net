@@ -30,5 +30,6 @@
     "send": "Versturen",
     "thanks": "Bedankt. Dit helpt ons Claude-kaarten te verbeteren.",
     "close": "Sluiten"
-  }
+  },
+  "busy": "Een andere conversie gebruikt je gratis AI-credits. Dit deck is zonder Claude gemaakt. Probeer het opnieuw als de andere klaar is."
 }

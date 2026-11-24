@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   AI_CREDITS_WARNING_CODE,
+  AI_GIFT_BUSY_WARNING_CODE,
   ZIP_PARTLY_RECOVERED_WARNING_CODE,
 } from './uploadResponse';
 
@@ -41,5 +42,21 @@ describe('partly recovered zip warning code parity', () => {
 describe('AI credits warning code parity', () => {
   it('the web warning code the X-Warning-Code header is matched against equals the server value', () => {
     expect(AI_CREDITS_WARNING_CODE).toBe(readServerAiCreditsWarningCode());
+  });
+});
+
+describe('gift busy warning code parity', () => {
+  it('the web code equals the server value', () => {
+    const source = readFileSync(
+      join(
+        __dirname,
+        '../../../../../../',
+        'src/lib/claude/aiCredits/uploadWarning.ts'
+      ),
+      'utf8'
+    );
+    expect(AI_GIFT_BUSY_WARNING_CODE).toBe(
+      /AI_GIFT_BUSY_WARNING_CODE = '([a-z-]+)'/.exec(source)?.[1]
+    );
   });
 });

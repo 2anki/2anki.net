@@ -32,5 +32,6 @@
     "send": "Wyślij",
     "thanks": "Dzięki. To pomaga nam ulepszać karty Claude.",
     "close": "Zamknij"
-  }
+  },
+  "busy": "Inna konwersja korzysta z Twoich darmowych kredytów AI. Ta talia powstała bez Claude. Spróbuj ponownie, gdy tamta się zakończy."
 }

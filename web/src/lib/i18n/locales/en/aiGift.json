@@ -30,5 +30,6 @@
     "send": "Send",
     "thanks": "Thanks. This helps us tune Claude cards.",
     "close": "Close"
-  }
+  },
+  "busy": "Another conversion is using your free AI credits. This deck was made without Claude. Try again when the other one finishes."
 }

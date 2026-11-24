@@ -30,5 +30,6 @@
     "send": "Enviar",
     "thanks": "Obrigado. Isso nos ajuda a ajustar os cartões do Claude.",
     "close": "Fechar"
-  }
+  },
+  "busy": "Outra conversão está usando seus créditos de IA grátis. Este baralho foi feito sem o Claude. Tente de novo quando a outra terminar."
 }

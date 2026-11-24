@@ -117,6 +117,11 @@ import {
   type UploadGiftModeDeps,
 } from '../lib/claude/aiCredits/gift/uploadGiftMode';
 import { AI_GIFT_MIN_MONTHLY_CARDS } from '../lib/claude/aiCredits/gift/giftTerms';
+import {
+  releaseGiftMarker,
+  takeGiftMarker,
+  type GiftMarker,
+} from '../lib/claude/aiCredits/gift/giftConversionMarker';
 import { getAiGiftReaders } from '../data_layer/createAiGiftReaders';
 import { isExpectedUploadState } from '../lib/upload/isExpectedUploadState';
 import {
@@ -178,6 +183,8 @@ import {
 import { parsePdfFallbackChoiceSentinel } from '../lib/pdf/pdfFallbackChoice';
 import {
   AI_CREDITS_EXHAUSTED_WARNING_CODE,
+  AI_GIFT_BUSY_WARNING_CODE,
+  AI_GIFT_BUSY_WARNING_TEXT,
   AiCreditsWarningAudience,
   aiCreditsExhaustedWarningText,
   aiCreditsWarningAudience,
@@ -346,6 +353,9 @@ function uploadWarningCode(
   warnings: string[] | undefined,
   warningText: string | null
 ): string | null {
+  if (warnings?.includes(AI_GIFT_BUSY_WARNING_CODE)) {
+    return AI_GIFT_BUSY_WARNING_CODE;
+  }
   if (includesAiCreditsWarning(warnings)) {
     return AI_CREDITS_EXHAUSTED_WARNING_CODE;
   }
@@ -367,6 +377,9 @@ export function resolveUploadWarning(
     (w) => w.includes('password-protected') && !isAiFileFailedWarning(w)
   );
   if (passwordWarning) return passwordWarning;
+  if (warnings.includes(AI_GIFT_BUSY_WARNING_CODE)) {
+    return AI_GIFT_BUSY_WARNING_TEXT;
+  }
   const creditsWarning = aiCreditsWarningText(warnings, audience);
   if (creditsWarning) return creditsWarning;
   const failedFiles = aiFileFailedWarningText(warnings);
@@ -786,19 +799,36 @@ function giftCanConvert(res: express.Response): boolean {
   return aiGiftOf(res) === 'only' && giftCardLimitOf(res) != null;
 }
 
-function giftStopped(res: express.Response): boolean {
-  return res.locals.aiGiftStop === true;
+type GiftStop = 'spent' | 'busy';
+
+function giftStopOf(res: express.Response): GiftStop | null {
+  const value: unknown = res.locals.aiGiftStop;
+  return value === 'spent' || value === 'busy' ? value : null;
+}
+
+function giftStopWarning(stop: GiftStop): string {
+  return stop === 'busy'
+    ? AI_GIFT_BUSY_WARNING_CODE
+    : AI_CREDITS_EXHAUSTED_WARNING_CODE;
+}
+
+function giftMarkerOf(res: express.Response): GiftMarker | null {
+  const value = res.locals.aiGiftMarker as GiftMarker | null | undefined;
+  return value ?? null;
+}
+
+// The async job takes over releasing the marker once it starts; until then
+// handleUpload releases it on every way out, early returns and errors alike.
+function handOffGiftMarker(res: express.Response): GiftMarker | null {
+  const marker = giftMarkerOf(res);
+  res.locals.aiGiftMarker = null;
+  return marker;
 }
 
 function positiveId(owner: unknown): number | null {
   const id = Number(owner);
   return owner != null && Number.isFinite(id) && id > 0 ? id : null;
 }
-
-// Accounts with a gift-only conversion running in this process. A gift's
-// in-flight holds live per worker, so a second conversion would get a fresh
-// set of holds; one at a time keeps the overshoot to one conversion's.
-const activeGiftConversions = new Set<number>();
 
 function giftContextOf(res: express.Response): {
   aiGift?: AiGiftMode;
@@ -978,31 +1008,50 @@ class UploadService {
     });
   }
 
-  // What an upload that asked for Claude cards may do with the gift. A
-  // gift-only upload converts on the gift when the month has at least
-  // AI_GIFT_MIN_MONTHLY_CARDS cards left and no other gift-only conversion of
-  // this account is running; otherwise it takes the standard free path, with
-  // the credits notice when the gift is spent or already busy.
+  // What an upload that asked for Claude cards may do with the gift. Any
+  // conversion that may draw on the gift takes the account's gift marker
+  // first, with no await between the check and the take. A gift-only upload
+  // converts on the gift when the month has at least AI_GIFT_MIN_MONTHLY_CARDS
+  // cards left and it holds the marker; otherwise it takes the standard free
+  // path, with the out-of-credits notice when the gift is spent and the busy
+  // notice when another conversion holds the marker. A paying account whose
+  // plan is spent draws on the gift only while it holds the marker; without
+  // it the upload behaves as it does with no credits left.
   private async giftForUpload(
     owner: unknown,
     paying: boolean
   ): Promise<{
     aiGift: AiGiftMode | null;
     aiGiftCardLimit: number | null;
-    aiGiftStop: boolean;
+    aiGiftStop: GiftStop | null;
+    aiGiftMarker: GiftMarker | null;
   }> {
-    const none = { aiGift: null, aiGiftCardLimit: null, aiGiftStop: false };
+    const none = {
+      aiGift: null,
+      aiGiftCardLimit: null,
+      aiGiftStop: null,
+      aiGiftMarker: null,
+    };
     const userId = positiveId(owner);
     const gift = await uploadAiGiftMode(userId, paying, this.aiGiftReaders);
     if (gift == null || userId == null) return none;
-    if (gift === 'fallback') return { ...none, aiGift: 'fallback' };
-    if (gift === 'spent') return { ...none, aiGiftStop: true };
+    if (gift === 'spent') return { ...none, aiGiftStop: 'spent' };
+    if (gift === 'fallback') {
+      const marker = takeGiftMarker(userId);
+      return marker == null
+        ? none
+        : { ...none, aiGift: 'fallback', aiGiftMarker: marker };
+    }
     const remaining = await this.remainingMonthlyCards(String(userId));
     if (remaining < AI_GIFT_MIN_MONTHLY_CARDS) return none;
-    if (activeGiftConversions.has(userId)) {
-      return { ...none, aiGiftStop: true };
-    }
-    return { aiGift: 'only', aiGiftCardLimit: remaining, aiGiftStop: false };
+    const marker = takeGiftMarker(userId);
+    if (marker == null) return { ...none, aiGiftStop: 'busy' };
+    return {
+      aiGift: 'only',
+      aiGiftCardLimit: remaining,
+      aiGiftStop: null,
+      aiGiftMarker: marker,
+    };
   }
 
   private async remainingMonthlyCards(owner: string): Promise<number> {
@@ -1166,8 +1215,36 @@ class UploadService {
       return;
     }
 
-    const claimed = await this.jobRepository.restartJob(job.object_id, owner);
+    // A restart that may draw on the gift takes the account's gift marker
+    // before the job is claimed, so a refused restart leaves the job as it was.
+    const paying = isPaying(res.locals);
+    const restartUserId = positiveId(owner);
+    const aiGift = await restartAiGiftMode(
+      restartUserId,
+      paying,
+      this.aiGiftReaders
+    );
+    const giftMarker =
+      aiGift != null && restartUserId != null
+        ? takeGiftMarker(restartUserId)
+        : null;
+    if (aiGift != null && giftMarker == null) {
+      res.status(409).json({
+        error: AI_GIFT_BUSY_WARNING_TEXT,
+        code: AI_GIFT_BUSY_WARNING_CODE,
+      });
+      return;
+    }
+
+    let claimed: Awaited<ReturnType<JobRepository['restartJob']>>;
+    try {
+      claimed = await this.jobRepository.restartJob(job.object_id, owner);
+    } catch (error) {
+      releaseGiftMarker(giftMarker);
+      throw error;
+    }
     if (claimed == null) {
+      releaseGiftMarker(giftMarker);
       res.status(409).json({
         error: 'This job is already running',
         code: 'already_running',
@@ -1175,13 +1252,6 @@ class UploadService {
       return;
     }
 
-    const paying = isPaying(res.locals);
-    const ownerNumeric = Number(owner);
-    const aiGift = await restartAiGiftMode(
-      Number.isFinite(ownerNumeric) && ownerNumeric > 0 ? ownerNumeric : null,
-      paying,
-      this.aiGiftReaders
-    );
     this.runClaudeRestart(
       job.object_id,
       owner,
@@ -1192,26 +1262,28 @@ class UploadService {
       async (step) => {
         await this.jobRepository.updateJobStatus(job.object_id, owner, step);
       }
-    ).catch(async (err: Error) => {
-      if (isWorkerTerminationError(err)) {
-        console.info('[UploadService] restart interrupted by pool drain', {
-          jobId: job.object_id,
-        });
+    )
+      .catch(async (err: Error) => {
+        if (isWorkerTerminationError(err)) {
+          console.info('[UploadService] restart interrupted by pool drain', {
+            jobId: job.object_id,
+          });
+          await this.jobRepository.updateJobStatus(
+            job.object_id,
+            owner,
+            'interrupted',
+            WORKER_INTERRUPTED_REASON
+          );
+          return;
+        }
         await this.jobRepository.updateJobStatus(
           job.object_id,
           owner,
-          'interrupted',
-          WORKER_INTERRUPTED_REASON
+          'failed',
+          resolveAsyncFailureReason(err, job.object_id)
         );
-        return;
-      }
-      await this.jobRepository.updateJobStatus(
-        job.object_id,
-        owner,
-        'failed',
-        resolveAsyncFailureReason(err, job.object_id)
-      );
-    });
+      })
+      .finally(() => releaseGiftMarker(giftMarker));
 
     res.status(202).json({ jobId: job.object_id });
   }
@@ -1436,6 +1508,14 @@ class UploadService {
   }
 
   async handleUpload(req: express.Request, res: express.Response) {
+    try {
+      return await this.convertUpload(req, res);
+    } finally {
+      releaseGiftMarker(handOffGiftMarker(res));
+    }
+  }
+
+  private async convertUpload(req: express.Request, res: express.Response) {
     try {
       const validationError = getUploadValidationError(
         req.files as UploadedFile[]
@@ -1821,11 +1901,7 @@ class UploadService {
       settings,
       paying
     );
-    const giftConversionOwner =
-      aiGiftOf(res) === 'only' && ownerId != null ? ownerId : null;
-    if (giftConversionOwner != null) {
-      activeGiftConversions.add(giftConversionOwner);
-    }
+    const giftMarker = handOffGiftMarker(res);
     useCase
       .execute(
         paying,
@@ -1984,9 +2060,7 @@ class UploadService {
         );
       })
       .finally(() => {
-        if (giftConversionOwner != null) {
-          activeGiftConversions.delete(giftConversionOwner);
-        }
+        releaseGiftMarker(giftMarker);
         if (!retriedWithAi) {
           this.inFlightConversions.delete(fingerprint);
         }
@@ -2196,10 +2270,12 @@ class UploadService {
       }
     );
     // A gift that is spent, or busy with another conversion of this account,
-    // built this deck with the standard parser: say so, as for spent credits.
-    const warnings = giftStopped(res)
-      ? [...(generatedWarnings ?? []), AI_CREDITS_EXHAUSTED_WARNING_CODE]
-      : generatedWarnings;
+    // built this deck with the standard parser: say which.
+    const giftStop = giftStopOf(res);
+    const warnings =
+      giftStop == null
+        ? generatedWarnings
+        : [...(generatedWarnings ?? []), giftStopWarning(giftStop)];
     this.recordIssuedGuids(packages, syncOwnerId, settings);
     this.recordUploadIdentityMetric(packages, syncOwnerId);
     this.recordCardFingerprints(syncOwnerId, cardFingerprints);

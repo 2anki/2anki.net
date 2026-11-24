@@ -25,6 +25,11 @@ export const AI_GIFT_RESERVED_CREDITS_PER_CALL = 50;
 // A gift-only upload starts Claude only while the month has at least this
 // many cards left, so the gift is not spent on cards the monthly limit cuts.
 export const AI_GIFT_MIN_MONTHLY_CARDS = 20;
+
+// How long one account's gift marker holds before a new conversion may take
+// it over. Conversions have no overall time limit, so this is a ceiling on how
+// long a conversion that never reports back can keep the account marked.
+export const AI_GIFT_MARKER_MAX_AGE_MS = 60 * 60 * 1000;
 export const AI_GIFT_IP_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 export function giftClaimsOpen(now: Date): boolean {

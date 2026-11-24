@@ -30,5 +30,6 @@
     "send": "Envoyer",
     "thanks": "Merci. Ça nous aide à améliorer les cartes Claude.",
     "close": "Fermer"
-  }
+  },
+  "busy": "Une autre conversion utilise tes crédits IA offerts. Ce paquet a été créé sans Claude. Réessaie quand l’autre sera terminée."
 }

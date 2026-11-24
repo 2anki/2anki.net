@@ -30,5 +30,6 @@
     "send": "Senden",
     "thanks": "Danke. Das hilft uns, Claude-Karten zu verbessern.",
     "close": "Schließen"
-  }
+  },
+  "busy": "Eine andere Konvertierung nutzt gerade deine Gratis-KI-Credits. Dieser Stapel wurde ohne Claude erstellt. Versuch es noch einmal, wenn die andere fertig ist."
 }

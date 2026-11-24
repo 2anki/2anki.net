@@ -17,6 +17,7 @@ function readers(overrides: {
   grant?: AiGiftGrant | null;
   spendUsd?: number;
   fails?: boolean;
+  planSpent?: boolean;
 }) {
   return {
     isEnabled: vi.fn(async () => overrides.enabled ?? true),
@@ -26,15 +27,28 @@ function readers(overrides: {
     }),
     giftCostSince: vi.fn(async () => overrides.spendUsd ?? 0),
     now: () => NOW,
+    planSpent: vi.fn(async () => overrides.planSpent ?? false),
   };
 }
 
 describe('uploadAiGiftMode', () => {
-  it('lets a paying upload fall back on the gift without reading it', async () => {
-    const deps = readers({});
+  it('leaves a paying account whose plan has credits exactly as before', async () => {
+    expect(
+      await uploadAiGiftMode(9, true, () => readers({ planSpent: false }))
+    ).toBeNull();
+  });
 
-    expect(await uploadAiGiftMode(9, true, () => deps)).toBe('fallback');
-    expect(deps.findGrant).not.toHaveBeenCalled();
+  it('lets a paying account whose plan is spent draw on its gift', async () => {
+    expect(
+      await uploadAiGiftMode(9, true, () => readers({ planSpent: true }))
+    ).toBe('fallback');
+  });
+
+  it('never reads the plan of a paying account without gift credits', async () => {
+    const deps = readers({ grant: null, planSpent: true });
+
+    expect(await uploadAiGiftMode(9, true, () => deps)).toBeNull();
+    expect(deps.planSpent).not.toHaveBeenCalled();
   });
 
   it('gives a signed-out upload nothing', async () => {
@@ -95,9 +109,12 @@ describe('restartAiGiftMode', () => {
     ).toBe('only');
   });
 
-  it('lets a paying restart fall back on the gift', async () => {
-    expect(await restartAiGiftMode(9, true, () => readers({}))).toBe(
-      'fallback'
-    );
+  it('restarts a paying account on its gift only when its plan is spent', async () => {
+    expect(
+      await restartAiGiftMode(9, true, () => readers({ planSpent: true }))
+    ).toBe('fallback');
+    expect(
+      await restartAiGiftMode(9, true, () => readers({ planSpent: false }))
+    ).toBeNull();
   });
 });
