@@ -84,14 +84,27 @@ PINNED_GIT_CONFIG = (
     "diff.submodule=short",
     "log.follow=false",
     "log.showSignature=false",
+    "core.attributesFile=/dev/null",
 )
-UNSET_GIT_ENV = ("GIT_DIFF_OPTS", "GIT_EXTERNAL_DIFF", "GIT_DIFF_PATH_COUNTER", "GIT_DIFF_PATH_TOTAL")
+UNSET_GIT_ENV = (
+    "GIT_DIFF_OPTS",
+    "GIT_EXTERNAL_DIFF",
+    "GIT_DIFF_PATH_COUNTER",
+    "GIT_DIFF_PATH_TOTAL",
+    "GIT_GLOB_PATHSPECS",
+    "GIT_ICASE_PATHSPECS",
+    "GIT_NOGLOB_PATHSPECS",
+    "GIT_LITERAL_PATHSPECS",
+)
+DIFF_CONTENT_ARGS = ("--text", "--full-index", "--diff-algorithm=myers")
 RELAND_LOG_ARGS = (
     "log", "-O/dev/null", "--first-parent", "--diff-merges=first-parent", "--full-diff", "-p",
-    "--no-ext-diff", "--no-textconv", "--no-color", "--no-renames", "--format=commit %H",
+    *DIFF_CONTENT_ARGS, "--no-ext-diff", "--no-textconv", "--no-color", "--no-renames", "--format=commit %H",
 )
 REVERT_EXCLUDED_ROOT = "migrations/"
 PR_NUMBER = re.compile(r"[1-9][0-9]{0,8}")
+RECORDED_AT = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z")
+RECORDED_AT_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 FULL_SHA = re.compile(r"[0-9a-f]{40}")
 PATCH_ID = re.compile(r"[0-9a-f]{40}")
 GIT_VERSION = re.compile(r"git version (\d+)\.(\d+)")
@@ -216,8 +229,8 @@ def merge_base(sha, cwd):
 def pr_diff(base, sha, cwd):
     return run_git(
         [
-            "diff", "--no-relative", "-O/dev/null", "--no-ext-diff", "--no-textconv", "--no-color", "--no-renames",
-            base, sha,
+            "diff", "--no-relative", "-O/dev/null", *DIFF_CONTENT_ARGS, "--no-ext-diff", "--no-textconv",
+            "--no-color", "--no-renames", base, sha,
         ],
         cwd,
     )
@@ -363,11 +376,23 @@ def relands_a_commit(target, paths, cwd):
     return forward is None or target in forward
 
 
+def is_recorded_at(value):
+    if not RECORDED_AT.fullmatch(value):
+        return False
+    try:
+        datetime.datetime.strptime(value, RECORDED_AT_FORMAT)
+    except ValueError:
+        return False
+    return True
+
+
 def parse_line(line):
     fields = line.rstrip("\n").split("\t")
     if len(fields) != 6:
         return None
-    _, pr, sha, verdict, scope, patch = fields
+    recorded_at, pr, sha, verdict, scope, patch = fields
+    if not is_recorded_at(recorded_at):
+        return None
     if not (PR_NUMBER.fullmatch(pr) and FULL_SHA.fullmatch(sha) and verdict in VERDICTS and scope in SCOPES):
         return None
     if patch != NO_PATCH_ID and not PATCH_ID.fullmatch(patch):
@@ -499,7 +524,7 @@ def record(pr, sha, verdict, scope, cwd, now):
 
 
 def utc_now():
-    return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.datetime.now(datetime.timezone.utc).strftime(RECORDED_AT_FORMAT)
 
 
 def main(argv):

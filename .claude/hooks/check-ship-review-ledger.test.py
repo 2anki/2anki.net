@@ -808,6 +808,100 @@ class WorkingDirectoryTest(unittest.TestCase):
         self.assertIsNone(before[3])
 
 
+BINARY_CONTENT = b"\x00\x01\x02 logo \xff\xfe\x00\n"
+
+
+class AttributesTest(unittest.TestCase):
+    def setUp(self):
+        self.repo = Repo()
+        self.addCleanup(self.repo.cleanup)
+
+    def commit_bytes(self, name, content, message):
+        full = os.path.join(self.repo.path, name)
+        os.makedirs(os.path.dirname(full), exist_ok=True)
+        with open(full, "wb") as handle:
+            handle.write(content)
+        self.repo.git("add", name)
+        self.repo.git("commit", "-q", "-m", message)
+        return self.repo.git("rev-parse", "HEAD")
+
+    def test_a_pr_cannot_hide_a_content_trigger_behind_its_own_gitattributes(self):
+        for attribute in ("*.ts -diff", "*.ts binary"):
+            self.repo.branch_from_main("hide-" + attribute.split()[1].strip("-"))
+            self.repo.commit(".gitattributes", attribute + "\n", "chore: attributes")
+            head = self.repo.commit("src/lib/limits.ts", "export const key = process.env.SECRET;\n", "chore: key")
+            self.assertEqual(self.repo.git("rev-parse", "HEAD"), head)
+            self.assertIn("security", ship_ledger.required_scopes(head, self.repo.path), attribute)
+
+    def test_an_exact_revert_of_a_binary_file_still_needs_no_scope(self):
+        self.repo.git("checkout", "-q", "main")
+        landed = self.commit_bytes("assets/logo.bin", BINARY_CONTENT, "chore: logo")
+        self.repo.main = landed
+        self.repo.git("update-ref", "refs/remotes/origin/main", landed)
+        revert = self.repo.revert_branch("revert-logo", landed)
+        self.assertEqual(ship_ledger.reverted_commit(revert, self.repo.path), landed)
+        self.assertIsNone(ship_ledger.head_violation("8", revert, self.repo.path))
+
+    def test_a_re_land_of_a_binary_file_is_still_refused(self):
+        self.repo.git("checkout", "-q", "main")
+        landed = self.commit_bytes("assets/logo.bin", BINARY_CONTENT, "chore: logo")
+        self.repo.main = landed
+        self.repo.git("update-ref", "refs/remotes/origin/main", landed)
+        removed = self.repo.revert_on_main(landed)
+        re_land = self.repo.revert_branch("re-land-logo", removed)
+        self.assertIsNone(ship_ledger.reverted_commit(re_land, self.repo.path))
+        self.assertIn("no `engineering` pass", ship_ledger.head_violation("8", re_land, self.repo.path))
+
+    def test_info_attributes_do_not_change_what_the_check_reads(self):
+        landed = self.repo.commit_on_main("src/guard.ts", "export const guard = true;\n", "chore: guard")
+        removed = self.repo.revert_on_main(landed)
+        re_land = self.repo.revert_branch("re-land-guard", removed)
+        self.repo.branch_from_main("key")
+        head = self.repo.commit("src/lib/limits.ts", "function load() {\n  return process.env.SECRET;\n}\n", "chore: key")
+
+        def reading():
+            base = ship_ledger.merge_base(head, self.repo.path)
+            return (
+                ship_ledger.changed_names(base, head, self.repo.path),
+                ship_ledger.patch_id(head, self.repo.path),
+                ship_ledger.required_scopes(head, self.repo.path),
+                ship_ledger.forward_patch_ids(["src/guard.ts"], self.repo.path),
+                ship_ledger.reverted_commit(re_land, self.repo.path),
+            )
+
+        baseline = reading()
+        self.assertIn("security", baseline[2])
+        self.repo.git("config", "diff.conv.textconv", "tr a-z A-Z <")
+        self.repo.git("config", "diff.conv.binary", "true")
+        self.repo.git("config", "diff.conv.algorithm", "histogram")
+        self.repo.git("config", "diff.conv.xfuncname", "^(return.*)$")
+        info = os.path.join(self.repo.path, ".git", "info", "attributes")
+        os.makedirs(os.path.dirname(info), exist_ok=True)
+        for attribute in ("*.ts -diff", "*.ts binary", "*.ts -text", "*.ts diff=conv", "*.ts eol=crlf", "*.ts text"):
+            with open(info, "w", encoding="utf-8") as handle:
+                handle.write(attribute + "\n")
+            self.assertEqual(reading(), baseline, attribute)
+        attributes_file = os.path.join(self.repo.path, "global-attributes")
+        with open(attributes_file, "w", encoding="utf-8") as handle:
+            handle.write("*.ts binary\n")
+        os.remove(info)
+        self.repo.git("config", "core.attributesFile", attributes_file)
+        self.assertEqual(reading(), baseline, "core.attributesFile")
+
+
+class PathspecEnvironmentTest(LedgerTestCase):
+    def test_pathspec_environment_variables_do_not_change_the_re_land_scan(self):
+        path = "src/lib/c*rds.ts"
+        landed = self.repo.commit_on_main(path, "export const broken = 1;\n", "chore: cards")
+        revert = self.repo.revert_branch("revert-cards", landed)
+        self.assertEqual(ship_ledger.reverted_commit(revert, self.repo.path), landed)
+        for variable in ("GIT_GLOB_PATHSPECS", "GIT_ICASE_PATHSPECS", "GIT_NOGLOB_PATHSPECS", "GIT_LITERAL_PATHSPECS"):
+            with mock.patch.dict(os.environ, {variable: "1"}):
+                self.assertEqual(ship_ledger.reverted_commit(revert, self.repo.path), landed, variable)
+        with mock.patch.dict(os.environ, {"GIT_GLOB_PATHSPECS": "1"}):
+            self.assertNotIn("GIT_GLOB_PATHSPECS", ship_ledger.git_env())
+
+
 class GitHubFileListTest(LedgerTestCase):
     def test_a_path_only_github_reports_widens_the_scopes(self):
         local = ship_ledger.required_scopes(self.first, self.repo.path)
@@ -882,6 +976,22 @@ class UnparsableLedgerTest(LedgerTestCase):
         output = self.repo.run_hook(post(5, self.repo.marker_file(self.first)))
         self.assertIn("line 2 does not parse", reason(output))
         self.assertNotIn("ledger hook failed", reason(output))
+
+    def test_a_bad_time_field_or_a_byte_order_mark_is_a_malformed_line(self):
+        good = f"2026-01-01T00:00:00Z\t5\t{self.first}\tpass\tengineering\t-"
+        self.assertIsNotNone(ship_ledger.parse_line(good))
+        for line in (
+            "﻿" + good,
+            good.replace("2026-01-01T00:00:00Z", "yesterday"),
+            good.replace("2026-01-01T00:00:00Z", "2026-13-40T25:61:61Z"),
+            good.replace("2026-01-01T00:00:00Z", ""),
+            good.replace("\t5\t", "\t05\t"),
+            good.replace(self.first, self.first.upper()),
+        ):
+            self.assertIsNone(ship_ledger.parse_line(line), line)
+        with open(self.repo.ledger(), "w", encoding="utf-8") as ledger:
+            ledger.write("﻿" + good + "\n")
+        self.assertDenied(post(5, self.repo.marker_file(self.first)), "line 1 does not parse")
 
     def test_an_unknown_scope_on_a_line_denies(self):
         with open(self.repo.ledger(), "w", encoding="utf-8") as ledger:
