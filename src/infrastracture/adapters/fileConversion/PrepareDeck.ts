@@ -1157,6 +1157,7 @@ async function buildClaudeDeck(
     isPaying: input.noLimits,
     userId: input.userId ?? null,
     anonymousPassId: input.anonymousPassId ?? null,
+    aiGift: input.aiGift ?? null,
     requestId: input.requestId,
     comprehensive: input.settings.aiComprehensive,
     conversionResultCache: getConversionResultCache(),
@@ -1237,10 +1238,11 @@ async function buildClaudeDeck(
 
   // Applied to the merged decks, so cards salvaged after a credit trip get the
   // user's note types too.
-  const deckInfo = withUserNoteTypes(
-    aiDecks,
-    input.settings
-  ) as unknown as Deck[];
+  const { decks: deckInfo, heldBack: giftCardsHeldBack } =
+    keepWithinGiftCardLimit(
+      withUserNoteTypes(aiDecks, input.settings) as unknown as Deck[],
+      input
+    );
   // Counted per file against the media that file was actually offered, so an
   // image handed to one file but skipped there is not masked by another file
   // using a different image.
@@ -1310,6 +1312,7 @@ async function buildClaudeDeck(
     apkg,
     deck: [],
     cardCount: claudeCardCount,
+    ...(giftCardsHeldBack > 0 ? { cardsHeldBack: giftCardsHeldBack } : {}),
     warning: creditsWarning,
     failedFileWarnings,
     // The Claude branch returns deck: [], so a caller that scores from `deck`
@@ -1389,6 +1392,46 @@ interface ResolvedAiGate {
   warning?: string;
 }
 
+// A gift-only upload is still a free account's: its deck may not pass what is
+// left of the month's cards, or the whole upload would be refused after the
+// gift already paid for it. Cards past the limit are dropped front to back and
+// counted, the way the parser holds cards back for a free account.
+export function keepWithinGiftCardLimit(
+  decks: Deck[],
+  input: Pick<DeckParserInput, 'aiGift' | 'cardLimit'>
+): { decks: Deck[]; heldBack: number } {
+  const limit = input.cardLimit;
+  if (input.aiGift !== 'only' || limit == null) {
+    return { decks, heldBack: 0 };
+  }
+  let room = limit;
+  let heldBack = 0;
+  const kept: Deck[] = [];
+  for (const deck of decks) {
+    const cards = deck.cards.slice(0, Math.max(0, room));
+    heldBack += deck.cards.length - cards.length;
+    room -= cards.length;
+    if (cards.length > 0) {
+      kept.push({ ...deck, cards } as Deck);
+    }
+  }
+  if (heldBack > 0) {
+    console.info('[PrepareDeck] gift deck kept within the monthly cards', {
+      limit,
+      heldBack,
+    });
+  }
+  return { decks: kept, heldBack };
+}
+
+// Claude cards run for a paying upload, or for an account with no plan whose
+// upload reached Claude on the free AI credits gift. The gift opens nothing
+// else: card limits, page caps, image quizzes and comprehensive mode still
+// read noLimits alone.
+function claudeCardsAllowed(input: DeckParserInput): boolean {
+  return input.noLimits || input.aiGift === 'only';
+}
+
 // The start-of-conversion pre-check is one question: is the balance already at
 // zero for a conversion that will actually invoke Claude. If so the deck builds
 // with the standard parser and carries the credits warning; otherwise the
@@ -1399,11 +1442,12 @@ async function resolveAiConversionGate(
   files: DeckParserInput['files']
 ): Promise<ResolvedAiGate> {
   const willInvokeAi =
-    input.noLimits && conversionInvokesAi(input.settings, files);
+    claudeCardsAllowed(input) && conversionInvokesAi(input.settings, files);
   if (willInvokeAi) {
     const status = await getAiBudgetStatus({
       userId: input.userId ?? null,
       anonymousPassId: input.anonymousPassId ?? null,
+      ...(input.aiGift == null ? {} : { aiGift: input.aiGift }),
     });
     if (status.exhausted) {
       return { exhausted: true, warning: AI_CREDITS_EXHAUSTED_WARNING_CODE };
@@ -1472,7 +1516,7 @@ export async function PrepareDeck(
 
   if (
     input.settings.claudeAIFlashcards &&
-    input.noLimits &&
+    claudeCardsAllowed(input) &&
     !aiCreditsExhausted &&
     !pagePairsSuppressesAi(input.settings, files)
   ) {

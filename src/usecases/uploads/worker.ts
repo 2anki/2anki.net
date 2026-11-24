@@ -1,4 +1,5 @@
 import { getEventsSink } from '../../services/events/eventsSinkInstance';
+import type { AiGiftMode } from '../../lib/claude/aiCredits/gift/giftBalance';
 import {
   mergeRescueCandidates,
   type RescueCandidate,
@@ -210,7 +211,8 @@ async function processFile(
   requestId?: string,
   uploadIdentity?: UploadIdentityContext,
   cardLimit?: number,
-  anonymousPassId?: number | null
+  anonymousPassId?: number | null,
+  aiGift?: AiGiftMode | null
 ): Promise<FileResult> {
   const packages: Package[] = [];
   const warnings: string[] = [];
@@ -289,6 +291,7 @@ async function processFile(
       onProgress,
       userId,
       anonymousPassId,
+      aiGift,
       requestId,
       knownGuids,
       uploadIdentity,
@@ -352,6 +355,7 @@ async function processFile(
         crossFileDedup,
         cardLimit,
         anonymousPassId,
+        aiGift,
       }
     );
     packages.push(...result.packages);
@@ -452,6 +456,7 @@ async function doGenerationWork(
     enqueuedAt,
     userId,
     anonymousPassId,
+    aiGift,
     knownGuids,
     uploadIdentity,
     existingCardFingerprints,
@@ -519,7 +524,8 @@ async function doGenerationWork(
       requestId,
       uploadIdentity,
       cardLimit,
-      anonymousPassId
+      anonymousPassId,
+      aiGift
     );
   };
   const concurrency =

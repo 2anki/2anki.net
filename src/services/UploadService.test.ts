@@ -47,6 +47,16 @@ vi.mock('../services/SubscriptionService', () => ({
 
 vi.mock('./events/track', () => ({ track: vi.fn() }));
 
+vi.mock('../data_layer/createAiGiftReaders', () => ({
+  getAiGiftReaders: () => ({
+    isEnabled: async () => false,
+    findGrant: async () => null,
+    giftCostSince: async () => 0,
+    now: () => new Date(),
+    planSpent: async () => false,
+  }),
+}));
+
 const mockGetFeatureFlag = vi.fn().mockResolvedValue(false);
 vi.mock('../lib/featureFlags/getFeatureFlag', () => ({
   getFeatureFlag: (...args: unknown[]) => mockGetFeatureFlag(...args),
@@ -10825,5 +10835,472 @@ describe('walkMediaFiles', () => {
     const media = walkMediaFiles(dir).sort();
 
     expect(media).toEqual(['folderA/image.png', 'root.png']);
+  });
+});
+
+import { AI_GIFT_MIN_MONTHLY_CARDS } from '../lib/claude/aiCredits/gift/giftTerms';
+import {
+  releaseGiftMarker,
+  resetGiftMarkers,
+  takeGiftMarker,
+} from '../lib/claude/aiCredits/gift/giftConversionMarker';
+
+describe('UploadService.handleUpload — the free AI credits gift', () => {
+  let tmpDir: string;
+  let infoSpy: MockInstance;
+
+  const giftGrant = {
+    id: 3,
+    userId: 42,
+    credits: 100,
+    claimedAt: new Date('2026-11-25T10:00:00.000Z'),
+    expiresAt: new Date('2099-11-27T10:00:00.000Z'),
+  };
+
+  function giftReaders(options: {
+    enabled?: boolean;
+    grant?: typeof giftGrant | null;
+    spendUsd?: number;
+    planSpent?: boolean;
+  }) {
+    return () => ({
+      isEnabled: async () => options.enabled ?? true,
+      findGrant: async () =>
+        options.grant === undefined ? giftGrant : options.grant,
+      giftCostSince: async () => options.spendUsd ?? 0,
+      now: () => new Date('2026-11-25T12:00:00.000Z'),
+      planSpent: async () => options.planSpent ?? false,
+    });
+  }
+
+  function jobRepository(): JobRepository {
+    return {
+      create: vi.fn().mockResolvedValue(undefined),
+      updateJobStatus: vi.fn().mockResolvedValue(undefined),
+      findJobById: vi.fn().mockResolvedValue(null),
+      deleteJob: vi.fn().mockResolvedValue(undefined),
+    } as unknown as JobRepository;
+  }
+
+  function aiRequest(): express.Request {
+    return buildRequest({
+      files: [
+        {
+          originalname: 'lecture.html',
+          mimetype: 'text/html',
+          size: 4096,
+          path: '/tmp/lecture.html',
+        } as unknown as Express.Multer.File,
+      ],
+      body: { 'claude-ai-flashcards': 'true' },
+    });
+  }
+
+  function signedIn(subscriber: boolean) {
+    const built = buildResponse();
+    (built.res.locals as Record<string, unknown>).owner = 42;
+    (built.res.locals as Record<string, unknown>).subscriber = subscriber;
+    return built;
+  }
+
+  function serviceWith(
+    jobs: JobRepository,
+    readers: ReturnType<typeof giftReaders>
+  ) {
+    return new UploadService(
+      buildRepository(),
+      jobs,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps(),
+      undefined,
+      readers
+    );
+  }
+
+  let execute: Mock;
+
+  beforeEach(() => {
+    resetGiftMarkers();
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gift-ws-'));
+    mockWorkspaceLocation = tmpDir;
+    mockWorkspaceId = 'gift-ws-id';
+    infoSpy = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    execute = vi.fn().mockResolvedValue({ packages: [], warnings: [] });
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return { execute } as unknown as InstanceType<
+        typeof GeneratePackagesUseCase
+      >;
+    });
+  });
+
+  afterEach(() => {
+    infoSpy.mockRestore();
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('sends a free account with gift credits to the Claude job, on the gift alone and still unpaid', async () => {
+    const jobs = jobRepository();
+    const { res, capturedStatus } = signedIn(false);
+
+    await serviceWith(jobs, giftReaders({})).handleUpload(aiRequest(), res);
+
+    expect(capturedStatus()).toBe(202);
+    expect(jobs.create).toHaveBeenCalledWith(
+      'gift-ws-id',
+      '42',
+      expect.any(String),
+      'claude'
+    );
+    const [paying, , , , , userId, context] = execute.mock.calls[0];
+    expect(paying).toBe(false);
+    expect(userId).toBe(42);
+    expect(context).toMatchObject({ aiGift: 'only', cardLimit: 100 });
+  });
+
+  it('keeps a free account with fewer than 20 cards left this month on the free path, so the gift is not spent on cards that would be cut', async () => {
+    const jobs = jobRepository();
+    const { res, capturedStatus } = signedIn(false);
+    const service = new UploadService(
+      buildRepository(),
+      jobs,
+      buildUsersRepo({
+        getCardUsage: vi.fn().mockResolvedValue({
+          cards_used: MONTHLY_CARD_LIMIT - AI_GIFT_MIN_MONTHLY_CARDS + 1,
+          month_started_at: new Date(),
+        }),
+      }),
+      ...fakeUploadServiceDeps(),
+      undefined,
+      giftReaders({})
+    );
+
+    await service.handleUpload(aiRequest(), res);
+
+    expect(capturedStatus()).not.toBe(202);
+    expect(jobs.create).not.toHaveBeenCalled();
+  });
+
+  function sendsCards() {
+    mockFirstApkg = Buffer.from('fake-apkg');
+    execute.mockResolvedValue({
+      packages: [{ name: 'lecture', cardCount: 12 }],
+      warnings: [],
+    });
+  }
+
+  function renamed(request: express.Request, name: string) {
+    (request.files as Array<{ originalname: string }>)[0].originalname = name;
+    return request;
+  }
+
+  function sendsCardsOnSyncPath() {
+    mockFirstApkg = Buffer.from('fake-apkg');
+  }
+
+  it("builds a spent gift's upload with the standard parser and the credits notice", async () => {
+    sendsCards();
+    const jobs = jobRepository();
+    const { res, capturedStatus } = signedIn(false);
+
+    await serviceWith(jobs, giftReaders({ spendUsd: 1 })).handleUpload(
+      aiRequest(),
+      res
+    );
+
+    expect(capturedStatus()).not.toBe(202);
+    expect(jobs.create).not.toHaveBeenCalled();
+    expect(res.set).toHaveBeenCalledWith(
+      'X-Warning-Code',
+      'ai-credits-exhausted'
+    );
+  });
+
+  it('runs one gift-only conversion per account at a time; a second gets the standard parser and the busy notice', async () => {
+    const jobs = jobRepository();
+    let finish: () => void = () => undefined;
+    execute.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = () => resolve({ packages: [], warnings: [] });
+        })
+    );
+    const service = serviceWith(jobs, giftReaders({}));
+    const first = signedIn(false);
+    await service.handleUpload(aiRequest(), first.res);
+    expect(first.capturedStatus()).toBe(202);
+
+    sendsCards();
+    const second = signedIn(false);
+    await service.handleUpload(renamed(aiRequest(), 'other.html'), second.res);
+
+    expect(second.capturedStatus()).not.toBe(202);
+    expect(jobs.create).toHaveBeenCalledTimes(1);
+    expect(second.res.set).toHaveBeenCalledWith(
+      'X-Warning-Code',
+      'ai-gift-busy'
+    );
+    expect(second.res.set).toHaveBeenCalledWith(
+      'X-Warning',
+      'Another conversion is using your free AI credits. This deck was made without Claude. Try again when the other one finishes.'
+    );
+
+    finish();
+    await new Promise((resolve) => setImmediate(resolve));
+    const third = signedIn(false);
+    await service.handleUpload(renamed(aiRequest(), 'third.html'), third.res);
+    expect(third.capturedStatus()).toBe(202);
+  });
+
+  it('reads the gift only when the upload asked for Claude cards', async () => {
+    sendsCards();
+    const readers = vi.fn(giftReaders({}));
+    const { res } = signedIn(false);
+    const request = aiRequest();
+    request.body = {};
+
+    await serviceWith(jobRepository(), readers).handleUpload(request, res);
+
+    expect(readers).not.toHaveBeenCalled();
+  });
+
+  it('keeps a free account on the free path while the switch is off, even holding a gift', async () => {
+    const jobs = jobRepository();
+    const { res, capturedStatus } = signedIn(false);
+
+    await serviceWith(jobs, giftReaders({ enabled: false })).handleUpload(
+      aiRequest(),
+      res
+    );
+
+    expect(capturedStatus()).not.toBe(202);
+    expect(jobs.create).not.toHaveBeenCalled();
+  });
+
+  it('leaves a paying account whose plan has credits untouched: no gift, no marker', async () => {
+    const jobs = jobRepository();
+    const { res, capturedStatus } = signedIn(true);
+
+    await serviceWith(jobs, giftReaders({ planSpent: false })).handleUpload(
+      aiRequest(),
+      res
+    );
+
+    expect(capturedStatus()).toBe(202);
+    const [paying, , , , , , context] = execute.mock.calls[0];
+    expect(paying).toBe(true);
+    expect(context).not.toHaveProperty('aiGift');
+    expect(takeGiftMarker(42)).not.toBeNull();
+  });
+
+  it('lets a paying account whose plan is spent draw on the gift while it holds the marker', async () => {
+    const jobs = jobRepository();
+    const { res, capturedStatus } = signedIn(true);
+
+    await serviceWith(jobs, giftReaders({ planSpent: true })).handleUpload(
+      aiRequest(),
+      res
+    );
+
+    expect(capturedStatus()).toBe(202);
+    const [, , , , , , context] = execute.mock.calls[0];
+    expect(context).toMatchObject({ aiGift: 'fallback' });
+  });
+
+  it('runs a spent-plan paying upload as it does with no credits when another gift conversion holds the marker', async () => {
+    const held = takeGiftMarker(42);
+    const jobs = jobRepository();
+    const { res, capturedStatus } = signedIn(true);
+
+    await serviceWith(jobs, giftReaders({ planSpent: true })).handleUpload(
+      aiRequest(),
+      res
+    );
+
+    expect(capturedStatus()).toBe(202);
+    const [, , , , , , context] = execute.mock.calls[0];
+    expect(context).not.toHaveProperty('aiGift');
+    releaseGiftMarker(held);
+  });
+
+  it('starts exactly one gift-funded job when two uploads arrive together', async () => {
+    const jobs = jobRepository();
+    execute.mockImplementation((...args: unknown[]) =>
+      (args[6] as { aiGift?: string } | undefined)?.aiGift === 'only'
+        ? new Promise(() => undefined)
+        : Promise.resolve({
+            packages: [{ name: 'lecture', cardCount: 12 }],
+            warnings: [],
+          })
+    );
+    sendsCardsOnSyncPath();
+    const service = serviceWith(jobs, giftReaders({}));
+    const first = signedIn(false);
+    const second = signedIn(false);
+
+    await Promise.all([
+      service.handleUpload(renamed(aiRequest(), 'one.html'), first.res),
+      service.handleUpload(renamed(aiRequest(), 'two.html'), second.res),
+    ]);
+
+    const giftJobs = execute.mock.calls.filter(
+      ([, , , , , , context]) => context?.aiGift === 'only'
+    );
+    expect(giftJobs).toHaveLength(1);
+    expect(jobs.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('releases the marker when the upload stops before its job starts', async () => {
+    const jobs = jobRepository();
+    (jobs.create as Mock).mockRejectedValueOnce(new Error('insert failed'));
+    const { res } = signedIn(false);
+
+    await serviceWith(jobs, giftReaders({}))
+      .handleUpload(aiRequest(), res)
+      .catch(() => undefined);
+
+    expect(takeGiftMarker(42)).not.toBeNull();
+  });
+
+  it('releases the marker when the same file is already converting', async () => {
+    const jobs = jobRepository();
+    execute.mockImplementationOnce(() => new Promise(() => undefined));
+    const service = serviceWith(jobs, giftReaders({ planSpent: true }));
+    const first = signedIn(true);
+    await service.handleUpload(aiRequest(), first.res);
+    const firstMarkerHeld = takeGiftMarker(42) == null;
+
+    const second = signedIn(true);
+    await service.handleUpload(aiRequest(), second.res);
+
+    expect(firstMarkerHeld).toBe(true);
+    expect(second.capturedStatus()).toBe(409);
+  });
+});
+
+describe('UploadService.restartClaudeJob — the free AI credits gift', () => {
+  const originalWorkspaceBase = process.env.WORKSPACE_BASE;
+  let base: string;
+
+  beforeEach(() => {
+    resetGiftMarkers();
+    base = fs.mkdtempSync(path.join(os.tmpdir(), 'gift-restart-'));
+    process.env.WORKSPACE_BASE = base;
+    fs.mkdirSync(path.join(base, 'job-ws'));
+  });
+
+  afterEach(() => {
+    process.env.WORKSPACE_BASE = originalWorkspaceBase;
+    fs.rmSync(base, { recursive: true, force: true });
+  });
+
+  function restartJobs(): JobRepository {
+    return {
+      findJobById: vi.fn().mockResolvedValue({ id: 1, object_id: 'job-ws' }),
+      restartJob: vi.fn().mockResolvedValue({ id: 1 }),
+      updateJobStatus: vi.fn().mockResolvedValue(undefined),
+      deleteJob: vi.fn().mockResolvedValue(undefined),
+    } as unknown as JobRepository;
+  }
+
+  function restartReaders(planSpent: boolean) {
+    return () => ({
+      isEnabled: async () => true,
+      findGrant: async () => ({
+        id: 3,
+        userId: 42,
+        credits: 100,
+        claimedAt: new Date('2026-11-25T10:00:00.000Z'),
+        expiresAt: new Date('2099-11-27T10:00:00.000Z'),
+      }),
+      giftCostSince: async () => 0,
+      now: () => new Date('2026-11-25T12:00:00.000Z'),
+      planSpent: async () => planSpent,
+    });
+  }
+
+  function restartRequest(): express.Request {
+    return { params: { jobId: '1' } } as unknown as express.Request;
+  }
+
+  function restartResponse(subscriber: boolean) {
+    const built = buildResponse();
+    (built.res.locals as Record<string, unknown>).owner = 42;
+    (built.res.locals as Record<string, unknown>).subscriber = subscriber;
+    return built;
+  }
+
+  it.each([
+    ['a gift-only account', false],
+    ['a paying account on its gift', true],
+  ])(
+    'refuses a restart for %s while another conversion holds the gift',
+    async (_label, subscriber) => {
+      const held = takeGiftMarker(42);
+      const jobs = restartJobs();
+      const { res, capturedStatus, capturedJson } = restartResponse(subscriber);
+
+      await new UploadService(
+        buildRepository(),
+        jobs,
+        buildUsersRepo(),
+        ...fakeUploadServiceDeps(),
+        undefined,
+        restartReaders(true)
+      ).restartClaudeJob(restartRequest(), res);
+
+      expect(capturedStatus()).toBe(409);
+      expect(capturedJson()).toEqual({
+        error:
+          'Another conversion is using your free AI credits. This deck was made without Claude. Try again when the other one finishes.',
+        code: 'ai-gift-busy',
+      });
+      expect(jobs.restartJob).not.toHaveBeenCalled();
+      releaseGiftMarker(held);
+    }
+  );
+
+  it('holds the gift marker while a gift restart runs and frees it after', async () => {
+    const jobs = restartJobs();
+    let failed!: () => void;
+    const settled = new Promise<void>((resolve) => {
+      failed = resolve;
+    });
+    (jobs.updateJobStatus as Mock).mockImplementation(
+      async (_id: string, _owner: string, status: string) => {
+        if (status === 'failed') failed();
+      }
+    );
+    const { res, capturedStatus } = restartResponse(false);
+
+    await new UploadService(
+      buildRepository(),
+      jobs,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps(),
+      undefined,
+      restartReaders(false)
+    ).restartClaudeJob(restartRequest(), res);
+
+    expect(capturedStatus()).toBe(202);
+    await settled;
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(takeGiftMarker(42)).not.toBeNull();
+  });
+
+  it('leaves a paying restart whose plan has credits off the marker', async () => {
+    const held = takeGiftMarker(42);
+    const { res, capturedStatus } = restartResponse(true);
+
+    await new UploadService(
+      buildRepository(),
+      restartJobs(),
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps(),
+      undefined,
+      restartReaders(false)
+    ).restartClaudeJob(restartRequest(), res);
+
+    expect(capturedStatus()).toBe(202);
+    releaseGiftMarker(held);
   });
 });

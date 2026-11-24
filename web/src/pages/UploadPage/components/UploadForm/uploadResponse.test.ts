@@ -856,6 +856,12 @@ describe('displayedUploadWarning', () => {
     ).toBe('errors:upload.zip_partly_recovered.title|English note');
   });
 
+  it('translates the busy gift note by its code', () => {
+    expect(displayedUploadWarning(t, 'English note', 'ai-gift-busy')).toBe(
+      'aiGift:busy|English note'
+    );
+  });
+
   it.each([
     ['a warning with another code', 'ai-credits-exhausted'],
     ['a warning with no code', null],

@@ -3,6 +3,15 @@ import { CreditWindowReset } from './allowance';
 
 export const AI_CREDITS_EXHAUSTED_WARNING_CODE = 'ai-credits-exhausted';
 
+// A gift-only upload that started while another conversion of the same
+// account was drawing on the free AI credits gift: the gift still has
+// credits, so the out-of-credits wording would be wrong.
+export const AI_GIFT_BUSY_WARNING_CODE = 'ai-gift-busy';
+
+export const AI_GIFT_BUSY_WARNING_TEXT =
+  'Another conversion is using your free AI credits. This deck was made ' +
+  'without Claude. Try again when the other one finishes.';
+
 export type AiCreditsWarningAudience = CreditWindowReset | 'signed-out-pass';
 
 const AI_CREDITS_EXHAUSTED_WARNING_PLAN =

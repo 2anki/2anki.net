@@ -7,6 +7,7 @@ import {
 } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+import type { AiGiftStatus } from '../../lib/backend/aiGift';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { HelmetProvider } from 'react-helmet-async';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
@@ -67,6 +68,11 @@ vi.mock('../../lib/analytics/reportPurchaseConversion', () => ({
     reportPurchaseConversion(...args),
   replayPendingPurchaseConversions: (...args: unknown[]) =>
     replayPendingPurchaseConversions(...args),
+}));
+let fakeGift: AiGiftStatus | null = null;
+vi.mock('../../lib/hooks/useAiGift', () => ({
+  AI_GIFT_QUERY_KEY: ['aiGift'],
+  useAiGift: () => fakeGift,
 }));
 vi.mock('../../lib/hooks/useUserLocals', () => ({
   useUserLocals: () => ({
@@ -474,6 +480,54 @@ describe('UploadPage Claude cards on by default for PDFs and PowerPoint', () => 
     await waitFor(() => {
       expect(globalThis.localStorage.getItem('ai-choice-at')).toMatch(/^\d+$/);
     });
+  });
+
+  it('gives a free account holding gift credits the Claude cards switch', async () => {
+    fakeLocals = { patreon: false, subscriber: false };
+    fakeGift = {
+      state: 'claimed',
+      credits: 80,
+      expiresAt: '2026-11-27T12:00:00.000Z',
+      feedbackDue: false,
+    };
+    renderPage();
+
+    expect(
+      screen.getByText(/You have 80 AI credits from the gift\./)
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', {
+        name: /upgrade to write cards with claude/i,
+      })
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /turn ai on/i }));
+
+    await waitFor(() => {
+      expect(globalThis.localStorage.getItem('claude-ai-flashcards')).toBe(
+        'true'
+      );
+    });
+    expect(
+      screen.getByRole('button', { name: /turn ai off/i })
+    ).toHaveTextContent('AI is on');
+    fakeGift = null;
+  });
+
+  it('keeps the upgrade badge for a free account whose gift is spent or closed', () => {
+    fakeLocals = { patreon: false, subscriber: false };
+    fakeGift = {
+      state: 'claimed',
+      credits: 0,
+      expiresAt: '2026-11-27T12:00:00.000Z',
+      feedbackDue: false,
+    };
+    renderPage();
+
+    expect(
+      screen.getByRole('link', { name: /upgrade to write cards with claude/i })
+    ).toBeInTheDocument();
+    fakeGift = null;
   });
 
   it('keeps the upgrade badge for a free account', () => {

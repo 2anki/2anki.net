@@ -1,0 +1,35 @@
+{
+  "triggerText": "Crédits IA offerts",
+  "triggerLabel": "Cadeau : crédits IA offerts",
+  "title": "Crédits IA offerts",
+  "body": "Récupère {{credits}} crédits IA pour des cartes Claude sur tes imports. Récupérés maintenant, ils expirent le {{date}}.",
+  "claimUntil": "Tu peux les récupérer jusqu’au {{date}}.",
+  "claim": "Récupérer {{credits}} crédits",
+  "claiming": "Récupération",
+  "signUpToClaim": "Inscris-toi pour les récupérer",
+  "haveAccount": "Tu as déjà un compte ?",
+  "signIn": "Se connecter",
+  "claimed_one": "Tu as {{count}} crédit IA offert.",
+  "claimed_other": "Tu as {{count}} crédits IA offerts.",
+  "claimedExpires": "Ils expirent le {{date}}. Active les cartes Claude et dépose un fichier pour les utiliser.",
+  "useThem": "Aller à l’import",
+  "full": "Les crédits IA offerts sont tous réclamés pour le moment.",
+  "hide": "Masquer",
+  "close": "Fermer",
+  "refused": {
+    "alreadyClaimed": "Ce compte a déjà récupéré le cadeau.",
+    "ipLimit": "Trop de récupérations depuis ce réseau aujourd’hui. Réessaie demain.",
+    "closed": "Le cadeau est terminé.",
+    "generic": "Impossible de récupérer les crédits. Réessaie dans un instant."
+  },
+  "feedback": {
+    "question": "Les cartes Claude sont-elles comme tu le voulais ?",
+    "yes": "Oui",
+    "no": "Non",
+    "commentLabel": "Qu’est-ce qui aurait dû être différent ? (facultatif)",
+    "send": "Envoyer",
+    "thanks": "Merci. Ça nous aide à améliorer les cartes Claude.",
+    "close": "Fermer"
+  },
+  "busy": "Une autre conversion utilise tes crédits IA offerts. Ce paquet a été créé sans Claude. Réessaie quand l’autre sera terminée."
+}

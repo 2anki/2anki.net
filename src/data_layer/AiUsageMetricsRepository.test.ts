@@ -12,7 +12,7 @@ describe('AiUsageMetricsRepository.buildUserCostQuery generated SQL', () => {
     expect(sql).toContain('"name" = \'ai_usage_recorded\'');
     expect(sql).toContain('"user_id" = 42');
     expect(sql).toContain(
-      "coalesce(sum((props->>'cost_usd')::numeric) filter (where props->>'billable' is distinct from 'false'), 0) as cost_usd"
+      "coalesce(sum((props->>'cost_usd')::numeric) filter (where props->>'billable' is distinct from 'false' and props->>'gift_id' is null), 0) as cost_usd"
     );
   });
 });
@@ -26,7 +26,7 @@ describe('AiUsageMetricsRepository.buildAnonymousPassCostQuery generated SQL', (
     expect(sql).toContain('"name" = \'ai_usage_recorded\'');
     expect(sql).toContain('"anonymous_pass_id" = 7');
     expect(sql).toContain(
-      "coalesce(sum((props->>'cost_usd')::numeric) filter (where props->>'billable' is distinct from 'false'), 0) as cost_usd"
+      "coalesce(sum((props->>'cost_usd')::numeric) filter (where props->>'billable' is distinct from 'false' and props->>'gift_id' is null), 0) as cost_usd"
     );
   });
 });

@@ -7,6 +7,7 @@ import path from 'node:path';
 import { strToU8, zipSync } from 'fflate';
 import {
   PrepareDeck,
+  keepWithinGiftCardLimit,
   parserWarning,
   prepareDeckInfoOnly,
   conversionInvokesAi,
@@ -393,6 +394,111 @@ describe('PrepareDeck — Claude AI flashcards branch', () => {
     });
     expect(generateDeckInfo).not.toHaveBeenCalled();
     expect(result?.warning).toBe(AI_CREDITS_EXHAUSTED_WARNING_CODE);
+  });
+
+  it('runs Claude cards for an account with no plan that holds gift credits, unpaid', async () => {
+    getAiBudgetStatus.mockResolvedValueOnce({
+      exhausted: false,
+      balance: null,
+    });
+    generateDeckInfo.mockResolvedValueOnce([
+      {
+        name: 'Gift Deck',
+        image: '',
+        style: null,
+        id: 123456789012346,
+        settings: { template: 'specialstyle' },
+        cards: [
+          {
+            name: 'Front',
+            back: 'Back',
+            tags: [],
+            cloze: false,
+            number: 0,
+            enableInput: false,
+            answer: '',
+            media: [],
+          },
+        ],
+      },
+    ]);
+
+    await PrepareDeck({
+      name: 'test.html',
+      files: [{ name: 'test.html', contents: '<p>Front</p>' }],
+      settings: makeSettings({ 'claude-ai-flashcards': 'true' }),
+      noLimits: false,
+      workspace: makeWorkspace(),
+      userId: 9,
+      aiGift: 'only',
+    });
+
+    expect(getAiBudgetStatus).toHaveBeenCalledWith({
+      userId: 9,
+      anonymousPassId: null,
+      aiGift: 'only',
+    });
+    const options = generateDeckInfo.mock.calls[0][7];
+    expect(options).toMatchObject({
+      isPaying: false,
+      userId: 9,
+      aiGift: 'only',
+    });
+  });
+
+  it("keeps a gift-only deck within the month's remaining cards", () => {
+    const card = (name: string) => ({ name, back: 'b' });
+    const decks = [
+      { name: 'One', cards: [card('a'), card('b')] },
+      { name: 'Two', cards: [card('c'), card('d')] },
+    ] as unknown as Parameters<typeof keepWithinGiftCardLimit>[0];
+
+    const kept = keepWithinGiftCardLimit(decks, {
+      aiGift: 'only',
+      cardLimit: 3,
+    });
+
+    expect(kept.heldBack).toBe(1);
+    expect(kept.decks.map((d) => d.cards.map((c) => c.name))).toEqual([
+      ['a', 'b'],
+      ['c'],
+    ]);
+    expect(
+      keepWithinGiftCardLimit(decks, { aiGift: 'fallback', cardLimit: 1 })
+        .heldBack
+    ).toBe(0);
+  });
+
+  it('builds with the standard parser once the gift is spent, carrying the credits warning', async () => {
+    getAiBudgetStatus.mockResolvedValueOnce({ exhausted: true, balance: null });
+
+    const result = await PrepareDeck({
+      name: 'test.html',
+      files: [{ name: 'test.html', contents: '<p>Front</p>' }],
+      settings: makeSettings({ 'claude-ai-flashcards': 'true' }),
+      noLimits: false,
+      workspace: makeWorkspace(),
+      userId: 9,
+      aiGift: 'only',
+    });
+
+    expect(generateDeckInfo).not.toHaveBeenCalled();
+    expect(result?.warning).toBe(AI_CREDITS_EXHAUSTED_WARNING_CODE);
+  });
+
+  it('keeps a free account without a gift off Claude, exactly as before', async () => {
+    const result = await PrepareDeck({
+      name: 'test.html',
+      files: [{ name: 'test.html', contents: '<p>Front</p>' }],
+      settings: makeSettings({ 'claude-ai-flashcards': 'true' }),
+      noLimits: false,
+      workspace: makeWorkspace(),
+      userId: 9,
+    });
+
+    expect(getAiBudgetStatus).not.toHaveBeenCalled();
+    expect(generateDeckInfo).not.toHaveBeenCalled();
+    expect(result?.warning).toBeUndefined();
   });
 
   it('never fails when the credit guard trips mid-run; ships the produced cards with the warning', async () => {

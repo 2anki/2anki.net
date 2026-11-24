@@ -1,0 +1,37 @@
+{
+  "triggerText": "Darmowe kredyty AI",
+  "triggerLabel": "Prezent: darmowe kredyty AI",
+  "title": "Darmowe kredyty AI",
+  "body": "Odbierz {{credits}} kredytów AI na karty Claude w przesyłanych plikach. Odebrane teraz wygasają {{date}}.",
+  "claimUntil": "Możesz je odebrać do {{date}}.",
+  "claim": "Odbierz {{credits}} kredytów",
+  "claiming": "Odbieranie",
+  "signUpToClaim": "Zarejestruj się, aby odebrać",
+  "haveAccount": "Masz już konto?",
+  "signIn": "Zaloguj się",
+  "claimed_one": "Masz {{count}} kredyt AI z prezentu.",
+  "claimed_few": "Masz {{count}} kredyty AI z prezentu.",
+  "claimed_many": "Masz {{count}} kredytów AI z prezentu.",
+  "claimed_other": "Masz {{count}} kredytu AI z prezentu.",
+  "claimedExpires": "Wygasają {{date}}. Włącz karty Claude i prześlij plik, aby ich użyć.",
+  "useThem": "Przejdź do przesyłania",
+  "full": "Darmowe kredyty AI zostały na razie rozdane.",
+  "hide": "Ukryj",
+  "close": "Zamknij",
+  "refused": {
+    "alreadyClaimed": "To konto już odebrało prezent.",
+    "ipLimit": "Dziś z tej sieci odebrano już zbyt wiele. Spróbuj jutro.",
+    "closed": "Prezent się zakończył.",
+    "generic": "Nie udało się odebrać kredytów. Spróbuj ponownie za chwilę."
+  },
+  "feedback": {
+    "question": "Czy karty Claude wyszły tak, jak chciałeś?",
+    "yes": "Tak",
+    "no": "Nie",
+    "commentLabel": "Co powinno być inaczej? (opcjonalnie)",
+    "send": "Wyślij",
+    "thanks": "Dzięki. To pomaga nam ulepszać karty Claude.",
+    "close": "Zamknij"
+  },
+  "busy": "Inna konwersja korzysta z Twoich darmowych kredytów AI. Ta talia powstała bez Claude. Spróbuj ponownie, gdy tamta się zakończy."
+}

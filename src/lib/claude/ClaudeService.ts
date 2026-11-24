@@ -14,6 +14,7 @@ import {
   assertAiBudget,
   withAiBudget,
 } from './aiSpendGuard';
+import type { AiGiftMode } from './aiCredits/gift/giftBalance';
 import { computeUsageCostUsd } from './pricing';
 import { getCardSizePromptSuffix, validateCardSize } from './cardSize';
 import {
@@ -1344,6 +1345,7 @@ export interface GenerateDeckInfoOptions {
   isPaying?: boolean;
   userId?: number | null;
   anonymousPassId?: number | null;
+  aiGift?: AiGiftMode | null;
   requestId?: string;
   comprehensive?: boolean;
   pdfImageFallback?: PdfImageFallbackContext;
@@ -1356,6 +1358,7 @@ export interface GenerateDeckInfoOptions {
 export interface SpendAttribution {
   userId?: number | null;
   anonymousPassId?: number | null;
+  aiGift?: AiGiftMode | null;
   requestId?: string;
 }
 
@@ -1365,6 +1368,7 @@ function spendAttributionOf(
   return {
     userId: options?.userId,
     anonymousPassId: options?.anonymousPassId,
+    aiGift: options?.aiGift,
     requestId: options?.requestId,
   };
 }
@@ -1374,12 +1378,21 @@ function spendAttributionOf(
 // upstream isPaying gate is what keeps AI off).
 function aiSubjectOf(
   source:
-    | { userId?: number | null; anonymousPassId?: number | null }
+    | {
+        userId?: number | null;
+        anonymousPassId?: number | null;
+        aiGift?: AiGiftMode | null;
+      }
     | undefined
-): { userId: number | null; anonymousPassId: number | null } {
+): {
+  userId: number | null;
+  anonymousPassId: number | null;
+  aiGift?: AiGiftMode;
+} {
   return {
     userId: source?.userId ?? null,
     anonymousPassId: source?.anonymousPassId ?? null,
+    ...(source?.aiGift == null ? {} : { aiGift: source.aiGift }),
   };
 }
 
@@ -1895,7 +1908,8 @@ async function generateDeckInfoUncached(
       onProgress,
       options.userId,
       options.requestId,
-      options.anonymousPassId
+      options.anonymousPassId,
+      options.aiGift
     );
   }
 

@@ -1,5 +1,6 @@
 import { track } from '../../services/events/track';
 import { ClaudeUsage, computeUsageCostUsd } from './pricing';
+import { currentGiftId } from './aiCredits/gift/giftFunding';
 
 export type { ClaudeUsage } from './pricing';
 
@@ -33,11 +34,12 @@ export function recordClaudeUsage(options: RecordClaudeUsageOptions): void {
   const cacheCreate = usage.cache_creation_input_tokens ?? 0;
   const cacheRead = usage.cache_read_input_tokens ?? 0;
   const costUsd = computeUsageCostUsd(model, usage);
+  const giftId = currentGiftId();
   const request = requestId ? ` request=${requestId}` : '';
   const biller =
     userId ?? (anonymousPassId != null ? `pass:${anonymousPassId}` : 'anon');
   console.info(
-    `[claude-usage] surface=${surface} model=${model ?? 'unknown'} user=${biller}${request} input=${input} output=${output} cache_create=${cacheCreate} cache_read=${cacheRead} cost_usd=${costUsd}${billable ? '' : ' billable=false'}`
+    `[claude-usage] surface=${surface} model=${model ?? 'unknown'} user=${biller}${request} input=${input} output=${output} cache_create=${cacheCreate} cache_read=${cacheRead} cost_usd=${costUsd}${billable ? '' : ' billable=false'}${giftId == null ? '' : ` gift=${giftId}`}`
   );
   try {
     track('ai_usage_recorded', {
@@ -50,6 +52,7 @@ export function recordClaudeUsage(options: RecordClaudeUsageOptions): void {
         ...(requestId != null ? { request_id: requestId } : {}),
         ...(durationMs != null ? { duration_ms: durationMs } : {}),
         ...(billable ? {} : { billable: false }),
+        ...(giftId == null ? {} : { gift_id: giftId }),
         usage: {
           input_tokens: input,
           output_tokens: output,

@@ -187,6 +187,30 @@ describe('getPackagesFromZip — batch concurrency', () => {
     expect(result.warnings).toContain('zip-partly-recovered');
   });
 
+  it('sends a gift-only zip to Claude cards with the gift, still unpaid', async () => {
+    mockRecoverableZip(['a.html'], false);
+    mockPrepareDeck.mockResolvedValueOnce(null);
+
+    await getPackagesFromZip(
+      Buffer.from('fake-zip') as unknown as Uint8Array,
+      false,
+      new CardOption({ 'claude-ai-flashcards': 'true' }),
+      { location: FAKE_WORKSPACE_LOCATION } as Workspace,
+      undefined,
+      9,
+      { aiGift: 'only' }
+    );
+
+    expect(mockPrepareDeck).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'a.html',
+        noLimits: false,
+        userId: 9,
+        aiGift: 'only',
+      })
+    );
+  });
+
   it('adds the partly recovered note to an AI conversion of a zip', async () => {
     mockRecoverableZip(['a.html'], true);
     mockPrepareDeck.mockResolvedValueOnce(null);

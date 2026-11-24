@@ -51,6 +51,7 @@ export function parseNonNegativeIntHeader(
 
 export const AI_CREDITS_WARNING_CODE = 'ai-credits-exhausted';
 export const ZIP_PARTLY_RECOVERED_WARNING_CODE = 'zip-partly-recovered';
+export const AI_GIFT_BUSY_WARNING_CODE = 'ai-gift-busy';
 
 export function displayedUploadWarning(
   t: (key: string, options: { defaultValue: string }) => string,
@@ -61,6 +62,9 @@ export function displayedUploadWarning(
     return t('errors:upload.zip_partly_recovered.title', {
       defaultValue: warning,
     });
+  }
+  if (warning && warningCode === AI_GIFT_BUSY_WARNING_CODE) {
+    return t('aiGift:busy', { defaultValue: warning });
   }
   return warning;
 }

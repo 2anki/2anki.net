@@ -32,6 +32,7 @@ import nativeConfigRouter from './routes/NativeConfigRouter';
 import appStoreLinksRouter from './routes/AppStoreLinksRouter';
 import uploadRouter from './routes/UploadRouter';
 import usersRouter from './routes/UserRouter';
+import aiGiftRouter from './routes/AiGiftRouter';
 import notionRouter from './routes/NotionRouter';
 import rulesRouter from './routes/ParserRulesRouter';
 import downloadRouter from './routes/DownloadRouter';
@@ -217,6 +218,7 @@ const serve = async () => {
   app.use(appStoreLinksRouter());
   app.use(uploadRouter());
   app.use(usersRouter());
+  app.use(aiGiftRouter());
   app.use(notionRouter());
   app.use(rulesRouter());
   app.use(settingsRouter());

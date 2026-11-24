@@ -42,6 +42,16 @@
   height: 28px;
 }
 
+.navPresent {
+  margin-left: auto;
+}
+
+@media (min-width: 1024px) {
+  .navPresent {
+    margin-left: 1rem;
+  }
+}
+
 .burger {
   display: flex;
   flex-direction: column;

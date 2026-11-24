@@ -1,0 +1,35 @@
+{
+  "triggerText": "Gratis AI-credits",
+  "triggerLabel": "Cadeau: gratis AI-credits",
+  "title": "Gratis AI-credits",
+  "body": "Claim {{credits}} AI-credits voor Claude-kaarten bij je uploads. Claim je ze nu, dan verlopen ze op {{date}}.",
+  "claimUntil": "Je kunt ze claimen tot {{date}}.",
+  "claim": "{{credits}} credits claimen",
+  "claiming": "Bezig met claimen",
+  "signUpToClaim": "Meld je aan om te claimen",
+  "haveAccount": "Heb je al een account?",
+  "signIn": "Inloggen",
+  "claimed_one": "Je hebt {{count}} AI-credit van het cadeau.",
+  "claimed_other": "Je hebt {{count}} AI-credits van het cadeau.",
+  "claimedExpires": "Ze verlopen op {{date}}. Zet Claude-kaarten aan en upload een bestand om ze te gebruiken.",
+  "useThem": "Naar uploaden",
+  "full": "De gratis AI-credits zijn voorlopig allemaal geclaimd.",
+  "hide": "Verbergen",
+  "close": "Sluiten",
+  "refused": {
+    "alreadyClaimed": "Dit account heeft het cadeau al geclaimd.",
+    "ipLimit": "Te veel claims vanaf dit netwerk vandaag. Probeer het morgen opnieuw.",
+    "closed": "Het cadeau is afgelopen.",
+    "generic": "De credits konden niet worden geclaimd. Probeer het zo opnieuw."
+  },
+  "feedback": {
+    "question": "Zijn de Claude-kaarten geworden zoals je wilde?",
+    "yes": "Ja",
+    "no": "Nee",
+    "commentLabel": "Wat had anders moeten zijn? (optioneel)",
+    "send": "Versturen",
+    "thanks": "Bedankt. Dit helpt ons Claude-kaarten te verbeteren.",
+    "close": "Sluiten"
+  },
+  "busy": "Een andere conversie gebruikt je gratis AI-credits. Dit deck is zonder Claude gemaakt. Probeer het opnieuw als de andere klaar is."
+}
