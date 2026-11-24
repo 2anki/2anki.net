@@ -11,3 +11,7 @@
   flex: 1;
   min-height: 100vh;
 }
+
+.main:has(> [data-viewport-sized]) {
+  min-height: 0;
+}

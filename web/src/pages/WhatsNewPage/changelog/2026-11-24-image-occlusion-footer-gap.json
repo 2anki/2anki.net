@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-24-image-occlusion-footer-gap",
+  "date": "2026-11-24",
+  "type": "fix",
+  "title": "Image occlusion signed out sits flush with the footer, with no blank strip under the editor"
+}
