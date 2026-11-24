@@ -8,11 +8,13 @@
 # the pre-flight checks that copy and the same copy is sent.
 #
 # The pre-flight accepts a file only when every statement starts with select,
-# with, explain, show or table, and every function it calls is on the list in
-# ALLOWED_FUNCTIONS below (schema absent or pg_catalog). To call another
-# function, add it to that list in a reviewed PR with a test. A name after a
-# "." that follows ")" or "]" also counts as a call, so (value).name must be on
-# the list too; ".*", alias.column and schema.table are ordinary references.
+# with, explain, show, table or values, and every function it calls is on the
+# list in ALLOWED_FUNCTIONS below (schema absent or pg_catalog). To call
+# another function, add it to that list in a reviewed PR with a test. After a
+# ")" or "]" a "." may only be followed by "*", so field access on a
+# parenthesised value such as (row).column is refused; select the row with
+# (t).* or name the column through a table alias. alias.column,
+# schema.table, schema.table.column and alias.* are accepted.
 # It also refuses: comments, a backslash or a dollar sign outside a
 # single-quoted string (so no psql meta-command and no dollar quote; inside a
 # string they are plain characters because standard_conforming_strings is
@@ -42,10 +44,11 @@
 # The session adds a second layer: the file runs inside one
 # BEGIN TRANSACTION READ ONLY ... ROLLBACK that the file cannot end early, with
 # default_transaction_read_only, standard_conforming_strings on, UTF8 client
-# encoding, a statement timeout, a short lock timeout, a 1GB temp_file_limit
-# and a 300-second wall-clock cap on the whole run. temp_file_limit needs a
-# superuser to set it on PostgreSQL 14, so when the read-only role arrives the
-# owner sets it on that role instead. On the box the connection
+# encoding, a statement timeout, a short lock timeout and a 300-second
+# wall-clock cap on the whole run. Through DATABASE_URL it also sets a 1GB
+# temp_file_limit. Only a superuser can set that on PostgreSQL 14, so through
+# READONLY_DATABASE_URL it is not set and the owner sets temp_file_limit on the
+# read-only role itself. On the box the connection
 # string is parsed into PGHOST, PGPORT, PGUSER, PGPASSWORD and PGDATABASE, so
 # it never sits in the process list, and none of them is printed.
 # Results are for the conversation or the private board only, never the repo,
@@ -76,7 +79,6 @@ SET standard_conforming_strings = on;
 SET statement_timeout = '120s';
 SET lock_timeout = '5s';
 SET idle_in_transaction_session_timeout = '60s';
-SET temp_file_limit = '1GB';
 SET default_transaction_read_only = on;
 BEGIN TRANSACTION READ ONLY;"
 
@@ -100,7 +102,7 @@ my %call_like_keywords = map { $_ => 1 } qw(
   limit offset array row rollup cube sets materialized
 );
 my %type_modifiers = map { $_ => 1 } qw(numeric decimal varchar char character varying bit varbit timestamp timestamptz time timetz interval);
-my %allowed_starts = map { $_ => 1 } qw(select with explain show table);
+my %allowed_starts = map { $_ => 1 } qw(select with explain show table values);
 my %denied_words = map { $_ => 1 } qw(into insert update delete merge truncate copy analyze analyse execute lock set reset);
 my %denied_relations = map { $_ => 1 } qw(
   pg_authid pg_shadow pg_user_mapping pg_user_mappings pg_largeobject pg_largeobject_metadata
@@ -115,7 +117,7 @@ my %explainable = map { $_ => 1 } qw(select with table);
 sub refuse {
   my ($reason, $offset) = @_;
   my $line = 1 + (substr($sql, 0, $offset) =~ tr/\n//);
-  print "refused: the SQL file has $reason on line $line. The pre-flight accepts only select, with, explain, show and table statements that call functions on its list.\n";
+  print "refused: the SQL file has $reason on line $line. The pre-flight accepts only select, with, explain, show, table and values statements that call functions on its list.\n";
   exit 1;
 }
 
@@ -243,7 +245,7 @@ for my $s (@statements) {
   next unless @$s;
   $kept++;
   my $first = $s->[0];
-  refuse('a statement that does not start with select, with, explain, show or table', $first->{at})
+  refuse('a statement that does not start with select, with, explain, show, table or values', $first->{at})
     unless $first->{kind} eq 'word' && $allowed_starts{ $first->{text} };
   for my $k (0 .. $#$s) {
     my $t = $s->[$k];
@@ -272,11 +274,10 @@ for my $s (@statements) {
     }
     refuse_call($t) unless $allowed_functions{ $t->{text} };
   }
-  for my $k (2 .. $#$s) {
-    my $t = $s->[$k];
-    next unless is_name($t) && is_punct($s->[$k - 1], '.');
-    next unless is_punct($s->[$k - 2], ')') || is_punct($s->[$k - 2], ']');
-    refuse_call($t) unless $allowed_functions{ $t->{text} };
+  for my $k (1 .. $#$s) {
+    next unless is_punct($s->[$k], '.') && (is_punct($s->[$k - 1], ')') || is_punct($s->[$k - 1], ']'));
+    refuse('a name after a dot that follows a closing parenthesis or bracket (only .* may follow)', $s->[$k]{at})
+      unless is_punct($s->[$k + 1], '*');
   }
 }
 
@@ -307,7 +308,8 @@ while (my $line = <$fh>) {
   $found{$key} = $value unless exists $found{$key};
 }
 close $fh;
-my $url = (defined $found{READONLY_DATABASE_URL} && length $found{READONLY_DATABASE_URL}) ? $found{READONLY_DATABASE_URL} : $found{DATABASE_URL};
+my $app_role = !(defined $found{READONLY_DATABASE_URL} && length $found{READONLY_DATABASE_URL});
+my $url = $app_role ? $found{DATABASE_URL} : $found{READONLY_DATABASE_URL};
 $fail->("DATABASE_URL is not set in the app env file") unless defined $url && length $url;
 my ($user, $password, $host, $port, $database, $query) = $url =~ m{^postgres(?:ql)?://(?:([^:@/]*)(?::([^@/]*))?@)?([^:/?]*)(?::(\d+))?(?:/([^?]*))?(?:\?(.*))?\z};
 $fail->("the connection string is not a postgres URL") unless defined $host;
@@ -322,10 +324,19 @@ for my $pair (split /&/, defined $query ? $query : "") {
   my ($k, $v) = split /=/, $pair, 2;
   $ENV{PGSSLMODE} = $decode->($v) if defined $v && $k eq "sslmode";
 }
-$ENV{PGOPTIONS} = "-c default_transaction_read_only=on -c standard_conforming_strings=on -c statement_timeout=120000 -c lock_timeout=5000 -c idle_in_transaction_session_timeout=60000 -c temp_file_limit=1GB";
+$ENV{PGOPTIONS} = "-c default_transaction_read_only=on -c standard_conforming_strings=on -c statement_timeout=120000 -c lock_timeout=5000 -c idle_in_transaction_session_timeout=60000" . ($app_role ? " -c temp_file_limit=1GB" : "");
 $ENV{PGCLIENTENCODING} = "UTF8";
 $ENV{PGAPPNAME} = "prod-sql";
-exec("timeout", "-k", "10s", "300s", "psql", "-X", "-q", "-v", "ON_ERROR_STOP=1", "-f", "-") or do { print STDERR "could not start psql\n"; exit 7 };
+my @psql = ("timeout", "-k", "10s", "300s", "psql", "-X", "-q", "-v", "ON_ERROR_STOP=1", "-f", "-");
+unless ($app_role) {
+  exec(@psql) or do { print STDERR "could not start psql\n"; exit 7 };
+}
+$SIG{PIPE} = "IGNORE";
+open(my $to_psql, "|-", @psql) or do { print STDERR "could not start psql\n"; exit 7 };
+print {$to_psql} "SET temp_file_limit = '1GB';\n";
+while (my $chunk = <STDIN>) { print {$to_psql} $chunk }
+close $to_psql;
+exit(($? & 127) ? 128 + ($? & 127) : $? >> 8);
 PERL
 }
 

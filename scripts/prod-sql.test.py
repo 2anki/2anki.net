@@ -54,11 +54,11 @@ PREAMBLE = (
     "SET statement_timeout = '120s';\n"
     "SET lock_timeout = '5s';\n"
     "SET idle_in_transaction_session_timeout = '60s';\n"
-    "SET temp_file_limit = '1GB';\n"
     "SET default_transaction_read_only = on;\n"
     "BEGIN TRANSACTION READ ONLY;\n"
 )
 EPILOGUE = "\n;\nROLLBACK;\n"
+APP_ROLE_PREFIX = "SET temp_file_limit = '1GB';\n"
 
 
 def executable(path, body):
@@ -146,7 +146,7 @@ class Case(unittest.TestCase):
         for sql, run in zip(sqls, self.run_many(sqls)):
             with self.subTest(sql=sql):
                 self.assertEqual(run.result.returncode, 0, run.result.stderr)
-                self.assertTrue(run.recorded("psql-stdin").startswith(PREAMBLE + sql))
+                self.assertTrue(run.recorded("psql-stdin").startswith(APP_ROLE_PREFIX + PREAMBLE + sql))
 
     def assert_refused(self, sql):
         run = self.run_sql(sql, env_file=app_env())
@@ -162,12 +162,12 @@ class SessionTest(Case):
 
         self.assertEqual(run.result.returncode, 0, run.result.stderr)
         self.assertEqual(run.result.stdout, " count\n    42\n")
-        self.assertEqual(run.recorded("psql-stdin"), PREAMBLE + "select count(*) from users;\n" + EPILOGUE)
+        self.assertEqual(run.recorded("psql-stdin"), APP_ROLE_PREFIX + PREAMBLE + "select count(*) from users;\n" + EPILOGUE)
 
     def test_a_last_statement_without_a_semicolon_is_still_closed_before_the_rollback(self):
         run = self.run_sql("select 1", env_file=app_env())
 
-        self.assertEqual(run.recorded("psql-stdin"), PREAMBLE + "select 1" + EPILOGUE)
+        self.assertEqual(run.recorded("psql-stdin"), APP_ROLE_PREFIX + PREAMBLE + "select 1" + EPILOGUE)
 
     def test_sets_read_only_and_timeouts_in_pgoptions(self):
         run = self.run_sql("select 1;\n", env_file=app_env())
@@ -206,6 +206,20 @@ class SessionTest(Case):
         self.assertEqual(env["PGDATABASE"], "app")
         self.assertEqual(env["PGSSLMODE"], "require")
         self.assertNotIn("x=y", env["PGOPTIONS"])
+
+    def test_through_the_read_only_role_temp_file_limit_is_left_to_the_role(self):
+        run = self.run_sql("select 1;\n", env_file=app_env(f'READONLY_DATABASE_URL="{READER_URL}"\n'))
+
+        self.assertEqual(run.result.returncode, 0, run.result.stderr)
+        self.assertNotIn("temp_file_limit", run.psql_env()["PGOPTIONS"])
+        self.assertEqual(run.recorded("psql-stdin"), PREAMBLE + "select 1;\n" + EPILOGUE)
+
+    def test_through_the_app_role_temp_file_limit_is_set(self):
+        run = self.run_sql("select 1;\n", env_file=app_env())
+
+        self.assertEqual(run.result.returncode, 0, run.result.stderr)
+        self.assertIn("-c temp_file_limit=1GB", run.psql_env()["PGOPTIONS"])
+        self.assertTrue(run.recorded("psql-stdin").startswith(APP_ROLE_PREFIX + PREAMBLE))
 
     def test_prefers_the_read_only_role_when_its_variable_is_set(self):
         env = self.run_sql("select 1;\n", env_file=app_env(f'READONLY_DATABASE_URL="{READER_URL}"\n')).psql_env()
@@ -310,8 +324,16 @@ class AcceptedTest(Case):
             "select count(*) from public.users;",
             "select (select 1) as x, (select max(id) from t) + 1;",
             "select (array[1, 2])[1], a[2] from t;",
-            "select (s).lower from t;",
         ))
+
+    def test_accepts_values_and_fetch_first(self):
+        self.assert_each_accepted((
+            "values (1, 'a'), (2, 'b');",
+            "select id from t order by id fetch first 5 rows only;",
+        ))
+
+    def test_leaves_a_dotted_chain_after_an_alias_to_the_server(self):
+        self.assert_each_accepted(("select u.to_jsonb.f from users u;",))
 
     def test_accepts_a_section_label_written_as_a_statement(self):
         self.assert_each_accepted(("select '== signups' as section;\nselect count(*) from users;",))
@@ -411,6 +433,20 @@ class RefusedTest(Case):
             'select * from "PG_SUBSCRIPTION";',
         ))
 
+    def test_refuses_a_dotted_chain_after_a_closing_bracket(self):
+        self.assert_each_refused((
+            "select ('x').lower.pg_read_file;",
+            "select ('.').lower.pg_ls_dir;",
+            "select (pid).abs.pg_terminate_backend from pg_stat_activity;",
+            "select (1).abs.pg_advisory_lock;",
+            'select (1)."abs"."pg_sleep";',
+            "select (array[1])[1].abs.pg_sleep;",
+            "select (1).abs.abs.pg_sleep;",
+            "select ('x') . lower . pg_read_file;",
+            "select (1)\n.\nabs\n.\npg_sleep;",
+            "select (s).lower from t;",
+        ))
+
     def test_refuses_a_call_written_as_a_name_after_a_dot(self):
         self.assert_each_refused((
             "select (1).pg_sleep;",
@@ -468,7 +504,6 @@ class RefusedTest(Case):
 
     def test_refuses_statements_outside_the_allowlist(self):
         self.assert_each_refused((
-            "values (1);",
             "set statement_timeout = 0;",
             "reset all;",
             "commit;",
