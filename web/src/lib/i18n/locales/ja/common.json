@@ -56,8 +56,8 @@
   "home": {
     "hero": {
       "headline": "Anki で使えるフラッシュカード",
-      "subtitle": "Notion ページをドロップすれば、直す必要のないデッキが手に入ります — 正しいクローズ、要点をしぼったカード、適切なノートタイプ。PDF、Quizlet、Markdown、HTML、CSV にも対応。",
-      "aiBadgeIntro": "そのまま学習できるきれいなカード — 正しいクローズ、要点をしぼった表と裏、空の裏面なし。AI の下書きがお好みですか？",
+      "subtitle": "Notion ページをドロップすれば、直す必要のないデッキが手に入ります：正しいクローズ、要点をしぼったカード、適切なノートタイプ。PDF、Quizlet、Markdown、HTML、CSV にも対応。",
+      "aiBadgeIntro": "そのまま学習できるきれいなカード：正しいクローズ、要点をしぼった表と裏、空の裏面なし。AI の下書きがお好みですか？",
       "createAccount": "アカウントを作成",
       "cardOptions": "カードのオプション",
       "nativeApps": "iPhone、iPad、Mac でも →",
@@ -329,7 +329,7 @@
     },
     "page": {
       "title": "ノートを変換",
-      "subtitle": "ファイルをドロップすれば、直す必要のないデッキが手に入ります — 正しいクローズ、要点をしぼったカード、適切なノートタイプ。Notion、PDF、Markdown、HTML、Word、CSV にも対応。",
+      "subtitle": "ファイルをドロップすれば、直す必要のないデッキが手に入ります：正しいクローズ、要点をしぼったカード、適切なノートタイプ。Notion、PDF、Markdown、HTML、Word、CSV にも対応。",
       "reattachPrefix": "もう一度添付",
       "reattachSuffix": "を変換",
       "aiOn": "AI はオン",

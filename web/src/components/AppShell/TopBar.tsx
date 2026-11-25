@@ -2,11 +2,8 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAppLanguage } from '../../lib/i18n/useAppLanguage';
 import { useTheme } from '../../lib/hooks/useTheme';
-import { useAiCredits } from '../../lib/hooks/useAiCredits';
-import { isPayingUser } from '../NavigationBar/helpers/getPlanLabel';
 import { AccountMenu } from './AccountMenu';
-import { AiGiftPresent, type PanelAccount } from '../AiGift/AiGiftPresent';
-import { useUserLocals } from '../../lib/hooks/useUserLocals';
+import { AiGiftCreditsPill } from '../AiGift/AiGiftCreditsPill';
 import type { SidebarLocals } from './Sidebar';
 import styles from './AppShell.module.css';
 
@@ -31,14 +28,6 @@ export function TopBar({
   const appLanguage = useAppLanguage();
   const onBurgerClick = isDrawerOpen ? onCloseDrawer : onOpenDrawer;
   const theme = useTheme();
-  const paying = isPayingUser(locals);
-  const credits = useAiCredits(paying);
-  const planCreditsFirst = paying && credits?.usable === true;
-  const { data: session } = useUserLocals();
-  const account: PanelAccount | undefined =
-    session?.locals == null
-      ? undefined
-      : { paying: isPayingUser(session.locals) };
   const logoSrc =
     theme === 'light' ? '/mascot/navbar-logo.png' : '/mascot/Notion 1.png';
   return (
@@ -59,11 +48,7 @@ export function TopBar({
         <img src={logoSrc} alt="" />
       </a>
       <div className={styles.topBarEnd}>
-        <AiGiftPresent
-          isLoggedIn
-          planCreditsFirst={planCreditsFirst}
-          account={account}
-        />
+        <AiGiftCreditsPill signedIn />
         <AccountMenu email={email} locals={locals} onLogOut={onLogOut} />
       </div>
     </header>

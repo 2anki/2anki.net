@@ -127,3 +127,18 @@ export async function accountHasClaudeCardsByDefault(
   }
   return defaultMayApply(reader, userId, stored);
 }
+
+// Whether the account's own record leaves Claude on: on when it stored or
+// last turned Claude on, off when it recorded turning it off or stored an off
+// that may have been a choice. The upload card's switch starts from this; it
+// never decides an upload, which only the switch's sent value does.
+export async function accountChoiceAllowsClaude(
+  userId: number,
+  storedCardOptions: unknown,
+  reader: AiChoiceHistoryReader
+): Promise<boolean> {
+  const stored = storedOptionsOf(storedCardOptions);
+  if (stored['claude-ai-flashcards'] === 'true') return true;
+  if (hasAiChoiceMarker(stored)) return false;
+  return defaultMayApply(reader, userId, stored);
+}

@@ -19,7 +19,7 @@ vi.mock('../utils/formatLongDate', () => ({
 import { useAiCredits } from '../../../lib/hooks/useAiCredits';
 import { useAiGift } from '../../../lib/hooks/useAiGift';
 import { formatLongDate } from '../utils/formatLongDate';
-import { formatGiftDate } from '../../../components/AiGift/AiGiftPresent';
+import { formatGiftDate } from '../../../components/AiGift/formatGiftDate';
 import { AiCreditsAccountLine } from './AiCreditsAccountLine';
 
 const mockHook = vi.mocked(useAiCredits);

@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import i18n from '../../../lib/i18n';
 import { AiCreditsReadout } from './AiCreditsReadout';
 import { AiCreditsState } from '../../../lib/hooks/useAiCredits';
-import { formatGiftDate } from '../../../components/AiGift/AiGiftPresent';
+import { formatGiftDate } from '../../../components/AiGift/formatGiftDate';
 
 const state = (over: Partial<AiCreditsState>): AiCreditsState => ({
   credits: 180,

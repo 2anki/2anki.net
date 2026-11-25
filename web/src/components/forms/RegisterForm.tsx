@@ -21,6 +21,7 @@ import { markConnectorReturn } from '../../lib/auth/markConnectorReturn';
 import { readSignupOrigin } from '../../lib/signupOrigin';
 import { fireSignupConversion } from '../../lib/analytics/googleAds';
 import { track } from '../../lib/analytics/track';
+import { forgetGiftSignupOrigin } from '../../lib/aiGift/giftSignupOrigin';
 import { isValidEmailShape } from '../../lib/email/isValidEmailShape';
 import {
   UserNotice,
@@ -32,6 +33,7 @@ interface Props {
   readonly setErrorMessage: ErrorHandlerType;
   readonly redirect?: string | null;
   readonly variant?: 'page' | 'inline';
+  readonly eventOrigin?: string;
 }
 
 const MIN_PASSWORD_LENGTH = 8;
@@ -110,8 +112,14 @@ async function registerWithRetry(
   throw lastError;
 }
 
-function RegisterForm({ setErrorMessage, redirect, variant = 'page' }: Props) {
+function RegisterForm({
+  setErrorMessage,
+  redirect,
+  variant = 'page',
+  eventOrigin,
+}: Props) {
   const { t } = useTranslation();
+  const originProps = eventOrigin == null ? {} : { signup_origin: eventOrigin };
   const inline = variant === 'inline';
   const Fields = inline ? 'div' : 'form';
   const [email, setEmail] = useState(localStorage.getItem('email') || '');
@@ -134,7 +142,7 @@ function RegisterForm({ setErrorMessage, redirect, variant = 'page' }: Props) {
   const markSignupStarted = () => {
     if (signupStartedRef.current) return;
     signupStartedRef.current = true;
-    track('signup_started', { method: 'email' });
+    track('signup_started', { method: 'email', ...originProps });
   };
 
   useEffect(() => {
@@ -167,6 +175,7 @@ function RegisterForm({ setErrorMessage, redirect, variant = 'page' }: Props) {
     event.preventDefault();
     if (!isValidEmailShape(email)) {
       track('signup_failed', {
+        ...originProps,
         method: 'email',
         reason: 'invalid_email',
         attempts: 0,
@@ -185,7 +194,8 @@ function RegisterForm({ setErrorMessage, redirect, variant = 'page' }: Props) {
         signupOrigin
       );
       if (res.status === 200) {
-        track('signup_completed', { method: 'email' });
+        track('signup_completed', { method: 'email', ...originProps });
+        if (eventOrigin != null) forgetGiftSignupOrigin();
         fireSignupConversion();
         globalThis.sessionStorage?.setItem(SIGNUP_FLAG_KEY, '1');
         globalThis.location.href =
@@ -195,6 +205,7 @@ function RegisterForm({ setErrorMessage, redirect, variant = 'page' }: Props) {
         const backendMessage =
           typeof body?.message === 'string' ? body.message : null;
         track('signup_failed', {
+          ...originProps,
           method: 'email',
           status: res.status,
           reason: classifySignupFailure(res.status, backendMessage, body?.code),
@@ -227,6 +238,7 @@ function RegisterForm({ setErrorMessage, redirect, variant = 'page' }: Props) {
     } catch (error) {
       console.error('Register submit failed', error);
       track('signup_failed', {
+        ...originProps,
         method: 'email',
         reason: 'network',
         cause: thrownCause(error),
@@ -275,25 +287,33 @@ function RegisterForm({ setErrorMessage, redirect, variant = 'page' }: Props) {
         <WithGoogleLink
           variant="card"
           text={getVisibleText('navigation.register.google')}
-          onSelect={() => track('signup_started', { method: 'google' })}
+          onSelect={() =>
+            track('signup_started', { method: 'google', ...originProps })
+          }
           redirect={redirect}
         />
         <WithNotionLink
           variant="card"
           text="Continue with Notion"
-          onSelect={() => track('signup_started', { method: 'notion' })}
+          onSelect={() =>
+            track('signup_started', { method: 'notion', ...originProps })
+          }
           redirect={redirect}
         />
         <WithMicrosoftLink
           variant="card"
           text={getVisibleText('navigation.register.microsoft')}
-          onSelect={() => track('signup_started', { method: 'microsoft' })}
+          onSelect={() =>
+            track('signup_started', { method: 'microsoft', ...originProps })
+          }
           redirect={redirect}
         />
         <WithAppleLink
           variant="card"
           text="Sign in with Apple"
-          onSelect={() => track('signup_started', { method: 'apple' })}
+          onSelect={() =>
+            track('signup_started', { method: 'apple', ...originProps })
+          }
           redirect={redirect}
         />
       </div>

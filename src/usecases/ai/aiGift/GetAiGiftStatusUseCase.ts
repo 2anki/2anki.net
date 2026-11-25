@@ -3,47 +3,65 @@ import {
   giftIsActive,
 } from '../../../lib/claude/aiCredits/gift/giftBalance';
 import {
-  AI_GIFT_CLAIMS_CLOSE_AT,
+  AI_GIFT_CREDITS_EXPIRE_BY,
   AI_GIFT_CREDITS_PER_CLAIM,
-  AI_GIFT_DURATION_MS,
-  AI_GIFT_HOURS,
+  AI_GIFT_MAX_CLAIMS_PER_IP,
   AI_GIFT_MIN_MONTHLY_CARDS,
+  AI_GIFT_VALID_DAYS,
   giftBudgetHasRoom,
   giftClaimsOpen,
-  giftExpiresAt,
 } from '../../../lib/claude/aiCredits/gift/giftTerms';
 import { giftMarkerHeld } from '../../../lib/claude/aiCredits/gift/giftConversionMarker';
-import { claudeCardsByDefault } from '../../../lib/upload/claudeCardsDefault';
+import {
+  accountChoiceAllowsClaude,
+  claudeCardsByDefault,
+} from '../../../lib/upload/claudeCardsDefault';
 import { giftWouldPayForUpload } from '../../../lib/claude/aiCredits/gift/giftPaysForUpload';
 import { readAiBudgetStatus } from '../../../lib/claude/aiSpendGuard';
 import CardOption from '../../../lib/parser/Settings/CardOption';
 import { pagePairsSuppressesAi } from '../../../infrastracture/adapters/fileConversion/pagePairsSuppressesAi';
 import type { AiGiftDeps } from './aiGiftDeps';
 
+interface GiftTermsStatus {
+  validDays: number;
+  endsAt: Date;
+  minMonthlyCards: number;
+}
+
+// hasCredits: this account holds gift credits or can get them (an account
+// with no grant has the whole amount until its first gift-paid upload makes
+// one). A paying account never has it: its plan pays first and it is not
+// offered a grant; one it already holds still shows as claimed credits.
+// nextUploadUsesCredits: the next upload can run on them now (the month has
+// the card minimum and no gift conversion is running). switchOnByDefault:
+// where the upload card's switch starts, from that and the account's own
+// recorded Claude choice.
 export type AiGiftStatus =
   | { state: 'closed'; feedbackDue: boolean }
-  | {
-      state: 'open';
-      credits: number;
-      expiresIfClaimedNow: Date;
-      claimClosesAt: Date;
-      feedbackDue: false;
-      lastsHours: number | null;
-      minMonthlyCards: number;
-    }
+  | (GiftTermsStatus &
+      Partial<NextUploadAnswers> & {
+        state: 'open';
+        credits: number;
+        hasCredits: boolean;
+        feedbackDue: false;
+      })
   | { state: 'full'; feedbackDue: false }
-  | {
-      state: 'claimed';
-      credits: number;
-      expiresAt: Date;
-      feedbackDue: boolean;
-      inUse: boolean;
-      minMonthlyCards: number;
-      claudeDefaultForPdf: boolean | null;
-      aiBudgetAvailable: boolean | null;
-      storedPdfSkipsClaude: boolean | null;
-      monthlyCardsLeft: number | null;
-    };
+  | (GiftTermsStatus &
+      NextUploadAnswers & {
+        state: 'claimed';
+        credits: number;
+        hasCredits: boolean;
+        expiresAt: Date;
+        firstUsed: boolean;
+        feedbackDue: boolean;
+        inUse: boolean;
+      });
+
+const TERMS: GiftTermsStatus = {
+  validDays: AI_GIFT_VALID_DAYS,
+  endsAt: AI_GIFT_CREDITS_EXPIRE_BY,
+  minMonthlyCards: AI_GIFT_MIN_MONTHLY_CARDS,
+};
 
 const CLOSED: AiGiftStatus = { state: 'closed', feedbackDue: false };
 
@@ -52,6 +70,8 @@ interface NextUploadAnswers {
   aiBudgetAvailable: boolean | null;
   storedPdfSkipsClaude: boolean | null;
   monthlyCardsLeft: number | null;
+  nextUploadUsesCredits: boolean | null;
+  switchOnByDefault: boolean | null;
 }
 
 const UNKNOWN_NEXT_UPLOAD: NextUploadAnswers = {
@@ -59,6 +79,8 @@ const UNKNOWN_NEXT_UPLOAD: NextUploadAnswers = {
   aiBudgetAvailable: null,
   storedPdfSkipsClaude: null,
   monthlyCardsLeft: null,
+  nextUploadUsesCredits: null,
+  switchOnByDefault: null,
 };
 
 // The conversion's own reasons a PDF never reaches Claude, read from the
@@ -87,11 +109,16 @@ export class GetAiGiftStatusUseCase {
   // What a web PDF upload by this account would get right now, answered by
   // the functions the upload itself calls: the Claude default rule (with the
   // gift as what pays for an account with no plan) and the budget check in
-  // the wallet that upload would use. A failed read answers unknown, which
-  // the page shows as nothing promised.
+  // the wallet that upload would use. An account with no plan and no grant
+  // yet has the whole amount, which its first upload makes into a grant. A
+  // failed read answers unknown, which the page shows as nothing promised.
+  // The default rule gives an account the gift pays for the same answer for
+  // every input Claude cards read, so the PDF answer stands for all of them.
   private async nextUploadAnswers(
     userId: number,
-    paying: boolean
+    paying: boolean,
+    grantHeld: boolean,
+    hasCredits: boolean
   ): Promise<NextUploadAnswers> {
     const readers = this.deps.claudeDefault;
     if (readers == null) return UNKNOWN_NEXT_UPLOAD;
@@ -114,13 +141,27 @@ export class GetAiGiftStatusUseCase {
         },
         readers
       );
-      const budget = await readAiBudgetStatus(
-        paying ? { userId } : { userId, aiGift: 'only' },
-        readers.budgetDeps
-      );
+      const aiBudgetAvailable =
+        !paying && !grantHeld
+          ? true
+          : !(
+              await readAiBudgetStatus(
+                paying ? { userId } : { userId, aiGift: 'only' },
+                readers.budgetDeps
+              )
+            ).exhausted;
+      const nextUploadUsesCredits =
+        hasCredits &&
+        monthlyCardsLeft >= AI_GIFT_MIN_MONTHLY_CARDS &&
+        !giftMarkerHeld(userId);
+      const switchOnByDefault =
+        nextUploadUsesCredits &&
+        (await accountChoiceAllowsClaude(userId, stored, readers));
       return {
         claudeDefaultForPdf,
-        aiBudgetAvailable: !budget.exhausted,
+        aiBudgetAvailable,
+        nextUploadUsesCredits,
+        switchOnByDefault,
         storedPdfSkipsClaude: storedOptionsSkipClaude(
           storedOptionsRecord(stored)
         ),
@@ -132,7 +173,24 @@ export class GetAiGiftStatusUseCase {
     }
   }
 
-  async execute(userId: number | null, paying: boolean): Promise<AiGiftStatus> {
+  private async networkHasRoom(
+    ipHash: string | null,
+    now: Date
+  ): Promise<boolean> {
+    if (ipHash == null) return true;
+    const grants = await this.deps.networkGrantCount(ipHash, now);
+    return grants < AI_GIFT_MAX_CLAIMS_PER_IP;
+  }
+
+  // A grant is made at the account's first upload the gift pays for, so an
+  // account with none is shown the whole amount while the gift is open, the
+  // total has room and its network is under the daily limit. A paying account
+  // without a grant is not offered one: its plan pays for its AI.
+  async execute(
+    userId: number | null,
+    paying: boolean,
+    ipHash: string | null = null
+  ): Promise<AiGiftStatus> {
     if (!(await this.deps.isEnabled())) {
       return CLOSED;
     }
@@ -150,36 +208,55 @@ export class GetAiGiftStatusUseCase {
           const credits = buildGiftBalance(grant, spendUsd).credits;
           const inUse = giftMarkerHeld(userId, now.getTime());
           return {
+            ...TERMS,
             state: 'claimed',
             credits,
+            hasCredits: credits > 0 && !paying,
             expiresAt: grant.expiresAt,
+            firstUsed: grant.firstUsedAt != null,
             feedbackDue,
             inUse,
-            minMonthlyCards: AI_GIFT_MIN_MONTHLY_CARDS,
-            ...(await this.nextUploadAnswers(userId, paying)),
+            ...(await this.nextUploadAnswers(
+              userId,
+              paying,
+              true,
+              credits > 0 && !paying
+            )),
           };
         }
         return { state: 'closed', feedbackDue };
       }
     }
+    // A paying account, a signed-out pass holder included, pays for its AI
+    // through its plan or pass and is not offered a grant.
+    if (paying) {
+      return CLOSED;
+    }
     if (!giftClaimsOpen(now)) {
       return CLOSED;
     }
     const exposure = await this.deps.exposureCredits(now);
-    if (!giftBudgetHasRoom(exposure)) {
+    // A signed-out visitor on a network that used its grants would sign up
+    // to nothing, so the offer is withheld there too (the count is cached).
+    if (
+      !giftBudgetHasRoom(exposure) ||
+      !(await this.networkHasRoom(ipHash, now))
+    ) {
       return { state: 'full', feedbackDue: false };
     }
-    const expiresIfClaimedNow = giftExpiresAt(now);
-    const lastsFullLength =
-      expiresIfClaimedNow.getTime() - now.getTime() === AI_GIFT_DURATION_MS;
-    return {
-      state: 'open',
+    const open = {
+      ...TERMS,
+      state: 'open' as const,
       credits: AI_GIFT_CREDITS_PER_CLAIM,
-      expiresIfClaimedNow,
-      claimClosesAt: AI_GIFT_CLAIMS_CLOSE_AT,
-      feedbackDue: false,
-      lastsHours: lastsFullLength ? AI_GIFT_HOURS : null,
-      minMonthlyCards: AI_GIFT_MIN_MONTHLY_CARDS,
+      feedbackDue: false as const,
+    };
+    if (userId == null) {
+      return { ...open, hasCredits: false };
+    }
+    return {
+      ...open,
+      hasCredits: true,
+      ...(await this.nextUploadAnswers(userId, false, false, true)),
     };
   }
 }

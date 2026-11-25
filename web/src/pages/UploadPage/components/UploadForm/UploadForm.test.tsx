@@ -29,10 +29,6 @@ import {
   type UploadZoneActivity,
 } from '../../../../lib/upload/uploadZoneActivity';
 import {
-  chooseUploadFile,
-  resetUploadEntryForTests,
-} from '../../../../lib/upload/uploadEntry';
-import {
   aiPreviewCheckoutMarked,
   clearAiPreviewCheckout,
   markAiPreviewCheckout,
@@ -12679,13 +12675,19 @@ describe('UploadForm deck result and resends of kept files', () => {
     const activeGift = {
       state: 'claimed',
       credits: 100,
+      hasCredits: true,
       expiresAt: '2099-11-27T12:00:00.000Z',
+      firstUsed: true,
+      validDays: 7,
+      endsAt: '2099-12-04T22:00:00.000Z',
       feedbackDue: false,
       inUse: false,
       minMonthlyCards: 20,
       claudeDefaultForPdf: true,
       aiBudgetAvailable: true,
       monthlyCardsLeft: 80,
+      nextUploadUsesCredits: true,
+      switchOnByDefault: true,
     };
     const eligibleDeck = (cards: number) =>
       deckResponse(cards, { 'X-Claude-Eligible': '1' });
@@ -12747,6 +12749,8 @@ describe('UploadForm deck result and resends of kept files', () => {
         .body as FormData;
       expect(first.getAll('claude-ai-flashcards')).toEqual(['false']);
       expect(resent.getAll('claude-ai-flashcards')).toEqual(['true']);
+      expect(resent.get('ai-gift-switch')).toBe('true');
+      expect(first.get('ai-gift-switch')).toBeNull();
       expect((resent.get('pakker') as File).name).toBe('notes.pdf');
       expect(eventsNamed('ai_gift_redo_shown')).toEqual([
         ['ai_gift_redo_shown'],
@@ -12760,11 +12764,29 @@ describe('UploadForm deck result and resends of kept files', () => {
       ['no gift', { state: 'closed', feedbackDue: false }, false],
       [
         'an expired gift',
-        { ...activeGift, expiresAt: '2000-01-01T00:00:00.000Z' },
+        {
+          ...activeGift,
+          expiresAt: '2000-01-01T00:00:00.000Z',
+          hasCredits: false,
+          nextUploadUsesCredits: false,
+        },
         false,
       ],
-      ['a spent gift', { ...activeGift, credits: 0 }, false],
-      ['a gift conversion in flight', { ...activeGift, inUse: true }, false],
+      [
+        'a spent gift',
+        {
+          ...activeGift,
+          credits: 0,
+          hasCredits: false,
+          nextUploadUsesCredits: false,
+        },
+        false,
+      ],
+      [
+        'a gift conversion in flight',
+        { ...activeGift, inUse: true, nextUploadUsesCredits: false },
+        false,
+      ],
       ['a conversion that already used Claude', activeGift, true],
     ])('offers nothing with %s', async (_name, gift, aiOn) => {
       const fetchMock = stubServer([eligibleDeck(64)]);
@@ -12894,6 +12916,7 @@ describe('UploadForm deck result and resends of kept files', () => {
         claudeDefaultForPdf: null,
         aiBudgetAvailable: null,
         monthlyCardsLeft: null,
+        nextUploadUsesCredits: null,
       });
       await submitFiles(container, ['notes.pdf']);
 
@@ -12939,31 +12962,6 @@ describe('UploadForm deck result and resends of kept files', () => {
       expect(screen.queryByText(REDO_LINE)).toBeNull();
     });
 
-    it('opens its file picker when the gift panel asks for a file while the zone is idle', async () => {
-      resetUploadEntryForTests();
-      stubServer([eligibleDeck(64)]);
-      const { container } = renderWithHeaderGift(activeGift);
-      const input = container.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
-      const openPicker = vi.spyOn(input, 'click');
-      await waitFor(() => expect(readUploadZoneActivity()).toBe('idle'));
-
-      expect(chooseUploadFile()).toBe('picker');
-      expect(openPicker).toHaveBeenCalledTimes(1);
-    });
-
-    it('brings its zone into focus when the gift panel sent the visitor to this page', async () => {
-      resetUploadEntryForTests();
-      expect(chooseUploadFile()).toBe('page');
-      stubServer([eligibleDeck(64)]);
-      const { container } = renderWithHeaderGift(activeGift);
-
-      await waitFor(() =>
-        expect(container.querySelector('input[type="file"]')).toHaveFocus()
-      );
-    });
-
     it('offers nothing when the month has too few cards left for Claude to run on the gift', async () => {
       stubServer([eligibleDeck(64)]);
       const { container } = renderWithHeaderGift({
@@ -12971,6 +12969,7 @@ describe('UploadForm deck result and resends of kept files', () => {
         claudeDefaultForPdf: false,
         aiBudgetAvailable: true,
         monthlyCardsLeft: 19,
+        nextUploadUsesCredits: false,
       });
       await submitFiles(container, ['notes.pdf']);
 

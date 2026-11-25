@@ -10,11 +10,11 @@ import { getFeatureFlag } from '../lib/featureFlags/getFeatureFlag';
 import { AI_CREDITS_GIFT_FLAG } from '../lib/featureFlags/aiCreditsGift';
 import {
   cachedExposure,
+  cachedNetworkGrantCount,
   createClaudeDefaultStatusReaders,
   type AiGiftDeps,
 } from '../usecases/ai/aiGift/aiGiftDeps';
 import { GetAiGiftStatusUseCase } from '../usecases/ai/aiGift/GetAiGiftStatusUseCase';
-import { ClaimAiGiftUseCase } from '../usecases/ai/aiGift/ClaimAiGiftUseCase';
 import { RecordAiGiftFeedbackUseCase } from '../usecases/ai/aiGift/RecordAiGiftFeedbackUseCase';
 
 const CLAIMS_PER_MINUTE_PER_IP = 5;
@@ -38,6 +38,9 @@ function productionDeps(): AiGiftDeps {
     isEnabled: () => getFeatureFlag(AI_CREDITS_GIFT_FLAG, false),
     exposureCredits: exposure.exposureCredits,
     forgetExposure: exposure.forget,
+    networkGrantCount: cachedNetworkGrantCount((ipHash, now) =>
+      gifts.networkGrantCount(ipHash, now)
+    ),
     now: () => new Date(),
     claudeDefault: createClaudeDefaultStatusReaders(database),
   };
@@ -53,7 +56,6 @@ const aiGiftRouter = (options: AiGiftRouterOptions = {}) => {
     const deps = depsFor();
     return new AiGiftController(
       new GetAiGiftStatusUseCase(deps),
-      new ClaimAiGiftUseCase(deps),
       new RecordAiGiftFeedbackUseCase(deps)
     );
   };
@@ -63,7 +65,7 @@ const aiGiftRouter = (options: AiGiftRouterOptions = {}) => {
    * /api/ai/gift:
    *   get:
    *     summary: State of the free AI credits gift for this visitor
-   *     description: closed (switched off, ended, or this account's gift has expired), open (claimable), full (the gift budget is used for now) or claimed (this account's remaining gift credits and when they expire). feedbackDue is true once gift credits paid for a conversion and the account has not answered the one-question prompt. inUse (claimed only) is true while one of this account's conversions holds the gift. lastsHours (open only) is how long a claim made now lasts, left out when the gift's end cuts it short. minMonthlyCards is how many cards the month must have left for a gift-only upload to reach Claude. claudeDefaultForPdf (claimed only) is whether the upload's Claude default rule would turn Claude on for this account's next web PDF; aiBudgetAvailable is whether an AI upload would have budget in the wallet it would use; storedPdfSkipsClaude is whether the account's saved options keep a PDF from Claude (all null when unknown); monthlyCardsLeft is the month's cards left (null when unknown).
+   *     description: closed (switched off, ended, a paying account without a grant, or this account's grant has expired), open (no grant yet; the whole amount), full (the gift total, or this network's daily limit, is used for now) or claimed (this account's grant, made at its first upload the gift pays for). hasCredits is whether this account's next upload would run on gift credits (false when signed out). A grant lasts validDays from its first AI call and never past endsAt; firstUsed (claimed only) says whether that clock has started, and expiresAt is the grant's end so far. feedbackDue is true once gift credits paid for a conversion and the account has not answered the one-question prompt. inUse (claimed only) is true while one of this account's conversions holds the gift. minMonthlyCards is how many cards the month must have left for a gift-only upload to reach Claude. For a signed-in account, claudeDefaultForPdf is whether the upload's Claude default rule would turn Claude on for its next web upload of an input Claude cards read; aiBudgetAvailable is whether an AI upload would have budget in the wallet it would use; storedPdfSkipsClaude is whether the account's saved options keep a PDF from Claude (all null when unknown); monthlyCardsLeft is the month's cards left (null when unknown).
    *     tags: [AI]
    *     responses:
    *       200:
@@ -77,23 +79,19 @@ const aiGiftRouter = (options: AiGiftRouterOptions = {}) => {
    * @swagger
    * /api/ai/gift/claim:
    *   post:
-   *     summary: Claim the free AI credits gift
-   *     description: One claim per account, at most three per network a day, while the gift is switched on and before claims close. Refusals answer with a code.
+   *     summary: Former claim step, kept for pages opened before it went
+   *     description: Stores nothing. Answers with the same body as GET /api/ai/gift for this account; a grant is now made at the account's first upload the gift pays for.
    *     tags: [AI]
    *     security:
    *       - bearerAuth: []
    *       - cookieAuth: []
    *     responses:
    *       200:
-   *         description: Claimed; the credits and when they expire
+   *         description: The account's gift status
    *       401:
    *         description: Authentication required
-   *       409:
-   *         description: gift_already_claimed or gift_budget_full
-   *       410:
-   *         description: gift_closed
    *       429:
-   *         description: gift_ip_limit, or too many requests
+   *         description: Too many requests
    */
   router.post(
     '/api/ai/gift/claim',

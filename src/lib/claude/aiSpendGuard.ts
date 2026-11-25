@@ -31,8 +31,14 @@ import {
   type AiGiftMode,
 } from './aiCredits/gift/giftBalance';
 import { runOnGiftCredits } from './aiCredits/gift/giftFunding';
-import { AI_GIFT_RESERVED_CREDITS_PER_CALL } from './aiCredits/gift/giftTerms';
-import { createAiGiftReaders } from '../../data_layer/createAiGiftReaders';
+import {
+  AI_GIFT_RESERVED_CREDITS_PER_CALL,
+  giftExpiresAfterFirstUse,
+} from './aiCredits/gift/giftTerms';
+import {
+  createAiGiftReaders,
+  markAiGiftFirstUse,
+} from '../../data_layer/createAiGiftReaders';
 
 // A user crossing $25 in 30 days costs more than triple the subscription
 // price — worth a human look, not enforcement. Kept as an ops signal; part 2's
@@ -116,6 +122,11 @@ export interface AiBudgetDeps {
     userId: number,
     now: Date
   ) => Promise<AiGiftBalance | null>;
+  markGiftFirstUse?: (
+    giftId: number,
+    at: Date,
+    expiresAt: Date
+  ) => Promise<boolean>;
   reader: IAiSpendReader;
   passReader?: IAnonymousPassSpendReader;
   sendAlert: (subject: string, body: string) => Promise<void>;
@@ -138,6 +149,8 @@ function defaultDeps(): AiBudgetDeps {
       computeAiCreditBalance(userId, now, readers),
     computeGiftBalance: (userId: number, now: Date) =>
       computeAiGiftBalance(userId, now, gifts),
+    markGiftFirstUse: (giftId: number, at: Date, expiresAt: Date) =>
+      markAiGiftFirstUse(database, giftId, at, expiresAt),
     computeAnonymousPassBalance: (anonymousPassId: number, now: Date) =>
       computeAnonymousPassBalance(anonymousPassId, now, passReaders),
     reader: usage,
@@ -193,7 +206,6 @@ export function resetAiSpendClaims(): void {
   claimedExhaustedWindows.clear();
   claimedExhaustedPassWindows.clear();
   alertClaims.clear();
-  firstGiftUseClaims.clear();
 }
 
 const windowClaimKey = (windowStart: Date): number =>
@@ -416,31 +428,51 @@ function giftHasHeadroom(gift: AiGiftBalance | null): gift is AiGiftBalance {
   return gift != null && gift.credits - reservedGiftCreditsFor(gift.giftId) > 0;
 }
 
-const firstGiftUseClaims = new Set<number>();
-
-function recordFirstGiftUse(
+// A grant's seven days start at its first charged AI call: recordClaudeUsage
+// reports the charge, so an attempt that never reaches the model starts
+// nothing. Only one write finds the grant unused, so the clock starts and
+// ai_gift_first_use is recorded once per account, however many calls of the
+// first conversion run together. A failed write leaves the grant on the
+// gift's own end, never longer.
+async function startGiftClock(
+  deps: AiBudgetDeps,
   subject: NormalizedSubject,
-  gift: AiGiftBalance
-): void {
-  if (gift.spent > 0 || firstGiftUseClaims.has(gift.giftId)) {
-    return;
+  gift: AiGiftBalance,
+  now: Date
+): Promise<void> {
+  if (gift.firstUsedAt != null || deps.markGiftFirstUse == null) return;
+  try {
+    const started = await deps.markGiftFirstUse(
+      gift.giftId,
+      now,
+      giftExpiresAfterFirstUse(now)
+    );
+    if (!started) return;
+    track('ai_gift_first_use', {
+      userId: subject.userId,
+      props: withServerMarker({ gift_id: gift.giftId, mode: subject.aiGift }),
+    });
+  } catch (error) {
+    console.error('[ai-credits] gift first use write failed', error);
   }
-  firstGiftUseClaims.add(gift.giftId);
-  track('ai_gift_first_use', {
-    userId: subject.userId,
-    props: withServerMarker({ gift_id: gift.giftId, mode: subject.aiGift }),
-  });
 }
 
 async function runOnGift<T>(
+  deps: AiBudgetDeps,
   subject: NormalizedSubject,
   gift: AiGiftBalance,
+  now: Date,
   run: () => Promise<T>
 ): Promise<T> {
-  recordFirstGiftUse(subject, gift);
   reserveInflightGiftCredits(gift.giftId, AI_GIFT_RESERVED_CREDITS_PER_CALL);
+  let charged = false;
+  const onCharged = () => {
+    if (charged) return;
+    charged = true;
+    void startGiftClock(deps, subject, gift, deps.now?.() ?? now);
+  };
   try {
-    return await runOnGiftCredits(gift.giftId, run);
+    return await runOnGiftCredits(gift.giftId, run, onCharged);
   } finally {
     releaseInflightGiftCredits(gift.giftId, AI_GIFT_RESERVED_CREDITS_PER_CALL);
   }
@@ -685,7 +717,7 @@ export async function withAiBudget<T>(
     if (!giftHasHeadroom(gift)) {
       throw new AiCreditsExhaustedError();
     }
-    return runOnGift(normalized, gift, run);
+    return runOnGift(resolved, normalized, gift, now, run);
   }
   const status = await budgetStatusFor(normalized, resolved);
   maybeNotifyAlertForSubject(resolved, normalized, now);
@@ -695,7 +727,7 @@ export async function withAiBudget<T>(
     if (normalized.aiGift === 'fallback' && status.exhausted) {
       const gift = await giftBalanceFor(resolved, normalized, now);
       if (giftHasHeadroom(gift)) {
-        return runOnGift(normalized, gift, run);
+        return runOnGift(resolved, normalized, gift, now, run);
       }
     }
     // budgetStatusFor already fires the event when the raw balance is spent;

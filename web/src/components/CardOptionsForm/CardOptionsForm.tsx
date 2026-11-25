@@ -535,7 +535,8 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
     );
     const gift = useAiGiftFromHeader(isLoggedIn);
     const giftTurnsClaudeOn =
-      gift?.state === 'claimed' && gift.claudeDefaultForPdf === true;
+      (gift?.state === 'open' || gift?.state === 'claimed') &&
+      gift.claudeDefaultForPdf === true;
     const claudeOnForPdfsByDefault =
       pageId == null &&
       !aiChoiceRecorded &&

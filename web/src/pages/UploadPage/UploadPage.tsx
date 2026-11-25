@@ -35,6 +35,12 @@ import { DayPassCreditOffer } from '../../components/DayPassCreditOffer/DayPassC
 import { ExploreCard } from './components/ExploreCard/ExploreCard';
 import { RecentSources } from './components/RecentSources/RecentSources';
 import UploadForm from './components/UploadForm/UploadForm';
+import { AiGiftUploadCard } from './components/AiGiftUploadCard/AiGiftUploadCard';
+import { giftOfferOf } from '../../lib/backend/aiGift';
+import {
+  forgetGiftSignupOrigin,
+  takeGiftSignupOrigin,
+} from '../../lib/aiGift/giftSignupOrigin';
 import pageStyles from './UploadPage.module.css';
 
 const SIGNUP_FLAG_KEY = 'signup_completed_tracked';
@@ -113,11 +119,12 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
   const isSignedIn = userLocals?.user?.id != null;
   const isPaying = isPayingUser(userLocals?.locals);
   const gift = useAiGift(isSignedIn);
-  const giftCredits =
-    isSignedIn && gift?.state === 'claimed' && gift.credits > 0
-      ? gift.credits
-      : null;
+  const giftOffer = isSignedIn ? giftOfferOf(gift) : null;
+  const giftCredits = giftOffer?.hasCredits === true ? giftOffer.credits : null;
   const giftAfterPlan = isSignedIn && isPaying ? gift : null;
+  // The upload card carries the offer, its switch and its credits for an
+  // account the gift pays for, so the AI badge row would only repeat it.
+  const giftCardShown = !isPaying && giftCredits != null;
   const [aiFlag, setAiFlag] = useState(
     () => globalThis.localStorage?.getItem(AI_FLAG_KEY) === 'true'
   );
@@ -138,7 +145,8 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
   const sessionHint = hasSessionHint();
   const claudeOnByDefault = isPaying
     ? userLocals?.claudeCardsByDefault === true
-    : gift?.state === 'claimed' && gift.claudeDefaultForPdf === true;
+    : (gift?.state === 'open' || gift?.state === 'claimed') &&
+      gift.claudeDefaultForPdf === true;
   const claudeOnForPdfs =
     !aiChoiceRecorded &&
     claudeOnByDefault &&
@@ -197,12 +205,22 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
     if (signupTracked.current) return;
     const user = userLocals?.user;
     if (user?.id == null) return;
-    if (!isFreshSignup(user.created_at, user.onboarded_at)) return;
+    if (!isFreshSignup(user.created_at, user.onboarded_at)) {
+      forgetGiftSignupOrigin();
+      return;
+    }
     signupTracked.current = true;
     void markOnboarded();
-    if (globalThis.sessionStorage?.getItem(SIGNUP_FLAG_KEY) != null) return;
+    if (globalThis.sessionStorage?.getItem(SIGNUP_FLAG_KEY) != null) {
+      forgetGiftSignupOrigin();
+      return;
+    }
     globalThis.sessionStorage?.setItem(SIGNUP_FLAG_KEY, '1');
-    track('signup_completed', { method: 'oauth' });
+    const giftOrigin = takeGiftSignupOrigin();
+    track('signup_completed', {
+      method: 'oauth',
+      ...(giftOrigin == null ? {} : { signup_origin: giftOrigin }),
+    });
     fireSignupConversion();
   }, [userLocals]);
 
@@ -337,6 +355,7 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
         }
         role="status"
         aria-hidden={holdSignedInBadge ? true : undefined}
+        hidden={giftCardShown}
       >
         {aiBadgeState === 'on' && (
           <>
@@ -554,11 +573,16 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
           <AiChoice aiOn={aiChoiceOn} onChange={setAi} />
         )}
       </div>
-      <UploadForm
-        setErrorMessage={setErrorMessage}
-        aiOn={isAiOn}
-        onPassDeckStarted={() => setPassDeckStarted(true)}
-      />
+      <AiGiftUploadCard signedIn={localsLoaded ? isSignedIn : undefined}>
+        {(holdChosenFiles) => (
+          <UploadForm
+            setErrorMessage={setErrorMessage}
+            aiOn={isAiOn}
+            onPassDeckStarted={() => setPassDeckStarted(true)}
+            holdChosenFiles={holdChosenFiles}
+          />
+        )}
+      </AiGiftUploadCard>
       <DayPassCreditOffer
         placement="upload"
         enabled={userLocals?.locals?.passKind === '24h'}

@@ -29,6 +29,7 @@ function deps(
       giftCostSince: vi.fn(async () => overrides.spendUsd ?? 0),
       now: () => NOW,
       planSpent: vi.fn(async () => false),
+      startGrant: vi.fn(async () => null),
     }),
     remainingMonthlyCards: vi.fn(async () => overrides.cardsLeft ?? 80),
   };
@@ -41,6 +42,10 @@ beforeEach(() => {
 describe('giftWouldPayForUpload', () => {
   it('is true for an unexpired gift with credits, room in the month and no gift conversion running', async () => {
     expect(await giftWouldPayForUpload(9, deps())).toBe(true);
+  });
+
+  it('is false for an account with no grant yet, even while the gift could make one, so the default never makes a grant', async () => {
+    expect(await giftWouldPayForUpload(9, deps({ grant: null }))).toBe(false);
   });
 
   it.each([

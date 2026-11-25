@@ -1,6 +1,7 @@
 import { vi } from 'vitest';
 import {
   AI_CHOICE_AT_KEY,
+  accountChoiceAllowsClaude,
   accountHasClaudeCardsByDefault,
   claudeCardsByDefault,
   type AiChoiceHistoryReader,
@@ -291,5 +292,35 @@ describe('accountHasClaudeCardsByDefault', () => {
         NO_HISTORY
       )
     ).toBe(false);
+  });
+});
+
+describe('accountChoiceAllowsClaude', () => {
+  it.each<[string, Record<string, string> | null, string | null, boolean]>([
+    ['nothing stored or recorded', null, null, true],
+    ['a stored on', { 'claude-ai-flashcards': 'true' }, null, true],
+    [
+      'a recorded off',
+      { 'claude-ai-flashcards': 'false', [AI_CHOICE_AT_KEY]: '1762300000' },
+      null,
+      false,
+    ],
+    ['a latest toggle off', null, 'upload_ai_turned_off', false],
+    [
+      'a stored off with no record',
+      { 'claude-ai-flashcards': 'false' },
+      null,
+      false,
+    ],
+    [
+      'a stored off followed by a toggle on',
+      { 'claude-ai-flashcards': 'false' },
+      'upload_ai_turned_on',
+      true,
+    ],
+  ])('answers %s', async (_case, stored, latest, allows) => {
+    expect(await accountChoiceAllowsClaude(7, stored, historyOf(latest))).toBe(
+      allows
+    );
   });
 });

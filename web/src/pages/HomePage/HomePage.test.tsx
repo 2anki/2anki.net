@@ -7,6 +7,12 @@ import '@testing-library/jest-dom';
 import { vi } from 'vitest';
 
 import { HomePage } from './HomePage';
+import { getAiGift } from '../../lib/backend/aiGift';
+
+vi.mock('../../lib/backend/aiGift', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../lib/backend/aiGift')>()),
+  getAiGift: vi.fn(async () => ({ state: 'closed', feedbackDue: false })),
+}));
 
 const trackMock = vi.fn();
 vi.mock('../../lib/analytics/track', () => ({
@@ -244,5 +250,59 @@ describe('HomePage (anonymous)', () => {
     expect(
       screen.getByText(title, { selector: 'p' }).closest('[lang]')
     ).toHaveAttribute('lang', language);
+  });
+});
+
+describe('HomePage and the free AI credits card', () => {
+  it('shows the upload form as before, with no modes, when the gift is off', async () => {
+    renderHome();
+
+    expect(
+      await screen.findByText(/drop your files here/i)
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Notion export' })).toBeNull();
+    expect(screen.queryByText(/Free account needed/)).toBeNull();
+  });
+
+  it('puts the upload form in the card under Notion export while the gift is open', async () => {
+    vi.mocked(getAiGift).mockResolvedValueOnce({
+      state: 'open',
+      credits: 100,
+      hasCredits: false,
+      validDays: 7,
+      endsAt: '2026-12-04T22:00:00.000Z',
+      feedbackDue: false,
+    });
+    renderHome();
+
+    expect(
+      await screen.findByRole('button', { name: 'Notion export' })
+    ).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText(/drop your files here/i)).toBeVisible();
+    expect(
+      screen.getByText('Free account needed · 100 credits, about 3 decks')
+    ).toBeInTheDocument();
+  });
+});
+
+describe('the hero copy above the upload card', () => {
+  const LOCALES = ['en', 'de', 'es', 'fr', 'it', 'ja', 'nl', 'pl', 'pt', 'ru'];
+
+  it.each(LOCALES)('carries no dash in %s', (locale) => {
+    const common = JSON.parse(
+      readFileSync(
+        join(__dirname, '../../lib/i18n/locales', locale, 'common.json'),
+        'utf8'
+      )
+    );
+    const lines = [
+      common.home.hero.subtitle,
+      common.home.hero.aiBadgeIntro,
+      common.upload.page.subtitle,
+    ];
+
+    expect(lines.filter((line: string) => /[\u2013\u2014]/.test(line))).toEqual(
+      []
+    );
   });
 });

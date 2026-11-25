@@ -23,6 +23,8 @@ export default interface AiCreditGifts {
   feedback_answered_at: Date | null;
 
   created_at: Date;
+
+  first_used_at: Date | null;
 }
 
 /** Represents the initializer for the table public.ai_credit_gifts */
@@ -44,6 +46,8 @@ export interface AiCreditGiftsInitializer {
 
   /** Default value: CURRENT_TIMESTAMP */
   created_at?: Date;
+
+  first_used_at?: Date | null;
 }
 
 /** Represents the mutator for the table public.ai_credit_gifts */
@@ -63,4 +67,6 @@ export interface AiCreditGiftsMutator {
   feedback_answered_at?: Date | null;
 
   created_at?: Date;
+
+  first_used_at?: Date | null;
 }

@@ -37,7 +37,12 @@ import {
 import { LastDeckOffer } from './LastDeckOffer';
 import { keepLastDeck } from '../../../../lib/upload/lastDeck';
 import { reportUploadZoneActivity } from '../../../../lib/upload/uploadZoneActivity';
-import { registerUploadEntry } from '../../../../lib/upload/uploadEntry';
+import {
+  GIFT_SWITCH_FIELD,
+  readGiftHandoff,
+} from '../../../../lib/aiGift/giftHandoff';
+import { giftOfferOf } from '../../../../lib/backend/aiGift';
+import { AI_CHOICE_AT_KEY } from '../../../../lib/data_layer/aiChoice';
 import { BuyCreditsButton } from '../../../../components/BuyCreditsButton/BuyCreditsButton';
 import { getDownloadFileName } from '../../../DownloadsPage/helpers/getDownloadFileName';
 import { ImageDropNotice } from '../../../DownloadsPage/components/ImageDropNotice';
@@ -95,7 +100,6 @@ import {
   AI_GIFT_QUERY_KEY,
   useAiGiftFromHeader,
 } from '../../../../lib/hooks/useAiGift';
-import { useActiveGiftBalance } from '../../../../components/AiGift/useAiGiftBalanceLine';
 import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
 import { fireAnalyticsEvent } from '../../../../lib/analytics/fireAnalyticsEvent';
 import { track } from '../../../../lib/analytics/track';
@@ -188,6 +192,7 @@ interface UploadFormProps {
   aiOn?: boolean;
   sample?: boolean;
   onPassDeckStarted?: () => void;
+  holdChosenFiles?: (files: File[]) => boolean;
 }
 
 const REJECTED_FALLBACK =
@@ -742,6 +747,7 @@ function UploadForm({
   aiOn = false,
   sample = false,
   onPassDeckStarted,
+  holdChosenFiles,
 }: Readonly<UploadFormProps>) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
@@ -1296,6 +1302,11 @@ function UploadForm({
 
   const submitFiles = () => {
     if (zoneStateRef.current === 'converting') return;
+    const input = fileInputRef.current;
+    if (holdChosenFiles?.(Array.from(input?.files ?? [])) === true) {
+      if (input != null) input.value = '';
+      return;
+    }
     convertRef.current?.click();
   };
 
@@ -1681,6 +1692,9 @@ function UploadForm({
         }
         appendSavedCardSettings(formData);
         formData.set('claude-ai-flashcards', 'true');
+        // The gift's own offer is the person's explicit ask, so it may make
+        // the account's first grant, as the upload card's switch does.
+        if (tapped === 'giftRedo') formData.set(GIFT_SWITCH_FIELD, 'true');
         // The click asks for Claude: two pages make one card, saved on the
         // account or in this browser, would otherwise skip it for a PDF.
         formData.set('pdf-page-pairs', 'false');
@@ -1698,7 +1712,7 @@ function UploadForm({
 
   const giftCanPay = isAuthenticated && !isPaying;
   const gift = useAiGiftFromHeader(isAuthenticated);
-  const giftBalance = useActiveGiftBalance(giftCanPay ? gift : null);
+  const giftUsable = giftCanPay && giftOfferOf(gift)?.usableNow === true;
   const giftRedoSlot =
     zoneState === 'success' &&
     giftCanPay &&
@@ -1709,12 +1723,7 @@ function UploadForm({
     cardsHeldBack === 0 &&
     rescueFiles.length > 0 &&
     claudeEligible &&
-    giftBalance != null &&
-    gift?.state === 'claimed' &&
-    gift.inUse !== true &&
-    gift.minMonthlyCards != null &&
-    gift.monthlyCardsLeft != null &&
-    gift.monthlyCardsLeft >= gift.minMonthlyCards;
+    giftUsable;
   const giftRedoOffered = giftRedoSlot && !keptFilesBelongElsewhere;
   const giftRedoDeck = giftRedoOffered ? (downloadLink ?? deckName) : null;
   useEffect(() => {
@@ -2577,21 +2586,6 @@ function UploadForm({
     reportUploadZoneActivity(zoneIdle ? 'idle' : 'busy');
   }, [zoneIdle]);
   useEffect(() => () => reportUploadZoneActivity('absent'), []);
-  useEffect(() => {
-    const showZone = () => {
-      document
-        .getElementById('upload-panel-local')
-        ?.scrollIntoView?.({ block: 'center' });
-      fileInputRef.current?.focus({ preventScroll: true });
-    };
-    return registerUploadEntry({
-      openPicker: () => {
-        showZone();
-        fileInputRef.current?.click();
-      },
-      showZone,
-    });
-  }, []);
   const resumeCheckedRef = useRef(false);
   const resumedUploadRef = useRef(false);
 
@@ -2810,22 +2804,42 @@ function UploadForm({
   ]);
 
   // A zip of notes handed over from Print or CSV: convert it straight away.
+  // The upload card hands over the files from its convert step the same
+  // way, each time with fresh router state, carrying the person's Claude
+  // choice; a choice made there is the request's own, so the server's
+  // default does not override it.
   const handoffTakenRef = useRef(false);
+  const giftHandoffTakenRef = useRef<unknown>(null);
   useEffect(() => {
-    if (handoffTakenRef.current || userLocalsLoading || sample) return;
+    if (userLocalsLoading || sample) return;
+    const gift = readGiftHandoff(location.state);
+    if (gift != null && giftHandoffTakenRef.current === location.state) return;
+    if (gift == null && handoffTakenRef.current) return;
     const handedOff = readHandoffFile(location.state);
-    if (handedOff == null) return;
-    handoffTakenRef.current = true;
+    const handedOffFiles =
+      gift?.files ?? (handedOff == null ? null : [handedOff]);
+    if (handedOffFiles == null) return;
+    if (gift == null) {
+      handoffTakenRef.current = true;
+    } else {
+      giftHandoffTakenRef.current = location.state;
+    }
     // Back, Forward or a reload must not convert the same file again.
     navigate(`${location.pathname}${location.search}`, {
       replace: true,
       state: null,
     });
     const formData = new FormData();
-    formData.append('pakker', handedOff, handedOff.name);
+    for (const file of handedOffFiles) {
+      formData.append('pakker', file, file.name);
+    }
     appendSavedCardSettings(formData);
     applyAnonymousAiFlag(formData, aiOn);
-    const handedOffFiles = [handedOff];
+    if (gift?.claude != null) {
+      formData.set('claude-ai-flashcards', String(gift.claude));
+      formData.set(GIFT_SWITCH_FIELD, 'true');
+      formData.set(AI_CHOICE_AT_KEY, String(Math.floor(Date.now() / 1000)));
+    }
     keepSubmittedFiles(handedOffFiles);
     void runFileUpload(formData, handedOffFiles, false, 'handoff');
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -56,8 +56,8 @@
   "home": {
     "hero": {
       "headline": "Tarjetas que funcionan en Anki",
-      "subtitle": "Suelta una página de Notion y obtén un mazo que no tienes que arreglar — cloze bien hechos, tarjetas atómicas, los tipos de nota correctos. También PDF, Quizlet, Markdown, HTML y CSV.",
-      "aiBadgeIntro": "Tarjetas limpias, listas para estudiar — cloze bien hechos, anverso y reverso atómicos, sin reversos vacíos. ¿Prefieres borradores con IA?",
+      "subtitle": "Suelta una página de Notion y obtén un mazo que no tienes que arreglar: cloze bien hechos, tarjetas atómicas, los tipos de nota correctos. También PDF, Quizlet, Markdown, HTML y CSV.",
+      "aiBadgeIntro": "Tarjetas limpias, listas para estudiar: cloze bien hechos, anverso y reverso atómicos, sin reversos vacíos. ¿Prefieres borradores con IA?",
       "createAccount": "Crear una cuenta",
       "cardOptions": "Opciones de tarjeta",
       "nativeApps": "También en iPhone, iPad y Mac →",
@@ -352,7 +352,7 @@
     },
     "page": {
       "title": "Convierte tus notas",
-      "subtitle": "Suelta un archivo y obtén un mazo que no tienes que arreglar — cloze bien hechos, tarjetas atómicas, los tipos de nota correctos. También Notion, PDF, Markdown, HTML, Word y CSV.",
+      "subtitle": "Suelta un archivo y obtén un mazo que no tienes que arreglar: cloze bien hechos, tarjetas atómicas, los tipos de nota correctos. También Notion, PDF, Markdown, HTML, Word y CSV.",
       "reattachPrefix": "Vuelve a adjuntar",
       "reattachSuffix": "para convertir",
       "aiOn": "La IA está activada",

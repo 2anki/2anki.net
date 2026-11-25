@@ -1,17 +1,30 @@
+import { giftClaimsOpen } from './giftTerms';
 import {
+  buildGiftBalance,
   computeAiGiftBalance,
+  giftIsActive,
   type AiGiftBalanceReaders,
+  type AiGiftGrant,
   type AiGiftMode,
 } from './giftBalance';
 
 export interface UploadGiftModeDeps extends AiGiftBalanceReaders {
   now: () => Date;
   planSpent: (userId: number) => Promise<boolean>;
+  // Makes the grant under the lock, where the total and the per-network
+  // limit are read; null when either has no room or claims have closed.
+  startGrant: (
+    userId: number,
+    ipHash: string | null,
+    now: Date
+  ) => Promise<{ grant: AiGiftGrant; created: boolean } | null>;
 }
 
 // 'spent': an account with no plan whose unexpired gift has no credits left.
 // Its upload builds with the standard parser and carries the credits notice.
-export type UploadGift = AiGiftMode | 'spent';
+// 'start': an account with no plan and no grant yet while claims are open.
+// Whether the total has room is read once, when startGrant makes the grant.
+export type UploadGift = AiGiftMode | 'spent' | 'start';
 
 // A paying account draws on the gift only when it holds gift credits and its
 // plan has no recorded balance left. The gift is read first, so an account
@@ -26,11 +39,29 @@ async function paidAccountMayUseGift(
   return deps.planSpent(userId);
 }
 
+// An account with no plan: its grant's balance, or, with no grant at all, a
+// grant it could start. An account whose grant expired never gets another.
+async function noPlanGift(
+  userId: number,
+  deps: UploadGiftModeDeps
+): Promise<UploadGift | null> {
+  if (!(await deps.isEnabled())) return null;
+  const now = deps.now();
+  const grant = await deps.findGrant(userId);
+  if (grant == null) {
+    return giftClaimsOpen(now) ? 'start' : null;
+  }
+  if (!giftIsActive(grant, now)) return null;
+  const spendUsd = await deps.giftCostSince(grant.id, userId, grant.claimedAt);
+  return buildGiftBalance(grant, spendUsd).credits > 0 ? 'only' : 'spent';
+}
+
 // How an upload may use the free AI credits gift. A paying account's upload
 // may draw on it once its plan's credits are spent. An account with no plan
-// reaches Claude only while it holds unspent, unexpired gift credits and the
-// switch is on; otherwise it converts exactly as a free account does. A failed
-// read means no gift, never more AI.
+// reaches Claude only while it holds unspent, unexpired gift credits, or has
+// no grant yet while the gift can still make one, and the switch is on;
+// otherwise it converts exactly as a free account does. A failed read means
+// no gift, never more AI.
 export async function uploadAiGiftMode(
   userId: number | null,
   paying: boolean,
@@ -42,9 +73,7 @@ export async function uploadAiGiftMode(
     if (paying) {
       return (await paidAccountMayUseGift(userId, deps)) ? 'fallback' : null;
     }
-    const gift = await computeAiGiftBalance(userId, deps.now(), deps);
-    if (gift == null) return null;
-    return gift.credits > 0 ? 'only' : 'spent';
+    return await noPlanGift(userId, deps);
   } catch (error) {
     console.error('[ai-gift] upload gift read failed', error);
     return null;

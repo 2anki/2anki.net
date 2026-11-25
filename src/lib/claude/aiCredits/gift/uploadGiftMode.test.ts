@@ -28,6 +28,7 @@ function readers(overrides: {
     giftCostSince: vi.fn(async () => overrides.spendUsd ?? 0),
     now: () => NOW,
     planSpent: vi.fn(async () => overrides.planSpent ?? false),
+    startGrant: vi.fn(async () => null),
   };
 }
 
@@ -72,10 +73,38 @@ describe('uploadAiGiftMode', () => {
     expect(deps.findGrant).not.toHaveBeenCalled();
   });
 
-  it('leaves a free account without a gift on the standard free path', async () => {
+  it('lets a free account without a grant start one while the gift is open and the total has room', async () => {
     expect(
       await uploadAiGiftMode(9, false, () => readers({ grant: null }))
-    ).toBeNull();
+    ).toBe('start');
+  });
+
+  it('leaves a free account without a grant on the standard free path once claims have closed', async () => {
+    const deps = readers({ grant: null });
+    deps.now = () => new Date('2026-12-04T20:00:00.000Z');
+
+    expect(await uploadAiGiftMode(9, false, () => deps)).toBeNull();
+  });
+
+  it('reads no gift total to answer an upload with no grant, since the grant itself checks it under the lock', async () => {
+    const deps = readers({ grant: null });
+
+    expect(await uploadAiGiftMode(9, false, () => deps)).toBe('start');
+    expect(deps.startGrant).not.toHaveBeenCalled();
+  });
+
+  it('never offers a new grant to an account whose grant has expired', async () => {
+    const deps = readers({});
+    deps.now = () => new Date('2026-11-28T00:00:00.000Z');
+
+    expect(await uploadAiGiftMode(9, false, () => deps)).toBeNull();
+  });
+
+  it('never offers a new grant to a paying account', async () => {
+    const deps = readers({ grant: null, planSpent: true });
+
+    expect(await uploadAiGiftMode(9, true, () => deps)).toBeNull();
+    expect(deps.startGrant).not.toHaveBeenCalled();
   });
 
   it('treats a failed read as no gift', async () => {

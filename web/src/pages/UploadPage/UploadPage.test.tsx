@@ -13,7 +13,7 @@ import { HelmetProvider } from 'react-helmet-async';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 
 import i18n from '../../lib/i18n';
-import { formatGiftDate } from '../../components/AiGift/AiGiftPresent';
+import { formatGiftDate } from '../../components/AiGift/formatGiftDate';
 import { UploadPage } from './UploadPage';
 
 let startPassDeck: (() => void) | undefined;
@@ -66,6 +66,7 @@ const replayPendingPurchaseConversions = vi.fn();
 const storePassToken = vi.fn();
 vi.mock('../../lib/anonymousPass', () => ({
   storePassToken: (...args: unknown[]) => storePassToken(...args),
+  getStoredPassToken: () => null,
 }));
 vi.mock('../../lib/analytics/reportPurchaseConversion', () => ({
   reportPurchaseConversion: (...args: unknown[]) =>
@@ -486,84 +487,65 @@ describe('UploadPage Claude cards on by default for PDFs and PowerPoint', () => 
     });
   });
 
-  it('gives a free account holding gift credits the Claude cards switch', async () => {
+  it('puts the offer in the upload card and drops the AI badge row for an account the gift pays for', async () => {
     fakeLocals = { patreon: false, subscriber: false };
     fakeGift = {
-      state: 'claimed',
-      credits: 80,
-      expiresAt: '2026-11-27T12:00:00.000Z',
+      state: 'open',
+      credits: 100,
+      hasCredits: true,
+      validDays: 7,
+      endsAt: '2026-12-04T22:00:00.000Z',
       feedbackDue: false,
+      claudeDefaultForPdf: true,
+      nextUploadUsesCredits: true,
+      switchOnByDefault: true,
     };
     renderPage();
 
     expect(
-      screen.getByText(/You have 80 AI credits from the gift\./)
+      await screen.findByRole('button', { name: 'Notion export' })
     ).toBeInTheDocument();
     expect(
       screen.queryByRole('link', {
         name: /upgrade to write cards with claude/i,
       })
-    ).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: /turn ai on/i }));
-
-    await waitFor(() => {
-      expect(globalThis.localStorage.getItem('claude-ai-flashcards')).toBe(
-        'true'
-      );
-    });
-    expect(
-      screen.getByRole('button', { name: /turn ai off/i })
-    ).toHaveTextContent('AI is on');
+    ).toBeNull();
+    expect(screen.getByText('100 free credits left')).toBeInTheDocument();
     fakeGift = null;
   });
 
-  it('shows AI on for PDF and PowerPoint when the gift turns Claude on by default, with the switch to turn it off', () => {
+  it('keeps the AI badge row and no card for a paying account', async () => {
+    fakeLocals = { patreon: false, subscriber: true };
+    fakeGift = { state: 'closed', feedbackDue: false };
+    renderPage();
+
+    expect(screen.getAllByRole('status').length).toBeGreaterThan(0);
+    expect(screen.queryByRole('button', { name: 'Notion export' })).toBeNull();
+    fakeGift = null;
+  });
+
+  it('lets the upload card carry the switch for an account with gift credits, so the page shows no second Claude switch', async () => {
     fakeLocals = { patreon: false, subscriber: false };
     fakeGift = {
       state: 'claimed',
-      credits: 100,
+      credits: 80,
+      hasCredits: true,
       expiresAt: '2026-11-27T12:00:00.000Z',
+      firstUsed: true,
+      validDays: 7,
+      endsAt: '2026-12-04T22:00:00.000Z',
       feedbackDue: false,
+      nextUploadUsesCredits: true,
+      switchOnByDefault: true,
       claudeDefaultForPdf: true,
-      aiBudgetAvailable: true,
-      monthlyCardsLeft: 80,
     };
     renderPage();
 
-    const toggle = screen.getByRole('button', { name: /turn ai off/i });
-    expect(toggle).toHaveTextContent('AI is on for PDF and PowerPoint');
+    expect(await screen.findByText('80 free credits left')).toBeInTheDocument();
     expect(
-      screen.getByText(/Your free AI credits pay for Claude cards/)
-    ).toBeInTheDocument();
-
-    fireEvent.click(toggle);
-
-    expect(globalThis.localStorage.getItem('claude-ai-flashcards')).toBe(
-      'false'
-    );
-    expect(
-      screen.getByRole('button', { name: /turn ai on/i })
-    ).toHaveTextContent('AI is off');
-    fakeGift = null;
-  });
-
-  it('keeps the gift switch off for an account whose gift does not turn Claude on by default', () => {
-    fakeLocals = { patreon: false, subscriber: false };
-    fakeGift = {
-      state: 'claimed',
-      credits: 100,
-      expiresAt: '2026-11-27T12:00:00.000Z',
-      feedbackDue: false,
-      claudeDefaultForPdf: false,
-      aiBudgetAvailable: true,
-      monthlyCardsLeft: 80,
-    };
-    renderPage();
-
-    expect(
-      screen.getByRole('button', { name: /turn ai on/i })
-    ).toHaveTextContent('AI is off');
+      screen.queryByRole('button', { name: /turn ai (on|off)/i })
+    ).toBeNull();
+    expect(screen.queryByText(/^Plus /)).toBeNull();
     fakeGift = null;
   });
 
@@ -801,12 +783,24 @@ describe('UploadPage AI off badge for a paying account', () => {
 
     it('keeps the one gift line for a free account that also holds a credit pack', async () => {
       fakeLocals = { patreon: false, subscriber: false };
+      fakeGift = {
+        state: 'claimed',
+        credits: 100,
+        hasCredits: true,
+        expiresAt: EXPIRES,
+        firstUsed: false,
+        validDays: 7,
+        endsAt: '2026-12-04T22:00:00.000Z',
+        feedbackDue: false,
+        nextUploadUsesCredits: true,
+        switchOnByDefault: true,
+      };
       globalThis.localStorage.setItem('claude-ai-flashcards', 'true');
       stubCredits(300);
       renderPage();
 
       expect(
-        await screen.findByText('You have 100 AI credits from the gift.')
+        await screen.findByText('100 free credits left')
       ).toBeInTheDocument();
       expect(screen.queryByText(/^Plus /)).not.toBeInTheDocument();
     });
@@ -1081,6 +1075,56 @@ describe('UploadPage analytics', () => {
     };
     renderPage();
     expect(callsFor('signup_completed')).toHaveLength(1);
+  });
+
+  it('tags an OAuth sign-up started from the upload card with its origin, once', () => {
+    globalThis.sessionStorage.setItem(
+      '2anki-ai-gift-signup-origin',
+      'upload_card_ai'
+    );
+    fakeUser = {
+      id: 42,
+      created_at: new Date().toISOString(),
+      onboarded_at: null,
+    };
+    renderPage();
+    expect(callsFor('signup_completed')).toEqual([
+      [
+        'signup_completed',
+        { method: 'oauth', signup_origin: 'upload_card_ai' },
+      ],
+    ]);
+    expect(
+      globalThis.sessionStorage.getItem('2anki-ai-gift-signup-origin')
+    ).toBeNull();
+  });
+
+  it('forgets the card origin when the person signs in to an existing account instead', () => {
+    globalThis.sessionStorage.setItem(
+      '2anki-ai-gift-signup-origin',
+      'upload_card_ai'
+    );
+    fakeUser = {
+      id: 42,
+      created_at: '2020-01-01T00:00:00.000Z',
+      onboarded_at: '2020-01-01T00:00:00.000Z',
+    };
+    renderPage();
+    expect(
+      globalThis.sessionStorage.getItem('2anki-ai-gift-signup-origin')
+    ).toBeNull();
+  });
+
+  it('records an ordinary OAuth sign-up with no origin, as before', () => {
+    fakeUser = {
+      id: 42,
+      created_at: new Date().toISOString(),
+      onboarded_at: null,
+    };
+    renderPage();
+    expect(callsFor('signup_completed')).toEqual([
+      ['signup_completed', { method: 'oauth' }],
+    ]);
   });
 
   it('does not track signup_completed for an already-onboarded user', () => {

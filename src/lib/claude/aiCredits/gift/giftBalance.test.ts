@@ -4,7 +4,8 @@ import {
   AI_GIFT_CREDITS_PER_CLAIM,
   AI_GIFT_TOTAL_BUDGET_CREDITS,
   giftBudgetHasRoom,
-  giftExpiresAt,
+  giftExpiresAfterFirstUse,
+  AI_GIFT_CREDITS_EXPIRE_BY,
 } from './giftTerms';
 
 const grant: AiGiftGrant = {
@@ -64,14 +65,17 @@ describe('computeAiGiftBalance', () => {
 });
 
 describe('gift terms', () => {
-  it('expires a claim 48 hours later', () => {
-    expect(giftExpiresAt(new Date('2026-11-25T10:00:00.000Z'))).toEqual(
-      new Date('2026-11-27T10:00:00.000Z')
-    );
+  it('lasts 7 days from the first AI call', () => {
+    expect(
+      giftExpiresAfterFirstUse(new Date('2026-11-25T10:00:00.000Z'))
+    ).toEqual(new Date('2026-12-02T10:00:00.000Z'));
   });
 
-  it('never expires a claim after 2026-12-04 22:00 UTC', () => {
-    expect(giftExpiresAt(new Date('2026-12-04T19:59:00.000Z'))).toEqual(
+  it('never lasts past the end of the gift, 2026-12-04 22:00 UTC', () => {
+    expect(
+      giftExpiresAfterFirstUse(new Date('2026-11-30T10:00:00.000Z'))
+    ).toEqual(AI_GIFT_CREDITS_EXPIRE_BY);
+    expect(AI_GIFT_CREDITS_EXPIRE_BY).toEqual(
       new Date('2026-12-04T22:00:00.000Z')
     );
   });

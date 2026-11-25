@@ -125,6 +125,7 @@ import {
   type GiftMarker,
 } from '../lib/claude/aiCredits/gift/giftConversionMarker';
 import { getAiGiftReaders } from '../data_layer/createAiGiftReaders';
+import { giftNetworkHash } from '../lib/claude/aiCredits/gift/giftNetworkHash';
 import { isExpectedUploadState } from '../lib/upload/isExpectedUploadState';
 import {
   ZIP_PARTLY_RECOVERED_WARNING,
@@ -173,6 +174,7 @@ import {
   WORKER_INTERRUPTED_REASON,
 } from '../lib/workerTermination';
 import { track } from './events/track';
+import { withServerMarker } from '../lib/events/serverEventProps';
 import { parseFirstTouch } from '../controllers/helpers/parseFirstTouch';
 import { classifyDevice } from '../lib/analytics/classifyDevice';
 import {
@@ -837,6 +839,16 @@ function mayReachClaude(files: UploadedFile[]): boolean {
   return !files.every((file) => routedAwayFromClaude(file.originalname));
 }
 
+// The upload card's convert step sends its switch's value with this field.
+// Only such a request may make a first gift grant; the stored options never
+// carry it, so it is read from the request before they are merged in.
+export const GIFT_SWITCH_FIELD = 'ai-gift-switch';
+
+function sentGiftSwitchChoice(body: unknown): boolean {
+  if (body == null || typeof body !== 'object') return false;
+  return (body as Record<string, unknown>)[GIFT_SWITCH_FIELD] === 'true';
+}
+
 function positiveId(owner: unknown): number | null {
   const id = Number(owner);
   return owner != null && Number.isFinite(id) && id > 0 ? id : null;
@@ -1028,10 +1040,15 @@ class UploadService {
   // path, with the out-of-credits notice when the gift is spent and the busy
   // notice when another conversion holds the marker. A paying account whose
   // plan is spent draws on the gift only while it holds the marker; without
-  // it the upload behaves as it does with no credits left.
+  // it the upload behaves as it does with no credits left. An account with no
+  // plan and no grant yet makes its grant here, once it holds the marker, and
+  // only for a web upload whose Claude choice came from the upload card's
+  // switch (networkHash is null otherwise): every other request with no grant
+  // converts exactly as it did before the card existed.
   private async giftForUpload(
     owner: unknown,
-    paying: boolean
+    paying: boolean,
+    networkHash: (() => string) | null
   ): Promise<{
     aiGift: AiGiftMode | null;
     aiGiftCardLimit: number | null;
@@ -1048,6 +1065,7 @@ class UploadService {
     const gift = await uploadAiGiftMode(userId, paying, this.aiGiftReaders);
     if (gift == null || userId == null) return none;
     if (gift === 'spent') return { ...none, aiGiftStop: 'spent' };
+    if (gift === 'start' && networkHash == null) return none;
     if (gift === 'fallback') {
       const marker = takeGiftMarker(userId);
       return marker == null
@@ -1058,12 +1076,53 @@ class UploadService {
     if (remaining < AI_GIFT_MIN_MONTHLY_CARDS) return none;
     const marker = takeGiftMarker(userId);
     if (marker == null) return { ...none, aiGiftStop: 'busy' };
+    if (
+      gift === 'start' &&
+      networkHash != null &&
+      !(await this.startGiftGrant(userId, networkHash))
+    ) {
+      releaseGiftMarker(marker);
+      return none;
+    }
     return {
       aiGift: 'only',
       aiGiftCardLimit: remaining,
       aiGiftStop: null,
       aiGiftMarker: marker,
     };
+  }
+
+  // The grant is made under the advisory lock, which checks the total and the
+  // per-network limit again; a refusal, a network that cannot be hashed or a
+  // failed write leaves the upload on the free path, as an account without
+  // the gift.
+  private async startGiftGrant(
+    userId: number,
+    networkHash: () => string
+  ): Promise<boolean> {
+    try {
+      const readers = this.aiGiftReaders();
+      const started = await readers.startGrant(
+        userId,
+        networkHash(),
+        readers.now()
+      );
+      if (started == null) return false;
+      if (started.created) {
+        track('ai_gift_claimed', {
+          userId,
+          props: withServerMarker({
+            gift_id: started.grant.id,
+            credits: started.grant.credits,
+            trigger: 'upload',
+          }),
+        });
+      }
+      return true;
+    } catch (error) {
+      console.error('[ai-gift] grant start failed', error);
+      return false;
+    }
   }
 
   private async remainingMonthlyCards(owner: string): Promise<number> {
@@ -1540,6 +1599,8 @@ class UploadService {
       }
 
       const owner = getOwner(res);
+      const giftChoiceFromCard =
+        this.uploadEntry(req, res) === 'web' && sentGiftSwitchChoice(req.body);
       const storedCardOptions =
         owner == null
           ? null
@@ -1558,7 +1619,14 @@ class UploadService {
         settings.claudeAIFlashcards &&
         mayReachClaude(req.files as UploadedFile[])
       ) {
-        Object.assign(res.locals, await this.giftForUpload(owner, paying));
+        Object.assign(
+          res.locals,
+          await this.giftForUpload(
+            owner,
+            paying,
+            giftChoiceFromCard ? () => giftNetworkHash(req) : null
+          )
+        );
       }
 
       if (owner != null && settings.n2aBasic == null) {
