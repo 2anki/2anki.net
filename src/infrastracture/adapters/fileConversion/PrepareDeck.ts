@@ -53,6 +53,7 @@ import {
 import type { PageImageCardMode } from '../../../lib/pdf/combineIntoHTML';
 import { convertXLSXToHTML } from './convertXLSXToHTML';
 import { convertDocxToHTML } from './convertDocxToHTML';
+import { refuseWordDocumentTooLong } from './wordDocumentTooLong';
 import {
   aiFileFailedWarning,
   aiFileFailureReason,
@@ -322,6 +323,7 @@ async function convertFile(
   }
 
   if (isDocxFile(file.name)) {
+    refuseWordDocumentTooLong(file.contents as Buffer);
     const mediaSink = createWorkspaceDocxImageMediaSink(
       input.workspace.location
     );

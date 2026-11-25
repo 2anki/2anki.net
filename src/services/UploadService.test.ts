@@ -2047,6 +2047,55 @@ describe('UploadService.handleUpload — error paths', () => {
     });
   });
 
+  describe('a sync upload whose Word file is too long to convert', () => {
+    async function uploadRefused() {
+      MockGeneratePackagesUseCase.mockImplementation(function () {
+        return {
+          execute: vi
+            .fn()
+            .mockRejectedValue(
+              Object.assign(
+                new Error('word_document_too_long: 50000000 bytes of body XML'),
+                { name: 'WordDocumentTooLongError' }
+              )
+            ),
+        } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+      });
+      const service = new UploadService(
+        buildRepository(),
+        {} as JobRepository,
+        buildUsersRepo(),
+        ...fakeUploadServiceDeps()
+      );
+      const response = buildResponse();
+      await service.handleUpload(buildRequest(), response.res);
+      return response;
+    }
+
+    it('answers with the same too-large message as a conversion that ran out of memory', async () => {
+      const { capturedStatus, capturedJson } = await uploadRefused();
+
+      expect(capturedStatus()).toBe(400);
+      expect(capturedJson()).toEqual({
+        code: 'too_large',
+        message: CONVERSION_OUT_OF_MEMORY_REASON,
+      });
+    });
+
+    it('records the refusal under the out-of-memory failure reason', async () => {
+      await uploadRefused();
+
+      expect(trackMock).toHaveBeenCalledWith(
+        'conversion_failed',
+        expect.objectContaining({
+          props: expect.objectContaining({
+            reason: 'conversion_out_of_memory',
+          }),
+        })
+      );
+    });
+  });
+
   it('returns 400 with code pdf_processing_failed when pdf.js rejects the file structure', async () => {
     const invalidPdf = new Error('Invalid PDF structure');
     invalidPdf.name = 'InvalidPDFException';

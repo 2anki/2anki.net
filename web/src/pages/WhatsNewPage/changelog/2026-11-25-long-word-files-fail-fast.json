@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-25-long-word-files-fail-fast",
+  "date": "2026-11-25",
+  "type": "fix",
+  "title": "Word files too long to convert in one go ask you to split them right away instead of after a long wait"
+}

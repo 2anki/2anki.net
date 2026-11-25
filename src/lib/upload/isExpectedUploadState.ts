@@ -22,6 +22,7 @@ export const EXPECTED_ERROR_NAMES = new Set([
   'EpubTooLargeError',
   'NotionDatabaseColumnsError',
   'InvalidPDFException',
+  'WordDocumentTooLongError',
 ]);
 
 export const EXPECTED_MESSAGE_PATTERNS = [
