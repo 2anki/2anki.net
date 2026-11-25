@@ -1,6 +1,6 @@
 import * as cheerio from 'cheerio';
 import { logFileLabel } from '../../../lib/logging/logFileLabel';
-import { unzipSync } from 'fflate';
+import { walkZipDirectory } from '../../../lib/zip/walkZipDirectory';
 
 import { convertDocxToHTML } from './convertDocxToHTML';
 import { isZipContentFileSupported } from '../../../usecases/uploads/isZipContentFileSupported';
@@ -50,20 +50,17 @@ export function isResourceForkEntry(name: string): boolean {
   );
 }
 
-// Central-directory walk only — the filter always returns false, so no entry
+// Central-directory walk only, bounded by what the file can hold — no entry
 // ever inflates and a zip bomb cannot hurt the diagnostics path.
 export function censusZipEntries(buffer: Buffer): ZipStructureCensus {
   const all: { name: string; size: number }[] = [];
-  try {
-    unzipSync(new Uint8Array(buffer), {
-      filter: (file) => {
-        if (!file.name.endsWith('/')) {
-          all.push({ name: file.name, size: file.originalSize });
-        }
-        return false;
-      },
-    });
-  } catch {
+  const walk = walkZipDirectory(buffer, (entry) => {
+    if (!entry.name.endsWith('/')) {
+      all.push({ name: entry.name, size: entry.originalSize });
+    }
+    return 'continue';
+  });
+  if (walk === 'unreadable') {
     return {
       kind: 'zip',
       unreadable: true,

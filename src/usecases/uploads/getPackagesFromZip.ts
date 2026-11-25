@@ -36,10 +36,7 @@ import {
   parsePdfPasswordSentinel,
 } from '../../lib/pdf/pdfPasswordSentinel';
 import { buildLockedPdfWarning } from '../../lib/pdf/lockedPdfWarning';
-import {
-  buildConversionFailureWarning,
-  buildTooLongWordFileWarning,
-} from './conversionFailureWarning';
+import { buildConversionFailureWarning } from './conversionFailureWarning';
 import { isWordDocumentTooLongError } from '../../infrastracture/adapters/fileConversion/wordDocumentTooLong';
 import {
   EmptyDeckError,
@@ -102,37 +99,11 @@ function withZipRecoveryWarning(
   };
 }
 
-// A Word file too long to convert is not a failure to retry on its own: it
-// fails alone too. It is named in its own notice, and when nothing else in the
-// zip converts the upload fails with its reason.
-interface TooLongWordFile {
-  fileName: string;
-  error: unknown;
-}
-
-function refuseWhenOnlyTooLongWordFiles(
-  packages: Package[],
-  tooLong: TooLongWordFile[]
-): void {
-  if (packages.length === 0 && tooLong.length > 0) throw tooLong[0].error;
-}
-
-function appendTooLongWordFileWarning(
-  warnings: string[],
-  tooLong: TooLongWordFile[]
-) {
-  const warning = buildTooLongWordFileWarning(
-    tooLong.map((file) => file.fileName)
-  );
-  if (warning) warnings.push(warning);
-}
-
 interface BatchOutcome {
   packages: Package[];
   warnings: string[];
   lockedPdfs: string[];
   failedFiles: string[];
-  tooLong: TooLongWordFile[];
   emptyReasons: EmptyDeckReason[];
   rescueCandidateSets: RescueCandidate[][];
 }
@@ -143,11 +114,14 @@ interface BatchOutcome {
 // from being flattened to unknown when the whole upload comes out empty.
 // The upload page asks what a PDF with no readable text should become; that
 // question belongs to the whole upload, so it is never recorded as one file's
-// failure.
-function rethrowPdfChoice(error: unknown): void {
+// failure. A Word file too long to convert fails the whole upload too: the
+// skipped-file notice never reaches the visitor, so skipping it would ship a
+// deck with a document silently missing.
+function rethrowWholeUploadFailure(error: unknown): void {
   if (error instanceof Error && isPdfFallbackChoiceSentinel(error.message)) {
     throw error;
   }
+  if (isWordDocumentTooLongError(error)) throw error;
 }
 
 function reasonFromRejection(error: unknown): EmptyDeckReason | undefined {
@@ -225,18 +199,12 @@ async function buildDeckBatch(
 
   const lockedPdfs: string[] = [];
   const failedFiles: string[] = [];
-  const tooLong: TooLongWordFile[] = [];
   const emptyReasons: EmptyDeckReason[] = [];
   const rescueCandidateSets: RescueCandidate[][] = [];
   const preparedResults: DeckInfoOnlyResult[] = [];
   settled.forEach((result, index) => {
-    if (
-      result.status === 'rejected' &&
-      isWordDocumentTooLongError(result.reason)
-    ) {
-      tooLong.push({ fileName: fileNames[index], error: result.reason });
-    } else if (result.status === 'rejected') {
-      rethrowPdfChoice(result.reason);
+    if (result.status === 'rejected') {
+      rethrowWholeUploadFailure(result.reason);
       failedFiles.push(fileNames[index]);
       const reason = reasonFromRejection(result.reason);
       if (reason != null) emptyReasons.push(reason);
@@ -328,7 +296,6 @@ async function buildDeckBatch(
   warnings.push(...stragglerOutcomes.warnings);
   lockedPdfs.push(...stragglerOutcomes.lockedPdfs);
   failedFiles.push(...stragglerOutcomes.failedFiles);
-  tooLong.push(...stragglerOutcomes.tooLong);
   emptyReasons.push(...stragglerOutcomes.emptyReasons);
   rescueCandidateSets.push(...stragglerOutcomes.rescueCandidateSets);
 
@@ -337,7 +304,6 @@ async function buildDeckBatch(
     warnings,
     lockedPdfs,
     failedFiles,
-    tooLong,
     emptyReasons,
     rescueCandidateSets,
   };
@@ -361,7 +327,6 @@ async function buildStragglerDecks(
   const warnings: string[] = [];
   const lockedPdfs: string[] = [];
   const failedFiles: string[] = [];
-  const tooLong: TooLongWordFile[] = [];
   const emptyReasons: EmptyDeckReason[] = [];
   const rescueCandidateSets: RescueCandidate[][] = [];
 
@@ -386,11 +351,7 @@ async function buildStragglerDecks(
         })
       );
     } catch (error) {
-      if (isWordDocumentTooLongError(error)) {
-        tooLong.push({ fileName: straggler.inputFileName, error });
-        continue;
-      }
-      rethrowPdfChoice(error);
+      rethrowWholeUploadFailure(error);
       failedFiles.push(straggler.inputFileName);
       const reason = reasonFromRejection(error);
       if (reason != null) emptyReasons.push(reason);
@@ -438,7 +399,6 @@ async function buildStragglerDecks(
     warnings,
     lockedPdfs,
     failedFiles,
-    tooLong,
     emptyReasons,
     rescueCandidateSets,
   };
@@ -557,23 +517,12 @@ async function buildAllInOneSlot(
   const warnings: string[] = [];
   const lockedPdfs: string[] = [];
   const failedFiles: string[] = [];
-  const tooLong: TooLongWordFile[] = [];
   const emptyReasons: EmptyDeckReason[] = [];
   const rescueCandidateSets: RescueCandidate[][] = [];
   let cardsHeldBack: number | undefined;
   settled.forEach((result, index) => {
-    if (
-      result.status === 'rejected' &&
-      isWordDocumentTooLongError(result.reason)
-    ) {
-      tooLong.push({
-        fileName: supportedFileNames[index],
-        error: result.reason,
-      });
-      return;
-    }
     if (result.status === 'rejected') {
-      rethrowPdfChoice(result.reason);
+      rethrowWholeUploadFailure(result.reason);
       failedFiles.push(supportedFileNames[index]);
       const reason = reasonFromRejection(result.reason);
       if (reason != null) emptyReasons.push(reason);
@@ -621,8 +570,6 @@ async function buildAllInOneSlot(
   });
   appendLockedPdfWarning(warnings, lockedPdfs);
   appendConversionFailureWarning(warnings, failedFiles);
-  appendTooLongWordFileWarning(warnings, tooLong);
-  refuseWhenOnlyTooLongWordFiles(packages, tooLong);
   return {
     packages,
     warnings,
@@ -791,12 +738,11 @@ export const getPackagesFromZip = async (
   const warnings: string[] = [];
   const lockedPdfs: string[] = [];
   const failedFiles: string[] = [];
-  const tooLong: TooLongWordFile[] = [];
   const emptyReasons: EmptyDeckReason[] = [];
   const rescueCandidateSets: RescueCandidate[][] = [];
   settledChunks.forEach((result, index) => {
     if (result.status === 'rejected') {
-      rethrowPdfChoice(result.reason);
+      rethrowWholeUploadFailure(result.reason);
       failedFiles.push(...chunks[index]);
       const reason = reasonFromRejection(result.reason);
       if (reason != null) emptyReasons.push(reason);
@@ -807,14 +753,11 @@ export const getPackagesFromZip = async (
     warnings.push(...result.value.warnings);
     lockedPdfs.push(...result.value.lockedPdfs);
     failedFiles.push(...result.value.failedFiles);
-    tooLong.push(...result.value.tooLong);
     emptyReasons.push(...result.value.emptyReasons);
     rescueCandidateSets.push(...result.value.rescueCandidateSets);
   });
   appendLockedPdfWarning(warnings, lockedPdfs);
   appendConversionFailureWarning(warnings, failedFiles);
-  appendTooLongWordFileWarning(warnings, tooLong);
-  refuseWhenOnlyTooLongWordFiles(packages, tooLong);
 
   return withZipRecoveryWarning(zipHandler, {
     packages,

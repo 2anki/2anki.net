@@ -7,6 +7,7 @@ import {
   WordDocumentTooLongError,
 } from './wordDocumentTooLong';
 import { wordNotesWithBodyBytes } from '../../../test/fakes/longWordDocuments';
+import { zipDeclaringMoreEntriesThanItHolds } from '../../../test/fakes/zipDeclaringMoreEntriesThanItHolds';
 
 describe('declaredWordBodyBytes', () => {
   it('reads the size the zip directory declares for the Word body', () => {
@@ -21,6 +22,27 @@ describe('declaredWordBodyBytes', () => {
     ],
   ])('has no size for %s', (_kind, contents) => {
     expect(declaredWordBodyBytes(contents)).toBeNull();
+  });
+
+  it('treats a size of 0xFFFFFFFF with no zip64 record as unknown', () => {
+    const docx = Buffer.from(wordNotesWithBodyBytes(5000));
+    const name = Buffer.from('word/document.xml');
+    const directoryEntry = docx.lastIndexOf(name) - 46;
+    expect(docx.readUInt32LE(directoryEntry)).toBe(0x02014b50);
+    docx.writeUInt32LE(0xffffffff, directoryEntry + 24);
+
+    expect(declaredWordBodyBytes(docx)).toBeNull();
+  });
+
+  it('has no size, within milliseconds, for a file declaring far more entries than it holds', () => {
+    const started = performance.now();
+
+    const declared = declaredWordBodyBytes(
+      zipDeclaringMoreEntriesThanItHolds(4_000_000_000)
+    );
+
+    expect(declared).toBeNull();
+    expect(performance.now() - started).toBeLessThan(50);
   });
 });
 

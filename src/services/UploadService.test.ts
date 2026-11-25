@@ -2082,14 +2082,14 @@ describe('UploadService.handleUpload — error paths', () => {
       });
     });
 
-    it('records the refusal under the out-of-memory failure reason', async () => {
+    it('records the refusal under its own failure reason, apart from a real out-of-memory crash', async () => {
       await uploadRefused();
 
       expect(trackMock).toHaveBeenCalledWith(
         'conversion_failed',
         expect.objectContaining({
           props: expect.objectContaining({
-            reason: 'conversion_out_of_memory',
+            reason: 'word_document_too_long',
           }),
         })
       );

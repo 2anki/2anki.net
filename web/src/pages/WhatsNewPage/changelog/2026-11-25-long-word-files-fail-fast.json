@@ -2,5 +2,5 @@
   "id": "2026-11-25-long-word-files-fail-fast",
   "date": "2026-11-25",
   "type": "fix",
-  "title": "Word files too long to convert in one go ask you to split them right away instead of after a long wait"
+  "title": "A Word file too long to convert in one go, on its own or in an upload with other files, asks you to split it right away instead of after a long wait"
 }

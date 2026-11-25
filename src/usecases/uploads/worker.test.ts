@@ -21,6 +21,7 @@ import {
   CrossFileDedupState,
 } from '../../lib/claude/ClaudeService';
 import { PrepareDeck } from '../../infrastracture/adapters/fileConversion/PrepareDeck';
+import { WordDocumentTooLongError } from '../../infrastracture/adapters/fileConversion/wordDocumentTooLong';
 import { getPackagesFromZip } from './getPackagesFromZip';
 import { getEventsSink } from '../../services/events/eventsSinkInstance';
 import { createWorkerTerminationError } from '../../lib/workerTermination';
@@ -739,6 +740,23 @@ describe('runUploadGenerationInWorker — files converted in parallel', () => {
 
     expect(result.ok ? null : result.error.name).toBe(
       'ClaudeLargeSectionError'
+    );
+  });
+
+  it('fails an upload of several files when one Word file is too long to convert', async () => {
+    mockPrepareDeck.mockImplementation(async (input) => {
+      if (input.name === 'Thesis.docx') {
+        throw new WordDocumentTooLongError(50_000_000);
+      }
+      return deckFor(input.name) as never;
+    });
+
+    const result = await runUploadGenerationInWorker(
+      task([makeHtml('a.html'), makeHtml('Thesis.docx')])
+    );
+
+    expect(result.ok ? null : result.error.name).toBe(
+      'WordDocumentTooLongError'
     );
   });
 

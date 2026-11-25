@@ -1,4 +1,4 @@
-import { unzipSync } from 'fflate';
+import { walkZipDirectory } from '../../../lib/zip/walkZipDirectory';
 
 // mammoth builds the whole Word body in memory several times over, about 40
 // bytes of heap per byte of word/document.xml, so a long body runs the 1 GB
@@ -19,6 +19,7 @@ import { unzipSync } from 'fflate';
 export const MAX_CONVERTIBLE_WORD_BODY_BYTES = 36_000_000;
 
 const MAIN_DOCUMENT_PART = 'word/document.xml';
+const UNKNOWN_32_BIT_SIZE = 0xffffffff;
 const WORD_DOCUMENT_TOO_LONG = 'WordDocumentTooLongError';
 
 export class WordDocumentTooLongError extends Error {
@@ -32,34 +33,30 @@ export class WordDocumentTooLongError extends Error {
 }
 
 // The worker serialises errors down to { message, name }, so the parent
-// matches the refusal by name. jobFailureReason and UploadService turn it into
-// the same code and message as a conversion that ran out of heap.
+// matches the refusal by name. jobFailureReason and UploadService give the
+// visitor the same message as a conversion that ran out of heap, under a
+// reason of its own.
 export function isWordDocumentTooLongError(err: unknown): err is Error {
   return err instanceof Error && err.name === WORD_DOCUMENT_TOO_LONG;
 }
 
 // The uncompressed size the zip directory declares for the Word body, read
 // without inflating anything. Null when the directory cannot be read or the
-// size is missing or implausible, in which case the file converts as before.
+// size is missing or implausible (0xFFFFFFFF with no zip64 record means
+// unknown), in which case the file converts as before.
 export function declaredWordBodyBytes(contents: Buffer): number | null {
   let declared: number | null = null;
-  try {
-    unzipSync(new Uint8Array(contents), {
-      filter: (file) => {
-        if (file.name === MAIN_DOCUMENT_PART) {
-          const plausible =
-            Number.isSafeInteger(file.originalSize) &&
-            file.originalSize > 0 &&
-            file.originalSize >= file.size;
-          declared = plausible ? file.originalSize : null;
-        }
-        return false;
-      },
-    });
-  } catch {
-    return null;
-  }
-  return declared;
+  const walk = walkZipDirectory(contents, (entry) => {
+    if (entry.name !== MAIN_DOCUMENT_PART) return 'continue';
+    const plausible =
+      Number.isSafeInteger(entry.originalSize) &&
+      entry.originalSize > 0 &&
+      entry.originalSize !== UNKNOWN_32_BIT_SIZE &&
+      entry.originalSize >= entry.compressedSize;
+    declared = plausible ? entry.originalSize : null;
+    return 'stop';
+  });
+  return walk === 'stopped' ? declared : null;
 }
 
 export function refuseWordDocumentTooLong(contents: Buffer): void {

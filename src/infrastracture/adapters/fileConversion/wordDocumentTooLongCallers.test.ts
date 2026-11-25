@@ -8,6 +8,11 @@ vi.mock('./wordDocumentTooLong', async (importOriginal) => {
   };
 });
 
+vi.mock('./convertDocxToHTML', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./convertDocxToHTML')>();
+  return { convertDocxToHTML: vi.fn(actual.convertDocxToHTML) };
+});
+
 import { refuseWordDocumentTooLong } from './wordDocumentTooLong';
 import { convertDocxToHTML } from './convertDocxToHTML';
 import { censusFromHtml, censusUploadedFile } from './documentStructureCensus';
@@ -24,8 +29,14 @@ import {
   docxParagraph,
   docxRun,
 } from '../../../test/fakes/buildDocx';
+import {
+  STUDY_NOTES_FAN_OUT_HTML,
+  STUDY_NOTES_HTML,
+  studyNotes,
+} from '../../../test/fakes/studyNotesDocx';
 
 const refuse = refuseWordDocumentTooLong as unknown as Mock;
+const convert = convertDocxToHTML as unknown as Mock;
 
 const notes = buildDocx({
   body: [
@@ -40,6 +51,7 @@ describe('callers of the Word converter', () => {
   beforeEach(() => {
     setupTests();
     refuse.mockClear();
+    convert.mockClear();
   });
 
   it('censuses an uploaded Word file without the length check', async () => {
@@ -75,5 +87,30 @@ describe('callers of the Word converter', () => {
     );
 
     expect(refuse).toHaveBeenCalledWith(notes);
+  });
+
+  it('converts short study notes on the worker path, check and all, to the HTML captured from main', async () => {
+    const settings = new CardOption(CardOption.LoadDefaultOptions());
+    const docx = studyNotes();
+
+    await prepareDeckInfoOnly(
+      {
+        name: 'notes.docx',
+        settings,
+        files: [{ name: 'notes.docx', contents: docx }],
+        noLimits: false,
+        workspace: new Workspace(true, 'fs'),
+      },
+      new Workspace(true, 'fs'),
+      new Workspace(true, 'fs')
+    );
+
+    expect(refuse).toHaveBeenCalledWith(docx);
+    const html = (await convert.mock.results[0].value) as string;
+    expect(html.replace(/src="[^"]+\.png"/, 'src="figure.png"')).toBe(
+      settings.overlappingCloze === 'off'
+        ? STUDY_NOTES_FAN_OUT_HTML
+        : STUDY_NOTES_HTML
+    );
   });
 });

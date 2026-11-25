@@ -216,14 +216,15 @@ export type JobFailureReasonCode =
   | 'empty_content'
   | 'conversion_process_crashed'
   | 'conversion_out_of_memory'
+  | 'word_document_too_long'
   | 'unknown';
 
 export function jobFailureReasonCode(error: unknown): JobFailureReasonCode {
-  if (
-    isConversionOutOfMemoryError(error) ||
-    isWordDocumentTooLongError(error)
-  ) {
+  if (isConversionOutOfMemoryError(error)) {
     return 'conversion_out_of_memory';
+  }
+  if (isWordDocumentTooLongError(error)) {
+    return 'word_document_too_long';
   }
   if (isConversionChildCrashedError(error)) {
     return 'conversion_process_crashed';

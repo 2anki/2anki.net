@@ -21,6 +21,7 @@ import {
 import {
   CLAUDE_PARSE_FAILED_REASON,
   COLUMNS_AMBIGUOUS_PREFIX,
+  CONVERSION_OUT_OF_MEMORY_REASON,
   CONVERSION_PROCESS_CRASHED_REASON,
   DECK_TOO_LARGE_REASON,
   DOCX_UNREADABLE_REASON,
@@ -848,5 +849,22 @@ describe('notionEmptyDeckReasonMessage', () => {
     expect(
       jobFailureReasonFromError(new EmptyDeckError(undefined, 'no_content'))
     ).toBe(EMPTY_DECK_NO_CONTENT_REASON);
+  });
+});
+
+describe('a Word file too long to convert', () => {
+  const refusal = Object.assign(
+    new Error('word_document_too_long: 50000000 bytes of body XML'),
+    { name: 'WordDocumentTooLongError' }
+  );
+
+  it('is counted under its own code, apart from an out-of-memory crash', () => {
+    expect(jobFailureReasonCode(refusal)).toBe('word_document_too_long');
+  });
+
+  it('tells the user to split the file', () => {
+    expect(jobFailureReasonFromError(refusal, 'job-long')).toBe(
+      CONVERSION_OUT_OF_MEMORY_REASON
+    );
   });
 });
