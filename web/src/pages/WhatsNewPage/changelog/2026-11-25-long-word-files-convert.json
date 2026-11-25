@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-25-long-word-files-convert",
+  "date": "2026-11-25",
+  "type": "fix",
+  "title": "Long Word files with hundreds of pages convert into a deck instead of stopping with a too-large error"
+}
