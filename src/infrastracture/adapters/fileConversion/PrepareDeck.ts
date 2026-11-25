@@ -52,7 +52,7 @@ import {
 } from '../../../lib/pdf/pdfFallbackChoice';
 import type { PageImageCardMode } from '../../../lib/pdf/combineIntoHTML';
 import { convertXLSXToHTML } from './convertXLSXToHTML';
-import { convertDocxToHTML } from './convertDocxToHTML';
+import { convertLongDocxToHTML } from './convertLongDocxToHTML';
 import {
   aiFileFailedWarning,
   aiFileFailureReason,
@@ -339,7 +339,7 @@ async function convertFile(
     const result = {
       name: `${file.name}.html`,
       contents: Buffer.from(
-        await convertDocxToHTML(file.contents as Buffer, recordingSink, {
+        await convertLongDocxToHTML(file.contents as Buffer, recordingSink, {
           bulletFanOut: input.settings.overlappingCloze === 'off',
         })
       ),
