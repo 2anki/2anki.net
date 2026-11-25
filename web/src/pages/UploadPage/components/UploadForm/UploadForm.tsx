@@ -97,6 +97,7 @@ import {
 } from '../../../../lib/hooks/useAiGift';
 import { useActiveGiftBalance } from '../../../../components/AiGift/useAiGiftBalanceLine';
 import { cardsLeftThisMonth } from '../../../../lib/limits/cardsLeftThisMonth';
+import { useCardCountsUnknown } from '../../../../lib/hooks/useCardCountsUnknown';
 import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
 import { fireAnalyticsEvent } from '../../../../lib/analytics/fireAnalyticsEvent';
 import { track } from '../../../../lib/analytics/track';
@@ -1697,7 +1698,8 @@ function UploadForm({
   const giftCanPay = isAuthenticated && !isPaying;
   const gift = useAiGiftFromHeader(isAuthenticated);
   const giftBalance = useActiveGiftBalance(giftCanPay ? gift : null);
-  const cardsLeft = cardsLeftThisMonth(cardUsage);
+  const cardCountsUnknown = useCardCountsUnknown(userLocals?.user?.id);
+  const cardsLeft = cardsLeftThisMonth(cardCountsUnknown ? null : cardUsage);
   const giftRedoSlot =
     zoneState === 'success' &&
     giftCanPay &&

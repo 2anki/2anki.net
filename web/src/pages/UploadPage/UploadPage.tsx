@@ -118,16 +118,14 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
       ? gift.credits
       : null;
   const giftAfterPlan = isSignedIn && isPaying ? gift : null;
-  const [aiFlag, setAiFlag] = useState(
-    () => globalThis.localStorage?.getItem(AI_FLAG_KEY) === 'true'
-  );
+  const [aiFlag, setAiFlag] = useState(claudeCardsSwitchedOn);
 
   const [aiChoiceRecorded, setAiChoiceRecorded] = useState(() =>
     hasRecordedAiChoice()
   );
 
   useEffect(() => {
-    setAiFlag(globalThis.localStorage?.getItem(AI_FLAG_KEY) === 'true');
+    setAiFlag(claudeCardsSwitchedOn());
     setAiChoiceRecorded(hasRecordedAiChoice());
   }, [isSignedIn]);
 

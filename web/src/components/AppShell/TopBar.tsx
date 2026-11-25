@@ -4,6 +4,8 @@ import { useAppLanguage } from '../../lib/i18n/useAppLanguage';
 import { useTheme } from '../../lib/hooks/useTheme';
 import { useAiCredits } from '../../lib/hooks/useAiCredits';
 import { useCardUsage } from '../../lib/hooks/useCardUsage';
+import { useUserLocals } from '../../lib/hooks/useUserLocals';
+import { useCardCountsUnknown } from '../../lib/hooks/useCardCountsUnknown';
 import { cardsLeftThisMonth } from '../../lib/limits/cardsLeftThisMonth';
 import { isPayingUser } from '../NavigationBar/helpers/getPlanLabel';
 import { AccountMenu } from './AccountMenu';
@@ -36,6 +38,8 @@ export function TopBar({
   const credits = useAiCredits(paying);
   const planCreditsFirst = paying && credits?.usable === true;
   const cardUsage = useCardUsage(!paying);
+  const { data: session } = useUserLocals();
+  const countsUnknown = useCardCountsUnknown(session?.user?.id);
   const logoSrc =
     theme === 'light' ? '/mascot/navbar-logo.png' : '/mascot/Notion 1.png';
   return (
@@ -60,7 +64,10 @@ export function TopBar({
           isLoggedIn
           planCreditsFirst={planCreditsFirst}
           giftPaysForClaude={!paying}
-          cardsLeftThisMonth={cardsLeftThisMonth(cardUsage)}
+          cardsLeftThisMonth={cardsLeftThisMonth(
+            countsUnknown ? null : cardUsage
+          )}
+          accountId={session?.user?.id}
         />
         <AccountMenu email={email} locals={locals} onLogOut={onLogOut} />
       </div>

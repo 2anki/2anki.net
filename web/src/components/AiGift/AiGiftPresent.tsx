@@ -24,10 +24,13 @@ import { useGiftAutoOpen } from './useGiftAutoOpen';
 import { useUploadZoneActivity } from '../../lib/upload/uploadZoneActivity';
 import { chooseUploadFile } from '../../lib/upload/uploadEntry';
 import {
+  bindGiftClaudeSwitch,
   claudeCardsSwitchedOn,
-  switchClaudeCardsOnForThisBrowser,
+  switchClaudeCardsOnForGift,
   useClaudeCardsSwitchedOn,
+  type GiftPaysForAccount,
 } from '../../lib/data_layer/claudeCardsSwitch';
+import { useActiveGiftBalance } from './useAiGiftBalanceLine';
 import sharedStyles from '../../styles/shared.module.css';
 import styles from './AiGiftPresent.module.css';
 
@@ -51,6 +54,7 @@ interface AiGiftPresentProps {
   planCreditsFirst?: boolean;
   giftPaysForClaude?: boolean;
   cardsLeftThisMonth?: number | null;
+  accountId?: number | null;
 }
 
 type ClaudeCardRoom = 'room' | 'short' | 'unknown';
@@ -63,10 +67,19 @@ function claudeCardRoom(
   return cardsLeft >= minimum ? 'room' : 'short';
 }
 
-function switchOnForGift(via: ClaudeCardsSwitchedBy): void {
+function switchOnForGift(via: ClaudeCardsSwitchedBy, claimerId: number): void {
   if (claudeCardsSwitchedOn()) return;
-  switchClaudeCardsOnForThisBrowser();
+  switchClaudeCardsOnForGift(claimerId);
   track('ai_gift_claude_cards_enabled', { via });
+}
+
+function giftPaysForAccount(
+  giftLoaded: boolean,
+  giftPaysForClaude: boolean,
+  balanceActive: boolean
+): GiftPaysForAccount {
+  if (!giftLoaded) return 'unknown';
+  return giftPaysForClaude && balanceActive;
 }
 
 const dateLocale = (language: string): string =>
@@ -312,11 +325,23 @@ export function AiGiftPresent({
   className,
   labelFromWide = false,
   planCreditsFirst = false,
-  giftPaysForClaude = false,
+  giftPaysForClaude: giftMayPay = false,
   cardsLeftThisMonth = null,
+  accountId,
 }: Readonly<AiGiftPresentProps>) {
   const { t } = useTranslation('aiGift');
   const gift = useAiGift(isLoggedIn);
+  const giftPaysForClaude = giftMayPay && accountId != null;
+  const giftBalanceActive = useActiveGiftBalance(gift) != null;
+  const giftLoaded = gift != null;
+  const sessionAccount = isLoggedIn ? accountId : null;
+  useEffect(() => {
+    if (sessionAccount === undefined) return;
+    bindGiftClaudeSwitch(
+      sessionAccount,
+      giftPaysForAccount(giftLoaded, giftPaysForClaude, giftBalanceActive)
+    );
+  }, [sessionAccount, giftLoaded, giftPaysForClaude, giftBalanceActive]);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const panelId = useId();
@@ -357,11 +382,11 @@ export function AiGiftPresent({
   useEffect(() => {
     if (switchWaiting == null || room === 'unknown') return;
     setSwitchWaiting(null);
-    if (room === 'room') {
+    if (room === 'room' && accountId != null) {
       focusResultNext.current = true;
-      switchOnForGift(switchWaiting);
+      switchOnForGift(switchWaiting, accountId);
     }
-  }, [switchWaiting, room]);
+  }, [switchWaiting, room, accountId]);
 
   const claim = async (automatic: boolean) => {
     track(
@@ -512,7 +537,7 @@ export function AiGiftPresent({
 
   const onTurnOn = () => {
     focusResultNext.current = true;
-    switchOnForGift('panel');
+    if (accountId != null) switchOnForGift('panel', accountId);
   };
 
   const onChooseFile = () => {

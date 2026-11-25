@@ -553,6 +553,9 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
           settings
         );
       });
+      if (!pageId && CLAUDE_CARDS_KEY in next) {
+        next[CLAUDE_CARDS_KEY] = claudeCardsSwitchedOn();
+      }
       if (
         claudeOnForPdfsByDefault &&
         next['pdf-page-pairs'] !== true &&
@@ -561,7 +564,7 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
         next['claude-ai-flashcards'] = true;
       }
       setCheckboxValues(next);
-    }, [options, settings, claudeOnForPdfsByDefault]);
+    }, [options, settings, claudeOnForPdfsByDefault, pageId]);
 
     useEffect(() => {
       if (pageId) return;

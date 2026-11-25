@@ -15,7 +15,7 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import i18n from '../../lib/i18n';
 import { formatGiftDate } from '../../components/AiGift/AiGiftPresent';
 import { UploadPage } from './UploadPage';
-import { switchClaudeCardsOnForThisBrowser } from '../../lib/data_layer/claudeCardsSwitch';
+import { switchClaudeCardsOnForGift } from '../../lib/data_layer/claudeCardsSwitch';
 
 let startPassDeck: (() => void) | undefined;
 vi.mock('./components/UploadForm/UploadForm', () => ({
@@ -530,7 +530,7 @@ describe('UploadPage Claude cards on by default for PDFs and PowerPoint', () => 
       screen.getByRole('button', { name: /turn ai on/i })
     ).toHaveTextContent('AI is off');
 
-    act(() => switchClaudeCardsOnForThisBrowser());
+    act(() => switchClaudeCardsOnForGift(8));
 
     const toggle = screen.getByRole('button', { name: /turn ai off/i });
     expect(toggle).toHaveTextContent('AI is on');

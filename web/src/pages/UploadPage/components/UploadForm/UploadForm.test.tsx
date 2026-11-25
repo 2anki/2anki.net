@@ -89,7 +89,10 @@ import {
   markThinDeckResume,
   thinDeckResumeMarked,
 } from '../ThinDeckAiOffer/thinDeckResume';
-import { useCardUsage } from '../../../../lib/hooks/useCardUsage';
+import {
+  CARD_USAGE_QUERY_KEY,
+  useCardUsage,
+} from '../../../../lib/hooks/useCardUsage';
 import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
 import { track } from '../../../../lib/analytics/track';
 import { reportClientError } from '../../../../lib/reportClientError';
@@ -1781,6 +1784,100 @@ describe('UploadForm Google Drive picker interaction', () => {
     )!;
     const body = driveCall[1].body as FormData;
     expect(body.get('pdf-page-range')).toBeNull();
+  });
+
+  it('offers no remake with the gift for a Drive file, whose bytes never reach the browser to send again', async () => {
+    stubGoogleDrivePicked();
+    vi.stubGlobal('scrollTo', vi.fn());
+    globalThis.URL.createObjectURL = vi.fn(() => 'blob:x');
+    const freeAccount = {
+      user: { id: 8, email: 'free@example.com' },
+      locals: { owner: 8, patreon: false, subscriber: false },
+      features: {},
+    };
+    mockUseUserLocals.mockReturnValue({
+      data: freeAccount,
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi.fn().mockResolvedValue({
+        data: freeAccount,
+        status: 'success',
+        isError: false,
+      }),
+    } as unknown as ReturnType<typeof useUserLocals>);
+    mockUseCardUsage.mockReturnValue({
+      cards_used: 10,
+      cards_limit: 100,
+      unlimited: false,
+      loading: false,
+    });
+    const fetchMock = vi.fn((url: string) =>
+      url === '/api/upload/google_drive'
+        ? Promise.resolve({
+            redirected: false,
+            status: 200,
+            headers: new Headers({
+              'Content-Type': 'application/octet-stream',
+              'File-Name': encodeURIComponent('notes.apkg'),
+              'X-Card-Count': '64',
+            }),
+            blob: () => Promise.resolve(new Blob(['apkg'])),
+          })
+        : Promise.resolve(new Response(null, { status: 204 }))
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    queryClient.setQueryData([...AI_GIFT_QUERY_KEY, true], {
+      state: 'claimed',
+      credits: 100,
+      expiresAt: '2099-11-27T12:00:00.000Z',
+      feedbackDue: false,
+      inUse: false,
+      minMonthlyCards: 20,
+    });
+    try {
+      const { container } = render(
+        <MemoryRouter>
+          <QueryClientProvider client={queryClient}>
+            <UploadForm setErrorMessage={vi.fn()} />
+          </QueryClientProvider>
+        </MemoryRouter>
+      );
+      fireEvent.click(
+        within(container).getByRole('button', { name: 'Google Drive' })
+      );
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'Choose from Google Drive' })
+      );
+
+      await waitFor(() =>
+        expect(
+          fetchMock.mock.calls.some(
+            ([url]) => url === '/api/upload/google_drive'
+          )
+        ).toBe(true)
+      );
+      expect(
+        (await screen.findAllByText('Your deck is ready — 64 cards.')).length
+      ).toBeGreaterThan(0);
+      expect(
+        screen.queryByText(
+          'Claude can write this deck from the same file, free with your gift credits.'
+        )
+      ).toBeNull();
+    } finally {
+      mockUseUserLocals.mockReturnValue({
+        data: undefined,
+        isLoading: false,
+        error: null,
+        isError: false,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useUserLocals>);
+      mockUseCardUsage.mockReturnValue(null);
+    }
   });
 
   it('ignores a folder dropped while a Drive import converts and shows the Drive deck', async () => {
@@ -12606,7 +12703,11 @@ describe('UploadForm deck result and resends of kept files', () => {
         </MemoryRouter>
       );
       const view = render(tree());
-      return { ...view, renderAgain: () => view.rerender(tree()) };
+      return {
+        ...view,
+        queryClient,
+        renderAgain: () => view.rerender(tree()),
+      };
     }
 
     const otherFreeAccount = {
@@ -12776,6 +12877,47 @@ describe('UploadForm deck result and resends of kept files', () => {
       expect(screen.queryByText(REDO_LINE)).toBeNull();
       expect(eventsNamed('upload_ai_rescue_shown')).toEqual([
         ['upload_ai_rescue_shown', { state: 'free' }],
+      ]);
+    });
+
+    it('offers no remake when the month’s card counts failed to load', async () => {
+      mockUseCardUsage.mockReturnValue(cardsLeft(100));
+      stubServer([deckResponse(64)]);
+      const { container, queryClient } = renderWithHeaderGift(activeGift);
+      act(() => {
+        queryClient.setQueryData([...CARD_USAGE_QUERY_KEY, 8], null);
+      });
+      await submitFiles(container, ['notes.pdf']);
+
+      await screen.findAllByText('Your deck is ready — 64 cards.');
+      await settle();
+      expect(screen.queryByText(REDO_LINE)).toBeNull();
+      expect(eventsNamed('ai_gift_redo_shown')).toEqual([]);
+    });
+
+    it('shows an account with no gift the thin-deck offer as before', async () => {
+      setUserLocals({
+        ...freeSignedIn,
+        features: { thinDeckAiOffer: true },
+      } as unknown as ReturnType<typeof useUserLocals>['data']);
+      stubServer([deckResponse(2)]);
+      const { container } = renderWithHeaderGift({
+        state: 'closed',
+        feedbackDue: false,
+      });
+      await submitFiles(container, ['notes.pdf']);
+
+      expect(
+        await screen.findByRole('button', {
+          name: 'Preview cards Claude would write',
+        })
+      ).toBeInTheDocument();
+      expect(screen.queryByText(REDO_LINE)).toBeNull();
+      expect(
+        screen.queryByText('Only 2 cards came from this file.')
+      ).toBeNull();
+      expect(eventsNamed('thin_deck_ai_offer_shown')).toEqual([
+        ['thin_deck_ai_offer_shown', { cards: 2 }],
       ]);
     });
 

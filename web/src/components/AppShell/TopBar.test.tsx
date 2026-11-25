@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { getAiCredits } from '../../lib/backend/getAiCredits';
+import { getCardUsage } from '../../lib/backend/getCardUsage';
 import { claimAiGift, getAiGift } from '../../lib/backend/aiGift';
 import { TopBar } from './TopBar';
 
@@ -208,7 +209,7 @@ describe('TopBar gift claim for an account with bought credits and no plan', () 
       credits: 200,
       used: 0,
       allowance: 0,
-      usable: true,
+      usable: false,
       windowEnd: null,
       resets: 'period',
     });
@@ -223,5 +224,28 @@ describe('TopBar gift claim for an account with bought credits and no plan', () 
       await screen.findByText('Claude will write the cards for your next file.')
     ).toBeInTheDocument();
     expect(localStorage.getItem('claude-ai-flashcards')).toBe('true');
+  });
+
+  it('promises nothing and switches nothing when the month’s card counts failed to load', async () => {
+    vi.mocked(getCardUsage).mockResolvedValue(null);
+    renderTopBar({ locals: { patreon: false, subscriber: false } });
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Free AI credits gift' })
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Claim free credits' }));
+
+    expect(
+      await screen.findByText(/100 free AI credits left until/)
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('Claude will write the cards for your next file.')
+    ).toBeNull();
+    expect(localStorage.getItem('claude-ai-flashcards')).toBeNull();
+    vi.mocked(getCardUsage).mockResolvedValue({
+      cards_used: 23,
+      cards_limit: 100,
+      unlimited: false,
+    });
   });
 });

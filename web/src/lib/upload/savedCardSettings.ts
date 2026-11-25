@@ -1,5 +1,6 @@
 import { CARD_OPTION_KEYS } from '../data_layer/userPreferencesSync';
 import { PDF_FALLBACK_OPTION } from './pdfFallback';
+import { claudeCardsSetting } from '../data_layer/claudeCardsSwitch';
 
 // The card settings this browser saves. An upload sends only these, never the
 // rest of localStorage (the pass token, theme, language, email), and Reset to
@@ -15,7 +16,10 @@ export function savedCardSettings(): Record<string, string> {
   if (storage == null) return {};
   const settings: Record<string, string> = {};
   for (const key of SAVED_CARD_SETTING_KEYS) {
-    const value = storage.getItem(key);
+    const value =
+      key === 'claude-ai-flashcards' || key === 'ai-choice-at'
+        ? claudeCardsSetting(key)
+        : storage.getItem(key);
     if (value != null) settings[key] = value;
   }
   return settings;

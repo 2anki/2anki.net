@@ -16,6 +16,11 @@ import {
   resetUploadEntryForTests,
 } from '../../lib/upload/uploadEntry';
 import { reportUploadZoneActivity } from '../../lib/upload/uploadZoneActivity';
+import {
+  claudeCardsSwitchedOn,
+  resetGiftClaudeSwitchForTests,
+  switchClaudeCardsOnForGift,
+} from '../../lib/data_layer/claudeCardsSwitch';
 
 const OPEN = {
   state: 'open',
@@ -76,7 +81,8 @@ function renderPresent(
   isLoggedIn: boolean,
   planCreditsFirst?: boolean,
   giftPaysForClaude?: boolean,
-  cardsLeftThisMonth: number | null = 80
+  cardsLeftThisMonth: number | null = 80,
+  accountId: number | undefined = isLoggedIn ? 7 : undefined
 ) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -89,6 +95,7 @@ function renderPresent(
           planCreditsFirst={planCreditsFirst}
           giftPaysForClaude={giftPaysForClaude}
           cardsLeftThisMonth={cardsLeft}
+          accountId={accountId}
         />
         <Routes>
           <Route path="*" element={<Where />} />
@@ -111,6 +118,7 @@ beforeEach(async () => {
   localStorage.clear();
   forgetNoticesShownThisLoad();
   resetUploadEntryForTests();
+  resetGiftClaudeSwitchForTests();
   reportUploadZoneActivity('absent');
   vi.mocked(track).mockClear();
 });
@@ -426,7 +434,7 @@ describe('AiGiftPresent', () => {
     ]);
   });
 
-  test('keeps the switch it turns on out of the account’s saved settings', async () => {
+  test('binds the switch it turns on to the claiming account', async () => {
     routeFetch(OPEN, CLAIM_OK());
     renderPresent(true, false, true);
 
@@ -434,9 +442,9 @@ describe('AiGiftPresent', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Claim free credits' }));
     await screen.findByText('Claude will write the cards for your next file.');
 
-    expect(localStorage.getItem('2anki-claude-cards-switched-by-gift')).toBe(
-      '1'
-    );
+    expect(
+      JSON.parse(localStorage.getItem('2anki-claude-cards-switched-by-gift')!)
+    ).toMatchObject({ userId: 7 });
   });
 
   test('shows the whole after-claim panel at phone width', async () => {
@@ -465,6 +473,68 @@ describe('AiGiftPresent', () => {
     ).toBeInTheDocument();
     expect(narrow).toHaveBeenCalledWith('(min-width: 640px)');
     vi.unstubAllGlobals();
+  });
+
+  describe('the switch a claim turned on, on a later visit', () => {
+    const GIFT_MARK = '2anki-claude-cards-switched-by-gift';
+
+    beforeEach(() => {
+      localStorage.setItem('claude-ai-flashcards', 'false');
+      switchClaudeCardsOnForGift(7);
+      resetGiftClaudeSwitchForTests();
+    });
+
+    test('is dropped for a paying account that signs in on the same browser', async () => {
+      routeFetch({ state: 'closed', feedbackDue: false });
+      renderPresent(true, true, false, 80, 9);
+
+      await waitFor(() => expect(localStorage.getItem(GIFT_MARK)).toBeNull());
+      expect(claudeCardsOn()).toBe('false');
+    });
+
+    test('is dropped once the claimer pays for a plan', async () => {
+      routeFetch(CLAIMED);
+      renderPresent(true, true, false, 80, 7);
+
+      await waitFor(() => expect(localStorage.getItem(GIFT_MARK)).toBeNull());
+      expect(claudeCardsOn()).toBe('false');
+    });
+
+    test.each([
+      ['expired', { state: 'closed', feedbackDue: false }],
+      ['used up', { ...CLAIMED, credits: 0 }],
+    ])('is dropped once the claimer’s gift is %s', async (_case, gift) => {
+      routeFetch(gift);
+      renderPresent(true, false, true, 80, 7);
+
+      await waitFor(() => expect(localStorage.getItem(GIFT_MARK)).toBeNull());
+      expect(claudeCardsOn()).toBe('false');
+    });
+
+    test('holds for the claimer while the gift still pays', async () => {
+      routeFetch(CLAIMED);
+      renderPresent(true, false, true, 80, 7);
+
+      fireEvent.click(await trigger());
+
+      expect(
+        await screen.findByText(
+          'Claude will write the cards for your next file.'
+        )
+      ).toBeInTheDocument();
+      expect(claudeCardsSwitchedOn()).toBe(true);
+      expect(localStorage.getItem(GIFT_MARK)).not.toBeNull();
+    });
+
+    test('is not read as on for a signed-out visitor, and is kept for the claimer', async () => {
+      routeFetch(OPEN);
+      renderPresent(false);
+
+      await trigger();
+
+      expect(claudeCardsSwitchedOn()).toBe(false);
+      expect(localStorage.getItem(GIFT_MARK)).not.toBeNull();
+    });
   });
 
   test('tells an account with a plan allowance that its plan credits go first', async () => {

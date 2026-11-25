@@ -14,7 +14,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { CardOptionsForm } from './CardOptionsForm';
 import CardOptionModel from '../../lib/data_layer/model/CardOption';
 import { cancelPendingSync } from '../../lib/data_layer/userPreferencesSync';
-import { switchClaudeCardsOnForThisBrowser } from '../../lib/data_layer/claudeCardsSwitch';
+import { switchClaudeCardsOnForGift } from '../../lib/data_layer/claudeCardsSwitch';
 
 const mockResetUserCardOptions = vi.fn();
 const mockGetSettingsCardOptions = vi.fn();
@@ -933,7 +933,7 @@ describe('CardOptionsForm while the gift switches Claude cards on', () => {
     });
     expect(checkbox).not.toBeChecked();
 
-    act(() => switchClaudeCardsOnForThisBrowser());
+    act(() => switchClaudeCardsOnForGift(8));
 
     expect(checkbox).toBeChecked();
     fireEvent.click(checkbox);

@@ -1,5 +1,9 @@
 import i18n, { LANGUAGE_STORAGE_KEY } from '../i18n';
-import { CLAUDE_CARDS_SWITCHED_BY_GIFT_KEY } from './claudeCardsGiftMark';
+import {
+  forgetGiftSwitchMark,
+  readGiftSwitchMark,
+  type GiftSwitchMark,
+} from './claudeCardsGiftMark';
 
 export const CARD_OPTION_KEYS = [
   'deckName',
@@ -62,10 +66,14 @@ export const CARD_OPTION_KEYS = [
   'share-files-for-debugging',
 ] as const;
 
-const KEPT_IN_BROWSER_WHILE_GIFT_SWITCHED = new Set([
-  'claude-ai-flashcards',
-  'ai-choice-at',
-]);
+function ownValueBeforeTheGift(
+  mark: GiftSwitchMark,
+  key: string
+): string | null | undefined {
+  if (key === 'claude-ai-flashcards') return mark.previous;
+  if (key === 'ai-choice-at') return mark.previousChoiceAt;
+  return undefined;
+}
 
 const PREFERENCES_URL = '/api/users/me/preferences';
 const MIGRATE_URL = '/api/users/me/preferences/migrate';
@@ -87,13 +95,11 @@ export function cancelPendingSync(): void {
 
 function collectCardOptions(): Record<string, string> {
   const result: Record<string, string> = {};
-  const giftSwitched =
-    localStorage.getItem(CLAUDE_CARDS_SWITCHED_BY_GIFT_KEY) != null;
+  const giftMark = readGiftSwitchMark();
   for (const key of CARD_OPTION_KEYS) {
-    if (giftSwitched && KEPT_IN_BROWSER_WHILE_GIFT_SWITCHED.has(key)) {
-      continue;
-    }
-    const value = localStorage.getItem(key);
+    const ownValue =
+      giftMark == null ? undefined : ownValueBeforeTheGift(giftMark, key);
+    const value = ownValue === undefined ? localStorage.getItem(key) : ownValue;
     if (value != null) {
       result[key] = value;
     }
@@ -180,6 +186,9 @@ export async function hydrateFromServer(): Promise<void> {
         if (typeof value === 'string') {
           localStorage.setItem(key, value);
         }
+      }
+      if (typeof cardOptions['claude-ai-flashcards'] === 'string') {
+        forgetGiftSwitchMark();
       }
     }
     if (typeof theme === 'string') {
