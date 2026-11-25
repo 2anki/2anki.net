@@ -284,3 +284,25 @@ describe('HomePage and the free AI credits card', () => {
     ).toBeInTheDocument();
   });
 });
+
+describe('the hero copy above the upload card', () => {
+  const LOCALES = ['en', 'de', 'es', 'fr', 'it', 'ja', 'nl', 'pl', 'pt', 'ru'];
+
+  it.each(LOCALES)('carries no dash in %s', (locale) => {
+    const common = JSON.parse(
+      readFileSync(
+        join(__dirname, '../../lib/i18n/locales', locale, 'common.json'),
+        'utf8'
+      )
+    );
+    const lines = [
+      common.home.hero.subtitle,
+      common.home.hero.aiBadgeIntro,
+      common.upload.page.subtitle,
+    ];
+
+    expect(lines.filter((line: string) => /[\u2013\u2014]/.test(line))).toEqual(
+      []
+    );
+  });
+});
