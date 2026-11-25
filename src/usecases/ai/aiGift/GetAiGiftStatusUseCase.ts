@@ -12,7 +12,10 @@ import {
   giftClaimsOpen,
 } from '../../../lib/claude/aiCredits/gift/giftTerms';
 import { giftMarkerHeld } from '../../../lib/claude/aiCredits/gift/giftConversionMarker';
-import { claudeCardsByDefault } from '../../../lib/upload/claudeCardsDefault';
+import {
+  accountChoiceAllowsClaude,
+  claudeCardsByDefault,
+} from '../../../lib/upload/claudeCardsDefault';
 import { giftWouldPayForUpload } from '../../../lib/claude/aiCredits/gift/giftPaysForUpload';
 import { readAiBudgetStatus } from '../../../lib/claude/aiSpendGuard';
 import CardOption from '../../../lib/parser/Settings/CardOption';
@@ -25,11 +28,14 @@ interface GiftTermsStatus {
   minMonthlyCards: number;
 }
 
-// hasCredits is the one answer the page shows the offer on: whether this
-// account's next upload would run on gift credits. An account with no grant
-// has the whole amount until its first AI call makes one. A paying account
-// never has it: its plan pays first, and the offer's switch must not send a
-// paying account's uploads to Claude that its own default would not.
+// hasCredits: this account holds gift credits or can get them (an account
+// with no grant has the whole amount until its first gift-paid upload makes
+// one). A paying account never has it: its plan pays first and it is not
+// offered a grant; one it already holds still shows as claimed credits.
+// nextUploadUsesCredits: the next upload can run on them now (the month has
+// the card minimum and no gift conversion is running). switchOnByDefault:
+// where the upload card's switch starts, from that and the account's own
+// recorded Claude choice.
 export type AiGiftStatus =
   | { state: 'closed'; feedbackDue: boolean }
   | (GiftTermsStatus &
@@ -64,6 +70,8 @@ interface NextUploadAnswers {
   aiBudgetAvailable: boolean | null;
   storedPdfSkipsClaude: boolean | null;
   monthlyCardsLeft: number | null;
+  nextUploadUsesCredits: boolean | null;
+  switchOnByDefault: boolean | null;
 }
 
 const UNKNOWN_NEXT_UPLOAD: NextUploadAnswers = {
@@ -71,6 +79,8 @@ const UNKNOWN_NEXT_UPLOAD: NextUploadAnswers = {
   aiBudgetAvailable: null,
   storedPdfSkipsClaude: null,
   monthlyCardsLeft: null,
+  nextUploadUsesCredits: null,
+  switchOnByDefault: null,
 };
 
 // The conversion's own reasons a PDF never reaches Claude, read from the
@@ -107,7 +117,8 @@ export class GetAiGiftStatusUseCase {
   private async nextUploadAnswers(
     userId: number,
     paying: boolean,
-    grantHeld: boolean
+    grantHeld: boolean,
+    hasCredits: boolean
   ): Promise<NextUploadAnswers> {
     const readers = this.deps.claudeDefault;
     if (readers == null) return UNKNOWN_NEXT_UPLOAD;
@@ -139,9 +150,18 @@ export class GetAiGiftStatusUseCase {
                 readers.budgetDeps
               )
             ).exhausted;
+      const nextUploadUsesCredits =
+        hasCredits &&
+        monthlyCardsLeft >= AI_GIFT_MIN_MONTHLY_CARDS &&
+        !giftMarkerHeld(userId);
+      const switchOnByDefault =
+        nextUploadUsesCredits &&
+        (await accountChoiceAllowsClaude(userId, stored, readers));
       return {
         claudeDefaultForPdf,
         aiBudgetAvailable,
+        nextUploadUsesCredits,
+        switchOnByDefault,
         storedPdfSkipsClaude: storedOptionsSkipClaude(
           storedOptionsRecord(stored)
         ),
@@ -196,7 +216,12 @@ export class GetAiGiftStatusUseCase {
             firstUsed: grant.firstUsedAt != null,
             feedbackDue,
             inUse,
-            ...(await this.nextUploadAnswers(userId, paying, true)),
+            ...(await this.nextUploadAnswers(
+              userId,
+              paying,
+              true,
+              credits > 0 && !paying
+            )),
           };
         }
         return { state: 'closed', feedbackDue };
@@ -209,9 +234,11 @@ export class GetAiGiftStatusUseCase {
       return CLOSED;
     }
     const exposure = await this.deps.exposureCredits(now);
+    // Only a signed-in account can hold credits, so the network count is read
+    // for it alone, never on a signed-out page view.
     if (
       !giftBudgetHasRoom(exposure) ||
-      !(await this.networkHasRoom(ipHash, now))
+      (userId != null && !(await this.networkHasRoom(ipHash, now)))
     ) {
       return { state: 'full', feedbackDue: false };
     }
@@ -227,7 +254,7 @@ export class GetAiGiftStatusUseCase {
     return {
       ...open,
       hasCredits: true,
-      ...(await this.nextUploadAnswers(userId, false, false)),
+      ...(await this.nextUploadAnswers(userId, false, false, true)),
     };
   }
 }

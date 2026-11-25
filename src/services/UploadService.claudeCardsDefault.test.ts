@@ -142,6 +142,10 @@ interface Account {
 }
 
 const PAYING: Account = { locals: { owner: OWNER, subscriber: true } };
+const FROM_SWITCH_ON = {
+  'claude-ai-flashcards': 'true',
+  'ai-gift-switch': 'true',
+};
 const FREE: Account = { locals: { owner: OWNER } };
 
 interface Sent {
@@ -491,20 +495,34 @@ describe('an account with no plan whose free AI gift pays uploads on the web', (
     ]);
   }, 20_000);
 
-  it('reads no plan or bought balance before applying it, only the gift', async () => {
+  it('checks the gift alone, never a bought or plan balance, before applying it', async () => {
     await send(GIFTED, { name: 'lecture.pdf' });
 
-    expect(vi.mocked(getAiBudgetStatus)).not.toHaveBeenCalledWith({
+    expect(vi.mocked(getAiBudgetStatus)).toHaveBeenCalledWith({
       userId: OWNER,
+      aiGift: 'only',
     });
   }, 20_000);
 
-  it.each(['export.zip', 'notes.md', 'slides.pptx'])(
-    'makes Claude cards on the gift from %s, since Claude cards read it',
+  it.each(['export.zip', 'notes.md'])(
+    'keeps the default to PDF and PowerPoint for %s sent with no switch value, as before',
     async (name) => {
-      const { status, jobType, locals } = await send(GIFTED, { name });
+      const { jobType } = await send(GIFTED, { name });
 
-      expect(status).toBe(202);
+      expect(jobType).not.toBe('claude');
+      expect(defaultAppliedEvents()).toEqual([]);
+    },
+    20_000
+  );
+
+  it.each(['export.zip', 'notes.md'])(
+    'makes Claude cards on the gift from %s when the card switch sent Claude on',
+    async (name) => {
+      const { jobType, locals } = await send(GIFTED, {
+        name,
+        body: FROM_SWITCH_ON,
+      });
+
       expect(jobType).toBe('claude');
       expect(locals.aiGift).toBe('only');
     },
@@ -524,7 +542,7 @@ describe('an account with no plan whose free AI gift pays uploads on the web', (
 
     const { jobType, locals } = await send(
       { ...GIFTED, gift: storeReaders(gifts) },
-      { name: 'lecture.pdf' }
+      { name: 'lecture.pdf', body: FROM_SWITCH_ON }
     );
 
     expect(jobType).toBe('claude');
@@ -550,8 +568,8 @@ describe('an account with no plan whose free AI gift pays uploads on the web', (
     const account = { ...GIFTED, gift: storeReaders(gifts) };
 
     const results = await Promise.all([
-      send(account, { name: 'a.pdf' }),
-      send(account, { name: 'b.pdf' }),
+      send(account, { name: 'a.pdf', body: FROM_SWITCH_ON }),
+      send(account, { name: 'b.pdf', body: FROM_SWITCH_ON }),
     ]);
 
     expect(gifts.gifts).toHaveLength(1);
@@ -572,12 +590,75 @@ describe('an account with no plan whose free AI gift pays uploads on the web', (
 
     const { jobType } = await send(
       { ...GIFTED, gift: storeReaders(gifts) },
-      { name: 'lecture.pdf', body: { 'claude-ai-flashcards': 'true' } }
+      { name: 'lecture.pdf', body: FROM_SWITCH_ON }
     );
 
     expect(jobType).toBeNull();
     expect(gifts.gifts).toHaveLength(80);
   }, 20_000);
+
+  it.each<[string, Account, Sent]>([
+    [
+      'Claude on in the options it sent, without the card switch',
+      GIFTED,
+      { name: 'lecture.pdf', body: { 'claude-ai-flashcards': 'true' } },
+    ],
+    [
+      'Claude on stored on the account',
+      { ...GIFTED, stored: { 'claude-ai-flashcards': 'true' } },
+      { name: 'lecture.pdf' },
+    ],
+    [
+      'the switch value sent through MCP',
+      { ...GIFTED, locals: { owner: OWNER, mcp_auth: true } },
+      { name: 'lecture.pdf', body: FROM_SWITCH_ON },
+    ],
+    [
+      'the switch value sent from the iOS app',
+      GIFTED,
+      { name: 'lecture.pdf', body: { ...FROM_SWITCH_ON, source: 'app' } },
+    ],
+  ])(
+    'makes no grant for a free account without one, with %s, and keeps the parser as before',
+    async (_case, account, file) => {
+      const gifts = new InMemoryAiCreditGiftsRepository();
+
+      const { jobType, locals } = await send(
+        { ...account, gift: storeReaders(gifts) },
+        file
+      );
+
+      expect(jobType).not.toBe('claude');
+      expect(locals.aiGift ?? null).toBeNull();
+      expect(gifts.gifts).toEqual([]);
+    },
+    20_000
+  );
+
+  it.each<[string, Account, Sent]>([
+    [
+      'MCP',
+      { ...GIFTED, locals: { owner: OWNER, mcp_auth: true } },
+      { name: 'lecture.pdf', body: { 'claude-ai-flashcards': 'true' } },
+    ],
+    [
+      'the iOS app',
+      GIFTED,
+      {
+        name: 'lecture.pdf',
+        body: { 'claude-ai-flashcards': 'true', source: 'app' },
+      },
+    ],
+  ])(
+    'runs an existing holder on its gift through %s exactly as before',
+    async (_case, account, file) => {
+      const { jobType, locals } = await send(account, file);
+
+      expect(jobType).toBe('claude');
+      expect(locals.aiGift).toBe('only');
+    },
+    20_000
+  );
 
   it.each<[string, Account]>([
     [
@@ -613,8 +694,8 @@ describe('an account with no plan whose free AI gift pays uploads on the web', (
     ],
     ['the month has fewer than 20 cards left', { ...GIFTED, cardsUsed: 81 }],
     [
-      'there is no grant and the gift total is full',
-      { ...GIFTED, gift: giftReaders({ grant: null, mayStart: false }) },
+      'there is no gift, even while the gift could make one',
+      { ...GIFTED, gift: giftReaders({ grant: null, mayStart: true }) },
     ],
     [
       'the gift is switched off or has ended',

@@ -56,8 +56,8 @@
   "home": {
     "hero": {
       "headline": "Karteikarten, die in Anki funktionieren",
-      "subtitle": "Wirf eine Notion-Seite rein und erhalte einen Stapel, den du nicht nachbessern musst — sauberes Cloze, atomare Karten, die richtigen Notiztypen. PDF, Quizlet, Markdown, HTML und CSV ebenfalls.",
-      "aiBadgeIntro": "Saubere Karten, bereit zum Lernen — sauberes Cloze, atomare Vorder- und Rückseite, keine leeren Rückseiten. Lieber KI-Entwürfe?",
+      "subtitle": "Wirf eine Notion-Seite rein und erhalte einen Stapel, den du nicht nachbessern musst: sauberes Cloze, atomare Karten, die richtigen Notiztypen. PDF, Quizlet, Markdown, HTML und CSV ebenfalls.",
+      "aiBadgeIntro": "Saubere Karten, bereit zum Lernen: sauberes Cloze, atomare Vorder- und Rückseite, keine leeren Rückseiten. Lieber KI-Entwürfe?",
       "createAccount": "Konto erstellen",
       "cardOptions": "Kartenoptionen",
       "nativeApps": "Auch auf iPhone, iPad & Mac →",
@@ -352,7 +352,7 @@
     },
     "page": {
       "title": "Konvertiere deine Notizen",
-      "subtitle": "Wirf eine Datei rein und erhalte einen Stapel, den du nicht nachbessern musst — sauberes Cloze, atomare Karten, die richtigen Notiztypen. Auch Notion, PDF, Markdown, HTML, Word und CSV.",
+      "subtitle": "Wirf eine Datei rein und erhalte einen Stapel, den du nicht nachbessern musst: sauberes Cloze, atomare Karten, die richtigen Notiztypen. Auch Notion, PDF, Markdown, HTML, Word und CSV.",
       "reattachPrefix": "Erneut anhängen",
       "reattachSuffix": "zum Konvertieren",
       "aiOn": "KI ist an",

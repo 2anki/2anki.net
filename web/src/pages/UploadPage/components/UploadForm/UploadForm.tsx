@@ -37,7 +37,11 @@ import {
 import { LastDeckOffer } from './LastDeckOffer';
 import { keepLastDeck } from '../../../../lib/upload/lastDeck';
 import { reportUploadZoneActivity } from '../../../../lib/upload/uploadZoneActivity';
-import { readGiftHandoff } from '../../../../lib/aiGift/giftHandoff';
+import {
+  GIFT_SWITCH_FIELD,
+  readGiftHandoff,
+} from '../../../../lib/aiGift/giftHandoff';
+import { giftOfferOf } from '../../../../lib/backend/aiGift';
 import { AI_CHOICE_AT_KEY } from '../../../../lib/data_layer/aiChoice';
 import { BuyCreditsButton } from '../../../../components/BuyCreditsButton/BuyCreditsButton';
 import { getDownloadFileName } from '../../../DownloadsPage/helpers/getDownloadFileName';
@@ -96,7 +100,6 @@ import {
   AI_GIFT_QUERY_KEY,
   useAiGiftFromHeader,
 } from '../../../../lib/hooks/useAiGift';
-import { useActiveGiftBalance } from '../../../../components/AiGift/useAiGiftBalanceLine';
 import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
 import { fireAnalyticsEvent } from '../../../../lib/analytics/fireAnalyticsEvent';
 import { track } from '../../../../lib/analytics/track';
@@ -1689,6 +1692,9 @@ function UploadForm({
         }
         appendSavedCardSettings(formData);
         formData.set('claude-ai-flashcards', 'true');
+        // The gift's own offer is the person's explicit ask, so it may make
+        // the account's first grant, as the upload card's switch does.
+        if (tapped === 'giftRedo') formData.set(GIFT_SWITCH_FIELD, 'true');
         // The click asks for Claude: two pages make one card, saved on the
         // account or in this browser, would otherwise skip it for a PDF.
         formData.set('pdf-page-pairs', 'false');
@@ -1706,7 +1712,7 @@ function UploadForm({
 
   const giftCanPay = isAuthenticated && !isPaying;
   const gift = useAiGiftFromHeader(isAuthenticated);
-  const giftBalance = useActiveGiftBalance(giftCanPay ? gift : null);
+  const giftUsable = giftCanPay && giftOfferOf(gift)?.usableNow === true;
   const giftRedoSlot =
     zoneState === 'success' &&
     giftCanPay &&
@@ -1717,12 +1723,7 @@ function UploadForm({
     cardsHeldBack === 0 &&
     rescueFiles.length > 0 &&
     claudeEligible &&
-    giftBalance != null &&
-    gift?.state === 'claimed' &&
-    gift.inUse !== true &&
-    gift.minMonthlyCards != null &&
-    gift.monthlyCardsLeft != null &&
-    gift.monthlyCardsLeft >= gift.minMonthlyCards;
+    giftUsable;
   const giftRedoOffered = giftRedoSlot && !keptFilesBelongElsewhere;
   const giftRedoDeck = giftRedoOffered ? (downloadLink ?? deckName) : null;
   useEffect(() => {
@@ -2836,6 +2837,7 @@ function UploadForm({
     applyAnonymousAiFlag(formData, aiOn);
     if (gift?.claude != null) {
       formData.set('claude-ai-flashcards', String(gift.claude));
+      formData.set(GIFT_SWITCH_FIELD, 'true');
       formData.set(AI_CHOICE_AT_KEY, String(Math.floor(Date.now() / 1000)));
     }
     keepSubmittedFiles(handedOffFiles);

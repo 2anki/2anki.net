@@ -2,6 +2,10 @@
 // person chose and, from the convert step, whether Claude makes the cards.
 export const GIFT_HANDOFF_STATE_KEY = 'giftHandoff';
 
+// The request field that says the Claude choice came from the person's own
+// gift switch or offer: only such an upload may make a first gift grant.
+export const GIFT_SWITCH_FIELD = 'ai-gift-switch';
+
 export interface GiftHandoff {
   files: File[];
   claude: boolean | null;

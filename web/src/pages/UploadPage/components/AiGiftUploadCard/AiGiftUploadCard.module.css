@@ -36,6 +36,7 @@
   color: var(--color-text-secondary);
   font-size: var(--text-sm);
   font-weight: var(--font-medium);
+  white-space: nowrap;
   cursor: pointer;
 }
 
@@ -213,6 +214,13 @@
 
   .modeOption {
     flex: 1;
+    gap: var(--space-1);
+    padding: var(--space-1) var(--space-2);
+    font-size: var(--text-xs);
+  }
+
+  .freePill {
+    padding: 0 var(--space-1);
   }
 
   .dropzone {

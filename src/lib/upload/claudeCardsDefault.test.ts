@@ -1,6 +1,7 @@
 import { vi } from 'vitest';
 import {
   AI_CHOICE_AT_KEY,
+  accountChoiceAllowsClaude,
   accountHasClaudeCardsByDefault,
   claudeCardsByDefault,
   type AiChoiceHistoryReader,
@@ -195,52 +196,11 @@ describe('claudeCardsByDefault for an account the free AI gift pays for', () => 
     ).toBe(false);
   });
 
-  it.each([
-    'lecture.pdf',
-    'slides.pptx',
-    'export.zip',
-    'notes.md',
-    'notes.txt',
-    'page.html',
-    'essay.docx',
-    'table.csv',
-  ])(
-    'turns Claude on for %s when the gift pays, since Claude cards can read it',
-    async (name) => {
-      expect(
-        await claudeCardsByDefault(giftPdf({ fileNames: [name] }), NO_HISTORY)
-      ).toBe(true);
-    }
-  );
-
-  it.each([
-    ['an Anki deck', ['deck.apkg']],
-    ['an XML export', ['cards.xml']],
-    ['a mind map', ['map.opml']],
-    ['an e-book', ['book.epub']],
-    ['Kindle clippings', ['My Clippings.txt']],
-    ['a photo, which goes to Photo to Deck', ['board.jpg']],
-    ['a PDF sent with an Anki deck', ['a.pdf', 'deck.apkg']],
-  ])(
-    'leaves %s on its own converter, without reading the gift',
-    async (_label, fileNames) => {
-      const gift = giftPays(true);
-
-      expect(
-        await claudeCardsByDefault(
-          giftPdf({ fileNames, giftPays: gift }),
-          NO_HISTORY
-        )
-      ).toBe(false);
-      expect(gift).not.toHaveBeenCalled();
-    }
-  );
-
   it.each<[string, Partial<ClaudeDefaultCandidate>]>([
     ['an MCP caller', { entry: 'mcp' }],
     ['the iOS app', { entry: 'app' }],
+    ['a markdown upload', { fileNames: ['notes.md'] }],
     ['a signed-out visitor', { ownerId: null }],
-    ['an upload with no files', { fileNames: [] }],
   ])(
     'leaves %s unchanged, without reading the gift',
     async (_label, overrides) => {
@@ -332,5 +292,35 @@ describe('accountHasClaudeCardsByDefault', () => {
         NO_HISTORY
       )
     ).toBe(false);
+  });
+});
+
+describe('accountChoiceAllowsClaude', () => {
+  it.each<[string, Record<string, string> | null, string | null, boolean]>([
+    ['nothing stored or recorded', null, null, true],
+    ['a stored on', { 'claude-ai-flashcards': 'true' }, null, true],
+    [
+      'a recorded off',
+      { 'claude-ai-flashcards': 'false', [AI_CHOICE_AT_KEY]: '1762300000' },
+      null,
+      false,
+    ],
+    ['a latest toggle off', null, 'upload_ai_turned_off', false],
+    [
+      'a stored off with no record',
+      { 'claude-ai-flashcards': 'false' },
+      null,
+      false,
+    ],
+    [
+      'a stored off followed by a toggle on',
+      { 'claude-ai-flashcards': 'false' },
+      'upload_ai_turned_on',
+      true,
+    ],
+  ])('answers %s', async (_case, stored, latest, allows) => {
+    expect(await accountChoiceAllowsClaude(7, stored, historyOf(latest))).toBe(
+      allows
+    );
   });
 });

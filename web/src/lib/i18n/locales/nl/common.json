@@ -56,8 +56,8 @@
   "home": {
     "hero": {
       "headline": "Flashcards die werken in Anki",
-      "subtitle": "Zet er een Notion-pagina in en krijg een deck dat je niet hoeft bij te werken — nette cloze, atomische kaarten, de juiste notitietypen. Ook PDF, Quizlet, Markdown, HTML en CSV.",
-      "aiBadgeIntro": "Nette kaarten, klaar om te leren — nette cloze, atomische voor- en achterkant, geen lege achterkanten. Liever AI-concepten?",
+      "subtitle": "Zet er een Notion-pagina in en krijg een deck dat je niet hoeft bij te werken: nette cloze, atomische kaarten, de juiste notitietypen. Ook PDF, Quizlet, Markdown, HTML en CSV.",
+      "aiBadgeIntro": "Nette kaarten, klaar om te leren: nette cloze, atomische voor- en achterkant, geen lege achterkanten. Liever AI-concepten?",
       "createAccount": "Maak een account",
       "cardOptions": "Kaartopties",
       "nativeApps": "Ook op iPhone, iPad en Mac →",
@@ -352,7 +352,7 @@
     },
     "page": {
       "title": "Zet je notities om",
-      "subtitle": "Zet een bestand neer en krijg een deck dat je niet hoeft bij te werken — nette cloze, atomische kaarten, de juiste notitietypen. Ook Notion, PDF, Markdown, HTML, Word en CSV.",
+      "subtitle": "Zet een bestand neer en krijg een deck dat je niet hoeft bij te werken: nette cloze, atomische kaarten, de juiste notitietypen. Ook Notion, PDF, Markdown, HTML, Word en CSV.",
       "reattachPrefix": "Voeg opnieuw toe",
       "reattachSuffix": "om te converteren",
       "aiOn": "AI staat aan",

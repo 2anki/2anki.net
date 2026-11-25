@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { track } from '../../../../lib/analytics/track';
 import { estimateGiftCredits } from '../../../../lib/aiGift/estimateGiftCredits';
@@ -10,43 +10,70 @@ import styles from './AiGiftUploadCard.module.css';
 interface Props {
   files: readonly File[];
   creditsLeft: number;
-  claudeByDefault: boolean;
+  switchOnByDefault: boolean;
   onConvert: (claude: boolean, changed: boolean) => void;
   onRemove: () => void;
+  estimate?: (files: readonly File[]) => Promise<number | null>;
 }
 
-// The step between choosing a file and converting it, for an account the
-// server says has gift credits: one switch, the cost before anything runs,
-// one primary action.
+interface Reading {
+  estimate: number | null;
+  defaultOn: boolean;
+}
+
+// The step between choosing a file and converting it, for an account whose
+// next upload the server says can use gift credits: one switch, the cost
+// before anything runs when there is an honest number, the line that Claude
+// stops when the credits run out, and one primary action.
 export function GiftConvertStep({
   files,
   creditsLeft,
-  claudeByDefault,
+  switchOnByDefault,
   onConvert,
   onRemove,
+  estimate = estimateGiftCredits,
 }: Readonly<Props>) {
   const { t } = useTranslation('aiGift');
-  const estimate = estimateGiftCredits(files);
-  const fits = estimate <= creditsLeft;
-  const defaultOn = claudeByDefault && fits;
-  const [claude, setClaude] = useState(defaultOn);
-  const shownRef = useRef(false);
+  const [reading, setReading] = useState<Reading | null>(null);
+  const [claude, setClaude] = useState(false);
 
   useEffect(() => {
-    if (shownRef.current) return;
-    shownRef.current = true;
-    track('ai_gift_toggle_shown', {
-      surface: 'upload_card',
-      on: defaultOn,
-      estimate,
-      fits,
-      format: uploadInputFormat(files),
+    let live = true;
+    void estimate(files).then((credits) => {
+      if (!live) return;
+      const fits = credits == null || credits <= creditsLeft;
+      const defaultOn = switchOnByDefault && fits;
+      setReading({ estimate: credits, defaultOn });
+      setClaude(defaultOn);
+      track('ai_toggle_shown', {
+        surface: 'upload_card',
+        on: defaultOn,
+        estimate: credits,
+        fits,
+        format: uploadInputFormat(files),
+      });
     });
-  }, [defaultOn, estimate, fits, files]);
+    return () => {
+      live = false;
+    };
+  }, [files, creditsLeft, switchOnByDefault, estimate]);
 
-  const estimateLine = fits
-    ? t('convert.estimate', { count: estimate, left: creditsLeft })
-    : t('convert.over', { count: estimate, left: creditsLeft });
+  if (reading == null) {
+    return (
+      <div className={styles.step}>
+        <HeldFileRows files={files} onRemove={onRemove} />
+      </div>
+    );
+  }
+
+  const costLine = (() => {
+    if (reading.estimate == null) {
+      return t('convert.left', { count: creditsLeft });
+    }
+    return reading.estimate <= creditsLeft
+      ? t('convert.estimate', { count: reading.estimate, left: creditsLeft })
+      : t('convert.over', { count: reading.estimate, left: creditsLeft });
+  })();
 
   return (
     <div className={styles.step}>
@@ -61,11 +88,21 @@ export function GiftConvertStep({
         />
         <span>{t('convert.toggle')}</span>
       </label>
-      <p className={styles.estimate}>{estimateLine}</p>
+      <p className={styles.estimate}>
+        {costLine} {t('convert.stops')}
+      </p>
       <button
         type="button"
         className={`${sharedStyles.btnPrimary} ${styles.chooseButton}`}
-        onClick={() => onConvert(claude, claude !== defaultOn)}
+        onClick={() => {
+          if (claude) {
+            track('ai_toggle_on', {
+              surface: 'upload_card',
+              changed: claude !== reading.defaultOn,
+            });
+          }
+          onConvert(claude, claude !== reading.defaultOn);
+        }}
       >
         {t('convert.convert')}
       </button>

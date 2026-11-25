@@ -18,7 +18,6 @@ function deps(
     grant?: AiGiftGrant | null;
     spendUsd?: number;
     cardsLeft?: number;
-    mayStart?: boolean;
   } = {}
 ) {
   return {
@@ -30,7 +29,7 @@ function deps(
       giftCostSince: vi.fn(async () => overrides.spendUsd ?? 0),
       now: () => NOW,
       planSpent: vi.fn(async () => false),
-      mayStartGrant: vi.fn(async () => overrides.mayStart ?? true),
+      mayStartGrant: vi.fn(async () => true),
       startGrant: vi.fn(async () => null),
     }),
     remainingMonthlyCards: vi.fn(async () => overrides.cardsLeft ?? 80),
@@ -46,12 +45,12 @@ describe('giftWouldPayForUpload', () => {
     expect(await giftWouldPayForUpload(9, deps())).toBe(true);
   });
 
-  it('is true for an account with no grant yet while the gift has room for one', async () => {
-    expect(await giftWouldPayForUpload(9, deps({ grant: null }))).toBe(true);
+  it('is false for an account with no grant yet, even while the gift could make one, so the default never makes a grant', async () => {
+    expect(await giftWouldPayForUpload(9, deps({ grant: null }))).toBe(false);
   });
 
   it.each([
-    ['no grant and a full gift total', deps({ grant: null, mayStart: false })],
+    ['no gift', deps({ grant: null })],
     [
       'an expired gift',
       deps({

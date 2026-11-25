@@ -39,22 +39,28 @@
     "footnoteSignedOut_few": "Potrzebne darmowe konto · {{count}} kredyty, około 3 talii",
     "footnoteSignedOut_many": "Potrzebne darmowe konto · {{count}} kredytów, około 3 talii",
     "footnoteSignedOut_other": "Potrzebne darmowe konto · {{count}} kredytu, około 3 talii",
-    "footnoteSignedIn_one": "{{count}} darmowy kredyt, około 3 talii",
-    "footnoteSignedIn_few": "{{count}} darmowe kredyty, około 3 talii",
-    "footnoteSignedIn_many": "{{count}} darmowych kredytów, około 3 talii",
-    "footnoteSignedIn_other": "{{count}} darmowego kredytu, około 3 talii"
+    "notKept": "Ta przeglądarka nie może zachować twojego pliku podczas rejestracji. Załóż konto, a potem upuść plik ponownie.",
+    "footnoteSignedIn_one": "Został {{count}} darmowy kredyt",
+    "footnoteSignedIn_few": "Zostały {{count}} darmowe kredyty",
+    "footnoteSignedIn_many": "Zostało {{count}} darmowych kredytów",
+    "footnoteSignedIn_other": "Zostało {{count}} darmowego kredytu"
   },
   "convert": {
     "toggle": "Ulepsz z Claude (zużywa kredyty)",
-    "estimate_one": "Około {{count}} kredyt, zostało {{left}}",
-    "estimate_few": "Około {{count}} kredyty, zostało {{left}}",
-    "estimate_many": "Około {{count}} kredytów, zostało {{left}}",
-    "estimate_other": "Około {{count}} kredytu, zostało {{left}}",
-    "over_one": "Około {{count}} kredyt, więcej niż {{left}}, które ci zostały. Claude przestanie, gdy się skończą.",
-    "over_few": "Około {{count}} kredyty, więcej niż {{left}}, które ci zostały. Claude przestanie, gdy się skończą.",
-    "over_many": "Około {{count}} kredytów, więcej niż {{left}}, które ci zostały. Claude przestanie, gdy się skończą.",
-    "over_other": "Około {{count}} kredytu, więcej niż {{left}}, które ci zostały. Claude przestanie, gdy się skończą.",
-    "convert": "Zrób moją talię"
+    "convert": "Zrób moją talię",
+    "left_one": "Został {{count}} kredyt.",
+    "left_few": "Zostały {{count}} kredyty.",
+    "left_many": "Zostało {{count}} kredytów.",
+    "left_other": "Zostało {{count}} kredytu.",
+    "estimate_one": "Około {{count}} kredyt, zostało {{left}}.",
+    "estimate_few": "Około {{count}} kredyty, zostało {{left}}.",
+    "estimate_many": "Około {{count}} kredytów, zostało {{left}}.",
+    "estimate_other": "Około {{count}} kredytu, zostało {{left}}.",
+    "over_one": "Około {{count}} kredyt, więcej niż {{left}}, które ci zostały.",
+    "over_few": "Około {{count}} kredyty, więcej niż {{left}}, które ci zostały.",
+    "over_many": "Około {{count}} kredytów, więcej niż {{left}}, które ci zostały.",
+    "over_other": "Około {{count}} kredytu, więcej niż {{left}}, które ci zostały.",
+    "stops": "Claude przestanie, gdy skończą się twoje kredyty."
   },
   "pill": {
     "credits_one": "{{count}} kredyt",
@@ -66,5 +72,10 @@
     "fromFirstUse_few": "Darmowe kredyty AI, ważne {{count}} dni od pierwszej talii z AI i najdłużej do {{date}}",
     "fromFirstUse_many": "Darmowe kredyty AI, ważne {{count}} dni od pierwszej talii z AI i najdłużej do {{date}}",
     "fromFirstUse_other": "Darmowe kredyty AI, ważne {{count}} dnia od pierwszej talii z AI i najdłużej do {{date}}"
-  }
+  },
+  "inUseNow": "Właśnie trwa konwersja, która korzysta z twoich darmowych kredytów AI.",
+  "fewCardsLeft_one": "W tym miesiącu została ci {{count}} karta, za mało na talię od Claude. Następny plik dostanie karty na podstawie swojej struktury.",
+  "fewCardsLeft_few": "W tym miesiącu zostały ci {{count}} karty, za mało na talię od Claude. Następny plik dostanie karty na podstawie swojej struktury.",
+  "fewCardsLeft_many": "W tym miesiącu zostało ci {{count}} kart, za mało na talię od Claude. Następny plik dostanie karty na podstawie swojej struktury.",
+  "fewCardsLeft_other": "W tym miesiącu zostało ci {{count}} karty, za mało na talię od Claude. Następny plik dostanie karty na podstawie swojej struktury."
 }

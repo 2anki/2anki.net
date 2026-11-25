@@ -31,16 +31,20 @@
     "signupLead": "Crea una cuenta gratis y Claude hará este mazo. Tu archivo se queda aquí.",
     "footnoteSignedOut_one": "Necesitas una cuenta gratis · {{count}} crédito, unos 3 mazos",
     "footnoteSignedOut_other": "Necesitas una cuenta gratis · {{count}} créditos, unos 3 mazos",
-    "footnoteSignedIn_one": "{{count}} crédito gratis, unos 3 mazos",
-    "footnoteSignedIn_other": "{{count}} créditos gratis, unos 3 mazos"
+    "notKept": "Este navegador no puede guardar tu archivo mientras te registras. Crea tu cuenta y vuelve a soltar el archivo.",
+    "footnoteSignedIn_one": "Te queda {{count}} crédito gratis",
+    "footnoteSignedIn_other": "Te quedan {{count}} créditos gratis"
   },
   "convert": {
     "toggle": "Mejorar con Claude (usa créditos)",
-    "estimate_one": "Unos {{count}} crédito, te quedan {{left}}",
-    "estimate_other": "Unos {{count}} créditos, te quedan {{left}}",
-    "over_one": "Unos {{count}} crédito, más de los {{left}} que te quedan. Claude se detiene cuando se acaban.",
-    "over_other": "Unos {{count}} créditos, más de los {{left}} que te quedan. Claude se detiene cuando se acaban.",
-    "convert": "Crear mi mazo"
+    "convert": "Crear mi mazo",
+    "left_one": "Te queda {{count}} crédito.",
+    "left_other": "Te quedan {{count}} créditos.",
+    "estimate_one": "Unos {{count}} crédito, te quedan {{left}}.",
+    "estimate_other": "Unos {{count}} créditos, te quedan {{left}}.",
+    "over_one": "Unos {{count}} crédito, más de los {{left}} que te quedan.",
+    "over_other": "Unos {{count}} créditos, más de los {{left}} que te quedan.",
+    "stops": "Claude se detiene cuando se acaban tus créditos."
   },
   "pill": {
     "credits_one": "{{count}} crédito",
@@ -48,5 +52,8 @@
     "until": "Créditos de IA gratis, válidos hasta el {{date}}",
     "fromFirstUse_one": "Créditos de IA gratis, válidos {{count}} día desde tu primer mazo con IA y como mucho hasta el {{date}}",
     "fromFirstUse_other": "Créditos de IA gratis, válidos {{count}} días desde tu primer mazo con IA y como mucho hasta el {{date}}"
-  }
+  },
+  "inUseNow": "Una conversión está usando tus créditos de IA gratis ahora mismo.",
+  "fewCardsLeft_one": "Te queda {{count}} tarjeta este mes, muy pocas para un mazo de Claude. Tu próximo archivo tendrá tarjetas según su estructura.",
+  "fewCardsLeft_other": "Te quedan {{count}} tarjetas este mes, muy pocas para un mazo de Claude. Tu próximo archivo tendrá tarjetas según su estructura."
 }

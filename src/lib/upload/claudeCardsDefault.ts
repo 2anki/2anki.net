@@ -1,5 +1,4 @@
-import { isImageFile, isPDFFile, isPPTFile } from '../storage/checks';
-import { routedAwayFromClaude } from '../../usecases/uploads/routedAwayFromClaude';
+import { isPDFFile, isPPTFile } from '../storage/checks';
 
 // Written by every signed-in AI toggle on the web from this change on. A stored
 // claude-ai-flashcards off without it may still be a choice made before toggles
@@ -35,24 +34,6 @@ function isPdfOrSlidesUpload(fileNames: readonly string[]): boolean {
       (name) => isPDFFile(name) != null || isPPTFile(name) != null
     )
   );
-}
-
-// Every input Claude cards read: not a photo (Photo to Deck takes those) and
-// not a deck, XML, mind map, Kindle clippings or e-book, which keep their own
-// converters. A zip counts, since its notes are read once it is unpacked.
-function isClaudeReadableUpload(fileNames: readonly string[]): boolean {
-  return (
-    fileNames.length > 0 &&
-    fileNames.every((name) => !isImageFile(name) && !routedAwayFromClaude(name))
-  );
-}
-
-// A paying account keeps the PDF and PowerPoint default it always had. An
-// account the gift pays for gets it for every input Claude cards can read.
-function defaultCoversFiles(candidate: ClaudeDefaultCandidate): boolean {
-  return candidate.paying
-    ? isPdfOrSlidesUpload(candidate.fileNames)
-    : isClaudeReadableUpload(candidate.fileNames);
 }
 
 function hasAiChoiceMarker(options: Record<string, unknown>): boolean {
@@ -114,7 +95,7 @@ export async function claudeCardsByDefault(
   if (
     candidate.ownerId == null ||
     candidate.entry !== 'web' ||
-    !defaultCoversFiles(candidate) ||
+    !isPdfOrSlidesUpload(candidate.fileNames) ||
     !aiSettingLeftAtDefault(candidate.options) ||
     !(await aiPaidFor(candidate))
   ) {
@@ -144,5 +125,20 @@ export async function accountHasClaudeCardsByDefault(
   if (!paying || !aiSettingLeftAtDefault(stored)) {
     return false;
   }
+  return defaultMayApply(reader, userId, stored);
+}
+
+// Whether the account's own record leaves Claude on: on when it stored or
+// last turned Claude on, off when it recorded turning it off or stored an off
+// that may have been a choice. The upload card's switch starts from this; it
+// never decides an upload, which only the switch's sent value does.
+export async function accountChoiceAllowsClaude(
+  userId: number,
+  storedCardOptions: unknown,
+  reader: AiChoiceHistoryReader
+): Promise<boolean> {
+  const stored = storedOptionsOf(storedCardOptions);
+  if (stored['claude-ai-flashcards'] === 'true') return true;
+  if (hasAiChoiceMarker(stored)) return false;
   return defaultMayApply(reader, userId, stored);
 }

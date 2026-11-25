@@ -31,16 +31,20 @@
     "signupLead": "Crie uma conta grátis e o Claude faz este baralho. Seu arquivo fica aqui.",
     "footnoteSignedOut_one": "Precisa de uma conta grátis · {{count}} crédito, cerca de 3 baralhos",
     "footnoteSignedOut_other": "Precisa de uma conta grátis · {{count}} créditos, cerca de 3 baralhos",
-    "footnoteSignedIn_one": "{{count}} crédito grátis, cerca de 3 baralhos",
-    "footnoteSignedIn_other": "{{count}} créditos grátis, cerca de 3 baralhos"
+    "notKept": "Este navegador não consegue guardar seu arquivo enquanto você se cadastra. Crie sua conta e solte o arquivo de novo.",
+    "footnoteSignedIn_one": "Resta {{count}} crédito grátis",
+    "footnoteSignedIn_other": "Restam {{count}} créditos grátis"
   },
   "convert": {
     "toggle": "Melhorar com o Claude (usa créditos)",
-    "estimate_one": "Cerca de {{count}} crédito, restam {{left}}",
-    "estimate_other": "Cerca de {{count}} créditos, restam {{left}}",
-    "over_one": "Cerca de {{count}} crédito, mais do que os {{left}} que você tem. O Claude para quando eles acabam.",
-    "over_other": "Cerca de {{count}} créditos, mais do que os {{left}} que você tem. O Claude para quando eles acabam.",
-    "convert": "Criar meu baralho"
+    "convert": "Criar meu baralho",
+    "left_one": "Resta {{count}} crédito.",
+    "left_other": "Restam {{count}} créditos.",
+    "estimate_one": "Cerca de {{count}} crédito, restam {{left}}.",
+    "estimate_other": "Cerca de {{count}} créditos, restam {{left}}.",
+    "over_one": "Cerca de {{count}} crédito, mais do que os {{left}} que você tem.",
+    "over_other": "Cerca de {{count}} créditos, mais do que os {{left}} que você tem.",
+    "stops": "O Claude para quando seus créditos acabam."
   },
   "pill": {
     "credits_one": "{{count}} crédito",
@@ -48,5 +52,8 @@
     "until": "Créditos de IA grátis, válidos até {{date}}",
     "fromFirstUse_one": "Créditos de IA grátis, válidos por {{count}} dia a partir do seu primeiro baralho com IA e no máximo até {{date}}",
     "fromFirstUse_other": "Créditos de IA grátis, válidos por {{count}} dias a partir do seu primeiro baralho com IA e no máximo até {{date}}"
-  }
+  },
+  "inUseNow": "Uma conversão está usando seus créditos de IA grátis agora.",
+  "fewCardsLeft_one": "Resta {{count}} cartão neste mês, pouco para um baralho do Claude. Seu próximo arquivo terá cartões pela estrutura dele.",
+  "fewCardsLeft_other": "Restam {{count}} cartões neste mês, poucos para um baralho do Claude. Seu próximo arquivo terá cartões pela estrutura dele."
 }

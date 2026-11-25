@@ -56,8 +56,8 @@
   "home": {
     "hero": {
       "headline": "Fiszki, które działają w Anki",
-      "subtitle": "Upuść stronę Notion i odbierz talię, której nie musisz poprawiać — poprawne cloze, atomowe karty, właściwe typy notatek. Także PDF, Quizlet, Markdown, HTML i CSV.",
-      "aiBadgeIntro": "Czyste karty, gotowe do nauki — poprawne cloze, atomowy przód i tył, żadnych pustych tyłów. Wolisz szkice od AI?",
+      "subtitle": "Upuść stronę Notion i odbierz talię, której nie musisz poprawiać: poprawne cloze, atomowe karty, właściwe typy notatek. Także PDF, Quizlet, Markdown, HTML i CSV.",
+      "aiBadgeIntro": "Czyste karty, gotowe do nauki: poprawne cloze, atomowy przód i tył, żadnych pustych tyłów. Wolisz szkice od AI?",
       "createAccount": "Utwórz konto",
       "cardOptions": "Opcje kart",
       "nativeApps": "Także na iPhone, iPad i Mac →",
@@ -398,7 +398,7 @@
     },
     "page": {
       "title": "Przekształć swoje notatki",
-      "subtitle": "Upuść plik i odbierz talię, której nie musisz poprawiać — poprawne cloze, atomowe karty, właściwe typy notatek. Także Notion, PDF, Markdown, HTML, Word i CSV.",
+      "subtitle": "Upuść plik i odbierz talię, której nie musisz poprawiać: poprawne cloze, atomowe karty, właściwe typy notatek. Także Notion, PDF, Markdown, HTML, Word i CSV.",
       "reattachPrefix": "Dołącz ponownie",
       "reattachSuffix": "aby przekonwertować",
       "aiOn": "AI jest włączone",

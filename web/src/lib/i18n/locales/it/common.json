@@ -56,8 +56,8 @@
   "home": {
     "hero": {
       "headline": "Flashcard che funzionano in Anki",
-      "subtitle": "Trascina una pagina di Notion e ottieni un mazzo che non devi sistemare — cloze fatte bene, carte atomiche, i tipi di nota giusti. Anche PDF, Quizlet, Markdown, HTML e CSV.",
-      "aiBadgeIntro": "Carte pulite, pronte da studiare — cloze fatte bene, fronte e retro atomici, nessun retro vuoto. Preferisci le bozze con l'IA?",
+      "subtitle": "Trascina una pagina di Notion e ottieni un mazzo che non devi sistemare: cloze fatte bene, carte atomiche, i tipi di nota giusti. Anche PDF, Quizlet, Markdown, HTML e CSV.",
+      "aiBadgeIntro": "Carte pulite, pronte da studiare: cloze fatte bene, fronte e retro atomici, nessun retro vuoto. Preferisci le bozze con l'IA?",
       "createAccount": "Crea un account",
       "cardOptions": "Opzioni carta",
       "nativeApps": "Anche su iPhone, iPad e Mac →",
@@ -352,7 +352,7 @@
     },
     "page": {
       "title": "Converti i tuoi appunti",
-      "subtitle": "Trascina un file e ottieni un mazzo che non devi sistemare — cloze fatte bene, carte atomiche, i tipi di nota giusti. Anche Notion, PDF, Markdown, HTML, Word e CSV.",
+      "subtitle": "Trascina un file e ottieni un mazzo che non devi sistemare: cloze fatte bene, carte atomiche, i tipi di nota giusti. Anche Notion, PDF, Markdown, HTML, Word e CSV.",
       "reattachPrefix": "Riallega",
       "reattachSuffix": "per convertire",
       "aiOn": "L'IA è attiva",

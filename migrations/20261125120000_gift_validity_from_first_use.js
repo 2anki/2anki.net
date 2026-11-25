@@ -4,7 +4,9 @@
 // on: a grant with no AI call yet carries the gift's end, and the first call
 // moves it to the earlier of first_used_at + 7 days and that end.
 // Existing grants move to the same rule: first_used_at is their first call
-// stamped with the grant id, if any, and expires_at is recomputed from it.
+// stamped with the grant id, if any, and expires_at is recomputed from it for
+// grants still running. A grant that has already expired stays expired, so
+// nothing comes back to life or counts against the cap again.
 const GIFT_END = '2026-12-04T22:00:00.000Z';
 const GIFT_TABLE_CREATED = '2026-11-24T00:00:00.000Z';
 
@@ -38,7 +40,8 @@ exports.up = async (knex) => {
         set expires_at = case
           when first_used_at is null then ?::timestamptz
           else least(first_used_at + interval '7 days', ?::timestamptz)
-        end`,
+        end
+      where expires_at > now()`,
     [GIFT_END, GIFT_END]
   );
   await knex('feature_flags')
@@ -47,6 +50,8 @@ exports.up = async (knex) => {
 };
 
 // Back to 48 hours from the grant being made, never past the gift's end.
+// Grants made under the new rule (at a first upload, not a claim) shrink to
+// 48 hours from that upload, and every first-use time is lost with the column.
 exports.down = async (knex) => {
   await knex.raw("SET LOCAL lock_timeout = '5s'");
   await knex.raw(

@@ -56,8 +56,8 @@
   "home": {
     "hero": {
       "headline": "Flashcards que funcionam no Anki",
-      "subtitle": "Solte uma página do Notion e receba um baralho que você não precisa consertar — cloze correto, cartões atômicos, os tipos de nota certos. PDF, Quizlet, Markdown, HTML e CSV também.",
-      "aiBadgeIntro": "Cartões limpos, prontos para estudar — cloze correto, frente e verso atômicos, sem versos vazios. Prefere rascunhos com IA?",
+      "subtitle": "Solte uma página do Notion e receba um baralho que você não precisa consertar: cloze correto, cartões atômicos, os tipos de nota certos. PDF, Quizlet, Markdown, HTML e CSV também.",
+      "aiBadgeIntro": "Cartões limpos, prontos para estudar: cloze correto, frente e verso atômicos, sem versos vazios. Prefere rascunhos com IA?",
       "createAccount": "Criar uma conta",
       "cardOptions": "Opções de cartão",
       "nativeApps": "Também no iPhone, iPad e Mac →",
@@ -352,7 +352,7 @@
     },
     "page": {
       "title": "Converta suas anotações",
-      "subtitle": "Solte um arquivo e receba um baralho que você não precisa consertar — cloze correto, cartões atômicos, os tipos de nota certos. Notion, PDF, Markdown, HTML, Word e CSV também.",
+      "subtitle": "Solte um arquivo e receba um baralho que você não precisa consertar: cloze correto, cartões atômicos, os tipos de nota certos. Notion, PDF, Markdown, HTML, Word e CSV também.",
       "reattachPrefix": "Anexe novamente",
       "reattachSuffix": "para converter",
       "aiOn": "A IA está ativada",

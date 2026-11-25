@@ -31,16 +31,20 @@
     "signupLead": "Maak een gratis account en Claude maakt dit deck. Je bestand blijft hier.",
     "footnoteSignedOut_one": "Gratis account nodig · {{count}} credit, ongeveer 3 decks",
     "footnoteSignedOut_other": "Gratis account nodig · {{count}} credits, ongeveer 3 decks",
-    "footnoteSignedIn_one": "{{count}} gratis credit, ongeveer 3 decks",
-    "footnoteSignedIn_other": "{{count}} gratis credits, ongeveer 3 decks"
+    "notKept": "Deze browser kan je bestand niet bewaren terwijl je je aanmeldt. Maak je account en sleep het bestand daarna opnieuw hierheen.",
+    "footnoteSignedIn_one": "Nog {{count}} gratis credit",
+    "footnoteSignedIn_other": "Nog {{count}} gratis credits"
   },
   "convert": {
     "toggle": "Verbeteren met Claude (kost credits)",
-    "estimate_one": "Ongeveer {{count}} credit, nog {{left}} over",
-    "estimate_other": "Ongeveer {{count}} credits, nog {{left}} over",
-    "over_one": "Ongeveer {{count}} credit, meer dan de {{left}} die je nog hebt. Claude stopt als ze op zijn.",
-    "over_other": "Ongeveer {{count}} credits, meer dan de {{left}} die je nog hebt. Claude stopt als ze op zijn.",
-    "convert": "Maak mijn deck"
+    "convert": "Maak mijn deck",
+    "left_one": "Nog {{count}} credit.",
+    "left_other": "Nog {{count}} credits.",
+    "estimate_one": "Ongeveer {{count}} credit, nog {{left}} over.",
+    "estimate_other": "Ongeveer {{count}} credits, nog {{left}} over.",
+    "over_one": "Ongeveer {{count}} credit, meer dan de {{left}} die je nog hebt.",
+    "over_other": "Ongeveer {{count}} credits, meer dan de {{left}} die je nog hebt.",
+    "stops": "Claude stopt als je credits op zijn."
   },
   "pill": {
     "credits_one": "{{count}} credit",
@@ -48,5 +52,8 @@
     "until": "Gratis AI-credits, geldig tot {{date}}",
     "fromFirstUse_one": "Gratis AI-credits, geldig {{count}} dag vanaf je eerste AI-deck en uiterlijk tot {{date}}",
     "fromFirstUse_other": "Gratis AI-credits, geldig {{count}} dagen vanaf je eerste AI-deck en uiterlijk tot {{date}}"
-  }
+  },
+  "inUseNow": "Er gebruikt nu een conversie je gratis AI-credits.",
+  "fewCardsLeft_one": "Je hebt deze maand nog {{count}} kaart over, te weinig voor een Claude-deck. Je volgende bestand krijgt kaarten op basis van de structuur.",
+  "fewCardsLeft_other": "Je hebt deze maand nog {{count}} kaarten over, te weinig voor een Claude-deck. Je volgende bestand krijgt kaarten op basis van de structuur."
 }

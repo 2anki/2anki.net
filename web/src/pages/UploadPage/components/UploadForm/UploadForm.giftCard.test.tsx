@@ -169,6 +169,7 @@ describe('UploadForm and the upload card', () => {
 
       await waitFor(() => expect(sent).toHaveLength(1));
       expect(sent[0].get('claude-ai-flashcards')).toBe(flag);
+      expect(sent[0].get('ai-gift-switch')).toBe('true');
       expect(sent[0].get('ai-choice-at')).toMatch(/^\d+$/);
       expect((sent[0].get('pakker') as File).name).toBe('notes.md');
     }
@@ -181,5 +182,6 @@ describe('UploadForm and the upload card', () => {
 
     await waitFor(() => expect(sent).toHaveLength(1));
     expect(sent[0].get('ai-choice-at')).toBeNull();
+    expect(sent[0].get('ai-gift-switch')).toBeNull();
   });
 });

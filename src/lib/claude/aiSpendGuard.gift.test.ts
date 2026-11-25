@@ -23,6 +23,7 @@ import {
   resetInflightReservations,
 } from './aiCredits/inflightReservations';
 import { track } from '../../services/events/track';
+import { recordClaudeUsage } from './recordClaudeUsage';
 
 vi.mock('../../services/events/track', () => ({ track: vi.fn() }));
 
@@ -319,10 +320,21 @@ describe('withAiBudget and the gift', () => {
     return { gifts, deps };
   }
 
+  const chargedCall = async () => {
+    recordClaudeUsage({
+      surface: 'conversion',
+      model: 'claude-sonnet',
+      userId: USER,
+      usage: { input_tokens: 100, output_tokens: 50 },
+    });
+    return 1;
+  };
+
   it('starts the 7-day clock at the first gift-funded AI call, not when the grant was made', async () => {
     const { gifts, deps } = await unusedGrant();
 
-    await withAiBudget({ userId: USER, aiGift: 'only' }, async () => 1, deps);
+    await withAiBudget({ userId: USER, aiGift: 'only' }, chargedCall, deps);
+    await flushAsync();
 
     expect(await gifts.findGrant(USER)).toMatchObject({
       firstUsedAt: NOW,
@@ -335,10 +347,12 @@ describe('withAiBudget and the gift', () => {
     const giftId = (await gifts.findGrant(USER))?.id;
 
     await Promise.all([
-      withAiBudget({ userId: USER, aiGift: 'only' }, async () => 1, deps),
-      withAiBudget({ userId: USER, aiGift: 'only' }, async () => 1, deps),
+      withAiBudget({ userId: USER, aiGift: 'only' }, chargedCall, deps),
+      withAiBudget({ userId: USER, aiGift: 'only' }, chargedCall, deps),
     ]);
-    await withAiBudget({ userId: USER, aiGift: 'only' }, async () => 1, deps);
+    await flushAsync();
+    await withAiBudget({ userId: USER, aiGift: 'only' }, chargedCall, deps);
+    await flushAsync();
 
     const firstUse = trackMock.mock.calls.filter(
       ([name]) => name === 'ai_gift_first_use'
@@ -352,6 +366,29 @@ describe('withAiBudget and the gift', () => {
         }),
       ],
     ]);
+  });
+
+  it('starts no clock when the first call fails before it reaches the model', async () => {
+    const { gifts, deps } = await unusedGrant();
+
+    await expect(
+      withAiBudget(
+        { userId: USER, aiGift: 'only' },
+        async () => {
+          throw new Error('connection reset');
+        },
+        deps
+      )
+    ).rejects.toThrow();
+    await flushAsync();
+
+    expect(await gifts.findGrant(USER)).toMatchObject({
+      firstUsedAt: null,
+      expiresAt: AI_GIFT_CREDITS_EXPIRE_BY,
+    });
+    expect(
+      trackMock.mock.calls.filter(([name]) => name === 'ai_gift_first_use')
+    ).toEqual([]);
   });
 
   it('records no first AI call for a grant already in use', async () => {

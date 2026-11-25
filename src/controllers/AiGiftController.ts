@@ -29,6 +29,8 @@ function nextUploadBody(result: {
   aiBudgetAvailable?: boolean | null;
   storedPdfSkipsClaude?: boolean | null;
   monthlyCardsLeft?: number | null;
+  nextUploadUsesCredits?: boolean | null;
+  switchOnByDefault?: boolean | null;
 }) {
   if (result.claudeDefaultForPdf === undefined) return {};
   return {
@@ -36,6 +38,8 @@ function nextUploadBody(result: {
     aiBudgetAvailable: result.aiBudgetAvailable ?? null,
     storedPdfSkipsClaude: result.storedPdfSkipsClaude ?? null,
     monthlyCardsLeft: result.monthlyCardsLeft ?? null,
+    nextUploadUsesCredits: result.nextUploadUsesCredits ?? null,
+    switchOnByDefault: result.switchOnByDefault ?? null,
   };
 }
 

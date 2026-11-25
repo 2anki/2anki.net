@@ -839,6 +839,16 @@ function mayReachClaude(files: UploadedFile[]): boolean {
   return !files.every((file) => routedAwayFromClaude(file.originalname));
 }
 
+// The upload card's convert step sends its switch's value with this field.
+// Only such a request may make a first gift grant; the stored options never
+// carry it, so it is read from the request before they are merged in.
+export const GIFT_SWITCH_FIELD = 'ai-gift-switch';
+
+function sentGiftSwitchChoice(body: unknown): boolean {
+  if (body == null || typeof body !== 'object') return false;
+  return (body as Record<string, unknown>)[GIFT_SWITCH_FIELD] === 'true';
+}
+
 function positiveId(owner: unknown): number | null {
   const id = Number(owner);
   return owner != null && Number.isFinite(id) && id > 0 ? id : null;
@@ -1031,12 +1041,14 @@ class UploadService {
   // notice when another conversion holds the marker. A paying account whose
   // plan is spent draws on the gift only while it holds the marker; without
   // it the upload behaves as it does with no credits left. An account with no
-  // plan and no grant yet makes its grant here, once it holds the marker, so
-  // only an upload that will run on the gift counts against the total.
+  // plan and no grant yet makes its grant here, once it holds the marker, and
+  // only for a web upload whose Claude choice came from the upload card's
+  // switch (networkHash is null otherwise): every other request with no grant
+  // converts exactly as it did before the card existed.
   private async giftForUpload(
     owner: unknown,
     paying: boolean,
-    networkHash: () => string
+    networkHash: (() => string) | null
   ): Promise<{
     aiGift: AiGiftMode | null;
     aiGiftCardLimit: number | null;
@@ -1053,6 +1065,7 @@ class UploadService {
     const gift = await uploadAiGiftMode(userId, paying, this.aiGiftReaders);
     if (gift == null || userId == null) return none;
     if (gift === 'spent') return { ...none, aiGiftStop: 'spent' };
+    if (gift === 'start' && networkHash == null) return none;
     if (gift === 'fallback') {
       const marker = takeGiftMarker(userId);
       return marker == null
@@ -1063,7 +1076,11 @@ class UploadService {
     if (remaining < AI_GIFT_MIN_MONTHLY_CARDS) return none;
     const marker = takeGiftMarker(userId);
     if (marker == null) return { ...none, aiGiftStop: 'busy' };
-    if (gift === 'start' && !(await this.startGiftGrant(userId, networkHash))) {
+    if (
+      gift === 'start' &&
+      networkHash != null &&
+      !(await this.startGiftGrant(userId, networkHash))
+    ) {
       releaseGiftMarker(marker);
       return none;
     }
@@ -1582,6 +1599,8 @@ class UploadService {
       }
 
       const owner = getOwner(res);
+      const giftChoiceFromCard =
+        this.uploadEntry(req, res) === 'web' && sentGiftSwitchChoice(req.body);
       const storedCardOptions =
         owner == null
           ? null
@@ -1602,7 +1621,11 @@ class UploadService {
       ) {
         Object.assign(
           res.locals,
-          await this.giftForUpload(owner, paying, () => giftNetworkHash(req))
+          await this.giftForUpload(
+            owner,
+            paying,
+            giftChoiceFromCard ? () => giftNetworkHash(req) : null
+          )
         );
       }
 
@@ -2232,10 +2255,11 @@ class UploadService {
     );
     if (!turnOn) return options;
     // With no credits left the job would only fall back to the parser, later
-    // and through a queue, so the default is not applied. An account with no
-    // plan reached here only because giftWouldPayForUpload found gift credits,
-    // or room for a first grant, so no plan or bought balance is read for it.
-    if (paying && (await getAiBudgetStatus({ userId: ownerId })).exhausted) {
+    // and through a queue, so the default is not applied.
+    const budget = paying
+      ? { userId: ownerId }
+      : { userId: ownerId, aiGift: 'only' as const };
+    if ((await getAiBudgetStatus(budget)).exhausted) {
       return options;
     }
     track('upload_ai_default_applied', {

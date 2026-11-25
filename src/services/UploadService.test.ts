@@ -11212,15 +11212,12 @@ describe('UploadService.handleUpload — the free AI credits gift', () => {
     expect(third.capturedStatus()).toBe(202);
   });
 
-  it('reads no gift for an upload the person sent with Claude turned off', async () => {
+  it('reads the gift only when the upload asked for Claude cards', async () => {
     sendsCards();
     const readers = vi.fn(giftReaders({}));
     const { res } = signedIn(false);
     const request = aiRequest();
-    request.body = {
-      'claude-ai-flashcards': 'false',
-      'ai-choice-at': '1762300000',
-    };
+    request.body = {};
 
     await serviceWith(jobRepository(), readers).handleUpload(request, res);
 

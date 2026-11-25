@@ -283,11 +283,45 @@ describe('GET /api/ai/gift for each kind of account', () => {
       endsAt: '2026-12-04T22:00:00.000Z',
       minMonthlyCards: 20,
       feedbackDue: false,
-      claudeDefaultForPdf: true,
+      claudeDefaultForPdf: false,
       aiBudgetAvailable: true,
       storedPdfSkipsClaude: false,
       monthlyCardsLeft: 90,
+      nextUploadUsesCredits: true,
+      switchOnByDefault: true,
     });
+  });
+
+  it('says the next upload cannot use the credits, and the switch starts off, when the month is short of the card minimum', async () => {
+    h.claudeDefault.cardsLeft = 12;
+
+    expect((await getGift(h, 6)).body).toMatchObject({
+      hasCredits: true,
+      nextUploadUsesCredits: false,
+      switchOnByDefault: false,
+      monthlyCardsLeft: 12,
+    });
+  });
+
+  it('starts the switch off for an account that recorded turning AI off', async () => {
+    h.claudeDefault.latestToggle = 'upload_ai_turned_off';
+
+    expect((await getGift(h, 6)).body).toMatchObject({
+      nextUploadUsesCredits: true,
+      switchOnByDefault: false,
+    });
+  });
+
+  it('reads no network count for a signed-out visitor or an account that holds a grant', async () => {
+    await firstUpload(h, 5);
+    const count = vi.spyOn(h.gifts, 'networkGrantCount');
+
+    await getGift(h, null);
+    await getGift(h, 5);
+    expect(count).not.toHaveBeenCalled();
+
+    await getGift(h, 6);
+    expect(count).toHaveBeenCalledTimes(1);
   });
 
   it('shows a grant made at a first upload but never used as the whole amount with no clock running', async () => {
@@ -476,7 +510,10 @@ describe('the gift total and the per-network limit', () => {
 
     expect(await firstUpload(h, 4, ip)).toBeNull();
     expect((await getGift(h, 4, { ip })).body.state).toBe('full');
-    expect((await getGift(h, null, { ip })).body.state).toBe('full');
+    expect((await getGift(h, null, { ip })).body).toMatchObject({
+      state: 'open',
+      hasCredits: false,
+    });
     expect(await firstUpload(h, 4, '192.0.2.45')).not.toBeNull();
 
     h.setNow(new Date(OPENING.getTime() + 24 * 60 * 60 * 1000 + 1));
@@ -632,6 +669,8 @@ describe('the one question after a gift-funded conversion', () => {
       aiBudgetAvailable: true,
       storedPdfSkipsClaude: false,
       monthlyCardsLeft: 90,
+      nextUploadUsesCredits: true,
+      switchOnByDefault: true,
     });
   });
 

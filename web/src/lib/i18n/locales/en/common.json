@@ -56,8 +56,8 @@
   "home": {
     "hero": {
       "headline": "Flashcards that work in Anki",
-      "subtitle": "Drop a Notion page and get a deck you don't have to fix — proper cloze, atomic cards, the right note types. PDF, Quizlet, Markdown, HTML, and CSV too.",
-      "aiBadgeIntro": "Clean cards, ready to study — proper cloze, atomic front and back, no empty backs. Prefer AI drafts?",
+      "subtitle": "Drop a Notion page and get a deck you don't have to fix: proper cloze, atomic cards, the right note types. PDF, Quizlet, Markdown, HTML, and CSV too.",
+      "aiBadgeIntro": "Clean cards, ready to study: proper cloze, atomic front and back, no empty backs. Prefer AI drafts?",
       "createAccount": "Create an account",
       "cardOptions": "Card options",
       "nativeApps": "Also on iPhone, iPad & Mac →",
@@ -352,7 +352,7 @@
     },
     "page": {
       "title": "Convert your notes",
-      "subtitle": "Drop a file and get a deck you don't have to fix — proper cloze, atomic cards, the right note types. Notion, PDF, Markdown, HTML, Word, and CSV too.",
+      "subtitle": "Drop a file and get a deck you don't have to fix: proper cloze, atomic cards, the right note types. Notion, PDF, Markdown, HTML, Word, and CSV too.",
       "reattachPrefix": "Re-attach",
       "reattachSuffix": "to convert",
       "aiOn": "AI is on",

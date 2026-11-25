@@ -70,9 +70,15 @@ describe('20261125120000 gift validity from first use', () => {
     expect(captured[2].sql).toContain('set first_used_at = s.first_at');
     expect(captured[2].sql).toContain("where name = 'ai_usage_recorded'");
     expect(captured[3]).toEqual({
-      sql: "update ai_credit_gifts set expires_at = case when first_used_at is null then ?::timestamptz else least(first_used_at + interval '7 days', ?::timestamptz) end",
+      sql: "update ai_credit_gifts set expires_at = case when first_used_at is null then ?::timestamptz else least(first_used_at + interval '7 days', ?::timestamptz) end where expires_at > now()",
       bindings: ['2026-12-04T22:00:00.000Z', '2026-12-04T22:00:00.000Z'],
     });
+  });
+
+  it('recomputes only grants still running, so an expired grant stays expired and never counts against the cap again', async () => {
+    await migration.up(recordingKnex());
+
+    expect(captured[3].sql.endsWith('where expires_at > now()')).toBe(true);
   });
 
   it('rolls back to 48 hours from the grant, never past the end, and drops the column', async () => {

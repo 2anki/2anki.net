@@ -1,6 +1,6 @@
 import { track } from '../../services/events/track';
 import { ClaudeUsage, computeUsageCostUsd } from './pricing';
-import { currentGiftId } from './aiCredits/gift/giftFunding';
+import { currentGiftId, noteGiftCharge } from './aiCredits/gift/giftFunding';
 
 export type { ClaudeUsage } from './pricing';
 
@@ -35,6 +35,7 @@ export function recordClaudeUsage(options: RecordClaudeUsageOptions): void {
   const cacheRead = usage.cache_read_input_tokens ?? 0;
   const costUsd = computeUsageCostUsd(model, usage);
   const giftId = currentGiftId();
+  if (giftId != null) noteGiftCharge();
   const request = requestId ? ` request=${requestId}` : '';
   const biller =
     userId ?? (anonymousPassId != null ? `pass:${anonymousPassId}` : 'anon');

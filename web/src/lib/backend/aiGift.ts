@@ -5,6 +5,8 @@ interface GiftNextUpload {
   aiBudgetAvailable?: boolean | null;
   storedPdfSkipsClaude?: boolean | null;
   monthlyCardsLeft?: number | null;
+  nextUploadUsesCredits?: boolean | null;
+  switchOnByDefault?: boolean | null;
 }
 
 // hasCredits is the server's answer to whether this account's next upload
@@ -59,6 +61,8 @@ function nextUploadOf(data: Record<string, unknown>): GiftNextUpload {
     aiBudgetAvailable: optionalBoolean(data.aiBudgetAvailable),
     storedPdfSkipsClaude: optionalBoolean(data.storedPdfSkipsClaude),
     monthlyCardsLeft: optionalCount(data.monthlyCardsLeft) ?? null,
+    nextUploadUsesCredits: optionalBoolean(data.nextUploadUsesCredits),
+    switchOnByDefault: optionalBoolean(data.switchOnByDefault),
   };
 }
 
@@ -110,15 +114,31 @@ export function parseAiGiftStatus(data: unknown): AiGiftStatus {
   return { state: 'closed', feedbackDue };
 }
 
-// The gift as the upload card offers it: shown when the server says the
-// offer is open to this visitor, and the credits the next upload would use.
+// The gift as the upload card offers it, every answer the server's: whether
+// this visitor holds or can get credits, whether the next upload can use
+// them now, and where the card's switch starts.
 export interface GiftOffer {
   credits: number;
   hasCredits: boolean;
+  usableNow: boolean;
+  switchOnByDefault: boolean;
+  monthlyCardsLeft: number | null;
+  minMonthlyCards: number | null;
+  inUse: boolean;
   validDays: number;
   endsAt: string;
   expiresAt: string | null;
-  claudeByDefault: boolean;
+}
+
+function nextUploadOffer(
+  status: GiftNextUpload & { minMonthlyCards?: number }
+) {
+  return {
+    usableNow: status.nextUploadUsesCredits === true,
+    switchOnByDefault: status.switchOnByDefault === true,
+    monthlyCardsLeft: status.monthlyCardsLeft ?? null,
+    minMonthlyCards: status.minMonthlyCards ?? null,
+  };
 }
 
 export function giftOfferOf(status: AiGiftStatus | null): GiftOffer | null {
@@ -130,7 +150,8 @@ export function giftOfferOf(status: AiGiftStatus | null): GiftOffer | null {
       validDays: status.validDays,
       endsAt: status.endsAt,
       expiresAt: null,
-      claudeByDefault: status.claudeDefaultForPdf === true,
+      inUse: false,
+      ...nextUploadOffer(status),
     };
   }
   if (
@@ -145,7 +166,8 @@ export function giftOfferOf(status: AiGiftStatus | null): GiftOffer | null {
       validDays: status.validDays,
       endsAt: status.endsAt,
       expiresAt: status.firstUsed === true ? status.expiresAt : null,
-      claudeByDefault: status.claudeDefaultForPdf === true,
+      inUse: status.inUse === true,
+      ...nextUploadOffer(status),
     };
   }
   return null;

@@ -27,17 +27,22 @@
     "removeFile": "削除",
     "signupLead": "無料アカウントを作成すると、Claude がこのデッキを作ります。ファイルはここに残ります。",
     "footnoteSignedOut_other": "無料アカウントが必要です · {{count}} クレジット、約 3 デッキ分",
-    "footnoteSignedIn_other": "無料クレジット {{count}}、約 3 デッキ分"
+    "notKept": "このブラウザでは、登録中にファイルを保持できません。アカウントを作成してから、もう一度ファイルをドロップしてください。",
+    "footnoteSignedIn_other": "無料クレジット残り {{count}}"
   },
   "convert": {
     "toggle": "Claude で改善する（クレジットを使います）",
-    "estimate_other": "約 {{count}} クレジット、残り {{left}}",
-    "over_other": "約 {{count}} クレジットで、残りの {{left}} を超えます。使い切ると Claude は止まります。",
-    "convert": "デッキを作成"
+    "convert": "デッキを作成",
+    "left_other": "残り {{count}} クレジット。",
+    "estimate_other": "約 {{count}} クレジット、残り {{left}}。",
+    "over_other": "約 {{count}} クレジットで、残りの {{left}} を超えます。",
+    "stops": "クレジットを使い切ると Claude は止まります。"
   },
   "pill": {
     "credits_other": "{{count}} クレジット",
     "until": "無料 AI クレジット、{{date}} まで有効",
     "fromFirstUse_other": "無料 AI クレジット、最初の AI デッキから {{count}} 日間有効、最長で {{date}} まで"
-  }
+  },
+  "inUseNow": "現在、別の変換が無料のAIクレジットを使用中です。",
+  "fewCardsLeft_other": "今月の残りカードは{{count}}枚で、Claudeのデッキには足りません。次のファイルは構造からカードを作ります。"
 }

@@ -31,16 +31,20 @@
     "signupLead": "Crée un compte gratuit et Claude fera ce paquet. Ton fichier reste ici.",
     "footnoteSignedOut_one": "Compte gratuit requis · {{count}} crédit, environ 3 paquets",
     "footnoteSignedOut_other": "Compte gratuit requis · {{count}} crédits, environ 3 paquets",
-    "footnoteSignedIn_one": "{{count}} crédit gratuit, environ 3 paquets",
-    "footnoteSignedIn_other": "{{count}} crédits gratuits, environ 3 paquets"
+    "notKept": "Ce navigateur ne peut pas garder ton fichier pendant l’inscription. Crée ton compte, puis dépose à nouveau le fichier.",
+    "footnoteSignedIn_one": "Il te reste {{count}} crédit gratuit",
+    "footnoteSignedIn_other": "Il te reste {{count}} crédits gratuits"
   },
   "convert": {
     "toggle": "Améliorer avec Claude (utilise des crédits)",
-    "estimate_one": "Environ {{count}} crédit, il en reste {{left}}",
-    "estimate_other": "Environ {{count}} crédits, il en reste {{left}}",
-    "over_one": "Environ {{count}} crédit, plus que les {{left}} qu’il te reste. Claude s’arrête quand ils sont épuisés.",
-    "over_other": "Environ {{count}} crédits, plus que les {{left}} qu’il te reste. Claude s’arrête quand ils sont épuisés.",
-    "convert": "Créer mon paquet"
+    "convert": "Créer mon paquet",
+    "left_one": "Il te reste {{count}} crédit.",
+    "left_other": "Il te reste {{count}} crédits.",
+    "estimate_one": "Environ {{count}} crédit, il en reste {{left}}.",
+    "estimate_other": "Environ {{count}} crédits, il en reste {{left}}.",
+    "over_one": "Environ {{count}} crédit, plus que les {{left}} qu’il te reste.",
+    "over_other": "Environ {{count}} crédits, plus que les {{left}} qu’il te reste.",
+    "stops": "Claude s’arrête quand tes crédits sont épuisés."
   },
   "pill": {
     "credits_one": "{{count}} crédit",
@@ -48,5 +52,8 @@
     "until": "Crédits IA gratuits, valables jusqu’au {{date}}",
     "fromFirstUse_one": "Crédits IA gratuits, valables {{count}} jour après ton premier paquet IA et au plus tard jusqu’au {{date}}",
     "fromFirstUse_other": "Crédits IA gratuits, valables {{count}} jours après ton premier paquet IA et au plus tard jusqu’au {{date}}"
-  }
+  },
+  "inUseNow": "Une conversion utilise tes crédits IA offerts en ce moment.",
+  "fewCardsLeft_one": "Il te reste {{count}} carte ce mois-ci, trop peu pour un paquet Claude. Ton prochain fichier aura des cartes tirées de sa structure.",
+  "fewCardsLeft_other": "Il te reste {{count}} cartes ce mois-ci, trop peu pour un paquet Claude. Ton prochain fichier aura des cartes tirées de sa structure."
 }

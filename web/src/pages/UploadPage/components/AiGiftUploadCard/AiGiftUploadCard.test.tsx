@@ -13,10 +13,13 @@ import { AiGiftUploadCard, type HoldChosenFiles } from './AiGiftUploadCard';
 import { getAiGift, type AiGiftStatus } from '../../../../lib/backend/aiGift';
 import { track } from '../../../../lib/analytics/track';
 import {
+  createHeldGiftFileStore,
   createMemoryHeldGiftFileStore,
+  memoryRecords,
   type HeldGiftFileStore,
 } from '../../../../lib/aiGift/heldGiftFile';
 import { readGiftHandoff } from '../../../../lib/aiGift/giftHandoff';
+import { takeGiftSignupOrigin } from '../../../../lib/aiGift/giftSignupOrigin';
 import { reportUploadZoneActivity } from '../../../../lib/upload/uploadZoneActivity';
 import i18n from '../../../../lib/i18n';
 import { SUPPORTED_LANGUAGES } from '../../../../lib/i18n';
@@ -35,6 +38,7 @@ const TERMS = {
   validDays: 7,
   endsAt: '2026-12-04T22:00:00.000Z',
   feedbackDue: false,
+  minMonthlyCards: 20,
 };
 const OPEN_SIGNED_OUT: AiGiftStatus = {
   state: 'open',
@@ -44,9 +48,12 @@ const OPEN_SIGNED_OUT: AiGiftStatus = {
 const OPEN_SIGNED_IN: AiGiftStatus = {
   state: 'open',
   hasCredits: true,
-  claudeDefaultForPdf: true,
+  nextUploadUsesCredits: true,
+  switchOnByDefault: true,
+  monthlyCardsLeft: 90,
   ...TERMS,
 };
+const CLOSED: AiGiftStatus = { state: 'closed', feedbackDue: false };
 
 let handedOff: unknown = null;
 let heldFiles: HeldGiftFileStore;
@@ -101,6 +108,8 @@ function eventsNamed(name: string) {
 
 const chooseAi = () =>
   fireEvent.click(screen.getByRole('button', { name: /AI from notes/ }));
+const chooseNotion = () =>
+  fireEvent.click(screen.getByRole('button', { name: 'Notion export' }));
 
 beforeEach(() => {
   vi.mocked(track).mockClear();
@@ -119,17 +128,9 @@ afterEach(() => {
 
 describe('the upload card with the gift off or not for this account', () => {
   it.each<[string, AiGiftStatus, boolean]>([
-    [
-      'the gift is off or ended',
-      { state: 'closed', feedbackDue: false },
-      false,
-    ],
+    ['the gift is off or ended', CLOSED, false],
     ['the gift total is full', { state: 'full', feedbackDue: false }, false],
-    [
-      'a signed-in account has no credits',
-      { state: 'closed', feedbackDue: false },
-      true,
-    ],
+    ['a signed-in account has no credits', CLOSED, true],
     [
       'a signed-in grant is used up',
       {
@@ -153,7 +154,7 @@ describe('the upload card with the gift off or not for this account', () => {
       expect(screen.queryByRole('group')).toBeNull();
       expect(screen.queryByText(/Free account needed/)).toBeNull();
       expect(hold).toBeUndefined();
-      expect(eventsNamed('ai_gift_shown')).toEqual([]);
+      expect(eventsNamed('upload_card_viewed')).toEqual([]);
     }
   );
 
@@ -175,7 +176,9 @@ describe('the upload card for a signed-out visitor', () => {
   it('shows Notion export first, with the form, a Free pill on the AI segment and the footnote', async () => {
     renderCard(false);
 
-    const notion = await screen.findByRole('button', { name: 'Notion export' });
+    const notion = await screen.findByRole('button', {
+      name: 'Notion export',
+    });
     expect(notion).toHaveAttribute('aria-pressed', 'true');
     expect(
       screen.getByRole('button', { name: /AI from notes/ })
@@ -184,8 +187,8 @@ describe('the upload card for a signed-out visitor', () => {
     expect(
       screen.getByText('Free account needed · 100 credits, about 3 decks')
     ).toBeInTheDocument();
-    expect(eventsNamed('ai_gift_shown')).toEqual([
-      ['ai_gift_shown', { surface: 'upload_card', signed_in: false }],
+    expect(eventsNamed('upload_card_viewed')).toEqual([
+      ['upload_card_viewed', { surface: 'upload_card', signed_in: false }],
     ]);
   });
 
@@ -201,8 +204,18 @@ describe('the upload card for a signed-out visitor', () => {
       1
     );
     expect(screen.getByTestId('upload-form')).not.toBeVisible();
-    expect(eventsNamed('ai_gift_opened')).toEqual([
-      ['ai_gift_opened', { surface: 'upload_card' }],
+  });
+
+  it('records choosing the AI mode once per page view, however often it is chosen', async () => {
+    renderCard(false);
+    await screen.findByRole('group');
+
+    chooseAi();
+    chooseNotion();
+    chooseAi();
+
+    expect(eventsNamed('ai_mode_selected')).toEqual([
+      ['ai_mode_selected', { surface: 'upload_card', signed_in: false }],
     ]);
   });
 
@@ -231,7 +244,7 @@ describe('the upload card for a signed-out visitor', () => {
       expect(await screen.findByText(name)).toBeInTheDocument();
       expect(screen.getByText('2 KB')).toBeInTheDocument();
       expect(
-        screen.getByText(
+        await screen.findByText(
           'Create a free account and Claude makes this deck. Your file stays right here.'
         )
       ).toBeInTheDocument();
@@ -240,6 +253,22 @@ describe('the upload card for a signed-out visitor', () => {
       expect(screen.queryByRole('dialog')).toBeNull();
     }
   );
+
+  it('says the file cannot be kept, and never that it stays, when the browser cannot store it', async () => {
+    heldFiles = createHeldGiftFileStore(memoryRecords(false));
+    renderCard(false);
+    await screen.findByRole('group');
+    chooseAi();
+
+    dropOn(screen.getByTestId('ai-notes-dropzone'), [file('lecture.pdf')]);
+
+    expect(
+      await screen.findByText(
+        "This browser can't keep your file while you sign up. Create your account, then drop the file again."
+      )
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Your file stays right here/)).toBeNull();
+  });
 
   it.each(['deck.apkg', 'cards.xml', 'book.epub'])(
     'refuses %s with a plain line and keeps the dropzone',
@@ -256,7 +285,7 @@ describe('the upload card for a signed-out visitor', () => {
         )
       ).toBeInTheDocument();
       expect(screen.queryByText(name)).toBeNull();
-      expect(eventsNamed('ai_gift_file_dropped')).toEqual([]);
+      expect(eventsNamed('file_dropped')).toEqual([]);
     }
   );
 
@@ -268,9 +297,9 @@ describe('the upload card for a signed-out visitor', () => {
     dropOn(screen.getByTestId('ai-notes-dropzone'), [file('Week 3 notes.pdf')]);
 
     await screen.findByText('Week 3 notes.pdf');
-    expect(eventsNamed('ai_gift_file_dropped')).toEqual([
+    expect(eventsNamed('file_dropped')).toEqual([
       [
-        'ai_gift_file_dropped',
+        'file_dropped',
         {
           surface: 'upload_card',
           mode: 'ai',
@@ -282,16 +311,41 @@ describe('the upload card for a signed-out visitor', () => {
     ]);
   });
 
-  it('tags the sign-up it starts with the card, so the funnel can join it', async () => {
+  it.each(['Google', 'Notion', 'Microsoft', 'Apple'])(
+    'tags a %s sign-up started from the card with its origin, for the funnel',
+    async (provider) => {
+      renderCard(false);
+      await screen.findByRole('group');
+      chooseAi();
+      dropOn(screen.getByTestId('ai-notes-dropzone'), [file('lecture.pdf')]);
+
+      fireEvent.click(
+        await screen.findByRole('link', { name: new RegExp(provider) })
+      );
+
+      expect(eventsNamed('signup_started')).toEqual([
+        [
+          'signup_started',
+          {
+            method: provider.toLowerCase(),
+            signup_origin: 'upload_card_ai',
+          },
+        ],
+      ]);
+      expect(takeGiftSignupOrigin()).toBe('upload_card_ai');
+    }
+  );
+
+  it('tags an email sign-up started from the card with its origin', async () => {
     renderCard(false);
     await screen.findByRole('group');
     chooseAi();
     dropOn(screen.getByTestId('ai-notes-dropzone'), [file('lecture.pdf')]);
 
-    fireEvent.click(await screen.findByRole('link', { name: /Google/ }));
+    fireEvent.focus(await screen.findByLabelText('Email'));
 
     expect(eventsNamed('signup_started')).toEqual([
-      ['signup_started', { method: 'google', signup_origin: 'upload_card_ai' }],
+      ['signup_started', { method: 'email', signup_origin: 'upload_card_ai' }],
     ]);
   });
 
@@ -300,19 +354,48 @@ describe('the upload card for a signed-out visitor', () => {
     await screen.findByRole('group');
     chooseAi();
     dropOn(screen.getByTestId('ai-notes-dropzone'), [
-      file('lecture.pdf', 4096),
+      file('lecture.txt', 4096),
     ]);
-    await screen.findByText('lecture.pdf');
+    await screen.findByText('lecture.txt');
+    await screen.findByText(/Your file stays right here/);
     first.unmount();
 
     vi.mocked(getAiGift).mockResolvedValue(OPEN_SIGNED_IN);
     renderCard(true);
 
-    expect(await screen.findByText('lecture.pdf')).toBeInTheDocument();
+    expect(await screen.findByText('lecture.txt')).toBeInTheDocument();
     expect(
-      screen.getByRole('switch', { name: 'Improve with Claude (uses credits)' })
+      await screen.findByRole('switch', {
+        name: 'Improve with Claude (uses credits)',
+      })
     ).toBeChecked();
   });
+
+  it.each<[string, AiGiftStatus]>([
+    ['a paying or expired account', CLOSED],
+    ['a full gift total', { state: 'full', feedbackDue: false }],
+  ])(
+    'gives the kept file to the upload form when the person signs in to %s',
+    async (_case, status) => {
+      const kept = file('lecture.pdf');
+      const first = renderCard(false);
+      await screen.findByRole('group');
+      chooseAi();
+      dropOn(screen.getByTestId('ai-notes-dropzone'), [kept]);
+      await screen.findByText(/Your file stays right here/);
+      first.unmount();
+
+      vi.mocked(getAiGift).mockResolvedValue(status);
+      renderCard(true);
+
+      await waitFor(() =>
+        expect(readGiftHandoff(handedOff)).toEqual({
+          files: [kept],
+          claude: null,
+        })
+      );
+    }
+  );
 
   it('leaves files in Notion export mode to the upload form', async () => {
     renderCard(false);
@@ -334,7 +417,7 @@ describe('the convert step for an account with gift credits', () => {
     dropOn(screen.getByTestId('ai-notes-dropzone'), files);
   }
 
-  it('shows the switch on by default with the cost before converting', async () => {
+  it('shows the switch on by default with the cost and the stop line before converting', async () => {
     await dropInAiMode([file('notes.txt', 60_000)]);
 
     expect(
@@ -342,13 +425,17 @@ describe('the convert step for an account with gift credits', () => {
         name: 'Improve with Claude (uses credits)',
       })
     ).toBeChecked();
-    expect(screen.getByText('About 20 credits, 100 left')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'About 20 credits, 100 left. Claude stops when your credits run out.'
+      )
+    ).toBeInTheDocument();
     expect(
       screen.getAllByRole('button', { name: 'Make my deck' })
     ).toHaveLength(1);
-    expect(eventsNamed('ai_gift_toggle_shown')).toEqual([
+    expect(eventsNamed('ai_toggle_shown')).toEqual([
       [
-        'ai_gift_toggle_shown',
+        'ai_toggle_shown',
         expect.objectContaining({
           surface: 'upload_card',
           on: true,
@@ -360,28 +447,39 @@ describe('the convert step for an account with gift credits', () => {
     ]);
   });
 
+  it('shows no number for a PDF, only what is left and that Claude stops', async () => {
+    await dropInAiMode([file('scan.pdf', 2_000_000)]);
+
+    expect(
+      await screen.findByText(
+        '100 credits left. Claude stops when your credits run out.'
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByRole('switch')).toBeChecked();
+  });
+
   it('says when the cost is more than is left and starts with the switch off', async () => {
     await dropInAiMode([file('notes.txt', 600_000)]);
 
     expect(
       await screen.findByText(
-        'About 180 credits, more than the 100 you have left. Claude stops when they run out.'
+        'About 180 credits, more than the 100 you have left. Claude stops when your credits run out.'
       )
     ).toBeInTheDocument();
     expect(screen.getByRole('switch')).not.toBeChecked();
   });
 
-  it('starts with the switch off when the server says the default does not apply', async () => {
+  it('starts with the switch off when the server says the account chose against Claude', async () => {
     vi.mocked(getAiGift).mockResolvedValue({
       ...OPEN_SIGNED_IN,
-      claudeDefaultForPdf: false,
+      switchOnByDefault: false,
     });
-    await dropInAiMode([file('lecture.pdf')]);
+    await dropInAiMode([file('lecture.txt')]);
 
     expect(await screen.findByRole('switch')).not.toBeChecked();
   });
 
-  it('hands the files and the Claude choice to the upload form', async () => {
+  it('hands the files and the switch value to the upload form, recording no choice for a switch left as it was', async () => {
     const notes = file('notes.txt');
     await dropInAiMode([notes]);
 
@@ -396,6 +494,9 @@ describe('the convert step for an account with gift credits', () => {
       })
     );
     expect(globalThis.localStorage.getItem('ai-choice-at')).toBeNull();
+    expect(eventsNamed('ai_toggle_on')).toEqual([
+      ['ai_toggle_on', { surface: 'upload_card', changed: false }],
+    ]);
   });
 
   it('records a switch turned off as the person’s own choice', async () => {
@@ -431,19 +532,56 @@ describe('the convert step for an account with gift credits', () => {
     expect(hold?.([file('deck.apkg')])).toBe(false);
     let taken = false;
     act(() => {
-      taken = hold?.([file('export.zip', 1_000_000)]) ?? false;
+      taken = hold?.([file('export.zip', 1_000)]) ?? false;
     });
 
     expect(taken).toBe(true);
-    expect(await screen.findByRole('switch')).toBeChecked();
     expect(screen.getByText('export.zip')).toBeInTheDocument();
   });
 
-  it('says how many free credits are left under the card', async () => {
+  it('says how many free credits are left under the card, with no deck count', async () => {
     renderCard(true);
 
     expect(
-      await screen.findByText('100 free credits, about 3 decks')
+      await screen.findByText('100 free credits left')
+    ).toBeInTheDocument();
+  });
+
+  it('shows the honest line and no switch when the month has too few cards for the gift', async () => {
+    vi.mocked(getAiGift).mockResolvedValue({
+      ...OPEN_SIGNED_IN,
+      nextUploadUsesCredits: false,
+      switchOnByDefault: false,
+      monthlyCardsLeft: 12,
+    });
+    renderCard(true);
+
+    expect(
+      await screen.findByText(
+        'You have 12 cards left this month, too few for a Claude deck. Your next file gets cards from its structure.'
+      )
+    ).toBeInTheDocument();
+    expect(hold?.([file('notes.txt')])).toBe(false);
+  });
+
+  it('says a conversion is using the credits while one runs', async () => {
+    vi.mocked(getAiGift).mockResolvedValue({
+      state: 'claimed',
+      ...TERMS,
+      hasCredits: true,
+      expiresAt: '2026-12-02T12:00:00.000Z',
+      firstUsed: true,
+      inUse: true,
+      nextUploadUsesCredits: false,
+      switchOnByDefault: false,
+      monthlyCardsLeft: 90,
+    });
+    renderCard(true);
+
+    expect(
+      await screen.findByText(
+        'A conversion is using your free AI credits right now.'
+      )
     ).toBeInTheDocument();
   });
 
@@ -460,14 +598,21 @@ describe('the convert step for an account with gift credits', () => {
 });
 
 describe('the upload card on a narrow screen', () => {
-  it('stretches the switch across and leaves the dropzone as its Choose file button', () => {
-    const narrow = cardCss.slice(cardCss.indexOf('@media (max-width: 480px)'));
+  const narrow = cardCss.slice(cardCss.indexOf('@media (max-width: 480px)'));
 
+  it('stretches the switch across and leaves the dropzone as its Choose file button', () => {
     expect(narrow).toMatch(/\.modeSwitch\s*{\s*align-self: stretch;/);
     expect(narrow).toMatch(
       /\.dropIcon,\s*\.dropTitle,\s*\.dropBody\s*{\s*display: none;/
     );
     expect(narrow).toMatch(/\.dropzone \.chooseButton\s*{\s*width: 100%;/);
+  });
+
+  it('keeps each segment label on one line at phone width', () => {
+    expect(cardCss).toMatch(/\.modeOption\s*{[^}]*white-space: nowrap;/);
+    expect(narrow).toMatch(
+      /\.modeOption\s*{[^}]*padding: var\(--space-1\) var\(--space-2\);[^}]*font-size: var\(--text-xs\);/
+    );
   });
 });
 

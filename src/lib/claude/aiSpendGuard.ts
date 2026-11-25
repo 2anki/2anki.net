@@ -428,10 +428,12 @@ function giftHasHeadroom(gift: AiGiftBalance | null): gift is AiGiftBalance {
   return gift != null && gift.credits - reservedGiftCreditsFor(gift.giftId) > 0;
 }
 
-// A grant's seven days start at its first AI call. Only one write finds the
-// grant unused, so the clock starts and ai_gift_first_use is recorded once
-// per account, however many calls of the first conversion run together. A
-// failed write leaves the grant on the gift's own end, never longer.
+// A grant's seven days start at its first charged AI call: recordClaudeUsage
+// reports the charge, so an attempt that never reaches the model starts
+// nothing. Only one write finds the grant unused, so the clock starts and
+// ai_gift_first_use is recorded once per account, however many calls of the
+// first conversion run together. A failed write leaves the grant on the
+// gift's own end, never longer.
 async function startGiftClock(
   deps: AiBudgetDeps,
   subject: NormalizedSubject,
@@ -463,9 +465,14 @@ async function runOnGift<T>(
   run: () => Promise<T>
 ): Promise<T> {
   reserveInflightGiftCredits(gift.giftId, AI_GIFT_RESERVED_CREDITS_PER_CALL);
+  let charged = false;
+  const onCharged = () => {
+    if (charged) return;
+    charged = true;
+    void startGiftClock(deps, subject, gift, deps.now?.() ?? now);
+  };
   try {
-    await startGiftClock(deps, subject, gift, now);
-    return await runOnGiftCredits(gift.giftId, run);
+    return await runOnGiftCredits(gift.giftId, run, onCharged);
   } finally {
     releaseInflightGiftCredits(gift.giftId, AI_GIFT_RESERVED_CREDITS_PER_CALL);
   }

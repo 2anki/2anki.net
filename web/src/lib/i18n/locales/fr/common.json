@@ -56,8 +56,8 @@
   "home": {
     "hero": {
       "headline": "Des cartes qui fonctionnent dans Anki",
-      "subtitle": "Dépose une page Notion et récupère un paquet que tu n'auras pas à corriger — cloze propre, cartes atomiques, les bons types de notes. PDF, Quizlet, Markdown, HTML et CSV aussi.",
-      "aiBadgeIntro": "Des cartes propres, prêtes à étudier — cloze propre, recto et verso atomiques, pas de verso vide. Tu préfères des brouillons par IA ?",
+      "subtitle": "Dépose une page Notion et récupère un paquet que tu n'auras pas à corriger: cloze propre, cartes atomiques, les bons types de notes. PDF, Quizlet, Markdown, HTML et CSV aussi.",
+      "aiBadgeIntro": "Des cartes propres, prêtes à étudier: cloze propre, recto et verso atomiques, pas de verso vide. Tu préfères des brouillons par IA ?",
       "createAccount": "Créer un compte",
       "cardOptions": "Options de carte",
       "nativeApps": "Aussi sur iPhone, iPad et Mac →",
@@ -352,7 +352,7 @@
     },
     "page": {
       "title": "Convertis tes notes",
-      "subtitle": "Dépose un fichier et récupère un paquet que tu n'auras pas à corriger — cloze propre, cartes atomiques, les bons types de notes. Notion, PDF, Markdown, HTML, Word et CSV aussi.",
+      "subtitle": "Dépose un fichier et récupère un paquet que tu n'auras pas à corriger: cloze propre, cartes atomiques, les bons types de notes. Notion, PDF, Markdown, HTML, Word et CSV aussi.",
       "reattachPrefix": "Rattache",
       "reattachSuffix": "pour convertir",
       "aiOn": "L'IA est activée",

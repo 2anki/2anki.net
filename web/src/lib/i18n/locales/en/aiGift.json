@@ -31,16 +31,20 @@
     "signupLead": "Create a free account and Claude makes this deck. Your file stays right here.",
     "footnoteSignedOut_one": "Free account needed · {{count}} credit, about 3 decks",
     "footnoteSignedOut_other": "Free account needed · {{count}} credits, about 3 decks",
-    "footnoteSignedIn_one": "{{count}} free credit, about 3 decks",
-    "footnoteSignedIn_other": "{{count}} free credits, about 3 decks"
+    "notKept": "This browser can't keep your file while you sign up. Create your account, then drop the file again.",
+    "footnoteSignedIn_one": "{{count}} free credit left",
+    "footnoteSignedIn_other": "{{count}} free credits left"
   },
   "convert": {
     "toggle": "Improve with Claude (uses credits)",
-    "estimate_one": "About {{count}} credit, {{left}} left",
-    "estimate_other": "About {{count}} credits, {{left}} left",
-    "over_one": "About {{count}} credit, more than the {{left}} you have left. Claude stops when they run out.",
-    "over_other": "About {{count}} credits, more than the {{left}} you have left. Claude stops when they run out.",
-    "convert": "Make my deck"
+    "convert": "Make my deck",
+    "left_one": "{{count}} credit left.",
+    "left_other": "{{count}} credits left.",
+    "estimate_one": "About {{count}} credit, {{left}} left.",
+    "estimate_other": "About {{count}} credits, {{left}} left.",
+    "over_one": "About {{count}} credit, more than the {{left}} you have left.",
+    "over_other": "About {{count}} credits, more than the {{left}} you have left.",
+    "stops": "Claude stops when your credits run out."
   },
   "pill": {
     "credits_one": "{{count}} credit",
@@ -48,5 +52,8 @@
     "until": "Free AI credits, valid until {{date}}",
     "fromFirstUse_one": "Free AI credits, valid {{count}} day from your first AI deck and until {{date}} at the latest",
     "fromFirstUse_other": "Free AI credits, valid {{count}} days from your first AI deck and until {{date}} at the latest"
-  }
+  },
+  "inUseNow": "A conversion is using your free AI credits right now.",
+  "fewCardsLeft_one": "You have {{count}} card left this month, too few for a Claude deck. Your next file gets cards from its structure.",
+  "fewCardsLeft_other": "You have {{count}} cards left this month, too few for a Claude deck. Your next file gets cards from its structure."
 }
