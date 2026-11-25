@@ -1,6 +1,7 @@
 import mammoth from 'mammoth';
 
 import { convertDocxToHTML } from './convertDocxToHTML';
+import { convertLongDocxToHTML } from './convertLongDocxToHTML';
 import { DOCX_BODY_CHUNK_BYTES, splitDocxBody } from './docxBodyChunks';
 import { preprocessDocxHTML } from './preprocessDocxHTML';
 import {
@@ -94,9 +95,16 @@ describe('convertDocxToHTML output', () => {
       { styleMap: ['strike => del'] }
     );
 
-    const html = await convertDocxToHTML(docx);
+    const html = await convertLongDocxToHTML(docx, figureSink);
 
     expect(html).toBe(preprocessDocxHTML(whole.value));
+    expect(await convertDocxToHTML(docx, figureSink)).toBe(html);
     expect(html).toContain('id="footnote-ref-2151">[44]</a>');
   }, 60000);
+
+  it('converts short study notes on the worker path to the same HTML as before', async () => {
+    expect(await convertLongDocxToHTML(studyNotes(), figureSink)).toBe(
+      STUDY_NOTES_HTML
+    );
+  });
 });

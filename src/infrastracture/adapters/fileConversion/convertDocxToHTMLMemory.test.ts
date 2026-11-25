@@ -96,8 +96,8 @@ describe('convertDocxToHTML memory', () => {
         128,
         `
         const fs = require('fs');
-        const { convertDocxToHTML } = require(${JSON.stringify(path.join(__dirname, 'convertDocxToHTML.ts'))});
-        convertDocxToHTML(fs.readFileSync(${JSON.stringify(docxPath)})).then(() => process.stdout.write('CONVERTED'));
+        const { convertLongDocxToHTML } = require(${JSON.stringify(path.join(__dirname, 'convertLongDocxToHTML.ts'))});
+        convertLongDocxToHTML(fs.readFileSync(${JSON.stringify(docxPath)}), { write: () => 'figure.png' }).then(() => process.stdout.write('CONVERTED'));
       `
       );
     };

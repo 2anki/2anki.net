@@ -98,6 +98,7 @@ export class XmlTagReader {
     const xml = this.xml;
     const stop = this.kind === 'empty' ? this.end - 1 : this.end;
     let at = this.nameEnd;
+    const seen = new Set<string>();
     for (;;) {
       while (at < stop && isSpace(xml.charCodeAt(at))) at += 1;
       if (at >= stop) return;
@@ -125,6 +126,8 @@ export class XmlTagReader {
       if (valueEnd === -1 || valueEnd >= stop) throw new UnreadableDocument();
       const value = xml.slice(at + 1, valueEnd);
       if (value.includes('<')) throw new UnreadableDocument();
+      if (seen.has(attributeName)) throw new UnreadableDocument();
+      seen.add(attributeName);
       visit(attributeName, value);
       at = valueEnd + 1;
       if (at < stop && !isSpace(xml.charCodeAt(at))) {

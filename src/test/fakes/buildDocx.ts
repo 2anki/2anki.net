@@ -22,6 +22,8 @@ export interface DocxParts {
   numberingTarget?: string;
   numberingXml?: string;
   documentRelationships?: string;
+  packageRelationships?: string;
+  extraParts?: Record<string, Uint8Array>;
 }
 
 function escapeXml(text: string): string {
@@ -136,7 +138,8 @@ export function buildDocx(parts: DocxParts): Buffer {
       '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>'
     ),
     '_rels/.rels': strToU8(
-      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${R_NS}/officeDocument" Target="word/document.xml"/></Relationships>`
+      parts.packageRelationships ??
+        `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${R_NS}/officeDocument" Target="word/document.xml"/></Relationships>`
     ),
     'word/_rels/document.xml.rels': strToU8(
       parts.documentRelationships ??
@@ -158,6 +161,9 @@ export function buildDocx(parts: DocxParts): Buffer {
   }
   for (const image of images) {
     files[`word/media/${image.id}.png`] = [image.bytes, { level: 0 }];
+  }
+  for (const [name, bytes] of Object.entries(parts.extraParts ?? {})) {
+    files[name] = bytes;
   }
   return Buffer.from(zipSync(files, { level: 6 }));
 }
