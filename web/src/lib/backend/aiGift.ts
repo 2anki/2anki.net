@@ -19,6 +19,8 @@ export type AiGiftStatus =
       feedbackDue: boolean;
       inUse?: boolean;
       minMonthlyCards?: number;
+      claudeByDefaultOnGift?: boolean | null;
+      monthlyCardsLeft?: number | null;
     };
 
 export type AiGiftRefusal =
@@ -87,6 +89,11 @@ export function parseAiGiftStatus(data: unknown): AiGiftStatus {
       feedbackDue,
       inUse: data.inUse === true,
       minMonthlyCards: optionalCount(data.minMonthlyCards),
+      claudeByDefaultOnGift:
+        typeof data.claudeByDefaultOnGift === 'boolean'
+          ? data.claudeByDefaultOnGift
+          : null,
+      monthlyCardsLeft: optionalCount(data.monthlyCardsLeft) ?? null,
     };
   }
   return { state: 'closed', feedbackDue };

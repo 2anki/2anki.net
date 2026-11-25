@@ -16,11 +16,6 @@ import {
   resetUploadEntryForTests,
 } from '../../lib/upload/uploadEntry';
 import { reportUploadZoneActivity } from '../../lib/upload/uploadZoneActivity';
-import {
-  claudeCardsSwitchedOn,
-  resetGiftClaudeSwitchForTests,
-  switchClaudeCardsOnForGift,
-} from '../../lib/data_layer/claudeCardsSwitch';
 
 const OPEN = {
   state: 'open',
@@ -32,6 +27,17 @@ const OPEN = {
   minMonthlyCards: 20,
 };
 
+const CLAIMED = {
+  state: 'claimed',
+  credits: 100,
+  expiresAt: '2026-11-27T12:00:00.000Z',
+  feedbackDue: false,
+  inUse: false,
+  minMonthlyCards: 20,
+  claudeByDefaultOnGift: true,
+  monthlyCardsLeft: 80,
+};
+
 const reply = (status: number, body: unknown) => ({
   ok: status >= 200 && status < 300,
   status,
@@ -39,16 +45,22 @@ const reply = (status: number, body: unknown) => ({
   json: async () => body,
 });
 
-function routeFetch(gift: unknown, claim?: ReturnType<typeof reply>) {
+function routeFetch(
+  gift: unknown,
+  claim?: ReturnType<typeof reply>,
+  afterClaim: unknown = CLAIMED
+) {
   const calls: Array<{ url: string; method: string }> = [];
+  let claimed = false;
   globalThis.fetch = vi.fn(async (url: string, init?: { method?: string }) => {
     const method = init?.method ?? 'GET';
     calls.push({ url: String(url), method });
     if (String(url).endsWith('/api/ai/gift/claim')) {
+      claimed = true;
       return claim ?? reply(200, {});
     }
     if (String(url).endsWith('/api/ai/gift')) {
-      return reply(200, gift);
+      return reply(200, claimed ? afterClaim : gift);
     }
     return reply(200, {});
   }) as unknown as typeof fetch;
@@ -60,19 +72,10 @@ function Where() {
   return <p data-testid="where">{location.pathname + location.search}</p>;
 }
 
-const CLAIMED = {
-  state: 'claimed',
-  credits: 100,
-  expiresAt: '2026-11-27T12:00:00.000Z',
-  feedbackDue: false,
-  inUse: false,
-  minMonthlyCards: 20,
-};
-
 const CLAIM_OK = () =>
   reply(200, { credits: 100, expiresAt: '2026-11-27T12:00:00.000Z' });
 
-const claudeCardsOn = () => localStorage.getItem('claude-ai-flashcards');
+const BALANCE = `100 free AI credits left until ${formatGiftDate('2026-11-27T12:00:00.000Z', 'en')}.`;
 
 const eventsNamed = (name: string) =>
   vi.mocked(track).mock.calls.filter(([event]) => event === name);
@@ -80,22 +83,19 @@ const eventsNamed = (name: string) =>
 function renderPresent(
   isLoggedIn: boolean,
   planCreditsFirst?: boolean,
-  giftPaysForClaude?: boolean,
-  cardsLeftThisMonth: number | null = 80,
-  accountId: number | undefined = isLoggedIn ? 7 : undefined
+  giftPaysForClaude?: boolean
 ) {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  const tree = (cardsLeft: number | null) => (
-    <QueryClientProvider client={queryClient}>
+  return render(
+    <QueryClientProvider
+      client={
+        new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      }
+    >
       <MemoryRouter initialEntries={['/downloads']}>
         <AiGiftPresent
           isLoggedIn={isLoggedIn}
           planCreditsFirst={planCreditsFirst}
           giftPaysForClaude={giftPaysForClaude}
-          cardsLeftThisMonth={cardsLeft}
-          accountId={accountId}
         />
         <Routes>
           <Route path="*" element={<Where />} />
@@ -103,11 +103,6 @@ function renderPresent(
       </MemoryRouter>
     </QueryClientProvider>
   );
-  const view = render(tree(cardsLeftThisMonth));
-  return {
-    ...view,
-    cardsCounted: (cardsLeft: number | null) => view.rerender(tree(cardsLeft)),
-  };
 }
 
 const trigger = () =>
@@ -118,7 +113,6 @@ beforeEach(async () => {
   localStorage.clear();
   forgetNoticesShownThisLoad();
   resetUploadEntryForTests();
-  resetGiftClaudeSwitchForTests();
   reportUploadZoneActivity('absent');
   vi.mocked(track).mockClear();
 });
@@ -197,20 +191,20 @@ describe('AiGiftPresent', () => {
     );
   });
 
-  test('claims by itself on return from sign-up and lands with Claude writing the next file', async () => {
+  test('claims by itself on return from sign-up and shows what the gift does next', async () => {
     const calls = routeFetch(OPEN, CLAIM_OK());
     rememberClaimIntent(Date.now());
 
     renderPresent(true, false, true);
 
-    const ready = await screen.findByText(
-      'Claude will write the cards for your next file.'
-    );
-    expect(ready).toHaveFocus();
+    expect(
+      await screen.findByText(
+        'Claude will write the cards for your next PDF or PowerPoint file.'
+      )
+    ).toBeInTheDocument();
     expect(
       calls.filter((c) => c.url.endsWith('/claim') && c.method === 'POST')
     ).toHaveLength(1);
-    expect(claudeCardsOn()).toBe('true');
     expect(
       screen.getByRole('button', { name: 'Choose a file' })
     ).toBeInTheDocument();
@@ -220,12 +214,9 @@ describe('AiGiftPresent', () => {
         { signed_in: true, trigger: 'return', automatic: true },
       ],
     ]);
-    expect(eventsNamed('ai_gift_claude_cards_enabled')).toEqual([
-      ['ai_gift_claude_cards_enabled', { via: 'return' }],
-    ]);
   });
 
-  test('claims on return for an account with a plan without switching Claude on', async () => {
+  test('claims on return for an account with a plan and points to the switch', async () => {
     const calls = routeFetch(OPEN, CLAIM_OK());
     rememberClaimIntent(Date.now());
 
@@ -237,101 +228,113 @@ describe('AiGiftPresent', () => {
     expect(
       calls.filter((c) => c.url.endsWith('/claim') && c.method === 'POST')
     ).toHaveLength(1);
-    expect(claudeCardsOn()).toBeNull();
-    expect(eventsNamed('ai_gift_claude_cards_enabled')).toEqual([]);
   });
 
-  test('claims for an account with no plan and switches Claude on for the next file', async () => {
-    const calls = routeFetch(OPEN, CLAIM_OK());
-    localStorage.setItem('claude-ai-flashcards', 'false');
+  test('claims for an account with no plan, stores nothing, and says Claude writes the next PDF', async () => {
+    routeFetch(OPEN, CLAIM_OK());
     renderPresent(true, false, true);
 
     fireEvent.click(await trigger());
     fireEvent.click(screen.getByRole('button', { name: 'Claim free credits' }));
 
-    const ready = await screen.findByText(
-      'Claude will write the cards for your next file.'
-    );
-    expect(ready).toHaveFocus();
-    expect(ready.closest('[aria-live="polite"]')).not.toBeNull();
-    expect(screen.getByRole('dialog')).toHaveTextContent(
-      `100 free AI credits left until ${formatGiftDate('2026-11-27T12:00:00.000Z', 'en')}.You can turn AI off on the upload page.`
-    );
-    expect(claudeCardsOn()).toBe('true');
-    expect(localStorage.getItem('ai-choice-at')).toMatch(/^\d+$/);
+    expect(await screen.findByText(BALANCE)).toHaveFocus();
     expect(
-      calls.filter((c) => c.url.endsWith('/claim') && c.method === 'POST')
-    ).toHaveLength(1);
+      await screen.findByText(
+        'Claude will write the cards for your next PDF or PowerPoint file.'
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toHaveTextContent(
+      'You can turn AI off on the upload page.'
+    );
+    expect(localStorage.getItem('claude-ai-flashcards')).toBeNull();
+    expect(localStorage.getItem('ai-choice-at')).toBeNull();
     expect(eventsNamed('ai_gift_claim_clicked')).toEqual([
       ['ai_gift_claim_clicked', { signed_in: true, trigger: 'click' }],
     ]);
-    expect(eventsNamed('ai_gift_claude_cards_enabled')).toEqual([
-      ['ai_gift_claude_cards_enabled', { via: 'claim' }],
-    ]);
   });
 
-  test('leaves the switch alone for an account whose plan credits pay first, and says where to turn it on', async () => {
-    routeFetch(OPEN, CLAIM_OK());
-    localStorage.setItem('claude-ai-flashcards', 'false');
-    renderPresent(true, true, false);
-
-    fireEvent.click(await trigger());
-    fireEvent.click(screen.getByRole('button', { name: 'Claim free credits' }));
-
-    expect(
-      await screen.findByText('You have 100 AI credits from the gift.')
-    ).toHaveFocus();
-    expect(screen.getByRole('dialog')).toHaveTextContent(
-      `They expire on ${formatGiftDate('2026-11-27T12:00:00.000Z', 'en')}.Your plan credits are used first.AI is off. Turn it on from the upload page to use them.`
-    );
-    expect(claudeCardsOn()).toBe('false');
-    expect(eventsNamed('ai_gift_claude_cards_enabled')).toEqual([]);
-  });
-
-  test('shows a plan account that AI is already on', async () => {
-    routeFetch(CLAIMED);
-    localStorage.setItem('claude-ai-flashcards', 'true');
-    renderPresent(true, true, false);
-
-    fireEvent.click(await trigger());
-
-    expect(
-      await screen.findByText('AI is on for your uploads.')
-    ).toBeInTheDocument();
-  });
-
-  test('does not switch Claude on when the account is not known to have no plan', async () => {
-    routeFetch(OPEN, CLAIM_OK());
-    renderPresent(true);
-
-    fireEvent.click(await trigger());
-    fireEvent.click(screen.getByRole('button', { name: 'Claim free credits' }));
-
-    expect(
-      await screen.findByText('You have 100 AI credits from the gift.')
-    ).toBeInTheDocument();
-    expect(claudeCardsOn()).toBeNull();
-  });
-
-  test('offers a gift-only account with AI off to turn it on, once', async () => {
-    routeFetch(CLAIMED);
-    localStorage.setItem('claude-ai-flashcards', 'false');
+  test('promises nothing until the status says what the gift will do', async () => {
+    routeFetch(OPEN, CLAIM_OK(), {
+      ...CLAIMED,
+      claudeByDefaultOnGift: null,
+      monthlyCardsLeft: null,
+    });
     renderPresent(true, false, true);
 
     fireEvent.click(await trigger());
-    expect(screen.getByRole('dialog')).toHaveTextContent(
-      'AI is off, so your next file gets cards from its structure.'
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'Turn AI on' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Claim free credits' }));
+
+    expect(await screen.findByText(BALANCE)).toBeInTheDocument();
+    expect(screen.queryByText(/Claude will write/)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Choose a file' })).toBeNull();
+  });
+
+  test('says honestly that the month has too few cards for a Claude deck', async () => {
+    routeFetch({
+      ...CLAIMED,
+      claudeByDefaultOnGift: false,
+      monthlyCardsLeft: 12,
+    });
+    renderPresent(true, false, true);
+
+    fireEvent.click(await trigger());
+
+    expect(
+      await screen.findByText(
+        'You have 12 cards left this month, too few for a Claude deck. Your next file gets cards from its structure.'
+      )
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Claude will write/)).toBeNull();
+  });
+
+  test('says AI is off for an account that turned it off for itself', async () => {
+    routeFetch({ ...CLAIMED, claudeByDefaultOnGift: false });
+    renderPresent(true, false, true);
+
+    fireEvent.click(await trigger());
+
+    expect(
+      await screen.findByText(
+        'AI is off. Turn it on from the upload page to use them.'
+      )
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Claude will write/)).toBeNull();
+  });
+
+  test('says Claude writes the next file of any kind when the account turned AI on itself', async () => {
+    routeFetch({ ...CLAIMED, claudeByDefaultOnGift: false });
+    localStorage.setItem('claude-ai-flashcards', 'true');
+    renderPresent(true, false, true);
+
+    fireEvent.click(await trigger());
 
     expect(
       await screen.findByText('Claude will write the cards for your next file.')
-    ).toHaveFocus();
-    expect(claudeCardsOn()).toBe('true');
-    expect(screen.queryByRole('button', { name: 'Turn AI on' })).toBeNull();
-    expect(eventsNamed('ai_gift_claude_cards_enabled')).toEqual([
-      ['ai_gift_claude_cards_enabled', { via: 'panel' }],
-    ]);
+    ).toBeInTheDocument();
+  });
+
+  test('tells an account with a plan whether AI is on, never what the gift turns on', async () => {
+    routeFetch(CLAIMED);
+    renderPresent(true, true, false);
+
+    fireEvent.click(await trigger());
+
+    expect(screen.getByRole('dialog')).toHaveTextContent(
+      'AI is off. Turn it on from the upload page to use them.'
+    );
+    expect(screen.queryByText(/Claude will write/)).toBeNull();
+  });
+
+  test('shows a signed-in visitor whose plan is unknown the balance and a pointer, never a promise', async () => {
+    routeFetch(CLAIMED);
+    renderPresent(true);
+
+    fireEvent.click(await trigger());
+
+    expect(
+      await screen.findByText('You have 100 AI credits from the gift.')
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Claude will write/)).toBeNull();
   });
 
   test.each([
@@ -341,7 +344,6 @@ describe('AiGiftPresent', () => {
     'Choose a file on a page whose upload zone is %s reaches the zone in place',
     async (activity, outcome, called) => {
       routeFetch(CLAIMED);
-      localStorage.setItem('claude-ai-flashcards', 'true');
       const zone = { openPicker: vi.fn(), showZone: vi.fn() };
       registerUploadEntry(zone);
       reportUploadZoneActivity(activity);
@@ -361,7 +363,6 @@ describe('AiGiftPresent', () => {
 
   test('Choose a file on a page without an upload zone goes to the upload page', async () => {
     routeFetch(CLAIMED);
-    localStorage.setItem('claude-ai-flashcards', 'true');
     renderPresent(true, false, true);
 
     fireEvent.click(await trigger());
@@ -385,68 +386,6 @@ describe('AiGiftPresent', () => {
     );
   });
 
-  test('says honestly that the month has too few cards for Claude, and leaves the switch off', async () => {
-    routeFetch(OPEN, CLAIM_OK());
-    localStorage.setItem('claude-ai-flashcards', 'false');
-    renderPresent(true, false, true, 12);
-
-    fireEvent.click(await trigger());
-    fireEvent.click(screen.getByRole('button', { name: 'Claim free credits' }));
-
-    expect(
-      await screen.findByText(
-        'You have 12 cards left this month, too few for a Claude deck. Your next file gets cards from its structure.'
-      )
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByText('Claude will write the cards for your next file.')
-    ).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Turn AI on' })).toBeNull();
-    expect(claudeCardsOn()).toBe('false');
-    expect(eventsNamed('ai_gift_claude_cards_enabled')).toEqual([]);
-  });
-
-  test('waits for the month’s card count before choosing a line or switching', async () => {
-    routeFetch(OPEN, CLAIM_OK());
-    const { cardsCounted } = renderPresent(true, false, true, null);
-
-    fireEvent.click(await trigger());
-    fireEvent.click(screen.getByRole('button', { name: 'Claim free credits' }));
-
-    expect(
-      await screen.findByText(
-        `100 free AI credits left until ${formatGiftDate('2026-11-27T12:00:00.000Z', 'en')}.`
-      )
-    ).toHaveFocus();
-    expect(screen.queryByText(/next file/)).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Choose a file' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Turn AI on' })).toBeNull();
-    expect(claudeCardsOn()).toBeNull();
-
-    cardsCounted(80);
-
-    expect(
-      await screen.findByText('Claude will write the cards for your next file.')
-    ).toHaveFocus();
-    expect(claudeCardsOn()).toBe('true');
-    expect(eventsNamed('ai_gift_claude_cards_enabled')).toEqual([
-      ['ai_gift_claude_cards_enabled', { via: 'claim' }],
-    ]);
-  });
-
-  test('binds the switch it turns on to the claiming account', async () => {
-    routeFetch(OPEN, CLAIM_OK());
-    renderPresent(true, false, true);
-
-    fireEvent.click(await trigger());
-    fireEvent.click(screen.getByRole('button', { name: 'Claim free credits' }));
-    await screen.findByText('Claude will write the cards for your next file.');
-
-    expect(
-      JSON.parse(localStorage.getItem('2anki-claude-cards-switched-by-gift')!)
-    ).toMatchObject({ userId: 7 });
-  });
-
   test('shows the whole after-claim panel at phone width', async () => {
     const narrow = vi.fn((query: string) => ({
       matches: false,
@@ -457,7 +396,6 @@ describe('AiGiftPresent', () => {
     vi.stubGlobal('matchMedia', narrow);
     vi.stubGlobal('innerWidth', 375);
     routeFetch(CLAIMED);
-    localStorage.setItem('claude-ai-flashcards', 'true');
     renderPresent(true, false, true);
 
     fireEvent.click(await trigger());
@@ -466,75 +404,13 @@ describe('AiGiftPresent', () => {
       name: 'Claude writes your flashcards, free',
     });
     expect(panel).toHaveTextContent(
-      'Claude will write the cards for your next file.'
+      'Claude will write the cards for your next PDF or PowerPoint file.'
     );
     expect(
       screen.getByRole('button', { name: 'Choose a file' })
     ).toBeInTheDocument();
     expect(narrow).toHaveBeenCalledWith('(min-width: 640px)');
     vi.unstubAllGlobals();
-  });
-
-  describe('the switch a claim turned on, on a later visit', () => {
-    const GIFT_MARK = '2anki-claude-cards-switched-by-gift';
-
-    beforeEach(() => {
-      localStorage.setItem('claude-ai-flashcards', 'false');
-      switchClaudeCardsOnForGift(7);
-      resetGiftClaudeSwitchForTests();
-    });
-
-    test('is dropped for a paying account that signs in on the same browser', async () => {
-      routeFetch({ state: 'closed', feedbackDue: false });
-      renderPresent(true, true, false, 80, 9);
-
-      await waitFor(() => expect(localStorage.getItem(GIFT_MARK)).toBeNull());
-      expect(claudeCardsOn()).toBe('false');
-    });
-
-    test('is dropped once the claimer pays for a plan', async () => {
-      routeFetch(CLAIMED);
-      renderPresent(true, true, false, 80, 7);
-
-      await waitFor(() => expect(localStorage.getItem(GIFT_MARK)).toBeNull());
-      expect(claudeCardsOn()).toBe('false');
-    });
-
-    test.each([
-      ['expired', { state: 'closed', feedbackDue: false }],
-      ['used up', { ...CLAIMED, credits: 0 }],
-    ])('is dropped once the claimer’s gift is %s', async (_case, gift) => {
-      routeFetch(gift);
-      renderPresent(true, false, true, 80, 7);
-
-      await waitFor(() => expect(localStorage.getItem(GIFT_MARK)).toBeNull());
-      expect(claudeCardsOn()).toBe('false');
-    });
-
-    test('holds for the claimer while the gift still pays', async () => {
-      routeFetch(CLAIMED);
-      renderPresent(true, false, true, 80, 7);
-
-      fireEvent.click(await trigger());
-
-      expect(
-        await screen.findByText(
-          'Claude will write the cards for your next file.'
-        )
-      ).toBeInTheDocument();
-      expect(claudeCardsSwitchedOn()).toBe(true);
-      expect(localStorage.getItem(GIFT_MARK)).not.toBeNull();
-    });
-
-    test('is not read as on for a signed-out visitor, and is kept for the claimer', async () => {
-      routeFetch(OPEN);
-      renderPresent(false);
-
-      await trigger();
-
-      expect(claudeCardsSwitchedOn()).toBe(false);
-      expect(localStorage.getItem(GIFT_MARK)).not.toBeNull();
-    });
   });
 
   test('tells an account with a plan allowance that its plan credits go first', async () => {
@@ -559,11 +435,7 @@ describe('AiGiftPresent', () => {
 
     fireEvent.click(await trigger());
 
-    expect(
-      await screen.findByText(
-        `100 free AI credits left until ${formatGiftDate('2026-11-27T12:00:00.000Z', 'en')}.`
-      )
-    ).toBeInTheDocument();
+    expect(await screen.findByText(BALANCE)).toBeInTheDocument();
     expect(screen.queryByText('Your plan credits are used first.')).toBeNull();
   });
 

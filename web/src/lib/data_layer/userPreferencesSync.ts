@@ -1,9 +1,4 @@
 import i18n, { LANGUAGE_STORAGE_KEY } from '../i18n';
-import {
-  forgetGiftSwitchMark,
-  readGiftSwitchMark,
-  type GiftSwitchMark,
-} from './claudeCardsGiftMark';
 
 export const CARD_OPTION_KEYS = [
   'deckName',
@@ -66,15 +61,6 @@ export const CARD_OPTION_KEYS = [
   'share-files-for-debugging',
 ] as const;
 
-function ownValueBeforeTheGift(
-  mark: GiftSwitchMark,
-  key: string
-): string | null | undefined {
-  if (key === 'claude-ai-flashcards') return mark.previous;
-  if (key === 'ai-choice-at') return mark.previousChoiceAt;
-  return undefined;
-}
-
 const PREFERENCES_URL = '/api/users/me/preferences';
 const MIGRATE_URL = '/api/users/me/preferences/migrate';
 export const ANKI_WEB_ACK_KEY = 'ankify_anki_web_acknowledged';
@@ -95,11 +81,8 @@ export function cancelPendingSync(): void {
 
 function collectCardOptions(): Record<string, string> {
   const result: Record<string, string> = {};
-  const giftMark = readGiftSwitchMark();
   for (const key of CARD_OPTION_KEYS) {
-    const ownValue =
-      giftMark == null ? undefined : ownValueBeforeTheGift(giftMark, key);
-    const value = ownValue === undefined ? localStorage.getItem(key) : ownValue;
+    const value = localStorage.getItem(key);
     if (value != null) {
       result[key] = value;
     }
@@ -186,9 +169,6 @@ export async function hydrateFromServer(): Promise<void> {
         if (typeof value === 'string') {
           localStorage.setItem(key, value);
         }
-      }
-      if (typeof cardOptions['claude-ai-flashcards'] === 'string') {
-        forgetGiftSwitchMark();
       }
     }
     if (typeof theme === 'string') {

@@ -15,7 +15,6 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import i18n from '../../lib/i18n';
 import { formatGiftDate } from '../../components/AiGift/AiGiftPresent';
 import { UploadPage } from './UploadPage';
-import { switchClaudeCardsOnForGift } from '../../lib/data_layer/claudeCardsSwitch';
 
 let startPassDeck: (() => void) | undefined;
 vi.mock('./components/UploadForm/UploadForm', () => ({
@@ -516,28 +515,50 @@ describe('UploadPage Claude cards on by default for PDFs and PowerPoint', () => 
     fakeGift = null;
   });
 
-  it('shows AI on, with the switch to turn it off, as soon as a gift claim switches it on', () => {
+  it('shows AI on for PDF and PowerPoint when the gift turns Claude on by default, with the switch to turn it off', () => {
     fakeLocals = { patreon: false, subscriber: false };
     fakeGift = {
       state: 'claimed',
       credits: 100,
       expiresAt: '2026-11-27T12:00:00.000Z',
       feedbackDue: false,
+      claudeByDefaultOnGift: true,
+      monthlyCardsLeft: 80,
     };
-    globalThis.localStorage.setItem('claude-ai-flashcards', 'false');
     renderPage();
-    expect(
-      screen.getByRole('button', { name: /turn ai on/i })
-    ).toHaveTextContent('AI is off');
-
-    act(() => switchClaudeCardsOnForGift(8));
 
     const toggle = screen.getByRole('button', { name: /turn ai off/i });
-    expect(toggle).toHaveTextContent('AI is on');
+    expect(toggle).toHaveTextContent('AI is on for PDF and PowerPoint');
+    expect(
+      screen.getByText(/Your free AI credits pay for Claude cards/)
+    ).toBeInTheDocument();
+
     fireEvent.click(toggle);
+
     expect(globalThis.localStorage.getItem('claude-ai-flashcards')).toBe(
       'false'
     );
+    expect(
+      screen.getByRole('button', { name: /turn ai on/i })
+    ).toHaveTextContent('AI is off');
+    fakeGift = null;
+  });
+
+  it('keeps the gift switch off for an account whose gift does not turn Claude on by default', () => {
+    fakeLocals = { patreon: false, subscriber: false };
+    fakeGift = {
+      state: 'claimed',
+      credits: 100,
+      expiresAt: '2026-11-27T12:00:00.000Z',
+      feedbackDue: false,
+      claudeByDefaultOnGift: false,
+      monthlyCardsLeft: 80,
+    };
+    renderPage();
+
+    expect(
+      screen.getByRole('button', { name: /turn ai on/i })
+    ).toHaveTextContent('AI is off');
     fakeGift = null;
   });
 

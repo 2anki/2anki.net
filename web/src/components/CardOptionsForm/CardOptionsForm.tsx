@@ -21,11 +21,7 @@ import { getLocalStorageBooleanValue } from '../../lib/data_layer/getLocalStorag
 import { getLocalStorageValue } from '../../lib/data_layer/getLocalStorageValue';
 import CardOption from '../../lib/data_layer/model/CardOption';
 import { saveValueInLocalStorage } from '../../lib/data_layer/saveValueInLocalStorage';
-import {
-  CLAUDE_CARDS_CHANGE_EVENT,
-  CLAUDE_CARDS_KEY,
-  claudeCardsSwitchedOn,
-} from '../../lib/data_layer/claudeCardsSwitch';
+import { useAiGiftFromHeader } from '../../lib/hooks/useAiGift';
 import {
   hasRecordedAiChoice,
   recordAiChoice,
@@ -537,10 +533,15 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
     const [aiChoiceRecorded, setAiChoiceRecorded] = useState(() =>
       hasRecordedAiChoice()
     );
+    const gift = useAiGiftFromHeader(isLoggedIn);
+    const giftTurnsClaudeOn =
+      gift?.state === 'claimed' && gift.claudeByDefaultOnGift === true;
     const claudeOnForPdfsByDefault =
       pageId == null &&
       !aiChoiceRecorded &&
-      userLocals?.claudeCardsByDefault === true &&
+      (isPaying
+        ? userLocals?.claudeCardsByDefault === true
+        : giftTurnsClaudeOn) &&
       checkboxValues['pdf-page-pairs'] !== true;
 
     useEffect(() => {
@@ -553,9 +554,6 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
           settings
         );
       });
-      if (!pageId && CLAUDE_CARDS_KEY in next) {
-        next[CLAUDE_CARDS_KEY] = claudeCardsSwitchedOn();
-      }
       if (
         claudeOnForPdfsByDefault &&
         next['pdf-page-pairs'] !== true &&
@@ -564,21 +562,7 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
         next['claude-ai-flashcards'] = true;
       }
       setCheckboxValues(next);
-    }, [options, settings, claudeOnForPdfsByDefault, pageId]);
-
-    useEffect(() => {
-      if (pageId) return;
-      const readSwitch = () => {
-        setCheckboxValues((prev) => ({
-          ...prev,
-          [CLAUDE_CARDS_KEY]: claudeCardsSwitchedOn(),
-        }));
-        setAiChoiceRecorded(hasRecordedAiChoice());
-      };
-      globalThis.addEventListener(CLAUDE_CARDS_CHANGE_EVENT, readSwitch);
-      return () =>
-        globalThis.removeEventListener(CLAUDE_CARDS_CHANGE_EVENT, readSwitch);
-    }, [pageId]);
+    }, [options, settings, claudeOnForPdfsByDefault]);
 
     useEffect(() => {
       if (!pageId) {
@@ -1291,7 +1275,11 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
                       {o.key === 'claude-ai-flashcards' &&
                         claudeOnForPdfsByDefault && (
                           <p className={fieldStyles.sectionHint}>
-                            {t('upload.page.aiOnForPdfsBody')}
+                            {t(
+                              isPaying
+                                ? 'upload.page.aiOnForPdfsBody'
+                                : 'upload.page.aiOnForPdfsGiftBody'
+                            )}
                           </p>
                         )}
                       {o.key === 'cherry' &&

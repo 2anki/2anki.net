@@ -8,7 +8,6 @@ import { track } from '../../lib/analytics/track';
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
 import { hasSessionHint } from '../../lib/sessionHint';
 import { saveValueInLocalStorage } from '../../lib/data_layer/saveValueInLocalStorage';
-import { claudeCardsSwitchedOn } from '../../lib/data_layer/claudeCardsSwitch';
 import { landingViewProps } from '../../lib/adClick';
 import { persistSignupOrigin } from '../../lib/signupOrigin';
 import { canonicalUrl } from '../../lib/seo/canonicalUrl';
@@ -155,7 +154,9 @@ function LandingPage({
   const showAiChoice = userLocalsLoading
     ? !hasSessionHint()
     : !isSignedIn && userLocals != null;
-  const [aiOn, setAiOn] = useState(claudeCardsSwitchedOn);
+  const [aiOn, setAiOn] = useState(
+    () => globalThis.localStorage?.getItem('claude-ai-flashcards') === 'true'
+  );
   const uploadAiOn = !userLocalsLoading && showAiChoice && aiOn;
   const chooseAi = (next: boolean) => {
     if (next === aiOn) return;

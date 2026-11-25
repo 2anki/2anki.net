@@ -23,21 +23,12 @@ import {
 import { useGiftAutoOpen } from './useGiftAutoOpen';
 import { useUploadZoneActivity } from '../../lib/upload/uploadZoneActivity';
 import { chooseUploadFile } from '../../lib/upload/uploadEntry';
-import {
-  bindGiftClaudeSwitch,
-  claudeCardsSwitchedOn,
-  switchClaudeCardsOnForGift,
-  useClaudeCardsSwitchedOn,
-  type GiftPaysForAccount,
-} from '../../lib/data_layer/claudeCardsSwitch';
-import { useActiveGiftBalance } from './useAiGiftBalanceLine';
 import sharedStyles from '../../styles/shared.module.css';
 import styles from './AiGiftPresent.module.css';
 
 const GIFT_RETURN_PATH = '/upload';
 
 type GiftOpenTrigger = 'auto' | 'click' | 'return';
-type ClaudeCardsSwitchedBy = 'claim' | 'return' | 'panel';
 type GiftDismissVia =
   | 'escape'
   | 'outside'
@@ -53,34 +44,34 @@ interface AiGiftPresentProps {
   labelFromWide?: boolean;
   planCreditsFirst?: boolean;
   giftPaysForClaude?: boolean;
-  cardsLeftThisMonth?: number | null;
-  accountId?: number | null;
 }
 
-type ClaudeCardRoom = 'room' | 'short' | 'unknown';
+type GiftClaudeState = 'unknown' | 'short' | 'on' | 'onForPdfs' | 'off';
 
-function claudeCardRoom(
-  cardsLeft: number | null,
-  minimum: number | undefined
-): ClaudeCardRoom {
-  if (cardsLeft == null || minimum == null) return 'unknown';
-  return cardsLeft >= minimum ? 'room' : 'short';
+const claudeSwitchedOnHere = (): boolean =>
+  globalThis.localStorage?.getItem('claude-ai-flashcards') === 'true';
+
+// What the gift will do for the next upload of an account with no plan, read
+// from the gift status, which applies the same rule as the upload: nothing is
+// promised until the status says the month has room and whether Claude is on
+// by default for PDF and PowerPoint uploads.
+function giftClaudeState(gift: ClaimedGift): GiftClaudeState {
+  const left = gift.monthlyCardsLeft;
+  const minimum = gift.minMonthlyCards;
+  if (left == null || minimum == null || gift.claudeByDefaultOnGift == null) {
+    return 'unknown';
+  }
+  if (left < minimum) return 'short';
+  if (claudeSwitchedOnHere()) return 'on';
+  return gift.claudeByDefaultOnGift ? 'onForPdfs' : 'off';
 }
 
-function switchOnForGift(via: ClaudeCardsSwitchedBy, claimerId: number): void {
-  if (claudeCardsSwitchedOn()) return;
-  switchClaudeCardsOnForGift(claimerId);
-  track('ai_gift_claude_cards_enabled', { via });
-}
-
-function giftPaysForAccount(
-  giftLoaded: boolean,
-  giftPaysForClaude: boolean,
-  balanceActive: boolean
-): GiftPaysForAccount {
-  if (!giftLoaded) return 'unknown';
-  return giftPaysForClaude && balanceActive;
-}
+const GIFT_CLAUDE_LINE: Record<Exclude<GiftClaudeState, 'unknown'>, string> = {
+  short: 'fewCardsLeft',
+  on: 'nextFile',
+  onForPdfs: 'nextPdf',
+  off: 'aiOffPlan',
+};
 
 const dateLocale = (language: string): string =>
   language.startsWith('en') ? 'en-GB' : language;
@@ -115,10 +106,7 @@ type ClaimedGift = Extract<AiGiftStatus, { state: 'claimed' }>;
 interface ClaimedBodyProps {
   gift: ClaimedGift;
   giftPaysForClaude: boolean;
-  room: ClaudeCardRoom;
-  cardsLeft: number | null;
   planCreditsFirst: boolean;
-  onTurnOn: () => void;
   onChooseFile: () => void;
   resultRef: RefCallback<HTMLParagraphElement>;
 }
@@ -126,16 +114,12 @@ interface ClaimedBodyProps {
 function ClaimedBody({
   gift,
   giftPaysForClaude,
-  room,
-  cardsLeft,
   planCreditsFirst,
-  onTurnOn,
   onChooseFile,
   resultRef,
 }: Readonly<ClaimedBodyProps>) {
   const { t } = useTranslation('aiGift');
   const language = useAppLanguage();
-  const claudeOn = useClaudeCardsSwitchedOn();
   const date = formatGiftDate(gift.expiresAt, language);
   const chooseFile = (
     <button type="button" className={styles.claimButton} onClick={onChooseFile}>
@@ -143,53 +127,22 @@ function ClaimedBody({
     </button>
   );
 
-  const balance = t('balanceAlone', { count: gift.credits, date });
-
-  if (giftPaysForClaude && room === 'unknown') {
-    return (
-      <p key="wait" ref={resultRef} tabIndex={-1} className={styles.text}>
-        {balance}
-      </p>
-    );
-  }
-
-  if (giftPaysForClaude && room === 'short') {
-    return (
-      <>
-        <p key="short" ref={resultRef} tabIndex={-1} className={styles.text}>
-          {balance}
-        </p>
-        <p className={styles.text}>
-          {t('fewCardsLeft', { count: cardsLeft ?? 0 })}
-        </p>
-        {chooseFile}
-      </>
-    );
-  }
-
-  if (giftPaysForClaude && claudeOn) {
-    return (
-      <>
-        <p key="next" ref={resultRef} tabIndex={-1} className={styles.text}>
-          {t('nextFile')}
-        </p>
-        <p className={styles.text}>{balance}</p>
-        <p className={styles.note}>{t('turnOffHint')}</p>
-        {chooseFile}
-      </>
-    );
-  }
-
   if (giftPaysForClaude) {
+    const state = giftClaudeState(gift);
     return (
       <>
-        <p key="off" ref={resultRef} tabIndex={-1} className={styles.text}>
-          {balance}
+        <p ref={resultRef} tabIndex={-1} className={styles.text}>
+          {t('balanceAlone', { count: gift.credits, date })}
         </p>
-        <p className={styles.text}>{t('aiOffNow')}</p>
-        <button type="button" className={styles.claimButton} onClick={onTurnOn}>
-          {t('common:upload.page.turnAiOn')}
-        </button>
+        {state !== 'unknown' && (
+          <p className={styles.text}>
+            {t(GIFT_CLAUDE_LINE[state], { count: gift.monthlyCardsLeft ?? 0 })}
+          </p>
+        )}
+        {(state === 'on' || state === 'onForPdfs') && (
+          <p className={styles.note}>{t('turnOffHint')}</p>
+        )}
+        {state !== 'unknown' && chooseFile}
       </>
     );
   }
@@ -201,7 +154,9 @@ function ClaimedBody({
       </p>
       <p className={styles.text}>{t('claimedExpires', { date })}</p>
       {planCreditsFirst && <p className={styles.note}>{t('planFirst')}</p>}
-      <p className={styles.note}>{claudeOn ? t('aiOnPlan') : t('aiOffPlan')}</p>
+      <p className={styles.note}>
+        {claudeSwitchedOnHere() ? t('aiOnPlan') : t('aiOffPlan')}
+      </p>
       {chooseFile}
     </>
   );
@@ -215,13 +170,10 @@ interface PanelBodyProps {
   onClaim: () => void;
   onSignUp: () => void;
   onSignIn: () => void;
-  onTurnOn: () => void;
   onChooseFile: () => void;
   resultRef: RefCallback<HTMLParagraphElement>;
   planCreditsFirst: boolean;
   giftPaysForClaude: boolean;
-  room: ClaudeCardRoom;
-  cardsLeft: number | null;
 }
 
 function PanelBody({
@@ -232,13 +184,10 @@ function PanelBody({
   onClaim,
   onSignUp,
   onSignIn,
-  onTurnOn,
   onChooseFile,
   resultRef,
   planCreditsFirst,
   giftPaysForClaude,
-  room,
-  cardsLeft,
 }: Readonly<PanelBodyProps>) {
   const { t } = useTranslation('aiGift');
   const language = useAppLanguage();
@@ -256,10 +205,7 @@ function PanelBody({
       <ClaimedBody
         gift={gift}
         giftPaysForClaude={giftPaysForClaude}
-        room={room}
-        cardsLeft={cardsLeft}
         planCreditsFirst={planCreditsFirst}
-        onTurnOn={onTurnOn}
         onChooseFile={onChooseFile}
         resultRef={resultRef}
       />
@@ -325,23 +271,10 @@ export function AiGiftPresent({
   className,
   labelFromWide = false,
   planCreditsFirst = false,
-  giftPaysForClaude: giftMayPay = false,
-  cardsLeftThisMonth = null,
-  accountId,
+  giftPaysForClaude = false,
 }: Readonly<AiGiftPresentProps>) {
   const { t } = useTranslation('aiGift');
   const gift = useAiGift(isLoggedIn);
-  const giftPaysForClaude = giftMayPay && accountId != null;
-  const giftBalanceActive = useActiveGiftBalance(gift) != null;
-  const giftLoaded = gift != null;
-  const sessionAccount = isLoggedIn ? accountId : null;
-  useEffect(() => {
-    if (sessionAccount === undefined) return;
-    bindGiftClaudeSwitch(
-      sessionAccount,
-      giftPaysForAccount(giftLoaded, giftPaysForClaude, giftBalanceActive)
-    );
-  }, [sessionAccount, giftLoaded, giftPaysForClaude, giftBalanceActive]);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const panelId = useId();
@@ -372,22 +305,6 @@ export function AiGiftPresent({
   const openedOnReturn = returnedToClaim && gift?.state === 'open';
   const open = openChoice ?? openedOnReturn;
 
-  const minMonthlyCards =
-    gift?.state === 'open' || gift?.state === 'claimed'
-      ? gift.minMonthlyCards
-      : undefined;
-  const room = claudeCardRoom(cardsLeftThisMonth, minMonthlyCards);
-  const [switchWaiting, setSwitchWaiting] =
-    useState<ClaudeCardsSwitchedBy | null>(null);
-  useEffect(() => {
-    if (switchWaiting == null || room === 'unknown') return;
-    setSwitchWaiting(null);
-    if (room === 'room' && accountId != null) {
-      focusResultNext.current = true;
-      switchOnForGift(switchWaiting, accountId);
-    }
-  }, [switchWaiting, room, accountId]);
-
   const claim = async (automatic: boolean) => {
     track(
       'ai_gift_claim_clicked',
@@ -401,19 +318,17 @@ export function AiGiftPresent({
     setClaiming(false);
     if (result.ok) {
       focusResultNext.current = true;
-      if (giftPaysForClaude) setSwitchWaiting(automatic ? 'return' : 'claim');
       const claimed: AiGiftStatus = {
         state: 'claimed',
         credits: result.credits,
         expiresAt: result.expiresAt,
         feedbackDue: false,
-        inUse: false,
-        minMonthlyCards,
       };
       queryClient.setQueriesData<AiGiftStatus>(
         { queryKey: AI_GIFT_QUERY_KEY },
         () => claimed
       );
+      void queryClient.invalidateQueries({ queryKey: AI_GIFT_QUERY_KEY });
       return;
     }
     if (result.reason === 'gift_budget_full') {
@@ -535,11 +450,6 @@ export function AiGiftPresent({
     setOpen(true);
   };
 
-  const onTurnOn = () => {
-    focusResultNext.current = true;
-    if (accountId != null) switchOnForGift('panel', accountId);
-  };
-
   const onChooseFile = () => {
     const outcome = chooseUploadFile();
     track('ai_gift_choose_file_clicked', { outcome });
@@ -643,13 +553,10 @@ export function AiGiftPresent({
               onClaim={() => void claim(false)}
               onSignUp={() => leaveToAuth('/register')}
               onSignIn={() => leaveToAuth('/login')}
-              onTurnOn={onTurnOn}
               onChooseFile={onChooseFile}
               resultRef={resultRef}
               planCreditsFirst={planCreditsFirst}
               giftPaysForClaude={giftPaysForClaude}
-              room={room}
-              cardsLeft={cardsLeftThisMonth}
             />
           </div>
           {!dismissed && (

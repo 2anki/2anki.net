@@ -4,8 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { getAiCredits } from '../../lib/backend/getAiCredits';
-import { getCardUsage } from '../../lib/backend/getCardUsage';
-import { claimAiGift, getAiGift } from '../../lib/backend/aiGift';
+import { getAiGift } from '../../lib/backend/aiGift';
 import { TopBar } from './TopBar';
 
 vi.mock('../../lib/analytics/track', () => ({
@@ -27,15 +26,6 @@ vi.mock('../../lib/backend/getAiCredits', () => ({
 vi.mock('../../lib/backend/aiGift', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../lib/backend/aiGift')>()),
   getAiGift: vi.fn(),
-  claimAiGift: vi.fn(),
-}));
-
-vi.mock('../../lib/backend/getUserLocals', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../lib/backend/getUserLocals')>()),
-  getUserLocals: vi.fn().mockResolvedValue({
-    user: { id: 5 },
-    locals: { patreon: false, subscriber: false },
-  }),
 }));
 
 beforeEach(() => {
@@ -138,10 +128,7 @@ describe('TopBar gift panel spending order', () => {
       credits: 100,
       expiresAt: '2099-11-26T19:15:00.000Z',
       feedbackDue: false,
-      inUse: false,
-      minMonthlyCards: 20,
     });
-    localStorage.removeItem('claude-ai-flashcards');
   });
 
   const openGift = async () =>
@@ -163,7 +150,7 @@ describe('TopBar gift panel spending order', () => {
       'a free account',
       { patreon: false, subscriber: false },
       300,
-      'AI is off, so your next file gets cards from its structure.',
+      /100 free AI credits left until/,
     ],
     [
       'a paying account with no allowance',
@@ -185,67 +172,43 @@ describe('TopBar gift panel spending order', () => {
   );
 });
 
-describe('TopBar gift claim for an account with bought credits and no plan', () => {
-  beforeEach(() => {
+describe('TopBar gift panel for an account with no plan', () => {
+  const claimedWith = (fields: Record<string, unknown>) => {
     localStorage.clear();
     vi.mocked(getAiGift).mockResolvedValue({
-      state: 'open',
+      state: 'claimed',
       credits: 100,
-      expiresIfClaimedNow: '2099-11-27T12:00:00.000Z',
-      claimClosesAt: '2099-12-04T20:00:00.000Z',
+      expiresAt: '2099-11-26T19:15:00.000Z',
       feedbackDue: false,
-      lastsHours: 48,
+      inUse: false,
       minMonthlyCards: 20,
+      ...fields,
     });
-    vi.mocked(claimAiGift).mockResolvedValue({
-      ok: true,
-      credits: 100,
-      expiresAt: '2099-11-27T12:00:00.000Z',
-    });
-  });
+  };
 
-  it('switches Claude cards on, since the gift pays and the bought credits are left alone', async () => {
-    vi.mocked(getAiCredits).mockResolvedValue({
-      credits: 200,
-      used: 0,
-      allowance: 0,
-      usable: false,
-      windowEnd: null,
-      resets: 'period',
-    });
+  const openPanel = async () => {
     renderTopBar({ locals: { patreon: false, subscriber: false } });
-
     fireEvent.click(
       await screen.findByRole('button', { name: 'Free AI credits gift' })
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Claim free credits' }));
+    await screen.findByText(/100 free AI credits left until/);
+  };
+
+  it('promises Claude for the next PDF when the gift turns it on by default', async () => {
+    claimedWith({ claudeByDefaultOnGift: true, monthlyCardsLeft: 80 });
+    await openPanel();
 
     expect(
-      await screen.findByText('Claude will write the cards for your next file.')
+      screen.getByText(
+        'Claude will write the cards for your next PDF or PowerPoint file.'
+      )
     ).toBeInTheDocument();
-    expect(localStorage.getItem('claude-ai-flashcards')).toBe('true');
   });
 
-  it('promises nothing and switches nothing when the month’s card counts failed to load', async () => {
-    vi.mocked(getCardUsage).mockResolvedValue(null);
-    renderTopBar({ locals: { patreon: false, subscriber: false } });
+  it('promises nothing when the status could not read the month', async () => {
+    claimedWith({ claudeByDefaultOnGift: null, monthlyCardsLeft: null });
+    await openPanel();
 
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Free AI credits gift' })
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'Claim free credits' }));
-
-    expect(
-      await screen.findByText(/100 free AI credits left until/)
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByText('Claude will write the cards for your next file.')
-    ).toBeNull();
-    expect(localStorage.getItem('claude-ai-flashcards')).toBeNull();
-    vi.mocked(getCardUsage).mockResolvedValue({
-      cards_used: 23,
-      cards_limit: 100,
-      unlimited: false,
-    });
+    expect(screen.queryByText(/Claude will write/)).toBeNull();
   });
 });

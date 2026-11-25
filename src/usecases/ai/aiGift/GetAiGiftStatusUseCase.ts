@@ -13,6 +13,7 @@ import {
   giftExpiresAt,
 } from '../../../lib/claude/aiCredits/gift/giftTerms';
 import { giftMarkerHeld } from '../../../lib/claude/aiCredits/gift/giftConversionMarker';
+import { accountHasClaudeCardsByDefault } from '../../../lib/upload/claudeCardsDefault';
 import type { AiGiftDeps } from './aiGiftDeps';
 
 export type AiGiftStatus =
@@ -34,12 +35,49 @@ export type AiGiftStatus =
       feedbackDue: boolean;
       inUse: boolean;
       minMonthlyCards: number;
+      claudeByDefaultOnGift: boolean | null;
+      monthlyCardsLeft: number | null;
     };
 
 const CLOSED: AiGiftStatus = { state: 'closed', feedbackDue: false };
 
+const UNKNOWN_DEFAULT = { claudeByDefaultOnGift: null, monthlyCardsLeft: null };
+
 export class GetAiGiftStatusUseCase {
   constructor(private readonly deps: AiGiftDeps) {}
+
+  // The same rule an upload applies: the gift turns Claude cards on by
+  // default only while it would pay (credits left, no gift conversion running,
+  // the month's card minimum left) and the account never chose for itself.
+  // A failed read answers unknown, which the page shows as nothing promised.
+  private async claudeDefaultOnGift(
+    userId: number,
+    credits: number,
+    inUse: boolean
+  ): Promise<{
+    claudeByDefaultOnGift: boolean | null;
+    monthlyCardsLeft: number | null;
+  }> {
+    const readers = this.deps.claudeDefault;
+    if (readers == null) return UNKNOWN_DEFAULT;
+    try {
+      const monthlyCardsLeft = await readers.remainingMonthlyCards(userId);
+      const giftPays =
+        credits > 0 && !inUse && monthlyCardsLeft >= AI_GIFT_MIN_MONTHLY_CARDS;
+      const claudeByDefaultOnGift =
+        giftPays &&
+        (await accountHasClaudeCardsByDefault(
+          userId,
+          giftPays,
+          await readers.storedCardOptions(userId),
+          readers
+        ));
+      return { claudeByDefaultOnGift, monthlyCardsLeft };
+    } catch (error) {
+      console.warn('[ai-gift] Claude default read failed', error);
+      return UNKNOWN_DEFAULT;
+    }
+  }
 
   async execute(userId: number | null): Promise<AiGiftStatus> {
     if (!(await this.deps.isEnabled())) {
@@ -56,13 +94,16 @@ export class GetAiGiftStatusUseCase {
         );
         const feedbackDue = spendUsd > 0 && grant.feedbackAnsweredAt == null;
         if (giftIsActive(grant, now)) {
+          const credits = buildGiftBalance(grant, spendUsd).credits;
+          const inUse = giftMarkerHeld(userId, now.getTime());
           return {
             state: 'claimed',
-            credits: buildGiftBalance(grant, spendUsd).credits,
+            credits,
             expiresAt: grant.expiresAt,
             feedbackDue,
-            inUse: giftMarkerHeld(userId, now.getTime()),
+            inUse,
             minMonthlyCards: AI_GIFT_MIN_MONTHLY_CARDS,
+            ...(await this.claudeDefaultOnGift(userId, credits, inUse)),
           };
         }
         return { state: 'closed', feedbackDue };

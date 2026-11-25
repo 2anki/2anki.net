@@ -1,5 +1,4 @@
 import {
-  act,
   render,
   screen,
   fireEvent,
@@ -14,7 +13,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { CardOptionsForm } from './CardOptionsForm';
 import CardOptionModel from '../../lib/data_layer/model/CardOption';
 import { cancelPendingSync } from '../../lib/data_layer/userPreferencesSync';
-import { switchClaudeCardsOnForGift } from '../../lib/data_layer/claudeCardsSwitch';
 
 const mockResetUserCardOptions = vi.fn();
 const mockGetSettingsCardOptions = vi.fn();
@@ -910,40 +908,6 @@ describe('CardOptionsForm user instructions disclosure', () => {
   });
 });
 
-describe('CardOptionsForm while the gift switches Claude cards on', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    setUserLocalsPaying(false);
-    globalThis.localStorage.clear();
-    globalThis.localStorage.setItem('claude-ai-flashcards', 'false');
-    mockGetSettingsCardOptions.mockResolvedValue([
-      new CardOptionModel(
-        'claude-ai-flashcards',
-        'AI flashcards',
-        'Write the cards with Claude.',
-        false
-      ),
-    ]);
-  });
-
-  it('shows the switch on without a reload, and turning it off by hand still saves it', async () => {
-    renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
-    const checkbox = await screen.findByRole('checkbox', {
-      name: /Generate flashcards with Claude AI/,
-    });
-    expect(checkbox).not.toBeChecked();
-
-    act(() => switchClaudeCardsOnForGift(8));
-
-    expect(checkbox).toBeChecked();
-    fireEvent.click(checkbox);
-    expect(checkbox).not.toBeChecked();
-    expect(globalThis.localStorage.getItem('claude-ai-flashcards')).toBe(
-      'false'
-    );
-  });
-});
-
 describe('CardOptionsForm card style picker', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -1113,6 +1077,48 @@ describe('CardOptionsForm AI checkbox analytics', () => {
     expect(checkbox).not.toBeChecked();
     expect(localStorage.getItem('claude-ai-flashcards')).toBe('false');
     expect(localStorage.getItem('ai-choice-at')).toMatch(/^\d+$/);
+    expect(
+      screen.queryByText(/Claude writes them when you upload only PDF/)
+    ).toBeNull();
+  });
+
+  it('shows the gift’s PDF default as on, with the gift hint, for an account with no plan', async () => {
+    setUserLocalsPaying(false);
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    client.setQueryData(['aiGift', true], {
+      state: 'claimed',
+      credits: 100,
+      expiresAt: '2099-11-27T12:00:00.000Z',
+      feedbackDue: false,
+      claudeByDefaultOnGift: true,
+      monthlyCardsLeft: 80,
+    });
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <CardOptionsForm
+            pageId={null}
+            isLoggedIn
+            onReset={vi.fn()}
+            setError={vi.fn()}
+          />
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+
+    expect(await aiCheckbox()).toBeChecked();
+    expect(
+      screen.getByText(/Your free AI credits pay for Claude cards/)
+    ).toBeInTheDocument();
+  });
+
+  it('leaves the switch off for an account with no plan and no gift default, as before', async () => {
+    setUserLocalsPaying(false);
+    renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
+
+    expect(await aiCheckbox()).not.toBeChecked();
     expect(
       screen.queryByText(/Claude writes them when you upload only PDF/)
     ).toBeNull();

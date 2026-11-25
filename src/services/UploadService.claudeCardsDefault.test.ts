@@ -70,6 +70,11 @@ import {
 import { AI_CHOICE_AT_KEY } from '../lib/upload/claudeCardsDefault';
 import { getAiBudgetStatus } from '../lib/claude/aiSpendGuard';
 import { fakeUploadServiceDeps } from '../test/fakes/uploadServiceDeps';
+import type { UploadGiftModeDeps } from '../lib/claude/aiCredits/gift/uploadGiftMode';
+import {
+  resetGiftMarkers,
+  takeGiftMarker,
+} from '../lib/claude/aiCredits/gift/giftConversionMarker';
 
 const OWNER = 42;
 const PPTX_MIMETYPE =
@@ -119,6 +124,8 @@ interface Account {
   locals: Record<string, unknown>;
   stored?: Record<string, string> | null;
   latestToggle?: string | null;
+  gift?: () => UploadGiftModeDeps;
+  cardsUsed?: number;
 }
 
 const PAYING: Account = { locals: { owner: OWNER, subscriber: true } };
@@ -139,7 +146,7 @@ async function send(account: Account, file: Sent) {
       .fn()
       .mockResolvedValue(account.latestToggle ?? null),
     getCardUsage: vi.fn().mockResolvedValue({
-      cards_used: 0,
+      cards_used: account.cardsUsed ?? 0,
       month_started_at: new Date('2026-11-01T00:00:00Z'),
     }),
     incrementCardUsage: vi.fn().mockResolvedValue(1),
@@ -148,7 +155,9 @@ async function send(account: Account, file: Sent) {
     uploads(),
     jobs as unknown as JobRepository,
     users as unknown as UsersRepository,
-    ...fakeUploadServiceDeps()
+    ...fakeUploadServiceDeps(),
+    undefined,
+    account.gift
   );
   const buffer = Buffer.from('not a real document');
   const req = {
@@ -380,4 +389,140 @@ describe('uploads the Claude default does not reach', () => {
     expect(jobType).toBe('upload');
     expect(defaultAppliedEvents()).toEqual([]);
   }, 20_000);
+});
+
+describe('an account with no plan whose free AI gift pays uploads on the web', () => {
+  const warn = vi.spyOn(console, 'warn');
+  const error = vi.spyOn(console, 'error');
+  const grant = {
+    id: 3,
+    userId: OWNER,
+    credits: 100,
+    claimedAt: new Date('2026-11-25T10:00:00.000Z'),
+    expiresAt: new Date('2099-11-27T10:00:00.000Z'),
+  };
+  const giftReaders =
+    (options: { grant?: typeof grant | null; spendUsd?: number } = {}) =>
+    (): UploadGiftModeDeps => ({
+      isEnabled: async () => true,
+      findGrant: async () =>
+        options.grant === undefined ? grant : options.grant,
+      giftCostSince: async () => options.spendUsd ?? 0,
+      now: () => new Date('2026-11-25T12:00:00.000Z'),
+      planSpent: async () => false,
+    });
+  const GIFTED: Account = { locals: { owner: OWNER }, gift: giftReaders() };
+
+  beforeEach(() => {
+    resetGiftMarkers();
+    warn.mockImplementation(() => undefined);
+    error.mockImplementation(() => undefined);
+    vi.mocked(getAiBudgetStatus).mockClear();
+  });
+
+  afterEach(() => {
+    __resetFeatureFlagModuleForTests();
+    recordedEvents.length = 0;
+    resetGiftMarkers();
+  });
+
+  it('makes Claude cards from a PDF on the gift when the account never chose a setting', async () => {
+    const { status, jobType } = await send(GIFTED, { name: 'lecture.pdf' });
+
+    expect(status).toBe(202);
+    expect(jobType).toBe('claude');
+    expect(defaultAppliedEvents()).toEqual([
+      expect.objectContaining({
+        user_id: OWNER,
+        props: { format: 'pdf', reason: 'gift' },
+      }),
+    ]);
+  }, 20_000);
+
+  it('checks the gift alone, never a bought or plan balance, before applying it', async () => {
+    await send(GIFTED, { name: 'lecture.pdf' });
+
+    expect(vi.mocked(getAiBudgetStatus)).toHaveBeenCalledWith({
+      userId: OWNER,
+      aiGift: 'only',
+    });
+  }, 20_000);
+
+  it.each<[string, Account]>([
+    [
+      'the account recorded turning AI off',
+      {
+        ...GIFTED,
+        stored: {
+          'claude-ai-flashcards': 'false',
+          [AI_CHOICE_AT_KEY]: '1762300000',
+        },
+      },
+    ],
+    [
+      'the latest AI toggle the account made was off',
+      {
+        ...GIFTED,
+        stored: { 'claude-ai-flashcards': 'false' },
+        latestToggle: 'upload_ai_turned_off',
+      },
+    ],
+    [
+      'the gift expired',
+      {
+        ...GIFTED,
+        gift: giftReaders({
+          grant: { ...grant, expiresAt: new Date('2026-11-25T11:00:00.000Z') },
+        }),
+      },
+    ],
+    [
+      'the gift is used up',
+      { ...GIFTED, gift: giftReaders({ spendUsd: 100 }) },
+    ],
+    ['the month has fewer than 20 cards left', { ...GIFTED, cardsUsed: 81 }],
+    ['there is no gift', { ...GIFTED, gift: giftReaders({ grant: null }) }],
+  ])(
+    'keeps the parser and records no default when %s',
+    async (_case, account) => {
+      const { status, jobType } = await send(account, { name: 'lecture.pdf' });
+
+      expect(status).not.toBe(202);
+      expect(jobType).toBeNull();
+      expect(defaultAppliedEvents()).toEqual([]);
+    },
+    20_000
+  );
+
+  it('keeps the parser and records no default while another gift conversion runs', async () => {
+    takeGiftMarker(OWNER);
+
+    const { jobType } = await send(GIFTED, { name: 'lecture.pdf' });
+
+    expect(jobType).toBeNull();
+    expect(defaultAppliedEvents()).toEqual([]);
+  }, 20_000);
+
+  it.each<[string, Account, Sent]>([
+    [
+      'a PowerPoint sent through MCP',
+      { ...GIFTED, locals: { owner: OWNER, mcp_auth: true } },
+      { name: 'slides.pptx' },
+    ],
+    [
+      'a PowerPoint sent from the iOS app',
+      GIFTED,
+      { name: 'slides.pptx', body: { source: 'app' } },
+    ],
+  ])(
+    'leaves %s on the standard parser',
+    async (_case, account, file) => {
+      const { status, jobType } = await send(account, file);
+
+      expect(status).not.toBe(202);
+      expect(jobType).toBeNull();
+      expect(defaultAppliedEvents()).toEqual([]);
+    },
+    20_000
+  );
 });

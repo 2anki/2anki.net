@@ -96,8 +96,6 @@ import {
   useAiGiftFromHeader,
 } from '../../../../lib/hooks/useAiGift';
 import { useActiveGiftBalance } from '../../../../components/AiGift/useAiGiftBalanceLine';
-import { cardsLeftThisMonth } from '../../../../lib/limits/cardsLeftThisMonth';
-import { useCardCountsUnknown } from '../../../../lib/hooks/useCardCountsUnknown';
 import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
 import { fireAnalyticsEvent } from '../../../../lib/analytics/fireAnalyticsEvent';
 import { track } from '../../../../lib/analytics/track';
@@ -1698,8 +1696,6 @@ function UploadForm({
   const giftCanPay = isAuthenticated && !isPaying;
   const gift = useAiGiftFromHeader(isAuthenticated);
   const giftBalance = useActiveGiftBalance(giftCanPay ? gift : null);
-  const cardCountsUnknown = useCardCountsUnknown(userLocals?.user?.id);
-  const cardsLeft = cardsLeftThisMonth(cardCountsUnknown ? null : cardUsage);
   const giftRedoSlot =
     zoneState === 'success' &&
     giftCanPay &&
@@ -1713,8 +1709,8 @@ function UploadForm({
     gift?.state === 'claimed' &&
     gift.inUse !== true &&
     gift.minMonthlyCards != null &&
-    cardsLeft != null &&
-    cardsLeft >= gift.minMonthlyCards;
+    gift.monthlyCardsLeft != null &&
+    gift.monthlyCardsLeft >= gift.minMonthlyCards;
   const giftRedoOffered = giftRedoSlot && !keptFilesBelongElsewhere;
   const giftRedoDeck = giftRedoOffered ? (downloadLink ?? deckName) : null;
   useEffect(() => {

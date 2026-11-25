@@ -89,10 +89,7 @@ import {
   markThinDeckResume,
   thinDeckResumeMarked,
 } from '../ThinDeckAiOffer/thinDeckResume';
-import {
-  CARD_USAGE_QUERY_KEY,
-  useCardUsage,
-} from '../../../../lib/hooks/useCardUsage';
+import { useCardUsage } from '../../../../lib/hooks/useCardUsage';
 import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
 import { track } from '../../../../lib/analytics/track';
 import { reportClientError } from '../../../../lib/reportClientError';
@@ -1837,6 +1834,8 @@ describe('UploadForm Google Drive picker interaction', () => {
       feedbackDue: false,
       inUse: false,
       minMonthlyCards: 20,
+      claudeByDefaultOnGift: true,
+      monthlyCardsLeft: 80,
     });
     try {
       const { container } = render(
@@ -12682,6 +12681,8 @@ describe('UploadForm deck result and resends of kept files', () => {
       feedbackDue: false,
       inUse: false,
       minMonthlyCards: 20,
+      claudeByDefaultOnGift: true,
+      monthlyCardsLeft: 80,
     };
     const cardsLeft = (left: number) => ({
       cards_used: 100 - left,
@@ -12883,9 +12884,10 @@ describe('UploadForm deck result and resends of kept files', () => {
     it('offers no remake when the month’s card counts failed to load', async () => {
       mockUseCardUsage.mockReturnValue(cardsLeft(100));
       stubServer([deckResponse(64)]);
-      const { container, queryClient } = renderWithHeaderGift(activeGift);
-      act(() => {
-        queryClient.setQueryData([...CARD_USAGE_QUERY_KEY, 8], null);
+      const { container } = renderWithHeaderGift({
+        ...activeGift,
+        claudeByDefaultOnGift: null,
+        monthlyCardsLeft: null,
       });
       await submitFiles(container, ['notes.pdf']);
 
@@ -12947,9 +12949,12 @@ describe('UploadForm deck result and resends of kept files', () => {
     });
 
     it('offers nothing when the month has too few cards left for Claude to run on the gift', async () => {
-      mockUseCardUsage.mockReturnValue(cardsLeft(19));
       stubServer([deckResponse(64)]);
-      const { container } = renderWithHeaderGift(activeGift);
+      const { container } = renderWithHeaderGift({
+        ...activeGift,
+        claudeByDefaultOnGift: false,
+        monthlyCardsLeft: 19,
+      });
       await submitFiles(container, ['notes.pdf']);
 
       await screen.findAllByText('Your deck is ready — 64 cards.');

@@ -29,9 +29,17 @@ const OPENING = new Date('2026-11-25T12:00:00.000Z');
 const CLAIMS_THAT_FIT =
   AI_GIFT_TOTAL_BUDGET_CREDITS / AI_GIFT_CREDITS_PER_CLAIM;
 
+interface ClaudeDefaultFixture {
+  cardsLeft: number;
+  stored: Record<string, string> | null;
+  latestToggle: string | null;
+  fails?: boolean;
+}
+
 interface Harness {
   url: string;
   gifts: InMemoryAiCreditGiftsRepository;
+  claudeDefault: ClaudeDefaultFixture;
   setNow: (date: Date) => void;
   setEnabled: (enabled: boolean) => void;
   close: () => Promise<void>;
@@ -45,12 +53,25 @@ async function startHarness(): Promise<Harness> {
     (at) => gifts.exposureCredits(at),
     () => 0
   );
+  const claudeDefault: ClaudeDefaultFixture = {
+    cardsLeft: 90,
+    stored: null,
+    latestToggle: null,
+  };
   const deps: AiGiftDeps = {
     gifts,
     isEnabled: async () => enabled,
     exposureCredits: (at) => gifts.exposureCredits(at),
     forgetExposure: exposure.forget,
     now: () => now,
+    claudeDefault: {
+      remainingMonthlyCards: async () => {
+        if (claudeDefault.fails) throw new Error('db down');
+        return claudeDefault.cardsLeft;
+      },
+      storedCardOptions: async () => claudeDefault.stored,
+      latestAiToggleEventName: async () => claudeDefault.latestToggle,
+    },
   };
   const signedIn: express.RequestHandler = (req, res, next) => {
     const user = req.header('x-test-user');
@@ -77,6 +98,7 @@ async function startHarness(): Promise<Harness> {
   return {
     url: `http://127.0.0.1:${(server.address() as AddressInfo).port}`,
     gifts,
+    claudeDefault,
     setNow: (date) => {
       now = date;
     },
@@ -219,6 +241,8 @@ describe('POST /api/ai/gift/claim', () => {
       feedbackDue: false,
       inUse: false,
       minMonthlyCards: 20,
+      claudeByDefaultOnGift: true,
+      monthlyCardsLeft: 90,
     });
     expect(eventsNamed('ai_gift_claimed')).toEqual([
       [
@@ -387,6 +411,57 @@ describe('the gift budget', () => {
   });
 });
 
+describe('whether the gift turns Claude cards on by default', () => {
+  beforeEach(async () => {
+    await claim(h, 5);
+  });
+
+  const defaultOn = async () => (await getGift(h, 5)).body;
+
+  it('is on for an account that never chose, with room in the month', async () => {
+    expect(await defaultOn()).toMatchObject({
+      claudeByDefaultOnGift: true,
+      monthlyCardsLeft: 90,
+    });
+  });
+
+  it('is off once the account recorded its own choice', async () => {
+    h.claudeDefault.latestToggle = 'upload_ai_turned_off';
+
+    expect((await defaultOn()).claudeByDefaultOnGift).toBe(false);
+  });
+
+  it('is off, with the count, when the month has too few cards left', async () => {
+    h.claudeDefault.cardsLeft = 12;
+
+    expect(await defaultOn()).toMatchObject({
+      claudeByDefaultOnGift: false,
+      monthlyCardsLeft: 12,
+    });
+  });
+
+  it('is off while a gift conversion runs', async () => {
+    takeGiftMarker(5, OPENING.getTime());
+
+    expect((await defaultOn()).claudeByDefaultOnGift).toBe(false);
+  });
+
+  it('is off once the gift is used up', async () => {
+    h.gifts.spend.push({ giftId: 1, userId: 5, costUsd: 5, at: OPENING });
+
+    expect((await defaultOn()).claudeByDefaultOnGift).toBe(false);
+  });
+
+  it('is unknown, never on, when the counts cannot be read', async () => {
+    h.claudeDefault.fails = true;
+
+    expect(await defaultOn()).toMatchObject({
+      claudeByDefaultOnGift: null,
+      monthlyCardsLeft: null,
+    });
+  });
+});
+
 describe('the one question after a gift-funded conversion', () => {
   beforeEach(async () => {
     await claim(h, 5);
@@ -406,6 +481,8 @@ describe('the one question after a gift-funded conversion', () => {
       feedbackDue: true,
       inUse: false,
       minMonthlyCards: 20,
+      claudeByDefaultOnGift: true,
+      monthlyCardsLeft: 90,
     });
   });
 

@@ -1,4 +1,3 @@
-import { forgetGiftSwitchMark } from './claudeCardsGiftMark';
 import { scheduleSync } from './userPreferencesSync';
 
 export const saveValueInLocalStorage = (
@@ -8,9 +7,6 @@ export const saveValueInLocalStorage = (
 ) => {
   if (pageId) {
     return;
-  }
-  if (key === 'claude-ai-flashcards') {
-    forgetGiftSwitchMark();
   }
   localStorage.setItem(key, value);
   scheduleSync();

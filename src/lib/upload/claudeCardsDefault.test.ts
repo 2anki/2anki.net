@@ -145,6 +145,86 @@ describe('claudeCardsByDefault', () => {
   });
 });
 
+describe('claudeCardsByDefault for an account the free AI gift pays for', () => {
+  const giftPays = (pays: boolean) => vi.fn().mockResolvedValue(pays);
+  const giftPdf = (
+    overrides: Partial<ClaudeDefaultCandidate> = {}
+  ): ClaudeDefaultCandidate =>
+    paidPdf({ paying: false, giftPays: giftPays(true), ...overrides });
+
+  it('turns Claude on for a PDF when the gift pays and the account never chose', async () => {
+    expect(await claudeCardsByDefault(giftPdf(), NO_HISTORY)).toBe(true);
+  });
+
+  it('keeps AI off when the gift would not pay for this upload', async () => {
+    expect(
+      await claudeCardsByDefault(
+        giftPdf({ giftPays: giftPays(false) }),
+        NO_HISTORY
+      )
+    ).toBe(false);
+  });
+
+  it('keeps AI off when the gift read fails', async () => {
+    expect(
+      await claudeCardsByDefault(
+        giftPdf({ giftPays: vi.fn().mockRejectedValue(new Error('db')) }),
+        NO_HISTORY
+      )
+    ).toBe(false);
+  });
+
+  it('keeps an off the account recorded, even with a paying gift', async () => {
+    expect(
+      await claudeCardsByDefault(giftPdf(), historyOf('upload_ai_turned_off'))
+    ).toBe(false);
+    expect(
+      await claudeCardsByDefault(
+        giftPdf({ options: { [AI_CHOICE_AT_KEY]: '1762300000' } }),
+        NO_HISTORY
+      )
+    ).toBe(false);
+  });
+
+  it('leaves an upload the account already turned AI on for alone', async () => {
+    expect(
+      await claudeCardsByDefault(
+        giftPdf({ options: { 'claude-ai-flashcards': 'true' } }),
+        NO_HISTORY
+      )
+    ).toBe(false);
+  });
+
+  it.each<[string, Partial<ClaudeDefaultCandidate>]>([
+    ['an MCP caller', { entry: 'mcp' }],
+    ['the iOS app', { entry: 'app' }],
+    ['a markdown upload', { fileNames: ['notes.md'] }],
+    ['a signed-out visitor', { ownerId: null }],
+  ])(
+    'leaves %s unchanged, without reading the gift',
+    async (_label, overrides) => {
+      const gift = giftPays(true);
+
+      expect(
+        await claudeCardsByDefault(
+          giftPdf({ ...overrides, giftPays: gift }),
+          NO_HISTORY
+        )
+      ).toBe(false);
+      expect(gift).not.toHaveBeenCalled();
+    }
+  );
+
+  it('never reads the gift for a paying account', async () => {
+    const gift = giftPays(false);
+
+    expect(
+      await claudeCardsByDefault(paidPdf({ giftPays: gift }), NO_HISTORY)
+    ).toBe(true);
+    expect(gift).not.toHaveBeenCalled();
+  });
+});
+
 describe('accountHasClaudeCardsByDefault', () => {
   it('is on for a paying account with nothing stored', async () => {
     expect(

@@ -69,6 +69,8 @@ export class AiGiftController {
           feedbackDue: result.feedbackDue,
           inUse: result.inUse,
           minMonthlyCards: result.minMonthlyCards,
+          claudeByDefaultOnGift: result.claudeByDefaultOnGift,
+          monthlyCardsLeft: result.monthlyCardsLeft,
         });
       case 'full':
         return res.json({ state: 'full', feedbackDue: false });

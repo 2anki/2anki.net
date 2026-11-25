@@ -10,6 +10,7 @@ import { getFeatureFlag } from '../lib/featureFlags/getFeatureFlag';
 import { AI_CREDITS_GIFT_FLAG } from '../lib/featureFlags/aiCreditsGift';
 import {
   cachedExposure,
+  createClaudeDefaultStatusReaders,
   type AiGiftDeps,
 } from '../usecases/ai/aiGift/aiGiftDeps';
 import { GetAiGiftStatusUseCase } from '../usecases/ai/aiGift/GetAiGiftStatusUseCase';
@@ -38,6 +39,7 @@ function productionDeps(): AiGiftDeps {
     exposureCredits: exposure.exposureCredits,
     forgetExposure: exposure.forget,
     now: () => new Date(),
+    claudeDefault: createClaudeDefaultStatusReaders(database),
   };
   return defaultDeps;
 }
@@ -61,7 +63,7 @@ const aiGiftRouter = (options: AiGiftRouterOptions = {}) => {
    * /api/ai/gift:
    *   get:
    *     summary: State of the free AI credits gift for this visitor
-   *     description: closed (switched off, ended, or this account's gift has expired), open (claimable), full (the gift budget is used for now) or claimed (this account's remaining gift credits and when they expire). feedbackDue is true once gift credits paid for a conversion and the account has not answered the one-question prompt. inUse (claimed only) is true while one of this account's conversions holds the gift. lastsHours (open only) is how long a claim made now lasts, left out when the gift's end cuts it short. minMonthlyCards is how many cards the month must have left for a gift-only upload to reach Claude.
+   *     description: closed (switched off, ended, or this account's gift has expired), open (claimable), full (the gift budget is used for now) or claimed (this account's remaining gift credits and when they expire). feedbackDue is true once gift credits paid for a conversion and the account has not answered the one-question prompt. inUse (claimed only) is true while one of this account's conversions holds the gift. lastsHours (open only) is how long a claim made now lasts, left out when the gift's end cuts it short. minMonthlyCards is how many cards the month must have left for a gift-only upload to reach Claude. claudeByDefaultOnGift (claimed only) is whether a PDF or PowerPoint upload would get Claude cards by default on the gift (null when unknown); monthlyCardsLeft is the month's cards left (null when unknown).
    *     tags: [AI]
    *     responses:
    *       200:
