@@ -21,6 +21,8 @@ interface HeldRecord {
 export interface HeldGiftFileStore {
   save(files: File[]): Promise<boolean>;
   take(): Promise<File[] | null>;
+  discard(): Promise<void>;
+  sweep(): Promise<void>;
 }
 
 export interface RecordStore {
@@ -115,6 +117,29 @@ export function createHeldGiftFileStore(
         return record.files.length > 0 ? record.files : null;
       } catch {
         return null;
+      }
+    },
+    // The person removed the file: it is gone from this device at once.
+    discard: async () => {
+      const tab = session();
+      const token = tab?.getItem(HELD_GIFT_SIGNUP_KEY) ?? null;
+      tab?.removeItem(HELD_GIFT_SIGNUP_KEY);
+      try {
+        const record = await records.get();
+        if (record != null && record.token === token) await records.remove();
+      } catch {
+        return;
+      }
+    },
+    // Any visit clears a file past its hour, signed in or not.
+    sweep: async () => {
+      try {
+        const record = await records.get();
+        if (record != null && now() - record.savedAt > HELD_GIFT_FILE_TTL_MS) {
+          await records.remove();
+        }
+      } catch {
+        return;
       }
     },
   };

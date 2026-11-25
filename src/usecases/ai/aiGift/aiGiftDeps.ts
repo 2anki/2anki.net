@@ -21,6 +21,7 @@ export interface AiGiftDeps {
   isEnabled: () => Promise<boolean>;
   exposureCredits: (now: Date) => Promise<number>;
   forgetExposure: () => void;
+  networkGrantCount: (ipHash: string, now: Date) => Promise<number>;
   now: () => Date;
   claudeDefault?: ClaudeDefaultStatusReaders;
 }
@@ -62,5 +63,26 @@ export function cachedExposure(
     forget: () => {
       cached = null;
     },
+  };
+}
+
+const NETWORK_CACHE_MAX_ENTRIES = 10_000;
+
+// The status read checks the hashed network on signed-out page views too, so
+// each network's count is kept briefly. A grant made meanwhile is still
+// checked under the lock; the offer may show for up to 30 seconds after a
+// network fills, never a grant past the limit.
+export function cachedNetworkGrantCount(
+  read: (ipHash: string, now: Date) => Promise<number>,
+  clock: () => number = () => Date.now()
+): (ipHash: string, now: Date) => Promise<number> {
+  const counts = new Map<string, { value: number; until: number }>();
+  return async (ipHash, now) => {
+    const held = counts.get(ipHash);
+    if (held != null && held.until > clock()) return held.value;
+    const value = await read(ipHash, now);
+    if (counts.size >= NETWORK_CACHE_MAX_ENTRIES) counts.clear();
+    counts.set(ipHash, { value, until: clock() + EXPOSURE_CACHE_MS });
+    return value;
   };
 }

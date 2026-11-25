@@ -28,7 +28,9 @@
     "signupLead": "無料アカウントを作成すると、Claude がこのデッキを作ります。ファイルはここに残ります。",
     "footnoteSignedOut_other": "無料アカウントが必要です · {{count}} クレジット、約 3 デッキ分",
     "notKept": "このブラウザでは、登録中にファイルを保持できません。アカウントを作成してから、もう一度ファイルをドロップしてください。",
-    "footnoteSignedIn_other": "無料クレジット残り {{count}}"
+    "footnoteSignedIn_other": "無料クレジット残り {{count}}",
+    "returnedLine": "このアップロードには無料 AI クレジットを使えないため、通常の方法で変換されます。",
+    "returnedConvert": "変換"
   },
   "convert": {
     "toggle": "Claude で改善する（クレジットを使います）",

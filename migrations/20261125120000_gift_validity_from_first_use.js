@@ -32,7 +32,8 @@ exports.up = async (knex) => {
             and created_at >= ?
           group by props->>'gift_id'
        ) s
-      where s.gift_id = g.id::text`,
+      where s.gift_id = g.id::text
+        and g.first_used_at is null`,
     [GIFT_TABLE_CREATED]
   );
   await knex.raw(

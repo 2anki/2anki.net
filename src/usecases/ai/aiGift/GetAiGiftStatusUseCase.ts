@@ -178,7 +178,7 @@ export class GetAiGiftStatusUseCase {
     now: Date
   ): Promise<boolean> {
     if (ipHash == null) return true;
-    const grants = await this.deps.gifts.networkGrantCount(ipHash, now);
+    const grants = await this.deps.networkGrantCount(ipHash, now);
     return grants < AI_GIFT_MAX_CLAIMS_PER_IP;
   }
 
@@ -226,19 +226,21 @@ export class GetAiGiftStatusUseCase {
         }
         return { state: 'closed', feedbackDue };
       }
-      if (paying) {
-        return CLOSED;
-      }
+    }
+    // A paying account, a signed-out pass holder included, pays for its AI
+    // through its plan or pass and is not offered a grant.
+    if (paying) {
+      return CLOSED;
     }
     if (!giftClaimsOpen(now)) {
       return CLOSED;
     }
     const exposure = await this.deps.exposureCredits(now);
-    // Only a signed-in account can hold credits, so the network count is read
-    // for it alone, never on a signed-out page view.
+    // A signed-out visitor on a network that used its grants would sign up
+    // to nothing, so the offer is withheld there too (the count is cached).
     if (
       !giftBudgetHasRoom(exposure) ||
-      (userId != null && !(await this.networkHasRoom(ipHash, now)))
+      !(await this.networkHasRoom(ipHash, now))
     ) {
       return { state: 'full', feedbackDue: false };
     }

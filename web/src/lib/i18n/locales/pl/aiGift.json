@@ -43,7 +43,9 @@
     "footnoteSignedIn_one": "Został {{count}} darmowy kredyt",
     "footnoteSignedIn_few": "Zostały {{count}} darmowe kredyty",
     "footnoteSignedIn_many": "Zostało {{count}} darmowych kredytów",
-    "footnoteSignedIn_other": "Zostało {{count}} darmowego kredytu"
+    "footnoteSignedIn_other": "Zostało {{count}} darmowego kredytu",
+    "returnedLine": "Darmowe kredyty AI nie są dostępne dla tego przesłania, więc zostanie przekonwertowane w zwykły sposób.",
+    "returnedConvert": "Konwertuj"
   },
   "convert": {
     "toggle": "Ulepsz z Claude (zużywa kredyty)",

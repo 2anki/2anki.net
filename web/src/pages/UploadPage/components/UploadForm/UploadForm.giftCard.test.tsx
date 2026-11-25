@@ -175,6 +175,35 @@ describe('UploadForm and the upload card', () => {
     }
   );
 
+  it('sends the same card options from a hand-off as from choosing the file on the form', async () => {
+    globalThis.localStorage.setItem('font-size', '24');
+    globalThis.localStorage.setItem('user-instructions', 'Keep answers short');
+    const { container, unmount } = renderForm();
+    await waitFor(() =>
+      expect(vi.mocked(fetch).mock.calls.map(([url]) => String(url))).toEqual(
+        expect.arrayContaining([expect.stringContaining('users/debug/locals')])
+      )
+    );
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    chooseFile(container, 'notes.txt');
+    await waitFor(() => expect(sent).toHaveLength(1));
+    unmount();
+    const notes = new File(['Some notes about cells'], 'notes.txt', {
+      type: 'text/plain',
+    });
+
+    renderForm({ state: giftHandoffState({ files: [notes], claude: null }) });
+
+    await waitFor(() => expect(sent).toHaveLength(2));
+    const fields = (body: FormData) =>
+      Array.from(body.entries())
+        .filter(([key]) => key !== 'pakker')
+        .map(([key, value]) => [key, String(value)]);
+    expect(fields(sent[1])).toEqual(fields(sent[0]));
+    expect(sent[1].get('font-size')).toBe('24');
+    globalThis.localStorage.clear();
+  });
+
   it('converts a photo handed over with no Claude choice without setting one', async () => {
     const photo = new File(['x'], 'board.jpg', { type: 'image/jpeg' });
 

@@ -427,7 +427,6 @@ describe('an account with no plan whose free AI gift pays uploads on the web', (
         grant?: typeof grant | null;
         spendUsd?: number;
         enabled?: boolean;
-        mayStart?: boolean;
       } = {}
     ) =>
     (): UploadGiftModeDeps => ({
@@ -437,7 +436,6 @@ describe('an account with no plan whose free AI gift pays uploads on the web', (
       giftCostSince: async () => options.spendUsd ?? 0,
       now: () => new Date('2026-11-25T12:00:00.000Z'),
       planSpent: async () => false,
-      mayStartGrant: async () => options.mayStart ?? false,
       startGrant: async () => null,
     });
 
@@ -451,8 +449,6 @@ describe('an account with no plan whose free AI gift pays uploads on the web', (
         gifts.giftCostSince(giftId, userId, since),
       now: () => new Date('2026-11-25T12:00:00.000Z'),
       planSpent: async () => false,
-      mayStartGrant: async (now) =>
-        (await gifts.exposureCredits(now)) + AI_GIFT_CREDITS_PER_CLAIM <= 8000,
       startGrant: async (userId, ipHash, now) => {
         const outcome = await gifts.startGrant({
           userId,
@@ -695,7 +691,7 @@ describe('an account with no plan whose free AI gift pays uploads on the web', (
     ['the month has fewer than 20 cards left', { ...GIFTED, cardsUsed: 81 }],
     [
       'there is no gift, even while the gift could make one',
-      { ...GIFTED, gift: giftReaders({ grant: null, mayStart: true }) },
+      { ...GIFTED, gift: giftReaders({ grant: null }) },
     ],
     [
       'the gift is switched off or has ended',

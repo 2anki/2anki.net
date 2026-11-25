@@ -21,6 +21,7 @@ import { markConnectorReturn } from '../../lib/auth/markConnectorReturn';
 import { readSignupOrigin } from '../../lib/signupOrigin';
 import { fireSignupConversion } from '../../lib/analytics/googleAds';
 import { track } from '../../lib/analytics/track';
+import { forgetGiftSignupOrigin } from '../../lib/aiGift/giftSignupOrigin';
 import { isValidEmailShape } from '../../lib/email/isValidEmailShape';
 import {
   UserNotice,
@@ -194,6 +195,7 @@ function RegisterForm({
       );
       if (res.status === 200) {
         track('signup_completed', { method: 'email', ...originProps });
+        if (eventOrigin != null) forgetGiftSignupOrigin();
         fireSignupConversion();
         globalThis.sessionStorage?.setItem(SIGNUP_FLAG_KEY, '1');
         globalThis.location.href =

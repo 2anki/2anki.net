@@ -168,6 +168,20 @@ describe('the upload card with the gift off or not for this account', () => {
   });
 });
 
+describe('the upload card for a signed-out pass holder', () => {
+  it('offers no free account and no sign-up to someone who already paid with a pass', async () => {
+    globalThis.localStorage.setItem('2anki_pass_token', 'cs_pass');
+    vi.mocked(getAiGift).mockResolvedValue(OPEN_SIGNED_OUT);
+    renderCard(false);
+
+    await waitFor(() => expect(getAiGift).toHaveBeenCalled());
+    expect(screen.queryByRole('group')).toBeNull();
+    expect(screen.queryByText(/Free account needed/)).toBeNull();
+    expect(screen.getByTestId('upload-form')).toBeVisible();
+    expect(hold).toBeUndefined();
+  });
+});
+
 describe('the upload card for a signed-out visitor', () => {
   beforeEach(() => {
     vi.mocked(getAiGift).mockResolvedValue(OPEN_SIGNED_OUT);
@@ -373,9 +387,9 @@ describe('the upload card for a signed-out visitor', () => {
 
   it.each<[string, AiGiftStatus]>([
     ['a paying or expired account', CLOSED],
-    ['a full gift total', { state: 'full', feedbackDue: false }],
+    ['a full gift total or network', { state: 'full', feedbackDue: false }],
   ])(
-    'gives the kept file to the upload form when the person signs in to %s',
+    'shows the kept file with why the credits do not apply, and converts it only on a click, after sign-in to %s',
     async (_case, status) => {
       const kept = file('lecture.pdf');
       const first = renderCard(false);
@@ -388,6 +402,16 @@ describe('the upload card for a signed-out visitor', () => {
       vi.mocked(getAiGift).mockResolvedValue(status);
       renderCard(true);
 
+      expect(
+        await screen.findByText(
+          'Free AI credits are not available for this upload, so it will be converted the usual way.'
+        )
+      ).toBeInTheDocument();
+      expect(screen.getByText('lecture.pdf')).toBeInTheDocument();
+      expect(readGiftHandoff(handedOff)).toBeNull();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Convert' }));
+
       await waitFor(() =>
         expect(readGiftHandoff(handedOff)).toEqual({
           files: [kept],
@@ -396,6 +420,36 @@ describe('the upload card for a signed-out visitor', () => {
       );
     }
   );
+
+  it('forgets a removed file, so it does not come back after sign-up, and forgets the card origin', async () => {
+    const first = renderCard(false);
+    await screen.findByRole('group');
+    chooseAi();
+    dropOn(screen.getByTestId('ai-notes-dropzone'), [file('lecture.pdf')]);
+    await screen.findByText(/Your file stays right here/);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+    await waitFor(() => expect(screen.queryByText('lecture.pdf')).toBeNull());
+    first.unmount();
+    vi.mocked(getAiGift).mockResolvedValue(OPEN_SIGNED_IN);
+    renderCard(true);
+
+    await screen.findByRole('group');
+    expect(screen.queryByText('lecture.pdf')).toBeNull();
+    expect(takeGiftSignupOrigin()).toBeNull();
+  });
+
+  it('deletes an expired kept file on a visit that never signs in', async () => {
+    let now = 0;
+    const records = memoryRecords(true);
+    heldFiles = createHeldGiftFileStore(records, () => now);
+    await heldFiles.save([file('lecture.pdf')]);
+    now = 61 * 60 * 1000;
+
+    renderCard(false);
+
+    await waitFor(async () => expect(await records.get()).toBeNull());
+  });
 
   it('leaves files in Notion export mode to the upload form', async () => {
     renderCard(false);

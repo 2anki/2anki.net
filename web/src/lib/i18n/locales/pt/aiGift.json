@@ -33,7 +33,9 @@
     "footnoteSignedOut_other": "Precisa de uma conta grátis · {{count}} créditos, cerca de 3 baralhos",
     "notKept": "Este navegador não consegue guardar seu arquivo enquanto você se cadastra. Crie sua conta e solte o arquivo de novo.",
     "footnoteSignedIn_one": "Resta {{count}} crédito grátis",
-    "footnoteSignedIn_other": "Restam {{count}} créditos grátis"
+    "footnoteSignedIn_other": "Restam {{count}} créditos grátis",
+    "returnedLine": "Os créditos de IA grátis não estão disponíveis para este envio, então ele será convertido do jeito de sempre.",
+    "returnedConvert": "Converter"
   },
   "convert": {
     "toggle": "Melhorar com o Claude (usa créditos)",

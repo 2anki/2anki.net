@@ -9,11 +9,25 @@ import { giftFileKind } from './giftFileKinds';
 export const CREDITS_PER_TEXT_CHARACTER = 12 / 40_000;
 export const MIN_ESTIMATE_CREDITS = 5;
 
-// Reading is bounded: a zip is read only up to this size, and the text it
-// would unpack only up to this many bytes, as its own directory declares
-// them. Past either bound there is no honest number, so none is shown.
+// Reading is bounded for the whole estimate, every file and nested zip
+// together: each zip is read only up to MAX_ZIP_BYTES, the text read or
+// unpacked only up to MAX_TEXT_BYTES in total, and the work only up to
+// MAX_ESTIMATE_MS. Past any bound there is no honest number, so none is shown.
 export const MAX_ZIP_BYTES = 50 * 1024 * 1024;
 export const MAX_TEXT_BYTES = 20 * 1024 * 1024;
+export const MAX_ESTIMATE_MS = 2_000;
+
+interface Budget {
+  bytesLeft: number;
+  deadline: number;
+}
+
+function spend(budget: Budget, bytes: number): void {
+  budget.bytesLeft -= bytes;
+  if (budget.bytesLeft < 0 || Date.now() > budget.deadline) {
+    throw new NoHonestNumber();
+  }
+}
 
 // The smallest a zip directory entry can be. A zip that declares more
 // entries than its bytes could hold is not read.
@@ -38,39 +52,53 @@ function docxText(xml: string): string {
     .join(' ');
 }
 
+// An entry whose unpacked bytes are not the size its directory declared is
+// not what it says it is, so the estimate has no number for it.
 function unzipEntries(
   bytes: Uint8Array,
-  wanted: (name: string) => boolean
+  wanted: (name: string) => boolean,
+  budget: Budget
 ): Record<string, Uint8Array> {
   let entries = 0;
-  let declared = 0;
+  const declared = new Map<string, number>();
   const limit = Math.floor(bytes.length / ZIP_ENTRY_MIN_BYTES);
+  let unpacked: Record<string, Uint8Array>;
   try {
-    return unzipSync(bytes, {
+    unpacked = unzipSync(bytes, {
       filter: (file: UnzipFileInfo) => {
         entries += 1;
         if (entries > limit) throw new NoHonestNumber();
         if (!wanted(file.name)) return false;
-        declared += file.originalSize;
-        if (declared > MAX_TEXT_BYTES) throw new NoHonestNumber();
+        spend(budget, file.originalSize);
+        declared.set(file.name, file.originalSize);
         return true;
       },
     });
   } catch {
     throw new NoHonestNumber();
   }
+  for (const [name, data] of Object.entries(unpacked)) {
+    if (data.length !== declared.get(name)) throw new NoHonestNumber();
+  }
+  return unpacked;
 }
 
-function zipTextLength(bytes: Uint8Array, depth: number): number {
+function zipTextLength(
+  bytes: Uint8Array,
+  depth: number,
+  budget: Budget
+): number {
   const entries = unzipEntries(
     bytes,
-    (name) => TEXT_ENTRY.test(name) || (depth === 0 && NESTED_ZIP.test(name))
+    (name) => TEXT_ENTRY.test(name) || (depth === 0 && NESTED_ZIP.test(name)),
+    budget
   );
   let length = 0;
   for (const [name, data] of Object.entries(entries)) {
     length += NESTED_ZIP.test(name)
-      ? zipTextLength(data, depth + 1)
+      ? zipTextLength(data, depth + 1, budget)
       : claudeReadableText(strFromU8(data)).length;
+    spend(budget, 0);
   }
   return length;
 }
@@ -82,19 +110,21 @@ async function fileBytes(file: Blob, cap: number): Promise<Uint8Array> {
 
 // The text Claude would read from one file, or no number: PDFs and slides
 // (read page by page, scanned ones as images) and anything past the bounds.
-async function textLength(file: File): Promise<number> {
+async function textLength(file: File, budget: Budget): Promise<number> {
   const kind = giftFileKind(file.name);
   if (kind === 'text' || kind === 'html') {
+    spend(budget, file.size);
     const text = strFromU8(await fileBytes(file, MAX_TEXT_BYTES));
     return kind === 'html' ? claudeReadableText(text).length : text.length;
   }
   if (kind === 'zip') {
-    return zipTextLength(await fileBytes(file, MAX_ZIP_BYTES), 0);
+    return zipTextLength(await fileBytes(file, MAX_ZIP_BYTES), 0, budget);
   }
   if (kind === 'office' && /\.docx$/i.test(file.name)) {
     const entries = unzipEntries(
       await fileBytes(file, MAX_ZIP_BYTES),
-      (name) => name === DOCX_BODY
+      (name) => name === DOCX_BODY,
+      budget
     );
     const body = entries[DOCX_BODY];
     if (body == null) throw new NoHonestNumber();
@@ -113,10 +143,14 @@ export function creditsForText(length: number): number {
 export async function estimateGiftCredits(
   files: readonly File[]
 ): Promise<number | null> {
+  const budget: Budget = {
+    bytesLeft: MAX_TEXT_BYTES,
+    deadline: Date.now() + MAX_ESTIMATE_MS,
+  };
   try {
     let length = 0;
     for (const file of files) {
-      length += await textLength(file);
+      length += await textLength(file, budget);
     }
     return creditsForText(length);
   } catch {

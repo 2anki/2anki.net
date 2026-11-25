@@ -1,3 +1,4 @@
+import { giftClaimsOpen } from './giftTerms';
 import {
   buildGiftBalance,
   computeAiGiftBalance,
@@ -10,10 +11,8 @@ import {
 export interface UploadGiftModeDeps extends AiGiftBalanceReaders {
   now: () => Date;
   planSpent: (userId: number) => Promise<boolean>;
-  // Whether a new grant could be made now: claims open and the total has
-  // room for a whole grant. The grant itself is made by startGrant, under
-  // the lock, which checks both again with the per-network limit.
-  mayStartGrant: (now: Date) => Promise<boolean>;
+  // Makes the grant under the lock, where the total and the per-network
+  // limit are read; null when either has no room or claims have closed.
   startGrant: (
     userId: number,
     ipHash: string | null,
@@ -23,8 +22,8 @@ export interface UploadGiftModeDeps extends AiGiftBalanceReaders {
 
 // 'spent': an account with no plan whose unexpired gift has no credits left.
 // Its upload builds with the standard parser and carries the credits notice.
-// 'start': an account with no plan and no grant yet, while the gift could
-// make one; its first upload the gift pays for makes the grant.
+// 'start': an account with no plan and no grant yet while claims are open.
+// Whether the total has room is read once, when startGrant makes the grant.
 export type UploadGift = AiGiftMode | 'spent' | 'start';
 
 // A paying account draws on the gift only when it holds gift credits and its
@@ -50,7 +49,7 @@ async function noPlanGift(
   const now = deps.now();
   const grant = await deps.findGrant(userId);
   if (grant == null) {
-    return (await deps.mayStartGrant(now)) ? 'start' : null;
+    return giftClaimsOpen(now) ? 'start' : null;
   }
   if (!giftIsActive(grant, now)) return null;
   const spendUsd = await deps.giftCostSince(grant.id, userId, grant.claimedAt);

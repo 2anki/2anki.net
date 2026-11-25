@@ -33,7 +33,9 @@
     "footnoteSignedOut_other": "Necesitas una cuenta gratis · {{count}} créditos, unos 3 mazos",
     "notKept": "Este navegador no puede guardar tu archivo mientras te registras. Crea tu cuenta y vuelve a soltar el archivo.",
     "footnoteSignedIn_one": "Te queda {{count}} crédito gratis",
-    "footnoteSignedIn_other": "Te quedan {{count}} créditos gratis"
+    "footnoteSignedIn_other": "Te quedan {{count}} créditos gratis",
+    "returnedLine": "Los créditos de IA gratis no están disponibles para esta subida, así que se convertirá de la forma habitual.",
+    "returnedConvert": "Convertir"
   },
   "convert": {
     "toggle": "Mejorar con Claude (usa créditos)",

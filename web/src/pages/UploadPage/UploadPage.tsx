@@ -37,7 +37,10 @@ import { RecentSources } from './components/RecentSources/RecentSources';
 import UploadForm from './components/UploadForm/UploadForm';
 import { AiGiftUploadCard } from './components/AiGiftUploadCard/AiGiftUploadCard';
 import { giftOfferOf } from '../../lib/backend/aiGift';
-import { takeGiftSignupOrigin } from '../../lib/aiGift/giftSignupOrigin';
+import {
+  forgetGiftSignupOrigin,
+  takeGiftSignupOrigin,
+} from '../../lib/aiGift/giftSignupOrigin';
 import pageStyles from './UploadPage.module.css';
 
 const SIGNUP_FLAG_KEY = 'signup_completed_tracked';
@@ -202,10 +205,16 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
     if (signupTracked.current) return;
     const user = userLocals?.user;
     if (user?.id == null) return;
-    if (!isFreshSignup(user.created_at, user.onboarded_at)) return;
+    if (!isFreshSignup(user.created_at, user.onboarded_at)) {
+      forgetGiftSignupOrigin();
+      return;
+    }
     signupTracked.current = true;
     void markOnboarded();
-    if (globalThis.sessionStorage?.getItem(SIGNUP_FLAG_KEY) != null) return;
+    if (globalThis.sessionStorage?.getItem(SIGNUP_FLAG_KEY) != null) {
+      forgetGiftSignupOrigin();
+      return;
+    }
     globalThis.sessionStorage?.setItem(SIGNUP_FLAG_KEY, '1');
     const giftOrigin = takeGiftSignupOrigin();
     track('signup_completed', {

@@ -11,6 +11,7 @@ import { InMemoryAiCreditGiftsRepository } from '../data_layer/AiCreditGiftsRepo
 import {
   AI_GIFT_FEEDBACK_EVENT,
   cachedExposure,
+  cachedNetworkGrantCount,
   type AiGiftDeps,
 } from '../usecases/ai/aiGift/aiGiftDeps';
 import {
@@ -60,6 +61,7 @@ interface Harness {
   claudeDefault: ClaudeDefaultFixture;
   setNow: (date: Date) => void;
   now: () => Date;
+  advanceCacheClock: (ms: number) => void;
   setEnabled: (enabled: boolean) => void;
   close: () => Promise<void>;
 }
@@ -68,9 +70,14 @@ async function startHarness(): Promise<Harness> {
   const gifts = new InMemoryAiCreditGiftsRepository();
   let now = OPENING;
   let enabled = true;
+  let cacheClock = 0;
   const exposure = cachedExposure(
     (at) => gifts.exposureCredits(at),
-    () => 0
+    () => cacheClock
+  );
+  const networkCounts = cachedNetworkGrantCount(
+    (ipHash, at) => gifts.networkGrantCount(ipHash, at),
+    () => cacheClock
   );
   const claudeDefault: ClaudeDefaultFixture = {
     cardsLeft: 90,
@@ -86,7 +93,6 @@ async function startHarness(): Promise<Harness> {
     now: () => now,
     planSpent: async () =>
       claudeDefault.planCredits != null && claudeDefault.planCredits <= 0,
-    mayStartGrant: async () => true,
     startGrant: async () => null,
   });
   const deps: AiGiftDeps = {
@@ -94,6 +100,7 @@ async function startHarness(): Promise<Harness> {
     isEnabled: async () => enabled,
     exposureCredits: (at) => gifts.exposureCredits(at),
     forgetExposure: exposure.forget,
+    networkGrantCount: networkCounts,
     now: () => now,
     claudeDefault: {
       remainingMonthlyCards: async () => {
@@ -127,6 +134,11 @@ async function startHarness(): Promise<Harness> {
     if (req.header('x-test-paying') === '1') {
       res.locals.subscriber = true;
     }
+    if (req.header('x-test-pass') === '1') {
+      res.locals.subscriber = true;
+      res.locals.passKind = '24h';
+      res.locals.anonymousPassId = 77;
+    }
     next();
   };
   const requireAuth: express.RequestHandler = (req, res, next) => {
@@ -152,6 +164,9 @@ async function startHarness(): Promise<Harness> {
       now = date;
     },
     now: () => now,
+    advanceCacheClock: (ms) => {
+      cacheClock += ms;
+    },
     setEnabled: (value) => {
       enabled = value;
     },
@@ -175,12 +190,13 @@ function headers(user: number | null, ip = DEFAULT_IP) {
 async function getGift(
   h: Harness,
   user: number | null,
-  options: { ip?: string; paying?: boolean } = {}
+  options: { ip?: string; paying?: boolean; pass?: boolean } = {}
 ) {
   const res = await fetch(`${h.url}/api/ai/gift`, {
     headers: {
       ...headers(user, options.ip),
       ...(options.paying === true ? { 'x-test-paying': '1' } : {}),
+      ...(options.pass === true ? { 'x-test-pass': '1' } : {}),
     },
   });
   return { status: res.status, body: await res.json() };
@@ -312,16 +328,40 @@ describe('GET /api/ai/gift for each kind of account', () => {
     });
   });
 
-  it('reads no network count for a signed-out visitor or an account that holds a grant', async () => {
+  it('reads no network count for an account that holds a grant', async () => {
     await firstUpload(h, 5);
     const count = vi.spyOn(h.gifts, 'networkGrantCount');
 
-    await getGift(h, null);
     await getGift(h, 5);
     expect(count).not.toHaveBeenCalled();
+  });
 
+  it('reads the network count for signed-out page views at most once every 30 seconds per network', async () => {
+    const count = vi.spyOn(h.gifts, 'networkGrantCount');
+
+    await getGift(h, null);
+    await getGift(h, null);
     await getGift(h, 6);
     expect(count).toHaveBeenCalledTimes(1);
+
+    h.advanceCacheClock(30_001);
+    await getGift(h, null);
+    expect(count).toHaveBeenCalledTimes(2);
+  });
+
+  it('runs no exposure scan for the next-upload answers of an account with no grant', async () => {
+    const exposure = vi.spyOn(h.gifts, 'exposureCredits');
+
+    await getGift(h, 6);
+
+    expect(exposure).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers nothing to a signed-out pass holder, who pays through the pass', async () => {
+    expect((await getGift(h, null, { pass: true })).body).toEqual({
+      state: 'closed',
+      feedbackDue: false,
+    });
   });
 
   it('shows a grant made at a first upload but never used as the whole amount with no clock running', async () => {
@@ -510,9 +550,9 @@ describe('the gift total and the per-network limit', () => {
 
     expect(await firstUpload(h, 4, ip)).toBeNull();
     expect((await getGift(h, 4, { ip })).body.state).toBe('full');
-    expect((await getGift(h, null, { ip })).body).toMatchObject({
-      state: 'open',
-      hasCredits: false,
+    expect((await getGift(h, null, { ip })).body).toEqual({
+      state: 'full',
+      feedbackDue: false,
     });
     expect(await firstUpload(h, 4, '192.0.2.45')).not.toBeNull();
 

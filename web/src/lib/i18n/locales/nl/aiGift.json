@@ -33,7 +33,9 @@
     "footnoteSignedOut_other": "Gratis account nodig · {{count}} credits, ongeveer 3 decks",
     "notKept": "Deze browser kan je bestand niet bewaren terwijl je je aanmeldt. Maak je account en sleep het bestand daarna opnieuw hierheen.",
     "footnoteSignedIn_one": "Nog {{count}} gratis credit",
-    "footnoteSignedIn_other": "Nog {{count}} gratis credits"
+    "footnoteSignedIn_other": "Nog {{count}} gratis credits",
+    "returnedLine": "Gratis AI-credits zijn niet beschikbaar voor deze upload, dus hij wordt op de gewone manier omgezet.",
+    "returnedConvert": "Omzetten"
   },
   "convert": {
     "toggle": "Verbeteren met Claude (kost credits)",

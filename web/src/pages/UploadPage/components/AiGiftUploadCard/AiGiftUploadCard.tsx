@@ -15,6 +15,10 @@ import {
   readByClaudeCards,
 } from '../../../../lib/aiGift/giftFileKinds';
 import { recordAiChoice } from '../../../../lib/data_layer/aiChoice';
+import { getStoredPassToken } from '../../../../lib/anonymousPass';
+import { forgetGiftSignupOrigin } from '../../../../lib/aiGift/giftSignupOrigin';
+import sharedStyles from '../../../../styles/shared.module.css';
+import { HeldFileRows } from './HeldFileRows';
 import { saveValueInLocalStorage } from '../../../../lib/data_layer/saveValueInLocalStorage';
 import { UploadModeSwitch, type UploadMode } from './UploadModeSwitch';
 import { AiNotesDropzone } from './AiNotesDropzone';
@@ -44,13 +48,42 @@ interface Held {
 
 // The offer shows only where the server says so: to a signed-out visitor
 // while the gift is open, and to a signed-in account that holds or can get
-// gift credits. Anyone else gets the upload form exactly as it is.
+// gift credits. A signed-out pass holder pays through the pass, so it gets
+// the upload form exactly as it is, like anyone else outside the offer.
 function activeOffer(
   offer: GiftOffer | null,
-  signedIn: boolean | undefined
+  signedIn: boolean | undefined,
+  passHolder: boolean
 ): GiftOffer | null {
-  if (offer == null || signedIn == null) return null;
+  if (offer == null || signedIn == null || passHolder) return null;
   return signedIn === offer.hasCredits ? offer : null;
+}
+
+// A kept file that comes back to an account the gift cannot pay for waits
+// for the person's own click, with the reason, before it converts.
+function ReturnedFileStep({
+  files,
+  onConvert,
+  onRemove,
+}: Readonly<{
+  files: readonly File[];
+  onConvert: () => void;
+  onRemove: () => void;
+}>) {
+  const { t } = useTranslation('aiGift');
+  return (
+    <div className={styles.step} data-testid="returned-file">
+      <HeldFileRows files={files} onRemove={onRemove} />
+      <p className={styles.signupLead}>{t('card.returnedLine')}</p>
+      <button
+        type="button"
+        className={`${sharedStyles.btnPrimary} ${styles.chooseButton}`}
+        onClick={onConvert}
+      >
+        {t('card.returnedConvert')}
+      </button>
+    </div>
+  );
 }
 
 function SignedInFootnote({ offer }: Readonly<{ offer: GiftOffer }>) {
@@ -72,11 +105,13 @@ export function AiGiftUploadCard({
   const navigate = useNavigate();
   const zone = useUploadZoneActivity();
   const status = useAiGift(signedIn);
-  const offer = activeOffer(giftOfferOf(status), session);
+  const passHolder = !signedIn && getStoredPassToken() != null;
+  const offer = activeOffer(giftOfferOf(status), session, passHolder);
   const active = offer != null;
   const usable = offer?.usableNow === true;
   const [mode, setMode] = useState<UploadMode>('notion');
   const [held, setHeld] = useState<Held | null>(null);
+  const [returned, setReturned] = useState<File[] | null>(null);
   const shownRef = useRef(false);
   const modeTrackedRef = useRef(false);
 
@@ -112,6 +147,16 @@ export function AiGiftUploadCard({
   };
 
   useEffect(() => {
+    void heldFiles.sweep();
+  }, [heldFiles]);
+
+  const discardHeld = () => {
+    setHeld(null);
+    void heldFiles.discard();
+    forgetGiftSignupOrigin();
+  };
+
+  useEffect(() => {
     if (!active || shownRef.current) return;
     shownRef.current = true;
     track('upload_card_viewed', { surface: SURFACE, signed_in: signedIn });
@@ -119,7 +164,8 @@ export function AiGiftUploadCard({
 
   // The file kept through sign-up comes back whenever the person is signed
   // in, once the gift status is known: to the convert step while the gift can
-  // pay for it, and to the upload form as it is otherwise.
+  // pay for it, and otherwise as a row that converts the usual way only when
+  // the person presses the button.
   const statusKnown = status != null;
   useEffect(() => {
     if (!signedIn || !statusKnown) return;
@@ -130,7 +176,7 @@ export function AiGiftUploadCard({
         setMode('ai');
         setHeld({ files, kept: true });
       } else {
-        handOff(files, null);
+        setReturned(files);
       }
     });
     return () => {
@@ -196,11 +242,21 @@ export function AiGiftUploadCard({
           <GiftSignupStep
             files={held.files}
             kept={held.kept}
-            onRemove={() => setHeld(null)}
+            onRemove={discardHeld}
           />
         )}
         {dropzoneShown && (
           <AiNotesDropzone onFiles={(files) => take(files, 'card')} />
+        )}
+        {returned != null && (
+          <ReturnedFileStep
+            files={returned}
+            onConvert={() => {
+              setReturned(null);
+              handOff(returned, null);
+            }}
+            onRemove={() => setReturned(null)}
+          />
         )}
         <div
           className={active ? undefined : styles.passThrough}

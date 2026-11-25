@@ -33,7 +33,9 @@
     "footnoteSignedOut_other": "Kostenloses Konto nötig · {{count}} Credits, etwa 3 Decks",
     "notKept": "Dieser Browser kann deine Datei während der Anmeldung nicht behalten. Erstelle dein Konto und leg die Datei dann noch einmal ab.",
     "footnoteSignedIn_one": "Noch {{count}} kostenloses Credit",
-    "footnoteSignedIn_other": "Noch {{count}} kostenlose Credits"
+    "footnoteSignedIn_other": "Noch {{count}} kostenlose Credits",
+    "returnedLine": "Kostenlose KI-Credits sind für diesen Upload nicht verfügbar, deshalb wird er wie gewohnt umgewandelt.",
+    "returnedConvert": "Umwandeln"
   },
   "convert": {
     "toggle": "Mit Claude verbessern (verbraucht Credits)",

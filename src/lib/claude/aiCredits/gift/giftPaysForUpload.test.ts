@@ -29,7 +29,6 @@ function deps(
       giftCostSince: vi.fn(async () => overrides.spendUsd ?? 0),
       now: () => NOW,
       planSpent: vi.fn(async () => false),
-      mayStartGrant: vi.fn(async () => true),
       startGrant: vi.fn(async () => null),
     }),
     remainingMonthlyCards: vi.fn(async () => overrides.cardsLeft ?? 80),

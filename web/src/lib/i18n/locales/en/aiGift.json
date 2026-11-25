@@ -33,7 +33,9 @@
     "footnoteSignedOut_other": "Free account needed · {{count}} credits, about 3 decks",
     "notKept": "This browser can't keep your file while you sign up. Create your account, then drop the file again.",
     "footnoteSignedIn_one": "{{count}} free credit left",
-    "footnoteSignedIn_other": "{{count}} free credits left"
+    "footnoteSignedIn_other": "{{count}} free credits left",
+    "returnedLine": "Free AI credits are not available for this upload, so it will be converted the usual way.",
+    "returnedConvert": "Convert"
   },
   "convert": {
     "toggle": "Improve with Claude (uses credits)",

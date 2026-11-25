@@ -66,6 +66,7 @@ const replayPendingPurchaseConversions = vi.fn();
 const storePassToken = vi.fn();
 vi.mock('../../lib/anonymousPass', () => ({
   storePassToken: (...args: unknown[]) => storePassToken(...args),
+  getStoredPassToken: () => null,
 }));
 vi.mock('../../lib/analytics/reportPurchaseConversion', () => ({
   reportPurchaseConversion: (...args: unknown[]) =>
@@ -1093,6 +1094,22 @@ describe('UploadPage analytics', () => {
         { method: 'oauth', signup_origin: 'upload_card_ai' },
       ],
     ]);
+    expect(
+      globalThis.sessionStorage.getItem('2anki-ai-gift-signup-origin')
+    ).toBeNull();
+  });
+
+  it('forgets the card origin when the person signs in to an existing account instead', () => {
+    globalThis.sessionStorage.setItem(
+      '2anki-ai-gift-signup-origin',
+      'upload_card_ai'
+    );
+    fakeUser = {
+      id: 42,
+      created_at: '2020-01-01T00:00:00.000Z',
+      onboarded_at: '2020-01-01T00:00:00.000Z',
+    };
+    renderPage();
     expect(
       globalThis.sessionStorage.getItem('2anki-ai-gift-signup-origin')
     ).toBeNull();

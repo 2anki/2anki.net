@@ -18,6 +18,10 @@ export function rememberGiftSignupOrigin(): void {
   session()?.setItem(ORIGIN_KEY, GIFT_SIGNUP_ORIGIN);
 }
 
+export function forgetGiftSignupOrigin(): void {
+  session()?.removeItem(ORIGIN_KEY);
+}
+
 export function takeGiftSignupOrigin(): string | null {
   const tab = session();
   const origin = tab?.getItem(ORIGIN_KEY) ?? null;

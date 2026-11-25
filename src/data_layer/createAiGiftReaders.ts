@@ -8,7 +8,6 @@ import { computeAiCreditBalance } from '../lib/claude/aiCredits/balance';
 import {
   AI_GIFT_CREDITS_EXPIRE_BY,
   AI_GIFT_CREDITS_PER_CLAIM,
-  giftBudgetHasRoom,
   giftClaimsOpen,
 } from '../lib/claude/aiCredits/gift/giftTerms';
 import type { UploadGiftModeDeps } from '../lib/claude/aiCredits/gift/uploadGiftMode';
@@ -29,9 +28,6 @@ export function createAiGiftReaders(db: Knex): UploadGiftModeDeps {
       const balance = await computeAiCreditBalance(userId, new Date(), plans);
       return balance != null && balance.credits <= 0;
     },
-    mayStartGrant: async (now) =>
-      giftClaimsOpen(now) &&
-      giftBudgetHasRoom(await gifts.exposureCredits(now)),
     // A grant made before its first AI call runs until the gift's end; its
     // first call moves the end to seven days later, never past the gift's.
     startGrant: async (userId, ipHash, now) => {

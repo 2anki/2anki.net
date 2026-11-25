@@ -68,6 +68,7 @@ describe('20261125120000 gift validity from first use', () => {
     await migration.up(recordingKnex());
 
     expect(captured[2].sql).toContain('set first_used_at = s.first_at');
+    expect(captured[2].sql).toContain('and g.first_used_at is null');
     expect(captured[2].sql).toContain("where name = 'ai_usage_recorded'");
     expect(captured[3]).toEqual({
       sql: "update ai_credit_gifts set expires_at = case when first_used_at is null then ?::timestamptz else least(first_used_at + interval '7 days', ?::timestamptz) end where expires_at > now()",

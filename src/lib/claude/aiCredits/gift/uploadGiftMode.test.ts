@@ -18,7 +18,6 @@ function readers(overrides: {
   spendUsd?: number;
   fails?: boolean;
   planSpent?: boolean;
-  mayStart?: boolean;
 }) {
   return {
     isEnabled: vi.fn(async () => overrides.enabled ?? true),
@@ -29,7 +28,6 @@ function readers(overrides: {
     giftCostSince: vi.fn(async () => overrides.spendUsd ?? 0),
     now: () => NOW,
     planSpent: vi.fn(async () => overrides.planSpent ?? false),
-    mayStartGrant: vi.fn(async () => overrides.mayStart ?? true),
     startGrant: vi.fn(async () => null),
   };
 }
@@ -81,12 +79,18 @@ describe('uploadAiGiftMode', () => {
     ).toBe('start');
   });
 
-  it('leaves a free account without a grant on the standard free path once the gift total is full or claims have closed', async () => {
-    expect(
-      await uploadAiGiftMode(9, false, () =>
-        readers({ grant: null, mayStart: false })
-      )
-    ).toBeNull();
+  it('leaves a free account without a grant on the standard free path once claims have closed', async () => {
+    const deps = readers({ grant: null });
+    deps.now = () => new Date('2026-12-04T20:00:00.000Z');
+
+    expect(await uploadAiGiftMode(9, false, () => deps)).toBeNull();
+  });
+
+  it('reads no gift total to answer an upload with no grant, since the grant itself checks it under the lock', async () => {
+    const deps = readers({ grant: null });
+
+    expect(await uploadAiGiftMode(9, false, () => deps)).toBe('start');
+    expect(deps.startGrant).not.toHaveBeenCalled();
   });
 
   it('never offers a new grant to an account whose grant has expired', async () => {
@@ -94,14 +98,13 @@ describe('uploadAiGiftMode', () => {
     deps.now = () => new Date('2026-11-28T00:00:00.000Z');
 
     expect(await uploadAiGiftMode(9, false, () => deps)).toBeNull();
-    expect(deps.mayStartGrant).not.toHaveBeenCalled();
   });
 
   it('never offers a new grant to a paying account', async () => {
     const deps = readers({ grant: null, planSpent: true });
 
     expect(await uploadAiGiftMode(9, true, () => deps)).toBeNull();
-    expect(deps.mayStartGrant).not.toHaveBeenCalled();
+    expect(deps.startGrant).not.toHaveBeenCalled();
   });
 
   it('treats a failed read as no gift', async () => {

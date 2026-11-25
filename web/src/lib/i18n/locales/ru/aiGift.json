@@ -43,7 +43,9 @@
     "footnoteSignedIn_one": "Остался {{count}} бесплатный кредит",
     "footnoteSignedIn_few": "Осталось {{count}} бесплатных кредита",
     "footnoteSignedIn_many": "Осталось {{count}} бесплатных кредитов",
-    "footnoteSignedIn_other": "Осталось {{count}} бесплатного кредита"
+    "footnoteSignedIn_other": "Осталось {{count}} бесплатного кредита",
+    "returnedLine": "Бесплатные ИИ-кредиты недоступны для этой загрузки, поэтому она будет преобразована обычным способом.",
+    "returnedConvert": "Преобразовать"
   },
   "convert": {
     "toggle": "Улучшить с Claude (тратит кредиты)",

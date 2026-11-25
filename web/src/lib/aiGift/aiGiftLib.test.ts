@@ -23,6 +23,7 @@ import {
 } from './heldGiftFile';
 import { giftHandoffState, readGiftHandoff } from './giftHandoff';
 import {
+  forgetGiftSignupOrigin,
   rememberGiftSignupOrigin,
   takeGiftSignupOrigin,
 } from './giftSignupOrigin';
@@ -141,6 +142,46 @@ describe('estimateGiftCredits on real inputs', () => {
     expect(await estimateGiftCredits([zip])).toBeNull();
   });
 
+  it('shows no number when an entry unpacks to a size other than the one its directory declares', async () => {
+    const zip = zipSync(
+      { 'page.html': strToU8('<p>' + 'cell '.repeat(2000) + '</p>') },
+      { level: 0 }
+    );
+    const view = new DataView(zip.buffer);
+    for (let at = zip.length - 22; at >= 0; at -= 1) {
+      if (view.getUint32(at, true) === 0x02014b50) {
+        view.setUint32(at + 24, 7, true);
+        break;
+      }
+    }
+
+    expect(
+      await estimateGiftCredits([new File([zip], 'Export.zip')])
+    ).toBeNull();
+  });
+
+  it('gives nested zips one budget between them, not one each', async () => {
+    const half = new Uint8Array(Math.floor(MAX_TEXT_BYTES / 2) + 1);
+    const inner = () => zipSync({ 'page.html': half });
+    const zip = zipFile('Export.zip', {
+      'Part-1.zip': inner(),
+      'Part-2.zip': inner(),
+    });
+
+    expect(await estimateGiftCredits([zip])).toBeNull();
+  });
+
+  it('gives several files one budget between them', async () => {
+    const half = 'x'.repeat(Math.floor(MAX_TEXT_BYTES / 2) + 1);
+
+    expect(
+      await estimateGiftCredits([
+        new File([half], 'a.txt'),
+        new File([half], 'b.txt'),
+      ])
+    ).toBeNull();
+  });
+
   it('shows no number for a file that only claims to be a zip', async () => {
     expect(
       await estimateGiftCredits([new File(['not a zip'], 'Export.zip')])
@@ -241,6 +282,38 @@ describe('the file kept on this device through sign-up', () => {
     expect(await store.take()).toEqual([kept]);
   });
 
+  it('forgets a removed file, so it never comes back after sign-up', async () => {
+    const store = createMemoryHeldGiftFileStore();
+    await store.save([pdf()]);
+
+    await store.discard();
+
+    expect(sessionStorage.getItem(HELD_GIFT_SIGNUP_KEY)).toBeNull();
+    expect(await store.take()).toBeNull();
+  });
+
+  it('deletes an expired file on a visit that never signs in', async () => {
+    let now = 0;
+    const records = memoryRecords(true);
+    const store = createHeldGiftFileStore(records, () => now);
+    await store.save([pdf()]);
+    now = HELD_GIFT_FILE_TTL_MS + 1;
+
+    await store.sweep();
+
+    expect(await records.get()).toBeNull();
+  });
+
+  it('keeps a fresh file on that visit', async () => {
+    const records = memoryRecords(true);
+    const store = createHeldGiftFileStore(records);
+    await store.save([pdf()]);
+
+    await store.sweep();
+
+    expect(await records.get()).not.toBeNull();
+  });
+
   it('deletes a file kept for more than an hour, whoever asks', async () => {
     let now = 0;
     const records = memoryRecords(true);
@@ -261,6 +334,14 @@ describe('the sign-up origin left for the upload page', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  it('is forgotten when the file is discarded or the sign-up ends elsewhere', () => {
+    rememberGiftSignupOrigin();
+
+    forgetGiftSignupOrigin();
+
+    expect(takeGiftSignupOrigin()).toBeNull();
   });
 
   it('is read once, after the card left it', () => {

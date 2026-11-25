@@ -10,6 +10,7 @@ import { getFeatureFlag } from '../lib/featureFlags/getFeatureFlag';
 import { AI_CREDITS_GIFT_FLAG } from '../lib/featureFlags/aiCreditsGift';
 import {
   cachedExposure,
+  cachedNetworkGrantCount,
   createClaudeDefaultStatusReaders,
   type AiGiftDeps,
 } from '../usecases/ai/aiGift/aiGiftDeps';
@@ -37,6 +38,9 @@ function productionDeps(): AiGiftDeps {
     isEnabled: () => getFeatureFlag(AI_CREDITS_GIFT_FLAG, false),
     exposureCredits: exposure.exposureCredits,
     forgetExposure: exposure.forget,
+    networkGrantCount: cachedNetworkGrantCount((ipHash, now) =>
+      gifts.networkGrantCount(ipHash, now)
+    ),
     now: () => new Date(),
     claudeDefault: createClaudeDefaultStatusReaders(database),
   };
