@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type RefCallback } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import GiftIcon from '../icons/GiftIcon';
@@ -22,12 +22,19 @@ import {
 } from './giftUiState';
 import { useGiftAutoOpen } from './useGiftAutoOpen';
 import { useUploadZoneActivity } from '../../lib/upload/uploadZoneActivity';
+import { chooseUploadFile } from '../../lib/upload/uploadEntry';
+import {
+  claudeCardsSwitchedOn,
+  switchClaudeCardsOn,
+  useClaudeCardsSwitchedOn,
+} from '../../lib/data_layer/claudeCardsSwitch';
 import sharedStyles from '../../styles/shared.module.css';
 import styles from './AiGiftPresent.module.css';
 
 const GIFT_RETURN_PATH = '/upload';
 
 type GiftOpenTrigger = 'auto' | 'click' | 'return';
+type ClaudeCardsSwitchedBy = 'claim' | 'return' | 'panel';
 type GiftDismissVia =
   | 'escape'
   | 'outside'
@@ -42,6 +49,7 @@ interface AiGiftPresentProps {
   className?: string;
   labelFromWide?: boolean;
   planCreditsFirst?: boolean;
+  giftPaysForClaude?: boolean;
 }
 
 const dateLocale = (language: string): string =>
@@ -72,6 +80,76 @@ function refusalKey(reason: AiGiftRefusal): string {
 }
 
 type VisibleGift = Exclude<AiGiftStatus, { state: 'closed' }>;
+type ClaimedGift = Extract<AiGiftStatus, { state: 'claimed' }>;
+
+interface ClaimedBodyProps {
+  gift: ClaimedGift;
+  giftPaysForClaude: boolean;
+  planCreditsFirst: boolean;
+  onTurnOn: () => void;
+  onChooseFile: () => void;
+  resultRef: RefCallback<HTMLParagraphElement>;
+}
+
+function ClaimedBody({
+  gift,
+  giftPaysForClaude,
+  planCreditsFirst,
+  onTurnOn,
+  onChooseFile,
+  resultRef,
+}: Readonly<ClaimedBodyProps>) {
+  const { t } = useTranslation('aiGift');
+  const language = useAppLanguage();
+  const claudeOn = useClaudeCardsSwitchedOn();
+  const date = formatGiftDate(gift.expiresAt, language);
+  const chooseFile = (
+    <button type="button" className={styles.claimButton} onClick={onChooseFile}>
+      {t('chooseFile')}
+    </button>
+  );
+
+  if (giftPaysForClaude && claudeOn) {
+    return (
+      <>
+        <p key="next" ref={resultRef} tabIndex={-1} className={styles.text}>
+          {t('nextFile')}
+        </p>
+        <p className={styles.text}>
+          {t('balanceAlone', { count: gift.credits, date })}
+        </p>
+        <p className={styles.note}>{t('turnOffHint')}</p>
+        {chooseFile}
+      </>
+    );
+  }
+
+  if (giftPaysForClaude) {
+    return (
+      <>
+        <p key="off" ref={resultRef} tabIndex={-1} className={styles.text}>
+          {t('balanceAlone', { count: gift.credits, date })}
+        </p>
+        <p className={styles.text}>{t('aiOffNow')}</p>
+        <button type="button" className={styles.claimButton} onClick={onTurnOn}>
+          {t('common:upload.page.turnAiOn')}
+        </button>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <p ref={resultRef} tabIndex={-1} className={styles.text}>
+        {t('claimed', { count: gift.credits })}
+      </p>
+      <p className={styles.text}>{t('claimedExpires', { date })}</p>
+      {planCreditsFirst && <p className={styles.note}>{t('planFirst')}</p>}
+      <p className={styles.note}>{claudeOn ? t('aiOnPlan') : t('aiOffPlan')}</p>
+      {chooseFile}
+    </>
+  );
+}
 
 interface PanelBodyProps {
   gift: VisibleGift;
@@ -81,9 +159,11 @@ interface PanelBodyProps {
   onClaim: () => void;
   onSignUp: () => void;
   onSignIn: () => void;
-  onUse: () => void;
+  onTurnOn: () => void;
+  onChooseFile: () => void;
   resultRef: RefCallback<HTMLParagraphElement>;
   planCreditsFirst: boolean;
+  giftPaysForClaude: boolean;
 }
 
 function PanelBody({
@@ -94,14 +174,14 @@ function PanelBody({
   onClaim,
   onSignUp,
   onSignIn,
-  onUse,
+  onTurnOn,
+  onChooseFile,
   resultRef,
   planCreditsFirst,
+  giftPaysForClaude,
 }: Readonly<PanelBodyProps>) {
   const { t } = useTranslation('aiGift');
   const language = useAppLanguage();
-  const { pathname } = useLocation();
-  const onUploadPage = pathname === GIFT_RETURN_PATH;
 
   if (gift.state === 'full') {
     return (
@@ -113,22 +193,14 @@ function PanelBody({
 
   if (gift.state === 'claimed') {
     return (
-      <>
-        <p ref={resultRef} tabIndex={-1} className={styles.text}>
-          {t('claimed', { count: gift.credits })}
-        </p>
-        <p className={styles.text}>
-          {t('claimedExpires', {
-            date: formatGiftDate(gift.expiresAt, language),
-          })}
-        </p>
-        {planCreditsFirst && <p className={styles.note}>{t('planFirst')}</p>}
-        {!onUploadPage && (
-          <Link to={GIFT_RETURN_PATH} className={styles.link} onClick={onUse}>
-            {t('useThem')}
-          </Link>
-        )}
-      </>
+      <ClaimedBody
+        gift={gift}
+        giftPaysForClaude={giftPaysForClaude}
+        planCreditsFirst={planCreditsFirst}
+        onTurnOn={onTurnOn}
+        onChooseFile={onChooseFile}
+        resultRef={resultRef}
+      />
     );
   }
 
@@ -136,7 +208,6 @@ function PanelBody({
     <>
       <p className={styles.text}>
         {t('body', {
-          credits: gift.credits,
           date: formatGiftDate(gift.expiresIfClaimedNow, language),
         })}
       </p>
@@ -157,7 +228,7 @@ function PanelBody({
           onClick={onClaim}
           disabled={claiming}
         >
-          {claiming ? t('claiming') : t('claim', { credits: gift.credits })}
+          {claiming ? t('claiming') : t('claim')}
         </button>
       ) : (
         <>
@@ -166,10 +237,10 @@ function PanelBody({
             className={styles.claimButton}
             onClick={onSignUp}
           >
-            {t('signUpToClaim')}
+            {t('claim')}
           </button>
           <p className={styles.note}>
-            {t('haveAccount')}{' '}
+            {t('needsAccount')} {t('haveAccount')}{' '}
             <button
               type="button"
               className={styles.inlineLink}
@@ -190,6 +261,7 @@ export function AiGiftPresent({
   className,
   labelFromWide = false,
   planCreditsFirst = false,
+  giftPaysForClaude = false,
 }: Readonly<AiGiftPresentProps>) {
   const { t } = useTranslation('aiGift');
   const gift = useAiGift(isLoggedIn);
@@ -223,10 +295,66 @@ export function AiGiftPresent({
   const openedOnReturn = returnedToClaim && gift?.state === 'open';
   const open = openChoice ?? openedOnReturn;
 
+  const switchOnBy = (via: ClaudeCardsSwitchedBy) => {
+    if (claudeCardsSwitchedOn()) return;
+    switchClaudeCardsOn();
+    track('ai_gift_claude_cards_enabled', { via });
+  };
+
+  const claim = async (automatic: boolean) => {
+    track(
+      'ai_gift_claim_clicked',
+      automatic
+        ? { signed_in: true, trigger: 'return', automatic: true }
+        : { signed_in: true, trigger: openedBy }
+    );
+    setClaiming(true);
+    setRefusal(null);
+    const result = await claimAiGift();
+    setClaiming(false);
+    if (result.ok) {
+      focusResultNext.current = true;
+      if (giftPaysForClaude) switchOnBy(automatic ? 'return' : 'claim');
+      const claimed: AiGiftStatus = {
+        state: 'claimed',
+        credits: result.credits,
+        expiresAt: result.expiresAt,
+        feedbackDue: false,
+        inUse: false,
+      };
+      queryClient.setQueriesData<AiGiftStatus>(
+        { queryKey: AI_GIFT_QUERY_KEY },
+        () => claimed
+      );
+      return;
+    }
+    if (result.reason === 'gift_budget_full') {
+      focusResultNext.current = true;
+      const full: AiGiftStatus = { state: 'full', feedbackDue: false };
+      queryClient.setQueriesData<AiGiftStatus>(
+        { queryKey: AI_GIFT_QUERY_KEY },
+        () => full
+      );
+      return;
+    }
+    setRefusal(result.reason);
+  };
+
+  const claimAs = useRef<(automatic: boolean) => Promise<void>>(
+    async () => undefined
+  );
   useEffect(() => {
-    if (!openedOnReturn) return;
+    claimAs.current = claim;
+  });
+  const claimedOnReturn = useRef(false);
+  useEffect(() => {
+    if (!openedOnReturn || claimedOnReturn.current) return;
+    claimedOnReturn.current = true;
     forgetClaimIntent();
     rememberGiftOpened();
+    setOpenedBy('return');
+    setOpen(true);
+    void claimAs.current(true);
   }, [openedOnReturn]);
 
   useGiftAutoOpen(
@@ -319,36 +447,16 @@ export function AiGiftPresent({
     setOpen(true);
   };
 
-  const onClaim = async () => {
-    track('ai_gift_claim_clicked', { signed_in: true, trigger: openedBy });
-    setClaiming(true);
-    setRefusal(null);
-    const result = await claimAiGift();
-    setClaiming(false);
-    if (result.ok) {
-      focusResultNext.current = true;
-      const claimed: AiGiftStatus = {
-        state: 'claimed',
-        credits: result.credits,
-        expiresAt: result.expiresAt,
-        feedbackDue: false,
-      };
-      queryClient.setQueriesData<AiGiftStatus>(
-        { queryKey: AI_GIFT_QUERY_KEY },
-        () => claimed
-      );
-      return;
-    }
-    if (result.reason === 'gift_budget_full') {
-      focusResultNext.current = true;
-      const full: AiGiftStatus = { state: 'full', feedbackDue: false };
-      queryClient.setQueriesData<AiGiftStatus>(
-        { queryKey: AI_GIFT_QUERY_KEY },
-        () => full
-      );
-      return;
-    }
-    setRefusal(result.reason);
+  const onTurnOn = () => {
+    focusResultNext.current = true;
+    switchOnBy('panel');
+  };
+
+  const onChooseFile = () => {
+    const outcome = chooseUploadFile();
+    track('ai_gift_choose_file_clicked', { outcome });
+    setOpen(false);
+    if (outcome === 'page') navigate(GIFT_RETURN_PATH);
   };
 
   const leaveToAuth = (page: '/register' | '/login') => {
@@ -444,12 +552,14 @@ export function AiGiftPresent({
               isLoggedIn={isLoggedIn}
               claiming={claiming}
               refusal={refusal}
-              onClaim={onClaim}
+              onClaim={() => void claim(false)}
               onSignUp={() => leaveToAuth('/register')}
               onSignIn={() => leaveToAuth('/login')}
-              onUse={() => setOpen(false)}
+              onTurnOn={onTurnOn}
+              onChooseFile={onChooseFile}
               resultRef={resultRef}
               planCreditsFirst={planCreditsFirst}
+              giftPaysForClaude={giftPaysForClaude}
             />
           </div>
           {!dismissed && (

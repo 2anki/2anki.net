@@ -1,5 +1,6 @@
 import { vi } from 'vitest';
 import {
+  giftMarkerHeld,
   releaseGiftMarker,
   resetGiftMarkers,
   takeGiftMarker,
@@ -39,6 +40,20 @@ describe('the gift marker', () => {
 
     vi.advanceTimersByTime(1);
     expect(takeGiftMarker(9)).not.toBeNull();
+  });
+
+  it('tells whether a conversion holds it, until it is released or too old', () => {
+    expect(giftMarkerHeld(9)).toBe(false);
+    const marker = takeGiftMarker(9);
+    expect(giftMarkerHeld(9)).toBe(true);
+    expect(giftMarkerHeld(10)).toBe(false);
+
+    releaseGiftMarker(marker);
+    expect(giftMarkerHeld(9)).toBe(false);
+
+    takeGiftMarker(9);
+    vi.advanceTimersByTime(AI_GIFT_MARKER_MAX_AGE_MS);
+    expect(giftMarkerHeld(9)).toBe(false);
   });
 
   it('is not cleared by a conversion that outlived it and finishes later', () => {

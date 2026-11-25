@@ -61,7 +61,7 @@ const aiGiftRouter = (options: AiGiftRouterOptions = {}) => {
    * /api/ai/gift:
    *   get:
    *     summary: State of the free AI credits gift for this visitor
-   *     description: closed (switched off, ended, or this account's gift has expired), open (claimable), full (the gift budget is used for now) or claimed (this account's remaining gift credits and when they expire). feedbackDue is true once gift credits paid for a conversion and the account has not answered the one-question prompt.
+   *     description: closed (switched off, ended, or this account's gift has expired), open (claimable), full (the gift budget is used for now) or claimed (this account's remaining gift credits and when they expire). feedbackDue is true once gift credits paid for a conversion and the account has not answered the one-question prompt. inUse (claimed only) is true while one of this account's conversions holds the gift.
    *     tags: [AI]
    *     responses:
    *       200:

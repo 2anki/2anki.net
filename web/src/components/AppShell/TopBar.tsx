@@ -53,7 +53,11 @@ export function TopBar({
         <img src={logoSrc} alt="" />
       </a>
       <div className={styles.topBarEnd}>
-        <AiGiftPresent isLoggedIn planCreditsFirst={planCreditsFirst} />
+        <AiGiftPresent
+          isLoggedIn
+          planCreditsFirst={planCreditsFirst}
+          giftPaysForClaude={!paying}
+        />
         <AccountMenu email={email} locals={locals} onLogOut={onLogOut} />
       </div>
     </header>

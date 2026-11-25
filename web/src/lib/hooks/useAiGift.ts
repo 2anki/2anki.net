@@ -16,3 +16,14 @@ export function useAiGift(signedIn: boolean): AiGiftStatus | null {
   });
   return data ?? null;
 }
+
+// The header's present keeps this query fetched and refreshed on every page,
+// so a reader below it follows that answer without sending a request of its own.
+export function useAiGiftFromHeader(signedIn: boolean): AiGiftStatus | null {
+  const { data } = useQuery({
+    queryKey: [...AI_GIFT_QUERY_KEY, signedIn],
+    queryFn: getAiGift,
+    enabled: false,
+  });
+  return data ?? null;
+}

@@ -15,6 +15,7 @@ export type AiGiftStatus =
       credits: number;
       expiresAt: string;
       feedbackDue: boolean;
+      inUse?: boolean;
     };
 
 export type AiGiftRefusal =
@@ -73,6 +74,7 @@ export function parseAiGiftStatus(data: unknown): AiGiftStatus {
       credits: data.credits,
       expiresAt: data.expiresAt,
       feedbackDue,
+      inUse: data.inUse === true,
     };
   }
   return { state: 'closed', feedbackDue };

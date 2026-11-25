@@ -128,7 +128,9 @@ describe('TopBar gift panel spending order', () => {
       credits: 100,
       expiresAt: '2099-11-26T19:15:00.000Z',
       feedbackDue: false,
+      inUse: false,
     });
+    localStorage.removeItem('claude-ai-flashcards');
   });
 
   const openGift = async () =>
@@ -146,17 +148,25 @@ describe('TopBar gift panel spending order', () => {
   });
 
   it.each([
-    ['a free account', { patreon: false, subscriber: false }, 300],
-    ['a paying account with no allowance', { patreon: true }, 0],
+    [
+      'a free account',
+      { patreon: false, subscriber: false },
+      300,
+      'AI is off, so your next file gets cards from its structure.',
+    ],
+    [
+      'a paying account with no allowance',
+      { patreon: true },
+      0,
+      'You have 100 AI credits from the gift.',
+    ],
   ])(
     'says nothing about spending order for %s',
-    async (_name, locals, allowance) => {
+    async (_name, locals, allowance, giftLine) => {
       vi.mocked(getAiCredits).mockResolvedValue(planCredits(allowance));
       renderTopBar({ locals });
       await openGift();
-      expect(
-        await screen.findByText('You have 100 AI credits from the gift.')
-      ).toBeInTheDocument();
+      expect(await screen.findByText(giftLine)).toBeInTheDocument();
       expect(
         screen.queryByText('Your plan credits are used first.')
       ).toBeNull();

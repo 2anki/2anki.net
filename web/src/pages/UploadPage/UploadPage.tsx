@@ -19,6 +19,10 @@ import {
   hasRecordedAiChoice,
   recordAiChoice,
 } from '../../lib/data_layer/aiChoice';
+import {
+  CLAUDE_CARDS_CHANGE_EVENT,
+  claudeCardsSwitchedOn,
+} from '../../lib/data_layer/claudeCardsSwitch';
 import useQuery from '../../lib/hooks/useQuery';
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
 import { useAiGift, AI_GIFT_QUERY_KEY } from '../../lib/hooks/useAiGift';
@@ -126,6 +130,16 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
     setAiFlag(globalThis.localStorage?.getItem(AI_FLAG_KEY) === 'true');
     setAiChoiceRecorded(hasRecordedAiChoice());
   }, [isSignedIn]);
+
+  useEffect(() => {
+    const readSwitch = () => {
+      setAiFlag(claudeCardsSwitchedOn());
+      setAiChoiceRecorded(hasRecordedAiChoice());
+    };
+    globalThis.addEventListener(CLAUDE_CARDS_CHANGE_EVENT, readSwitch);
+    return () =>
+      globalThis.removeEventListener(CLAUDE_CARDS_CHANGE_EVENT, readSwitch);
+  }, []);
 
   const localsLoaded = userLocals != null;
   const isAiOn = isSignedIn

@@ -70,7 +70,10 @@ async function loadGift(isLoggedIn = false) {
   return view;
 }
 
-const panel = () => screen.queryByRole('dialog', { name: 'Free AI credits' });
+const panel = () =>
+  screen.queryByRole('dialog', {
+    name: 'Claude writes your flashcards, free',
+  });
 
 const openedCalls = () =>
   vi.mocked(track).mock.calls.filter(([name]) => name === 'ai_gift_opened');
@@ -159,7 +162,9 @@ describe('AiGiftPresent opening by itself', () => {
 
     expect(panel()).not.toHaveAttribute('aria-modal');
     expect(input).toHaveFocus();
-    expect(screen.getByRole('status')).toHaveTextContent('Free AI credits');
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Claude writes your flashcards, free'
+    );
     expect(
       screen.getByRole('button', { name: 'Free AI credits gift' })
     ).toHaveAttribute('aria-expanded', 'true');
@@ -270,7 +275,7 @@ describe('AiGiftPresent opening by itself', () => {
     await loadGift();
     await elapse(GIFT_AUTO_OPEN_DELAY_MS);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Sign up to claim' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Claim free credits' }));
 
     expect(track).toHaveBeenCalledWith('ai_gift_claim_clicked', {
       signed_in: false,
@@ -347,7 +352,7 @@ describe('AiGiftPresent opening by itself', () => {
     await elapse(GIFT_AUTO_OPEN_DELAY_MS * 3);
 
     expect(
-      screen.getByRole('button', { name: 'Claim 100 credits' })
+      screen.getByRole('button', { name: 'Claim free credits' })
     ).toBeInTheDocument();
     expect(openedCalls()).toHaveLength(0);
     expect(screen.getByRole('status')).toHaveTextContent('');
@@ -408,7 +413,7 @@ describe('AiGiftPresent opening by itself', () => {
     serveGift(OPEN);
     await loadGift();
     await elapse(GIFT_AUTO_OPEN_DELAY_MS);
-    screen.getByRole('button', { name: 'Sign up to claim' }).focus();
+    screen.getByRole('button', { name: 'Claim free credits' }).focus();
 
     onPage('busy');
 

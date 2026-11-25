@@ -15,6 +15,7 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import i18n from '../../lib/i18n';
 import { formatGiftDate } from '../../components/AiGift/AiGiftPresent';
 import { UploadPage } from './UploadPage';
+import { switchClaudeCardsOn } from '../../lib/data_layer/claudeCardsSwitch';
 
 let startPassDeck: (() => void) | undefined;
 vi.mock('./components/UploadForm/UploadForm', () => ({
@@ -512,6 +513,31 @@ describe('UploadPage Claude cards on by default for PDFs and PowerPoint', () => 
     expect(
       screen.getByRole('button', { name: /turn ai off/i })
     ).toHaveTextContent('AI is on');
+    fakeGift = null;
+  });
+
+  it('shows AI on, with the switch to turn it off, as soon as a gift claim switches it on', () => {
+    fakeLocals = { patreon: false, subscriber: false };
+    fakeGift = {
+      state: 'claimed',
+      credits: 100,
+      expiresAt: '2026-11-27T12:00:00.000Z',
+      feedbackDue: false,
+    };
+    globalThis.localStorage.setItem('claude-ai-flashcards', 'false');
+    renderPage();
+    expect(
+      screen.getByRole('button', { name: /turn ai on/i })
+    ).toHaveTextContent('AI is off');
+
+    act(() => switchClaudeCardsOn());
+
+    const toggle = screen.getByRole('button', { name: /turn ai off/i });
+    expect(toggle).toHaveTextContent('AI is on');
+    fireEvent.click(toggle);
+    expect(globalThis.localStorage.getItem('claude-ai-flashcards')).toBe(
+      'false'
+    );
     fakeGift = null;
   });
 

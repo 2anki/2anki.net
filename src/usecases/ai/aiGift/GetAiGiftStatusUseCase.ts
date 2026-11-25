@@ -9,6 +9,7 @@ import {
   giftClaimsOpen,
   giftExpiresAt,
 } from '../../../lib/claude/aiCredits/gift/giftTerms';
+import { giftMarkerHeld } from '../../../lib/claude/aiCredits/gift/giftConversionMarker';
 import type { AiGiftDeps } from './aiGiftDeps';
 
 export type AiGiftStatus =
@@ -26,6 +27,7 @@ export type AiGiftStatus =
       credits: number;
       expiresAt: Date;
       feedbackDue: boolean;
+      inUse: boolean;
     };
 
 const CLOSED: AiGiftStatus = { state: 'closed', feedbackDue: false };
@@ -53,6 +55,7 @@ export class GetAiGiftStatusUseCase {
             credits: buildGiftBalance(grant, spendUsd).credits,
             expiresAt: grant.expiresAt,
             feedbackDue,
+            inUse: giftMarkerHeld(userId, now.getTime()),
           };
         }
         return { state: 'closed', feedbackDue };

@@ -18,6 +18,11 @@ import {
   AI_GIFT_TOTAL_BUDGET_CREDITS,
 } from '../lib/claude/aiCredits/gift/giftTerms';
 import { track } from '../services/events/track';
+import {
+  releaseGiftMarker,
+  resetGiftMarkers,
+  takeGiftMarker,
+} from '../lib/claude/aiCredits/gift/giftConversionMarker';
 
 const trackMock = track as Mock;
 const OPENING = new Date('2026-11-25T12:00:00.000Z');
@@ -128,6 +133,7 @@ beforeAll(() => {
 
 beforeEach(async () => {
   trackMock.mockClear();
+  resetGiftMarkers();
   h = await startHarness();
 });
 
@@ -209,6 +215,7 @@ describe('POST /api/ai/gift/claim', () => {
       credits: 100,
       expiresAt: '2026-11-27T12:00:00.000Z',
       feedbackDue: false,
+      inUse: false,
     });
     expect(eventsNamed('ai_gift_claimed')).toEqual([
       [
@@ -219,6 +226,17 @@ describe('POST /api/ai/gift/claim', () => {
         }),
       ],
     ]);
+  });
+
+  it('says the gift is in use while a conversion holds the account marker', async () => {
+    await claim(h, 5);
+    const marker = takeGiftMarker(5, OPENING.getTime());
+
+    expect((await getGift(h, 5)).body.inUse).toBe(true);
+    expect((await getGift(h, 6)).body.state).toBe('open');
+
+    releaseGiftMarker(marker);
+    expect((await getGift(h, 5)).body.inUse).toBe(false);
   });
 
   it('stores a keyed hash of the network, never the address', async () => {
@@ -383,6 +401,7 @@ describe('the one question after a gift-funded conversion', () => {
       credits: 63,
       expiresAt: '2026-11-27T12:00:00.000Z',
       feedbackDue: true,
+      inUse: false,
     });
   });
 

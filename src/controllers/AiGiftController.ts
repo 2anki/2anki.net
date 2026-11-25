@@ -63,6 +63,7 @@ export class AiGiftController {
           credits: result.credits,
           expiresAt: result.expiresAt.toISOString(),
           feedbackDue: result.feedbackDue,
+          inUse: result.inUse,
         });
       case 'full':
         return res.json({ state: 'full', feedbackDue: false });

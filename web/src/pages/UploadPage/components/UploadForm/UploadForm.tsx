@@ -37,6 +37,7 @@ import {
 import { LastDeckOffer } from './LastDeckOffer';
 import { keepLastDeck } from '../../../../lib/upload/lastDeck';
 import { reportUploadZoneActivity } from '../../../../lib/upload/uploadZoneActivity';
+import { registerUploadEntry } from '../../../../lib/upload/uploadEntry';
 import { BuyCreditsButton } from '../../../../components/BuyCreditsButton/BuyCreditsButton';
 import { getDownloadFileName } from '../../../DownloadsPage/helpers/getDownloadFileName';
 import { ImageDropNotice } from '../../../DownloadsPage/components/ImageDropNotice';
@@ -90,7 +91,11 @@ import {
   type AiCreditsRead,
   useAiCreditsRead,
 } from '../../../../lib/hooks/useAiCredits';
-import { AI_GIFT_QUERY_KEY } from '../../../../lib/hooks/useAiGift';
+import {
+  AI_GIFT_QUERY_KEY,
+  useAiGiftFromHeader,
+} from '../../../../lib/hooks/useAiGift';
+import { useActiveGiftBalance } from '../../../../components/AiGift/useAiGiftBalanceLine';
 import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
 import { fireAnalyticsEvent } from '../../../../lib/analytics/fireAnalyticsEvent';
 import { track } from '../../../../lib/analytics/track';
@@ -191,6 +196,7 @@ const NETWORK_FALLBACK =
   "Couldn't upload your file. Check your connection and try again.";
 const REATTACH_FILENAME_KEY = 'upload_pending_filename';
 const RETRY_KEEPS_AI_CHOICE = ['claude-ai-flashcards', 'pdf-page-pairs'];
+const GIFT_MIN_MONTHLY_CARDS_LEFT = 20;
 // React Query holds a read while the browser says it is offline and pauses
 // a failed read's retries in a hidden tab, so a resend never waits on the
 // account read longer than this.
@@ -1688,7 +1694,36 @@ function UploadForm({
     );
   };
 
+  const giftCanPay = isAuthenticated && !isPaying;
+  const gift = useAiGiftFromHeader(isAuthenticated);
+  const giftBalance = useActiveGiftBalance(giftCanPay ? gift : null);
+  const monthHasRoomForGift =
+    cardUsage?.unlimited === true ||
+    (cardUsage != null &&
+      cardUsage.loading !== true &&
+      cardUsage.cards_limit - cardUsage.cards_used >=
+        GIFT_MIN_MONTHLY_CARDS_LEFT);
+  const giftRedoOffered =
+    zoneState === 'success' &&
+    giftCanPay &&
+    !aiOn &&
+    !lastSubmitUsedAi &&
+    !sampleRun &&
+    !downloadRecovered &&
+    cardsHeldBack === 0 &&
+    rescueFiles.length > 0 &&
+    !keptFilesBelongElsewhere &&
+    giftBalance != null &&
+    gift?.state === 'claimed' &&
+    gift.inUse !== true &&
+    monthHasRoomForGift;
+  const giftRedoDeck = giftRedoOffered ? (downloadLink ?? deckName) : null;
+  useEffect(() => {
+    if (giftRedoDeck != null) track('ai_gift_redo_shown');
+  }, [giftRedoDeck]);
+
   const thinDeckSlot =
+    !giftRedoOffered &&
     !aiOn &&
     !lastSubmitUsedAi &&
     !sampleRun &&
@@ -1701,6 +1736,7 @@ function UploadForm({
 
   const thinNoticeDeck =
     zoneState === 'success' &&
+    !giftRedoOffered &&
     !aiOn &&
     cardsHeldBack === 0 &&
     (thinDeckOfferFile == null || sampleRun || lastSubmitUsedAi) &&
@@ -2537,6 +2573,21 @@ function UploadForm({
     reportUploadZoneActivity(zoneIdle ? 'idle' : 'busy');
   }, [zoneIdle]);
   useEffect(() => () => reportUploadZoneActivity('absent'), []);
+  useEffect(() => {
+    const showZone = () => {
+      document
+        .getElementById('upload-panel-local')
+        ?.scrollIntoView?.({ block: 'center' });
+      fileInputRef.current?.focus({ preventScroll: true });
+    };
+    return registerUploadEntry({
+      openPicker: () => {
+        showZone();
+        fileInputRef.current?.click();
+      },
+      showZone,
+    });
+  }, []);
   const resumeCheckedRef = useRef(false);
   const resumedUploadRef = useRef(false);
 
@@ -3355,6 +3406,24 @@ function UploadForm({
             }
           />
         )}
+      {giftRedoOffered && !switchLineShown && (
+        <div className={formStyles.aiRescueActions}>
+          <p className={formStyles.rescueLead}>{t('aiGift:redo')}</p>
+          <button
+            type="button"
+            className={formStyles.aiRescueButton}
+            disabled={resendPending}
+            aria-busy={resendTapped === 'giftRedo'}
+            onClick={() =>
+              rerunWithAi(rescueFiles, 'giftRedo', () =>
+                track('ai_gift_redo_clicked')
+              )
+            }
+          >
+            {resendLabel('giftRedo', t('aiGift:redoAction'))}
+          </button>
+        </div>
+      )}
       {thinDeckAiOffer != null && (
         <ThinDeckAiOffer
           file={thinDeckAiOffer.file}

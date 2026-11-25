@@ -29,6 +29,10 @@ import {
   type UploadZoneActivity,
 } from '../../../../lib/upload/uploadZoneActivity';
 import {
+  chooseUploadFile,
+  resetUploadEntryForTests,
+} from '../../../../lib/upload/uploadEntry';
+import {
   aiPreviewCheckoutMarked,
   clearAiPreviewCheckout,
   markAiPreviewCheckout,
@@ -12569,6 +12573,143 @@ describe('UploadForm deck result and resends of kept files', () => {
       await screen.findByText(SENDER_UNKNOWN, { selector: 'p' })
     ).toBeInTheDocument();
     expect(callsTo(fetchMock, '/api/upload/file')).toHaveLength(1);
+  });
+
+  describe('making the same deck again with the free AI gift', () => {
+    const REDO_LINE =
+      'Claude can write this deck from the same file, free with your gift credits.';
+    const activeGift = {
+      state: 'claimed',
+      credits: 100,
+      expiresAt: '2099-11-27T12:00:00.000Z',
+      feedbackDue: false,
+      inUse: false,
+    };
+    const cardsLeft = (left: number) => ({
+      cards_used: 100 - left,
+      cards_limit: 100,
+      unlimited: false,
+      loading: false,
+    });
+
+    function renderWithHeaderGift(gift: unknown, aiOn = false) {
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      });
+      queryClient.setQueryData([...AI_GIFT_QUERY_KEY, true], gift);
+      return render(
+        <MemoryRouter>
+          <QueryClientProvider client={queryClient}>
+            <UploadForm setErrorMessage={vi.fn()} aiOn={aiOn} />
+          </QueryClientProvider>
+        </MemoryRouter>
+      );
+    }
+
+    beforeEach(() => {
+      setUserLocals(freeSignedIn);
+      mockUseCardUsage.mockReturnValue(cardsLeft(90));
+    });
+
+    it('offers a free account holding unused gift credits one action that sends the same file with Claude on', async () => {
+      stubLeavingPage();
+      const fetchMock = stubServer([deckResponse(64), asyncJobAccepted]);
+      const { container } = renderWithHeaderGift(activeGift);
+      await submitFiles(container, ['notes.pdf']);
+
+      expect(await screen.findByText(REDO_LINE)).toBeInTheDocument();
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Make it with Claude' })
+      );
+
+      await waitFor(() =>
+        expect(callsTo(fetchMock, '/api/upload/file')).toHaveLength(2)
+      );
+      const first = callsTo(fetchMock, '/api/upload/file')[0][1]
+        .body as FormData;
+      const resent = callsTo(fetchMock, '/api/upload/file')[1][1]
+        .body as FormData;
+      expect(first.getAll('claude-ai-flashcards')).toEqual(['false']);
+      expect(resent.getAll('claude-ai-flashcards')).toEqual(['true']);
+      expect((resent.get('pakker') as File).name).toBe('notes.pdf');
+      expect(eventsNamed('ai_gift_redo_shown')).toEqual([
+        ['ai_gift_redo_shown'],
+      ]);
+      expect(eventsNamed('ai_gift_redo_clicked')).toEqual([
+        ['ai_gift_redo_clicked'],
+      ]);
+    });
+
+    it.each([
+      ['no gift', { state: 'closed', feedbackDue: false }, false],
+      [
+        'an expired gift',
+        { ...activeGift, expiresAt: '2000-01-01T00:00:00.000Z' },
+        false,
+      ],
+      ['a spent gift', { ...activeGift, credits: 0 }, false],
+      ['a gift conversion in flight', { ...activeGift, inUse: true }, false],
+      ['a conversion that already used Claude', activeGift, true],
+    ])('offers nothing with %s', async (_name, gift, aiOn) => {
+      const fetchMock = stubServer([deckResponse(64)]);
+      const { container } = renderWithHeaderGift(gift, aiOn);
+      await submitFiles(container, ['notes.pdf']);
+
+      expect(
+        (await screen.findAllByText('Your deck is ready — 64 cards.')).length
+      ).toBeGreaterThan(0);
+      await settle();
+      expect(callsTo(fetchMock, '/api/ai/gift')).toEqual([]);
+      expect(screen.queryByText(REDO_LINE)).toBeNull();
+      expect(eventsNamed('ai_gift_redo_shown')).toEqual([]);
+    });
+
+    it('offers nothing to a paying account, whose plan credits would pay first', async () => {
+      setUserLocals(passHolder);
+      stubServer([deckResponse(64)]);
+      const { container } = renderWithHeaderGift(activeGift);
+      await submitFiles(container, ['notes.pdf']);
+
+      await screen.findAllByText('Your deck is ready — 64 cards.');
+      await settle();
+      expect(screen.queryByText(REDO_LINE)).toBeNull();
+    });
+
+    it('opens its file picker when the gift panel asks for a file while the zone is idle', async () => {
+      resetUploadEntryForTests();
+      stubServer([deckResponse(64)]);
+      const { container } = renderWithHeaderGift(activeGift);
+      const input = container.querySelector(
+        'input[type="file"]'
+      ) as HTMLInputElement;
+      const openPicker = vi.spyOn(input, 'click');
+      await waitFor(() => expect(readUploadZoneActivity()).toBe('idle'));
+
+      expect(chooseUploadFile()).toBe('picker');
+      expect(openPicker).toHaveBeenCalledTimes(1);
+    });
+
+    it('brings its zone into focus when the gift panel sent the visitor to this page', async () => {
+      resetUploadEntryForTests();
+      expect(chooseUploadFile()).toBe('page');
+      stubServer([deckResponse(64)]);
+      const { container } = renderWithHeaderGift(activeGift);
+
+      await waitFor(() =>
+        expect(container.querySelector('input[type="file"]')).toHaveFocus()
+      );
+    });
+
+    it('offers nothing when the month has too few cards left for Claude to run on the gift', async () => {
+      mockUseCardUsage.mockReturnValue(cardsLeft(19));
+      stubServer([deckResponse(64)]);
+      const { container } = renderWithHeaderGift(activeGift);
+      await submitFiles(container, ['notes.pdf']);
+
+      await screen.findAllByText('Your deck is ready — 64 cards.');
+      await settle();
+      expect(screen.queryByText(REDO_LINE)).toBeNull();
+    });
   });
 });
 
