@@ -20,6 +20,8 @@
   "claimedExpires": "Wygasają {{date}}.",
   "nextFile": "Claude napisze karty z twojego następnego pliku.",
   "nextPdf": "Claude napisze karty z twojego następnego pliku PDF lub PowerPoint.",
+  "otherUploads": "W pozostałych przypadkach karty powstają na podstawie struktury plików.",
+  "inUseNow": "Właśnie trwa konwersja, która korzysta z twoich darmowych kredytów AI.",
   "fewCardsLeft_one": "W tym miesiącu została ci {{count}} karta, za mało na talię od Claude. Następny plik dostanie karty na podstawie swojej struktury.",
   "fewCardsLeft_few": "W tym miesiącu zostały ci {{count}} karty, za mało na talię od Claude. Następny plik dostanie karty na podstawie swojej struktury.",
   "fewCardsLeft_many": "W tym miesiącu zostało ci {{count}} kart, za mało na talię od Claude. Następny plik dostanie karty na podstawie swojej struktury.",

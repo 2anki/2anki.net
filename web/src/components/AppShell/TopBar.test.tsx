@@ -23,6 +23,19 @@ vi.mock('../../lib/backend/getAiCredits', () => ({
   getAiCredits: vi.fn().mockResolvedValue(null),
 }));
 
+const session = vi.hoisted(() => ({
+  locals: { patreon: false, subscriber: false } as Record<string, unknown>,
+}));
+
+vi.mock('../../lib/backend/getUserLocals', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../lib/backend/getUserLocals')>()),
+  getUserLocals: vi.fn(async () => ({
+    user: { id: 5 },
+    locals: session.locals,
+    claudeCardsByDefault: false,
+  })),
+}));
+
 vi.mock('../../lib/backend/aiGift', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../lib/backend/aiGift')>()),
   getAiGift: vi.fn(),
@@ -48,6 +61,7 @@ function renderTopBar(overrides: Partial<Parameters<typeof TopBar>[0]> = {}) {
     onCloseDrawer: vi.fn(),
     ...overrides,
   };
+  session.locals = { ...props.locals };
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });

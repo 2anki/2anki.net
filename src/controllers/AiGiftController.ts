@@ -1,5 +1,6 @@
 import type express from 'express';
 import { getOwnerId } from '../lib/User/getOwner';
+import { isPaying } from '../lib/isPaying';
 import { ipRateLimitBucket, resolveClientIp } from '../lib/rateLimit/ipHelpers';
 import hmacToken from '../lib/misc/hmacToken';
 import type { GetAiGiftStatusUseCase } from '../usecases/ai/aiGift/GetAiGiftStatusUseCase';
@@ -46,7 +47,10 @@ export class AiGiftController {
   ) {}
 
   async getStatus(_req: express.Request, res: express.Response) {
-    const result = await this.status.execute(getOwnerId(res));
+    const result = await this.status.execute(
+      getOwnerId(res),
+      isPaying(res.locals)
+    );
     res.set('Cache-Control', 'private, no-store');
     switch (result.state) {
       case 'open':

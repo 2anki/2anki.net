@@ -1818,6 +1818,7 @@ describe('UploadForm Google Drive picker interaction', () => {
               'Content-Type': 'application/octet-stream',
               'File-Name': encodeURIComponent('notes.apkg'),
               'X-Card-Count': '64',
+              'X-Claude-Eligible': '1',
             }),
             blob: () => Promise.resolve(new Blob(['apkg'])),
           })
@@ -12684,6 +12685,8 @@ describe('UploadForm deck result and resends of kept files', () => {
       claudeByDefaultOnGift: true,
       monthlyCardsLeft: 80,
     };
+    const eligibleDeck = (cards: number) =>
+      deckResponse(cards, { 'X-Claude-Eligible': '1' });
     const cardsLeft = (left: number) => ({
       cards_used: 100 - left,
       cards_limit: 100,
@@ -12724,7 +12727,7 @@ describe('UploadForm deck result and resends of kept files', () => {
 
     it('offers a free account holding unused gift credits one action that sends the same file with Claude on', async () => {
       stubLeavingPage();
-      const fetchMock = stubServer([deckResponse(64), asyncJobAccepted]);
+      const fetchMock = stubServer([eligibleDeck(64), asyncJobAccepted]);
       const { container } = renderWithHeaderGift(activeGift);
       await submitFiles(container, ['notes.pdf']);
 
@@ -12762,7 +12765,7 @@ describe('UploadForm deck result and resends of kept files', () => {
       ['a gift conversion in flight', { ...activeGift, inUse: true }, false],
       ['a conversion that already used Claude', activeGift, true],
     ])('offers nothing with %s', async (_name, gift, aiOn) => {
-      const fetchMock = stubServer([deckResponse(64)]);
+      const fetchMock = stubServer([eligibleDeck(64)]);
       const { container } = renderWithHeaderGift(gift, aiOn);
       await submitFiles(container, ['notes.pdf']);
 
@@ -12777,7 +12780,7 @@ describe('UploadForm deck result and resends of kept files', () => {
 
     it('offers nothing to a paying account, whose plan credits would pay first', async () => {
       setUserLocals(passHolder);
-      stubServer([deckResponse(64)]);
+      stubServer([eligibleDeck(64)]);
       const { container } = renderWithHeaderGift(activeGift);
       await submitFiles(container, ['notes.pdf']);
 
@@ -12787,7 +12790,7 @@ describe('UploadForm deck result and resends of kept files', () => {
     });
 
     it('puts the sign-in changed line in its place when another account signs in', async () => {
-      stubServer([deckResponse(64)]);
+      stubServer([eligibleDeck(64)]);
       const { container, renderAgain } = renderWithHeaderGift(activeGift);
       await submitFiles(container, ['notes.pdf']);
       expect(await screen.findByText(REDO_LINE)).toBeInTheDocument();
@@ -12806,7 +12809,7 @@ describe('UploadForm deck result and resends of kept files', () => {
         ...freeSignedIn,
         features: { thinDeckAiOffer: true },
       } as unknown as ReturnType<typeof useUserLocals>['data']);
-      stubServer([deckResponse(2)]);
+      stubServer([eligibleDeck(2)]);
       const { container } = renderWithHeaderGift(activeGift);
       await submitFiles(container, ['notes.pdf']);
 
@@ -12841,7 +12844,7 @@ describe('UploadForm deck result and resends of kept files', () => {
         },
       };
       try {
-        const fetchMock = stubServer([deckResponse(64)]);
+        const fetchMock = stubServer([eligibleDeck(64)]);
         const { container } = renderWithHeaderGift(activeGift);
         const dropbox = container.querySelector(
           'button[aria-label="Choose from Dropbox"]'
@@ -12883,7 +12886,7 @@ describe('UploadForm deck result and resends of kept files', () => {
 
     it('offers no remake when the month’s card counts failed to load', async () => {
       mockUseCardUsage.mockReturnValue(cardsLeft(100));
-      stubServer([deckResponse(64)]);
+      stubServer([eligibleDeck(64)]);
       const { container } = renderWithHeaderGift({
         ...activeGift,
         claudeByDefaultOnGift: null,
@@ -12902,7 +12905,7 @@ describe('UploadForm deck result and resends of kept files', () => {
         ...freeSignedIn,
         features: { thinDeckAiOffer: true },
       } as unknown as ReturnType<typeof useUserLocals>['data']);
-      stubServer([deckResponse(2)]);
+      stubServer([eligibleDeck(2)]);
       const { container } = renderWithHeaderGift({
         state: 'closed',
         feedbackDue: false,
@@ -12923,9 +12926,19 @@ describe('UploadForm deck result and resends of kept files', () => {
       ]);
     });
 
+    it('offers no remake for a file Claude never converts, like an XML export', async () => {
+      stubServer([deckResponse(64)]);
+      const { container } = renderWithHeaderGift(activeGift);
+      await submitFiles(container, ['export.xml']);
+
+      await screen.findAllByText('Your deck is ready — 64 cards.');
+      await settle();
+      expect(screen.queryByText(REDO_LINE)).toBeNull();
+    });
+
     it('opens its file picker when the gift panel asks for a file while the zone is idle', async () => {
       resetUploadEntryForTests();
-      stubServer([deckResponse(64)]);
+      stubServer([eligibleDeck(64)]);
       const { container } = renderWithHeaderGift(activeGift);
       const input = container.querySelector(
         'input[type="file"]'
@@ -12940,7 +12953,7 @@ describe('UploadForm deck result and resends of kept files', () => {
     it('brings its zone into focus when the gift panel sent the visitor to this page', async () => {
       resetUploadEntryForTests();
       expect(chooseUploadFile()).toBe('page');
-      stubServer([deckResponse(64)]);
+      stubServer([eligibleDeck(64)]);
       const { container } = renderWithHeaderGift(activeGift);
 
       await waitFor(() =>
@@ -12949,7 +12962,7 @@ describe('UploadForm deck result and resends of kept files', () => {
     });
 
     it('offers nothing when the month has too few cards left for Claude to run on the gift', async () => {
-      stubServer([deckResponse(64)]);
+      stubServer([eligibleDeck(64)]);
       const { container } = renderWithHeaderGift({
         ...activeGift,
         claudeByDefaultOnGift: false,

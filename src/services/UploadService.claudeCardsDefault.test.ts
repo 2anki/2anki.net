@@ -198,7 +198,12 @@ async function send(account: Account, file: Sent) {
   if (jobs.create.mock.calls.length > 0) await settled;
   const jobType =
     (jobs.create.mock.calls[0]?.[3] as string | undefined) ?? null;
-  return { status, jobType, users };
+  return {
+    status,
+    jobType,
+    users,
+    locals: res.locals as Record<string, unknown>,
+  };
 }
 
 function defaultAppliedEvents() {
@@ -402,9 +407,15 @@ describe('an account with no plan whose free AI gift pays uploads on the web', (
     expiresAt: new Date('2099-11-27T10:00:00.000Z'),
   };
   const giftReaders =
-    (options: { grant?: typeof grant | null; spendUsd?: number } = {}) =>
+    (
+      options: {
+        grant?: typeof grant | null;
+        spendUsd?: number;
+        enabled?: boolean;
+      } = {}
+    ) =>
     (): UploadGiftModeDeps => ({
-      isEnabled: async () => true,
+      isEnabled: async () => options.enabled ?? true,
       findGrant: async () =>
         options.grant === undefined ? grant : options.grant,
       giftCostSince: async () => options.spendUsd ?? 0,
@@ -482,6 +493,10 @@ describe('an account with no plan whose free AI gift pays uploads on the web', (
     ],
     ['the month has fewer than 20 cards left', { ...GIFTED, cardsUsed: 81 }],
     ['there is no gift', { ...GIFTED, gift: giftReaders({ grant: null }) }],
+    [
+      'the gift is switched off or has ended',
+      { ...GIFTED, gift: giftReaders({ enabled: false }) },
+    ],
   ])(
     'keeps the parser and records no default when %s',
     async (_case, account) => {
@@ -490,6 +505,38 @@ describe('an account with no plan whose free AI gift pays uploads on the web', (
       expect(status).not.toBe(202);
       expect(jobType).toBeNull();
       expect(defaultAppliedEvents()).toEqual([]);
+    },
+    20_000
+  );
+
+  it('leaves an upload the person sent with Claude on alone, and runs it on the gift', async () => {
+    const { jobType, locals } = await send(GIFTED, {
+      name: 'lecture.pdf',
+      body: {
+        'claude-ai-flashcards': 'true',
+        [AI_CHOICE_AT_KEY]: '1762300000',
+      },
+    });
+
+    expect(jobType).toBe('claude');
+    expect(defaultAppliedEvents()).toEqual([]);
+    expect(locals.aiGift).toBe('only');
+  }, 20_000);
+
+  it.each([
+    ['a Dropbox pick', '/api/upload/dropbox'],
+    ['a Google Drive pick', '/api/upload/google_drive'],
+  ])(
+    'makes Claude cards on the gift from %s of a PDF, since it is a web upload',
+    async (_label, path) => {
+      const { jobType, locals } = await send(GIFTED, {
+        name: 'lecture.pdf',
+        path,
+      });
+
+      expect(jobType).toBe('claude');
+      expect(locals.aiGift).toBe('only');
+      expect(defaultAppliedEvents()).toHaveLength(1);
     },
     20_000
   );

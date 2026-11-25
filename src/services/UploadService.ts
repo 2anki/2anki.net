@@ -2493,6 +2493,10 @@ class UploadService {
         res.set('X-AI-Preview-Unavailable', '1');
         exposedHeaders.push('X-AI-Preview-Unavailable');
       }
+      if (mayReachClaude((req.files as UploadedFile[] | undefined) ?? [])) {
+        res.set('X-Claude-Eligible', '1');
+        exposedHeaders.push('X-Claude-Eligible');
+      }
       if (totalDroppedImageCount > 0) {
         res.set('X-Dropped-Assets', totalDroppedImageCount.toString());
         exposedHeaders.push('X-Dropped-Assets');

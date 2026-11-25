@@ -47,11 +47,13 @@ export class GetAiGiftStatusUseCase {
   constructor(private readonly deps: AiGiftDeps) {}
 
   // The same rule an upload applies: the gift turns Claude cards on by
-  // default only while it would pay (credits left, no gift conversion running,
-  // the month's card minimum left) and the account never chose for itself.
+  // default only for an account with no paid plan, while it would pay
+  // (credits left, no gift conversion running, the month's card minimum left)
+  // and the account never chose for itself.
   // A failed read answers unknown, which the page shows as nothing promised.
   private async claudeDefaultOnGift(
     userId: number,
+    paying: boolean,
     credits: number,
     inUse: boolean
   ): Promise<{
@@ -63,7 +65,10 @@ export class GetAiGiftStatusUseCase {
     try {
       const monthlyCardsLeft = await readers.remainingMonthlyCards(userId);
       const giftPays =
-        credits > 0 && !inUse && monthlyCardsLeft >= AI_GIFT_MIN_MONTHLY_CARDS;
+        !paying &&
+        credits > 0 &&
+        !inUse &&
+        monthlyCardsLeft >= AI_GIFT_MIN_MONTHLY_CARDS;
       const claudeByDefaultOnGift =
         giftPays &&
         (await accountHasClaudeCardsByDefault(
@@ -79,7 +84,7 @@ export class GetAiGiftStatusUseCase {
     }
   }
 
-  async execute(userId: number | null): Promise<AiGiftStatus> {
+  async execute(userId: number | null, paying: boolean): Promise<AiGiftStatus> {
     if (!(await this.deps.isEnabled())) {
       return CLOSED;
     }
@@ -103,7 +108,7 @@ export class GetAiGiftStatusUseCase {
             feedbackDue,
             inUse,
             minMonthlyCards: AI_GIFT_MIN_MONTHLY_CARDS,
-            ...(await this.claudeDefaultOnGift(userId, credits, inUse)),
+            ...(await this.claudeDefaultOnGift(userId, paying, credits, inUse)),
           };
         }
         return { state: 'closed', feedbackDue };

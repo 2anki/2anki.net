@@ -78,6 +78,9 @@ async function startHarness(): Promise<Harness> {
     if (user != null) {
       res.locals.owner = Number(user);
     }
+    if (req.header('x-test-paying') === '1') {
+      res.locals.subscriber = true;
+    }
     next();
   };
   const requireAuth: express.RequestHandler = (req, res, next) => {
@@ -423,6 +426,14 @@ describe('whether the gift turns Claude cards on by default', () => {
       claudeByDefaultOnGift: true,
       monthlyCardsLeft: 90,
     });
+  });
+
+  it('is never on for an account with a paid plan, whose plan pays first', async () => {
+    const res = await fetch(h.url + '/api/ai/gift', {
+      headers: { ...headers(5), 'x-test-paying': '1' },
+    });
+
+    expect((await res.json()).claudeByDefaultOnGift).toBe(false);
   });
 
   it('is off once the account recorded its own choice', async () => {

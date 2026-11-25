@@ -16,6 +16,8 @@
   "claimedExpires": "Ils expirent le {{date}}.",
   "nextFile": "Claude écrira les cartes de ton prochain fichier.",
   "nextPdf": "Claude écrira les cartes de ton prochain fichier PDF ou PowerPoint.",
+  "otherUploads": "Les autres imports reçoivent des cartes selon leur structure.",
+  "inUseNow": "Une conversion utilise tes crédits IA offerts en ce moment.",
   "fewCardsLeft_one": "Il te reste {{count}} carte ce mois-ci, trop peu pour un paquet Claude. Ton prochain fichier aura des cartes tirées de sa structure.",
   "fewCardsLeft_other": "Il te reste {{count}} cartes ce mois-ci, trop peu pour un paquet Claude. Ton prochain fichier aura des cartes tirées de sa structure.",
   "turnOffHint": "Tu peux désactiver l’IA sur la page d’import.",

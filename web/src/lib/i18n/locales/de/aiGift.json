@@ -16,6 +16,8 @@
   "claimedExpires": "Sie verfallen am {{date}}.",
   "nextFile": "Claude schreibt die Karten für deine nächste Datei.",
   "nextPdf": "Claude schreibt die Karten für deine nächste PDF- oder PowerPoint-Datei.",
+  "otherUploads": "Andere Uploads bekommen Karten aus ihrer Struktur.",
+  "inUseNow": "Gerade nutzt eine Konvertierung deine Gratis-KI-Credits.",
   "fewCardsLeft_one": "Du hast diesen Monat noch {{count}} Karte übrig, zu wenig für einen Claude-Stapel. Deine nächste Datei bekommt Karten aus ihrer Struktur.",
   "fewCardsLeft_other": "Du hast diesen Monat noch {{count}} Karten übrig, zu wenig für einen Claude-Stapel. Deine nächste Datei bekommt Karten aus ihrer Struktur.",
   "turnOffHint": "Auf der Upload-Seite kannst du die KI ausschalten.",

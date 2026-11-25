@@ -9,7 +9,11 @@ vi.mock('../../lib/analytics/track', () => ({ track: vi.fn() }));
 
 import { track } from '../../lib/analytics/track';
 import { forgetNoticesShownThisLoad } from '../../lib/analytics/trackNoticeOncePerLoad';
-import { AiGiftPresent, formatGiftDate } from './AiGiftPresent';
+import {
+  AiGiftPresent,
+  formatGiftDate,
+  type PanelAccount,
+} from './AiGiftPresent';
 import { rememberClaimIntent } from './giftUiState';
 import {
   registerUploadEntry,
@@ -80,10 +84,21 @@ const BALANCE = `100 free AI credits left until ${formatGiftDate('2026-11-27T12:
 const eventsNamed = (name: string) =>
   vi.mocked(track).mock.calls.filter(([event]) => event === name);
 
+function accountFor(
+  giftPaysForClaude: boolean | undefined,
+  claudeCardsByDefault: boolean
+): PanelAccount | undefined {
+  if (giftPaysForClaude == null) return undefined;
+  return giftPaysForClaude
+    ? { paying: false, claudeCardsByDefault: false }
+    : { paying: true, claudeCardsByDefault };
+}
+
 function renderPresent(
   isLoggedIn: boolean,
   planCreditsFirst?: boolean,
-  giftPaysForClaude?: boolean
+  giftPaysForClaude?: boolean,
+  claudeCardsByDefault = false
 ) {
   return render(
     <QueryClientProvider
@@ -95,7 +110,7 @@ function renderPresent(
         <AiGiftPresent
           isLoggedIn={isLoggedIn}
           planCreditsFirst={planCreditsFirst}
-          giftPaysForClaude={giftPaysForClaude}
+          account={accountFor(giftPaysForClaude, claudeCardsByDefault)}
         />
         <Routes>
           <Route path="*" element={<Where />} />
@@ -244,6 +259,9 @@ describe('AiGiftPresent', () => {
       )
     ).toBeInTheDocument();
     expect(screen.getByRole('dialog')).toHaveTextContent(
+      'Other uploads get cards from their structure.'
+    );
+    expect(screen.getByRole('dialog')).toHaveTextContent(
       'You can turn AI off on the upload page.'
     );
     expect(localStorage.getItem('claude-ai-flashcards')).toBeNull();
@@ -325,7 +343,7 @@ describe('AiGiftPresent', () => {
     expect(screen.queryByText(/Claude will write/)).toBeNull();
   });
 
-  test('shows a signed-in visitor whose plan is unknown the balance and a pointer, never a promise', async () => {
+  test('shows a signed-in visitor whose plan is unknown the balance, never an on or off claim', async () => {
     routeFetch(CLAIMED);
     renderPresent(true);
 
@@ -335,7 +353,59 @@ describe('AiGiftPresent', () => {
       await screen.findByText('You have 100 AI credits from the gift.')
     ).toBeInTheDocument();
     expect(screen.queryByText(/Claude will write/)).toBeNull();
+    expect(screen.queryByText(/AI is (on|off)/)).toBeNull();
   });
+
+  test('tells a paying account its PDF default is on, the same as the upload page, and what other files get', async () => {
+    routeFetch(CLAIMED);
+    renderPresent(true, true, false, true);
+
+    fireEvent.click(await trigger());
+
+    const panel = screen.getByRole('dialog');
+    expect(panel).toHaveTextContent(
+      'Claude will write the cards for your next PDF or PowerPoint file.'
+    );
+    expect(panel).toHaveTextContent(
+      'Other uploads get cards from their structure.'
+    );
+    expect(panel).not.toHaveTextContent('AI is off');
+  });
+
+  test('drops the PDF default line once the person recorded a choice of their own', async () => {
+    routeFetch(CLAIMED);
+    localStorage.setItem('ai-choice-at', '1762300000');
+    renderPresent(true, true, false, true);
+
+    fireEvent.click(await trigger());
+
+    expect(screen.getByRole('dialog')).toHaveTextContent(
+      'AI is off. Turn it on from the upload page to use them.'
+    );
+  });
+
+  test.each([
+    ['an account with no plan', true],
+    ['an account with a plan', false],
+  ])(
+    'tells %s that a conversion is using the gift, with no promise and no off',
+    async (_case, giftOnly) => {
+      routeFetch({ ...CLAIMED, inUse: true });
+      renderPresent(true, false, giftOnly, true);
+
+      fireEvent.click(await trigger());
+
+      const panel = screen.getByRole('dialog');
+      expect(panel).toHaveTextContent(
+        'A conversion is using your free AI credits right now.'
+      );
+      expect(panel).not.toHaveTextContent('Claude will write');
+      expect(panel).not.toHaveTextContent('AI is off');
+      expect(
+        screen.queryByRole('button', { name: 'Choose a file' })
+      ).toBeNull();
+    }
+  );
 
   test.each([
     ['idle', 'picker', 'openPicker'],

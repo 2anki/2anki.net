@@ -23,6 +23,7 @@ import {
 import { useGiftAutoOpen } from './useGiftAutoOpen';
 import { useUploadZoneActivity } from '../../lib/upload/uploadZoneActivity';
 import { chooseUploadFile } from '../../lib/upload/uploadEntry';
+import { hasRecordedAiChoice } from '../../lib/data_layer/aiChoice';
 import sharedStyles from '../../styles/shared.module.css';
 import styles from './AiGiftPresent.module.css';
 
@@ -43,19 +44,37 @@ interface AiGiftPresentProps {
   className?: string;
   labelFromWide?: boolean;
   planCreditsFirst?: boolean;
-  giftPaysForClaude?: boolean;
+  account?: PanelAccount;
 }
 
-type GiftClaudeState = 'unknown' | 'short' | 'on' | 'onForPdfs' | 'off';
+// What the page knows about the signed-in account: whether it pays for a plan
+// and, if so, whether its plan turns Claude on by default for PDF and
+// PowerPoint uploads. Left out where the page does not know, and then the
+// panel makes no claim about AI being on or off.
+export interface PanelAccount {
+  paying: boolean;
+  claudeCardsByDefault: boolean;
+}
+
+type NextUploadClaude =
+  | 'unknown'
+  | 'inUse'
+  | 'short'
+  | 'on'
+  | 'onForPdfs'
+  | 'off';
 
 const claudeSwitchedOnHere = (): boolean =>
   globalThis.localStorage?.getItem('claude-ai-flashcards') === 'true';
 
-// What the gift will do for the next upload of an account with no plan, read
-// from the gift status, which applies the same rule as the upload: nothing is
-// promised until the status says the month has room and whether Claude is on
-// by default for PDF and PowerPoint uploads.
-function giftClaudeState(gift: ClaimedGift): GiftClaudeState {
+// The upload page's own reading of the default: it holds until the person
+// records a choice, and a PDF made two pages per card skips it.
+const defaultHoldsHere = (serverDefault: boolean): boolean =>
+  serverDefault &&
+  !hasRecordedAiChoice() &&
+  globalThis.localStorage?.getItem('pdf-page-pairs') !== 'true';
+
+function giftAccountClaude(gift: ClaimedGift): NextUploadClaude {
   const left = gift.monthlyCardsLeft;
   const minimum = gift.minMonthlyCards;
   if (left == null || minimum == null || gift.claudeByDefaultOnGift == null) {
@@ -63,15 +82,42 @@ function giftClaudeState(gift: ClaimedGift): GiftClaudeState {
   }
   if (left < minimum) return 'short';
   if (claudeSwitchedOnHere()) return 'on';
-  return gift.claudeByDefaultOnGift ? 'onForPdfs' : 'off';
+  return defaultHoldsHere(gift.claudeByDefaultOnGift) ? 'onForPdfs' : 'off';
 }
 
-const GIFT_CLAUDE_LINE: Record<Exclude<GiftClaudeState, 'unknown'>, string> = {
-  short: 'fewCardsLeft',
-  on: 'nextFile',
-  onForPdfs: 'nextPdf',
-  off: 'aiOffPlan',
-};
+// What the server will do with the next PDF or PowerPoint upload: the plan's
+// default for a paying account, the gift status for one with no plan, and a
+// switch the person turned on themselves for either.
+function nextUploadClaude(
+  gift: ClaimedGift,
+  account: PanelAccount | undefined
+): NextUploadClaude {
+  if (account == null) return 'unknown';
+  if (gift.inUse === true) return 'inUse';
+  if (!account.paying) return giftAccountClaude(gift);
+  if (claudeSwitchedOnHere()) return 'on';
+  return defaultHoldsHere(account.claudeCardsByDefault) ? 'onForPdfs' : 'off';
+}
+
+function claudeLineKey(
+  state: NextUploadClaude,
+  paying: boolean
+): string | null {
+  switch (state) {
+    case 'inUse':
+      return 'inUseNow';
+    case 'short':
+      return 'fewCardsLeft';
+    case 'on':
+      return paying ? 'aiOnPlan' : 'nextFile';
+    case 'onForPdfs':
+      return 'nextPdf';
+    case 'off':
+      return 'aiOffPlan';
+    default:
+      return null;
+  }
+}
 
 const dateLocale = (language: string): string =>
   language.startsWith('en') ? 'en-GB' : language;
@@ -105,7 +151,7 @@ type ClaimedGift = Extract<AiGiftStatus, { state: 'claimed' }>;
 
 interface ClaimedBodyProps {
   gift: ClaimedGift;
-  giftPaysForClaude: boolean;
+  account: PanelAccount | undefined;
   planCreditsFirst: boolean;
   onChooseFile: () => void;
   resultRef: RefCallback<HTMLParagraphElement>;
@@ -113,7 +159,7 @@ interface ClaimedBodyProps {
 
 function ClaimedBody({
   gift,
-  giftPaysForClaude,
+  account,
   planCreditsFirst,
   onChooseFile,
   resultRef,
@@ -127,37 +173,34 @@ function ClaimedBody({
     </button>
   );
 
-  if (giftPaysForClaude) {
-    const state = giftClaudeState(gift);
-    return (
-      <>
-        <p ref={resultRef} tabIndex={-1} className={styles.text}>
-          {t('balanceAlone', { count: gift.credits, date })}
-        </p>
-        {state !== 'unknown' && (
-          <p className={styles.text}>
-            {t(GIFT_CLAUDE_LINE[state], { count: gift.monthlyCardsLeft ?? 0 })}
-          </p>
-        )}
-        {(state === 'on' || state === 'onForPdfs') && (
-          <p className={styles.note}>{t('turnOffHint')}</p>
-        )}
-        {state !== 'unknown' && chooseFile}
-      </>
-    );
-  }
+  const state = nextUploadClaude(gift, account);
+  const paying = account?.paying !== false;
+  const lineKey = claudeLineKey(state, paying);
+  const offersFile = state !== 'unknown' && state !== 'inUse';
 
   return (
     <>
       <p ref={resultRef} tabIndex={-1} className={styles.text}>
-        {t('claimed', { count: gift.credits })}
+        {paying
+          ? t('claimed', { count: gift.credits })
+          : t('balanceAlone', { count: gift.credits, date })}
       </p>
-      <p className={styles.text}>{t('claimedExpires', { date })}</p>
-      {planCreditsFirst && <p className={styles.note}>{t('planFirst')}</p>}
-      <p className={styles.note}>
-        {claudeSwitchedOnHere() ? t('aiOnPlan') : t('aiOffPlan')}
-      </p>
-      {chooseFile}
+      {paying && <p className={styles.text}>{t('claimedExpires', { date })}</p>}
+      {paying && planCreditsFirst && (
+        <p className={styles.note}>{t('planFirst')}</p>
+      )}
+      {lineKey != null && (
+        <p className={styles.text}>
+          {t(lineKey, { count: gift.monthlyCardsLeft ?? 0 })}
+        </p>
+      )}
+      {state === 'onForPdfs' && (
+        <p className={styles.text}>{t('otherUploads')}</p>
+      )}
+      {(state === 'on' || state === 'onForPdfs') && (
+        <p className={styles.note}>{t('turnOffHint')}</p>
+      )}
+      {offersFile && chooseFile}
     </>
   );
 }
@@ -173,7 +216,7 @@ interface PanelBodyProps {
   onChooseFile: () => void;
   resultRef: RefCallback<HTMLParagraphElement>;
   planCreditsFirst: boolean;
-  giftPaysForClaude: boolean;
+  account: PanelAccount | undefined;
 }
 
 function PanelBody({
@@ -187,7 +230,7 @@ function PanelBody({
   onChooseFile,
   resultRef,
   planCreditsFirst,
-  giftPaysForClaude,
+  account,
 }: Readonly<PanelBodyProps>) {
   const { t } = useTranslation('aiGift');
   const language = useAppLanguage();
@@ -204,7 +247,7 @@ function PanelBody({
     return (
       <ClaimedBody
         gift={gift}
-        giftPaysForClaude={giftPaysForClaude}
+        account={account}
         planCreditsFirst={planCreditsFirst}
         onChooseFile={onChooseFile}
         resultRef={resultRef}
@@ -271,7 +314,7 @@ export function AiGiftPresent({
   className,
   labelFromWide = false,
   planCreditsFirst = false,
-  giftPaysForClaude = false,
+  account,
 }: Readonly<AiGiftPresentProps>) {
   const { t } = useTranslation('aiGift');
   const gift = useAiGift(isLoggedIn);
@@ -556,7 +599,7 @@ export function AiGiftPresent({
               onChooseFile={onChooseFile}
               resultRef={resultRef}
               planCreditsFirst={planCreditsFirst}
-              giftPaysForClaude={giftPaysForClaude}
+              account={account}
             />
           </div>
           {!dismissed && (

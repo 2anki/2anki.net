@@ -845,6 +845,8 @@ function UploadForm({
     setAiPreviewCards,
     aiPreviewUnavailable,
     setAiPreviewUnavailable,
+    claudeEligible,
+    setClaudeEligible,
     setOverSplit,
     creditsUsed,
     setCreditsUsed,
@@ -968,6 +970,7 @@ function UploadForm({
     setHeldDeck,
     setAiPreviewCards,
     setAiPreviewUnavailable,
+    setClaudeEligible,
     setZoneState: (state) => {
       setDeckKeptForAccount(keptForAccountRef.current);
       keptForAccountRef.current = false;
@@ -1705,6 +1708,7 @@ function UploadForm({
     !downloadRecovered &&
     cardsHeldBack === 0 &&
     rescueFiles.length > 0 &&
+    claudeEligible &&
     giftBalance != null &&
     gift?.state === 'claimed' &&
     gift.inUse !== true &&
