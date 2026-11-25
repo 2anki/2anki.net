@@ -1,4 +1,4 @@
-import { walkZipDirectory } from '../../../lib/zip/walkZipDirectory';
+import { lastZipEntryNamed } from '../../../lib/zip/walkZipDirectory';
 
 // mammoth builds the whole Word body in memory several times over, about 40
 // bytes of heap per byte of word/document.xml, so a long body runs the 1 GB
@@ -40,23 +40,17 @@ export function isWordDocumentTooLongError(err: unknown): err is Error {
   return err instanceof Error && err.name === WORD_DOCUMENT_TOO_LONG;
 }
 
-// The uncompressed size the zip directory declares for the Word body, read
-// without inflating anything. Null when the directory cannot be read or the
-// size is missing or implausible (0xFFFFFFFF with no zip64 record means
-// unknown), in which case the file converts as before.
+// The uncompressed size the zip directory declares for the Word body the
+// converter reads (the last entry of that name, as its zip reader takes),
+// read without inflating anything. Null when the directory cannot be read or
+// the size is missing or unknown (0 or 0xFFFFFFFF), in which
+// case the file converts as before.
 export function declaredWordBodyBytes(contents: Buffer): number | null {
-  let declared: number | null = null;
-  const walk = walkZipDirectory(contents, (entry) => {
-    if (entry.name !== MAIN_DOCUMENT_PART) return 'continue';
-    const plausible =
-      Number.isSafeInteger(entry.originalSize) &&
-      entry.originalSize > 0 &&
-      entry.originalSize !== UNKNOWN_32_BIT_SIZE &&
-      entry.originalSize >= entry.compressedSize;
-    declared = plausible ? entry.originalSize : null;
-    return 'stop';
-  });
-  return walk === 'stopped' ? declared : null;
+  const entry = lastZipEntryNamed(contents, MAIN_DOCUMENT_PART);
+  if (entry == null || entry === 'unreadable') return null;
+  const known =
+    entry.originalSize > 0 && entry.originalSize !== UNKNOWN_32_BIT_SIZE;
+  return known ? entry.originalSize : null;
 }
 
 export function refuseWordDocumentTooLong(contents: Buffer): void {

@@ -2061,6 +2061,11 @@ class UploadService {
             jobId: ws.id,
             kind: err instanceof Error ? err.name : 'unknown',
           });
+          // Expected, so nothing alerts, but the refusal is still counted
+          // apart from a real out-of-memory crash.
+          if (isWordDocumentTooLongError(err)) {
+            this.trackUploadFailed(req, res, uploadFailureReason(err));
+          }
         } else {
           console.error('[UploadService] async job failed', {
             jobId: ws.id,

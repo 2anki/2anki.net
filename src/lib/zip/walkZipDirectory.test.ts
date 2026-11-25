@@ -1,7 +1,11 @@
 import { strToU8, zipSync } from 'fflate';
 
-import { walkZipDirectory } from './walkZipDirectory';
-import { zipDeclaringMoreEntriesThanItHolds } from '../../test/fakes/zipDeclaringMoreEntriesThanItHolds';
+import { lastZipEntryNamed, walkZipDirectory } from './walkZipDirectory';
+import {
+  noiseWithZipEnd,
+  zipDeclaringMoreEntriesThanItHolds,
+  zipOfMembers,
+} from '../../test/fakes/unusualZips';
 
 function sampleZip(): Buffer {
   return Buffer.from(
@@ -67,5 +71,32 @@ describe('walkZipDirectory', () => {
     expect(walkZipDirectory(Buffer.from('not a zip'), () => 'continue')).toBe(
       'unreadable'
     );
+  });
+});
+
+describe('lastZipEntryNamed', () => {
+  it('takes the last of two entries with the same name, as the converter does', () => {
+    const zip = zipOfMembers([
+      { name: 'word/document.xml', data: Buffer.from('first') },
+      { name: 'word/document.xml', data: Buffer.from('the second one') },
+    ]);
+
+    expect(lastZipEntryNamed(zip, 'word/document.xml')).toMatchObject({
+      originalSize: 14,
+    });
+  });
+
+  it('has no entry for a name the zip does not hold', () => {
+    expect(lastZipEntryNamed(sampleZip(), 'word/document.xml')).toBeNull();
+  });
+
+  it.each([
+    ['noise ending in a zip end record', () => noiseWithZipEnd(1_000_000)],
+    [
+      'an end record declaring far more entries than the file holds',
+      () => zipDeclaringMoreEntriesThanItHolds(4_000_000_000),
+    ],
+  ])('calls %s unreadable', (_kind, build) => {
+    expect(lastZipEntryNamed(build(), 'word/document.xml')).toBe('unreadable');
   });
 });

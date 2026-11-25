@@ -1,3 +1,4 @@
+import JSZip from 'jszip';
 import { strToU8, zipSync } from 'fflate';
 
 import {
@@ -7,7 +8,11 @@ import {
   WordDocumentTooLongError,
 } from './wordDocumentTooLong';
 import { wordNotesWithBodyBytes } from '../../../test/fakes/longWordDocuments';
-import { zipDeclaringMoreEntriesThanItHolds } from '../../../test/fakes/zipDeclaringMoreEntriesThanItHolds';
+import {
+  noiseWithZipEnd,
+  zipDeclaringMoreEntriesThanItHolds,
+  zipOfMembers,
+} from '../../../test/fakes/unusualZips';
 
 describe('declaredWordBodyBytes', () => {
   it('reads the size the zip directory declares for the Word body', () => {
@@ -69,4 +74,43 @@ describe('refuseWordDocumentTooLong', () => {
       'WordDocumentTooLongError'
     );
   });
+});
+
+describe('declaredWordBodyBytes on unusual zips', () => {
+  it.each([2_000_000, 8_000_000])(
+    'answers within milliseconds for %i bytes of noise ending in a zip end record',
+    (bytes) => {
+      const noise = noiseWithZipEnd(bytes);
+      const started = performance.now();
+
+      const declared = declaredWordBodyBytes(noise);
+
+      expect(declared).toBeNull();
+      expect(performance.now() - started).toBeLessThan(20);
+    }
+  );
+
+  const small = Buffer.from('<w:document/>');
+  const huge = Buffer.alloc(MAX_CONVERTIBLE_WORD_BODY_BYTES + 1, 0x20);
+
+  it.each([
+    ['a small body then a huge one', [small, huge], huge.length],
+    ['a huge body then a small one', [huge, small], small.length],
+  ])(
+    'reads the body the converter reads when a zip holds %s',
+    async (_order, [first, second], expected) => {
+      const zip = zipOfMembers([
+        { name: 'word/document.xml', data: first },
+        { name: 'word/document.xml', data: second },
+      ]);
+      const converterBody = await (
+        await JSZip.loadAsync(zip)
+      )
+        .file('word/document.xml')
+        ?.async('nodebuffer');
+
+      expect(converterBody?.length).toBe(expected);
+      expect(declaredWordBodyBytes(zip)).toBe(expected);
+    }
+  );
 });

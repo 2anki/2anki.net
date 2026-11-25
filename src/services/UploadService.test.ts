@@ -4781,6 +4781,70 @@ describe('UploadService.promoteClaudeJobToUpload — async fs reads', () => {
     errorSpy.mockRestore();
   });
 
+  it('records a Word file too long to convert once under its own reason on the async route, and tells the user to split it', async () => {
+    let resolveFailed!: () => void;
+    const failed = new Promise<void>((r) => {
+      resolveFailed = r;
+    });
+    const updateJobStatus = vi.fn(
+      async (
+        _id: string,
+        _owner: unknown,
+        status: string,
+        _reason?: string
+      ) => {
+        if (status === 'failed') resolveFailed();
+      }
+    );
+    const jobRepository = {
+      create: vi.fn().mockResolvedValue(undefined),
+      updateJobStatus,
+      findJobById: vi.fn().mockResolvedValue(null),
+      deleteJob: vi.fn().mockResolvedValue(undefined),
+    } as unknown as JobRepository;
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi
+          .fn()
+          .mockRejectedValue(
+            Object.assign(
+              new Error('word_document_too_long: 50000000 bytes of body XML'),
+              { name: 'WordDocumentTooLongError' }
+            )
+          ),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const service = new UploadService(
+      { ...buildRepository(), update: vi.fn().mockResolvedValue([]) },
+      jobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest({ body: { 'claude-ai-flashcards': 'true' } });
+    const { res } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+    (res.locals as Record<string, unknown>).subscriber = true;
+
+    await service.handleUpload(req, res);
+    await failed;
+
+    const failedCall = updateJobStatus.mock.calls.find(
+      (call) => call[2] === 'failed'
+    );
+    expect(failedCall?.[3]).toBe(CONVERSION_OUT_OF_MEMORY_REASON);
+    const refusals = trackMock.mock.calls.filter(
+      ([event, payload]) =>
+        event === 'conversion_failed' &&
+        (payload as { props?: { reason?: string } }).props?.reason ===
+          'word_document_too_long'
+    );
+    expect(refusals).toHaveLength(1);
+    expect(errorSpy).not.toHaveBeenCalled();
+    errorSpy.mockRestore();
+  });
+
   it('fails an async job on a worker filesystem error with the generic reason, not its path', async () => {
     const crash = Object.assign(
       new Error("ENOENT: no such file or directory, open '/srv/ws/x.html'"),
