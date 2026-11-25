@@ -36,6 +36,12 @@ describe('refuseWordDocumentTooLong', () => {
     );
   });
 
+  it('refuses a 37 MB body, past where every measured document shape crashed', () => {
+    expect(() =>
+      refuseWordDocumentTooLong(wordNotesWithBodyBytes(37_000_000))
+    ).toThrow(WordDocumentTooLongError);
+  });
+
   it('is the refusal error the upload path matches by name', () => {
     expect(new WordDocumentTooLongError(1).name).toBe(
       'WordDocumentTooLongError'

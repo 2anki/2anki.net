@@ -9,11 +9,14 @@ import { unzipSync } from 'fflate';
 //   bulleted notes with figures     26.5 MB / 27.1 MB
 //   markup-heavy Word paragraphs    31.4 MB / 32.2 MB
 //   plain paragraphs and tables     33.1 MB / 33.6 MB
-// A body declared above this threshold (41.9 MB) is refused before the
-// converter starts. It sits about a quarter above the largest body seen to
-// convert, so no file that converts today is refused; a body between the
-// measured limits and this threshold converts or crashes exactly as before.
-export const MAX_CONVERTIBLE_WORD_BODY_BYTES = 40 * 1024 * 1024;
+//   the lecture notes indented      28.9 MB / 34.6 MB
+//   runs of empty paragraphs        crash from 20 MB
+// Nothing shaped like Word output converted above 33.1 MB, so a body
+// declared above this threshold is refused before the converter starts; the
+// margin covers a shape a little more compact than plain text. A body padded
+// with XML comments or long runs of whitespace converts far larger (160 MB
+// measured), but Word does not write either, and no threshold could cover it.
+export const MAX_CONVERTIBLE_WORD_BODY_BYTES = 36_000_000;
 
 const MAIN_DOCUMENT_PART = 'word/document.xml';
 const WORD_DOCUMENT_TOO_LONG = 'WordDocumentTooLongError';

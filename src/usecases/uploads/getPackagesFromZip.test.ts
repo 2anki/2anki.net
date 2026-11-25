@@ -21,6 +21,7 @@ import {
 } from '../../infrastracture/adapters/fileConversion/PrepareDeck';
 import CardGenerator from '../../lib/anki/CardGenerator';
 import { ZipHandler } from '../../lib/zip/zip';
+import { WordDocumentTooLongError } from '../../infrastracture/adapters/fileConversion/wordDocumentTooLong';
 
 const mockPrepareDeck = PrepareDeck as unknown as Mock;
 const mockPrepareDeckInfoOnly = prepareDeckInfoOnly as unknown as Mock;
@@ -874,6 +875,62 @@ describe('getPackagesFromZip — batch concurrency', () => {
     );
   });
 
+  it('names a Word file too long to convert in the batch path and returns the rest', async () => {
+    const fileNames = [
+      ...Array.from({ length: 7 }, (_, i) => `deck${i}.html`),
+      'Thesis.docx',
+    ];
+
+    mockZipHandlerClass.mockImplementation(function () {
+      return {
+        build: vi.fn().mockResolvedValue(undefined),
+        getFileNames: vi.fn().mockReturnValue(fileNames),
+        files: fileNames.map((name) => ({ name, contents: '<html></html>' })),
+      };
+    });
+
+    mockPrepareDeckInfoOnly.mockImplementation(({ name }: { name: string }) => {
+      if (name === 'Thesis.docx') {
+        return Promise.reject(new WordDocumentTooLongError(50_000_000));
+      }
+      return Promise.resolve({
+        deckInfoPath: `/fake/${name}/deck_info.json`,
+        outputPath: `/fake/${name}/out.apkg`,
+        name,
+        inputFileName: name,
+        deck: [],
+        cardCount: 1,
+        needsIndividualBuild: false,
+      });
+    });
+
+    mockCardGeneratorClass.mockImplementation(function () {
+      return {
+        runBatch: vi
+          .fn()
+          .mockImplementation((entries: Array<{ output: string }>) =>
+            Promise.resolve(entries.map((e) => e.output))
+          ),
+      };
+    });
+
+    vi.spyOn(nodeFsModule, 'readFileSync').mockReturnValue(
+      Buffer.from('fake-apkg')
+    );
+
+    const result = await getPackagesFromZip(
+      Buffer.from('fake-zip') as unknown as Uint8Array,
+      false,
+      new CardOption({}),
+      { location: FAKE_WORKSPACE_LOCATION } as Workspace
+    );
+
+    expect(result.packages.map((p) => p.name)).toHaveLength(7);
+    expect(result.warnings).toEqual([
+      'Thesis.docx is too long to convert in one go and was skipped. Split it into smaller files and convert each one separately.',
+    ]);
+  });
+
   it('threads the card limit into a single-content zip and returns cardsHeldBack', async () => {
     mockZipHandlerClass.mockImplementation(function () {
       return {
@@ -1131,6 +1188,55 @@ describe('getPackagesFromZip — encrypted PDFs', () => {
     expect(result.warnings).toContain(
       'broken.pdf could not be converted and was skipped. The rest of your upload converted — try uploading that file on its own.'
     );
+  });
+
+  describe('a Word file too long to convert', () => {
+    function zipOf(fileNames: string[]) {
+      process.env.MAX_PYTHON_WORKERS = '8';
+      process.env.CONVERSION_WORKERS = '1';
+      mockZipHandlerClass.mockImplementation(function () {
+        return {
+          build: vi.fn().mockResolvedValue(undefined),
+          getFileNames: vi.fn().mockReturnValue(fileNames),
+          files: fileNames.map((name) => ({
+            name,
+            contents: Buffer.from(name),
+          })),
+        };
+      });
+      mockPrepareDeck.mockImplementation(({ name }: { name: string }) => {
+        if (name.endsWith('.docx')) {
+          return Promise.reject(new WordDocumentTooLongError(50_000_000));
+        }
+        return Promise.resolve({
+          name,
+          apkg: Buffer.from(''),
+          deck: [],
+          cardCount: 1,
+        });
+      });
+      return getPackagesFromZip(
+        Buffer.from('fake-zip') as unknown as Uint8Array,
+        false,
+        new CardOption({}),
+        { location: FAKE_WORKSPACE_LOCATION } as Workspace
+      );
+    }
+
+    it('is skipped with a notice to split it when the rest of the zip converts', async () => {
+      const result = await zipOf(['notes.html', 'Thesis.docx']);
+
+      expect(result.packages.map((p) => p.name)).toEqual(['notes.html']);
+      expect(result.warnings).toEqual([
+        'Thesis.docx is too long to convert in one go and was skipped. Split it into smaller files and convert each one separately.',
+      ]);
+    });
+
+    it('fails the upload with the split-the-file reason when nothing else converts', async () => {
+      await expect(zipOf(['Thesis.docx'])).rejects.toBeInstanceOf(
+        WordDocumentTooLongError
+      );
+    });
   });
 });
 
