@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { getAiCredits } from '../../lib/backend/getAiCredits';
-import { getAiGift } from '../../lib/backend/aiGift';
+import { claimAiGift, getAiGift } from '../../lib/backend/aiGift';
 import { TopBar } from './TopBar';
 
 vi.mock('../../lib/analytics/track', () => ({
@@ -26,6 +26,15 @@ vi.mock('../../lib/backend/getAiCredits', () => ({
 vi.mock('../../lib/backend/aiGift', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../lib/backend/aiGift')>()),
   getAiGift: vi.fn(),
+  claimAiGift: vi.fn(),
+}));
+
+vi.mock('../../lib/backend/getUserLocals', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../lib/backend/getUserLocals')>()),
+  getUserLocals: vi.fn().mockResolvedValue({
+    user: { id: 5 },
+    locals: { patreon: false, subscriber: false },
+  }),
 }));
 
 beforeEach(() => {
@@ -129,6 +138,7 @@ describe('TopBar gift panel spending order', () => {
       expiresAt: '2099-11-26T19:15:00.000Z',
       feedbackDue: false,
       inUse: false,
+      minMonthlyCards: 20,
     });
     localStorage.removeItem('claude-ai-flashcards');
   });
@@ -172,4 +182,46 @@ describe('TopBar gift panel spending order', () => {
       ).toBeNull();
     }
   );
+});
+
+describe('TopBar gift claim for an account with bought credits and no plan', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.mocked(getAiGift).mockResolvedValue({
+      state: 'open',
+      credits: 100,
+      expiresIfClaimedNow: '2099-11-27T12:00:00.000Z',
+      claimClosesAt: '2099-12-04T20:00:00.000Z',
+      feedbackDue: false,
+      lastsHours: 48,
+      minMonthlyCards: 20,
+    });
+    vi.mocked(claimAiGift).mockResolvedValue({
+      ok: true,
+      credits: 100,
+      expiresAt: '2099-11-27T12:00:00.000Z',
+    });
+  });
+
+  it('switches Claude cards on, since the gift pays and the bought credits are left alone', async () => {
+    vi.mocked(getAiCredits).mockResolvedValue({
+      credits: 200,
+      used: 0,
+      allowance: 0,
+      usable: true,
+      windowEnd: null,
+      resets: 'period',
+    });
+    renderTopBar({ locals: { patreon: false, subscriber: false } });
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Free AI credits gift' })
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Claim free credits' }));
+
+    expect(
+      await screen.findByText('Claude will write the cards for your next file.')
+    ).toBeInTheDocument();
+    expect(localStorage.getItem('claude-ai-flashcards')).toBe('true');
+  });
 });

@@ -1,4 +1,5 @@
 import {
+  act,
   render,
   screen,
   fireEvent,
@@ -13,6 +14,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { CardOptionsForm } from './CardOptionsForm';
 import CardOptionModel from '../../lib/data_layer/model/CardOption';
 import { cancelPendingSync } from '../../lib/data_layer/userPreferencesSync';
+import { switchClaudeCardsOnForThisBrowser } from '../../lib/data_layer/claudeCardsSwitch';
 
 const mockResetUserCardOptions = vi.fn();
 const mockGetSettingsCardOptions = vi.fn();
@@ -905,6 +907,40 @@ describe('CardOptionsForm user instructions disclosure', () => {
     await waitFor(() => {
       expect(summary.closest('details')).toHaveAttribute('open');
     });
+  });
+});
+
+describe('CardOptionsForm while the gift switches Claude cards on', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setUserLocalsPaying(false);
+    globalThis.localStorage.clear();
+    globalThis.localStorage.setItem('claude-ai-flashcards', 'false');
+    mockGetSettingsCardOptions.mockResolvedValue([
+      new CardOptionModel(
+        'claude-ai-flashcards',
+        'AI flashcards',
+        'Write the cards with Claude.',
+        false
+      ),
+    ]);
+  });
+
+  it('shows the switch on without a reload, and turning it off by hand still saves it', async () => {
+    renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
+    const checkbox = await screen.findByRole('checkbox', {
+      name: /Generate flashcards with Claude AI/,
+    });
+    expect(checkbox).not.toBeChecked();
+
+    act(() => switchClaudeCardsOnForThisBrowser());
+
+    expect(checkbox).toBeChecked();
+    fireEvent.click(checkbox);
+    expect(checkbox).not.toBeChecked();
+    expect(globalThis.localStorage.getItem('claude-ai-flashcards')).toBe(
+      'false'
+    );
   });
 });
 

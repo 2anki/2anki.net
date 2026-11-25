@@ -8,6 +8,8 @@ export type AiGiftStatus =
       expiresIfClaimedNow: string;
       claimClosesAt: string;
       feedbackDue: boolean;
+      lastsHours?: number;
+      minMonthlyCards?: number;
     }
   | { state: 'full'; feedbackDue: boolean }
   | {
@@ -16,6 +18,7 @@ export type AiGiftStatus =
       expiresAt: string;
       feedbackDue: boolean;
       inUse?: boolean;
+      minMonthlyCards?: number;
     };
 
 export type AiGiftRefusal =
@@ -40,6 +43,12 @@ const KNOWN_REFUSALS = new Set<AiGiftRefusal>([
   'gift_ip_limit',
 ]);
 
+function optionalCount(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? value
+    : undefined;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value != null && typeof value === 'object';
 }
@@ -59,6 +68,8 @@ export function parseAiGiftStatus(data: unknown): AiGiftStatus {
       expiresIfClaimedNow: data.expiresIfClaimedNow,
       claimClosesAt: data.claimClosesAt,
       feedbackDue,
+      lastsHours: optionalCount(data.lastsHours),
+      minMonthlyCards: optionalCount(data.minMonthlyCards),
     };
   }
   if (data.state === 'full') {
@@ -75,6 +86,7 @@ export function parseAiGiftStatus(data: unknown): AiGiftStatus {
       expiresAt: data.expiresAt,
       feedbackDue,
       inUse: data.inUse === true,
+      minMonthlyCards: optionalCount(data.minMonthlyCards),
     };
   }
   return { state: 'closed', feedbackDue };

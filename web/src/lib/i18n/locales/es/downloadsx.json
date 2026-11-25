@@ -172,6 +172,8 @@
     "fewCardsNoCredits_other": "Solo salieron {{count}} tarjetas de este archivo. Claude puede escribir más con créditos de IA.",
     "fewCardsPaidAi_one": "Solo salió {{count}} tarjeta de este archivo. Con un plan de pago, Claude puede escribir más tarjetas a partir de él.",
     "fewCardsPaidAi_other": "Solo salieron {{count}} tarjetas de este archivo. Con un plan de pago, Claude puede escribir más tarjetas a partir de él.",
+    "fewCardsGift_one": "Solo salió {{count}} tarjeta de este archivo.",
+    "fewCardsGift_other": "Solo salieron {{count}} tarjetas de este archivo.",
     "seeReport": "Ver el informe completo"
   },
   "skippedAiFiles": {

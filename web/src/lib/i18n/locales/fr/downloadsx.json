@@ -172,6 +172,8 @@
     "fewCardsNoCredits_other": "Seulement {{count}} cartes sont issues de ce fichier. Claude peut en écrire davantage avec des crédits IA.",
     "fewCardsPaidAi_one": "Seulement {{count}} carte est issue de ce fichier. Avec une offre payante, Claude peut en tirer plus de cartes.",
     "fewCardsPaidAi_other": "Seulement {{count}} cartes sont issues de ce fichier. Avec une offre payante, Claude peut en tirer plus de cartes.",
+    "fewCardsGift_one": "Seulement {{count}} carte est issue de ce fichier.",
+    "fewCardsGift_other": "Seulement {{count}} cartes sont issues de ce fichier.",
     "seeReport": "Voir le rapport complet"
   },
   "skippedAiFiles": {

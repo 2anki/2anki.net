@@ -175,16 +175,18 @@ describe('GET /api/ai/gift while the gift is open', () => {
         expiresIfClaimedNow: '2026-11-27T12:00:00.000Z',
         claimClosesAt: '2026-12-04T20:00:00.000Z',
         feedbackDue: false,
+        lastsHours: 48,
+        minMonthlyCards: 20,
       },
     });
   });
 
-  it('tells a visitor late in the window when a claim made now would expire', async () => {
+  it('tells a visitor late in the window when a claim made now would expire, and drops the full length it no longer gets', async () => {
     h.setNow(new Date('2026-12-04T10:00:00.000Z'));
+    const body = (await getGift(h, null)).body;
 
-    expect((await getGift(h, null)).body.expiresIfClaimedNow).toBe(
-      '2026-12-04T22:00:00.000Z'
-    );
+    expect(body.expiresIfClaimedNow).toBe('2026-12-04T22:00:00.000Z');
+    expect(body).not.toHaveProperty('lastsHours');
   });
 
   it('closes for everyone without a gift once claims close', async () => {
@@ -216,6 +218,7 @@ describe('POST /api/ai/gift/claim', () => {
       expiresAt: '2026-11-27T12:00:00.000Z',
       feedbackDue: false,
       inUse: false,
+      minMonthlyCards: 20,
     });
     expect(eventsNamed('ai_gift_claimed')).toEqual([
       [
@@ -402,6 +405,7 @@ describe('the one question after a gift-funded conversion', () => {
       expiresAt: '2026-11-27T12:00:00.000Z',
       feedbackDue: true,
       inUse: false,
+      minMonthlyCards: 20,
     });
   });
 

@@ -135,6 +135,7 @@
     "fewCards_other": "このファイルからは{{count}}枚のカードしか作成されませんでした。上の Claude カードをオンにしてもう一度変換すると、さらにカードを作成できます。",
     "fewCardsNoCredits_other": "このファイルからは{{count}}枚のカードしか作成されませんでした。AIクレジットがあれば、Claude がさらにカードを作成できます。",
     "fewCardsPaidAi_other": "このファイルからは{{count}}枚のカードしか作成されませんでした。有料プランでは、Claude がこのファイルからさらに多くのカードを作成できます。",
+    "fewCardsGift_other": "このファイルからは{{count}}枚のカードしか作成されませんでした。",
     "seeReport": "レポート全体を見る"
   },
   "skippedAiFiles": {

@@ -172,6 +172,8 @@
     "fewCardsNoCredits_other": "Nur {{count}} Karten sind aus dieser Datei entstanden. Mit KI-Credits kann Claude mehr schreiben.",
     "fewCardsPaidAi_one": "Nur {{count}} Karte ist aus dieser Datei entstanden. Mit einem bezahlten Plan kann Claude mehr Karten daraus schreiben.",
     "fewCardsPaidAi_other": "Nur {{count}} Karten sind aus dieser Datei entstanden. Mit einem bezahlten Plan kann Claude mehr Karten daraus schreiben.",
+    "fewCardsGift_one": "Nur {{count}} Karte ist aus dieser Datei entstanden.",
+    "fewCardsGift_other": "Nur {{count}} Karten sind aus dieser Datei entstanden.",
     "seeReport": "Vollständigen Bericht ansehen"
   },
   "skippedAiFiles": {

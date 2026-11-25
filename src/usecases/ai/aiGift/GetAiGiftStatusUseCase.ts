@@ -5,6 +5,9 @@ import {
 import {
   AI_GIFT_CLAIMS_CLOSE_AT,
   AI_GIFT_CREDITS_PER_CLAIM,
+  AI_GIFT_DURATION_MS,
+  AI_GIFT_HOURS,
+  AI_GIFT_MIN_MONTHLY_CARDS,
   giftBudgetHasRoom,
   giftClaimsOpen,
   giftExpiresAt,
@@ -20,6 +23,8 @@ export type AiGiftStatus =
       expiresIfClaimedNow: Date;
       claimClosesAt: Date;
       feedbackDue: false;
+      lastsHours: number | null;
+      minMonthlyCards: number;
     }
   | { state: 'full'; feedbackDue: false }
   | {
@@ -28,6 +33,7 @@ export type AiGiftStatus =
       expiresAt: Date;
       feedbackDue: boolean;
       inUse: boolean;
+      minMonthlyCards: number;
     };
 
 const CLOSED: AiGiftStatus = { state: 'closed', feedbackDue: false };
@@ -56,6 +62,7 @@ export class GetAiGiftStatusUseCase {
             expiresAt: grant.expiresAt,
             feedbackDue,
             inUse: giftMarkerHeld(userId, now.getTime()),
+            minMonthlyCards: AI_GIFT_MIN_MONTHLY_CARDS,
           };
         }
         return { state: 'closed', feedbackDue };
@@ -68,12 +75,17 @@ export class GetAiGiftStatusUseCase {
     if (!giftBudgetHasRoom(exposure)) {
       return { state: 'full', feedbackDue: false };
     }
+    const expiresIfClaimedNow = giftExpiresAt(now);
+    const lastsFullLength =
+      expiresIfClaimedNow.getTime() - now.getTime() === AI_GIFT_DURATION_MS;
     return {
       state: 'open',
       credits: AI_GIFT_CREDITS_PER_CLAIM,
-      expiresIfClaimedNow: giftExpiresAt(now),
+      expiresIfClaimedNow,
       claimClosesAt: AI_GIFT_CLAIMS_CLOSE_AT,
       feedbackDue: false,
+      lastsHours: lastsFullLength ? AI_GIFT_HOURS : null,
+      minMonthlyCards: AI_GIFT_MIN_MONTHLY_CARDS,
     };
   }
 }

@@ -1,4 +1,5 @@
 import i18n, { LANGUAGE_STORAGE_KEY } from '../i18n';
+import { CLAUDE_CARDS_SWITCHED_BY_GIFT_KEY } from './claudeCardsGiftMark';
 
 export const CARD_OPTION_KEYS = [
   'deckName',
@@ -61,6 +62,11 @@ export const CARD_OPTION_KEYS = [
   'share-files-for-debugging',
 ] as const;
 
+const KEPT_IN_BROWSER_WHILE_GIFT_SWITCHED = new Set([
+  'claude-ai-flashcards',
+  'ai-choice-at',
+]);
+
 const PREFERENCES_URL = '/api/users/me/preferences';
 const MIGRATE_URL = '/api/users/me/preferences/migrate';
 export const ANKI_WEB_ACK_KEY = 'ankify_anki_web_acknowledged';
@@ -81,7 +87,12 @@ export function cancelPendingSync(): void {
 
 function collectCardOptions(): Record<string, string> {
   const result: Record<string, string> = {};
+  const giftSwitched =
+    localStorage.getItem(CLAUDE_CARDS_SWITCHED_BY_GIFT_KEY) != null;
   for (const key of CARD_OPTION_KEYS) {
+    if (giftSwitched && KEPT_IN_BROWSER_WHILE_GIFT_SWITCHED.has(key)) {
+      continue;
+    }
     const value = localStorage.getItem(key);
     if (value != null) {
       result[key] = value;

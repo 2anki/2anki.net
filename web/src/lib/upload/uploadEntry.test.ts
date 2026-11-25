@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  UPLOAD_ARRIVAL_WINDOW_MS,
   chooseUploadFile,
   registerUploadEntry,
   resetUploadEntryForTests,
@@ -45,6 +46,18 @@ describe('choosing an upload file from outside the upload zone', () => {
 
     const later = fakeEntry();
     registerUploadEntry(later);
+    expect(later.showZone).not.toHaveBeenCalled();
+  });
+
+  it('forgets the request when no upload zone mounts soon after it', () => {
+    expect(chooseUploadFile(1_000)).toBe('page');
+
+    const zone = fakeEntry();
+    registerUploadEntry(zone, 1_000 + UPLOAD_ARRIVAL_WINDOW_MS + 1);
+
+    expect(zone.showZone).not.toHaveBeenCalled();
+    const later = fakeEntry();
+    registerUploadEntry(later, 1_000 + UPLOAD_ARRIVAL_WINDOW_MS + 2);
     expect(later.showZone).not.toHaveBeenCalled();
   });
 

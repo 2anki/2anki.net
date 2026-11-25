@@ -94,6 +94,25 @@ describe('withAiBudget and the gift', () => {
     expect(reservedGiftCreditsFor(GIFT_ID)).toBe(0);
   });
 
+  it('leaves the bought credit packs of an account with no plan untouched while it converts on the gift', async () => {
+    const packOnly: AiCreditBalance = {
+      ...planBalance(200),
+      allowance: 0,
+      spent: 0,
+    };
+    const deps = makeDeps({ plan: packOnly, gift: giftBalance(100) });
+    const run = vi.fn(async () => currentGiftId());
+
+    const fundedBy = await withAiBudget(
+      { userId: USER, aiGift: 'only' },
+      run,
+      deps
+    );
+
+    expect(fundedBy).toBe(GIFT_ID);
+    expect(deps.computeBalance).not.toHaveBeenCalled();
+  });
+
   it('never reads the plan balance for a free account on the gift', async () => {
     const deps = makeDeps({ plan: planBalance(250), gift: giftBalance(100) });
 

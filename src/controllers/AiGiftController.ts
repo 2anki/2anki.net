@@ -56,6 +56,10 @@ export class AiGiftController {
           expiresIfClaimedNow: result.expiresIfClaimedNow.toISOString(),
           claimClosesAt: result.claimClosesAt.toISOString(),
           feedbackDue: false,
+          ...(result.lastsHours == null
+            ? {}
+            : { lastsHours: result.lastsHours }),
+          minMonthlyCards: result.minMonthlyCards,
         });
       case 'claimed':
         return res.json({
@@ -64,6 +68,7 @@ export class AiGiftController {
           expiresAt: result.expiresAt.toISOString(),
           feedbackDue: result.feedbackDue,
           inUse: result.inUse,
+          minMonthlyCards: result.minMonthlyCards,
         });
       case 'full':
         return res.json({ state: 'full', feedbackDue: false });

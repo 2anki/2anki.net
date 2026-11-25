@@ -172,6 +172,8 @@
     "fewCardsNoCredits_other": "Only {{count}} cards came from this file. Claude can write more with AI credits.",
     "fewCardsPaidAi_one": "Only {{count}} card came from this file. Claude can write more cards from it on a paid plan.",
     "fewCardsPaidAi_other": "Only {{count}} cards came from this file. Claude can write more cards from it on a paid plan.",
+    "fewCardsGift_one": "Only {{count}} card came from this file.",
+    "fewCardsGift_other": "Only {{count}} cards came from this file.",
     "seeReport": "See full report"
   },
   "skippedAiFiles": {

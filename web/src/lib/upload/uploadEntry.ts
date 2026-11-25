@@ -7,15 +7,19 @@ export interface UploadEntry {
 
 export type UploadEntryOutcome = 'picker' | 'zone' | 'page';
 
-let entry: UploadEntry | null = null;
-let showZoneOnArrival = false;
+export const UPLOAD_ARRIVAL_WINDOW_MS = 10_000;
 
-export function registerUploadEntry(next: UploadEntry): () => void {
+let entry: UploadEntry | null = null;
+let showZoneUntil: number | null = null;
+
+export function registerUploadEntry(
+  next: UploadEntry,
+  now: number = Date.now()
+): () => void {
   entry = next;
-  if (showZoneOnArrival) {
-    showZoneOnArrival = false;
-    next.showZone();
-  }
+  const arriving = showZoneUntil != null && now <= showZoneUntil;
+  showZoneUntil = null;
+  if (arriving) next.showZone();
   return () => {
     if (entry === next) entry = null;
   };
@@ -24,10 +28,11 @@ export function registerUploadEntry(next: UploadEntry): () => void {
 // The picker opens only from an idle zone, inside the tap that asked for it,
 // which is what lets the browser allow it. A zone showing a result or a
 // conversion is brought into view instead. With no zone on the page, the
-// upload page shows its zone once it mounts.
-export function chooseUploadFile(): UploadEntryOutcome {
+// upload page shows its zone if it mounts within a few seconds, and only the
+// first zone that mounts does.
+export function chooseUploadFile(now: number = Date.now()): UploadEntryOutcome {
   if (entry == null) {
-    showZoneOnArrival = true;
+    showZoneUntil = now + UPLOAD_ARRIVAL_WINDOW_MS;
     return 'page';
   }
   if (readUploadZoneActivity() === 'idle') {
@@ -40,5 +45,5 @@ export function chooseUploadFile(): UploadEntryOutcome {
 
 export function resetUploadEntryForTests(): void {
   entry = null;
-  showZoneOnArrival = false;
+  showZoneUntil = null;
 }

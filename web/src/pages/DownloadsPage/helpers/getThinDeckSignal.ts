@@ -9,7 +9,8 @@ export type ThinDeckReason =
   | 'generic'
   | 'fewCards'
   | 'fewCardsNoCredits'
-  | 'fewCardsPaidAi';
+  | 'fewCardsPaidAi'
+  | 'fewCardsGift';
 
 export interface ThinDeckSignal {
   candidateSkips: number;

@@ -22,6 +22,11 @@ import { getLocalStorageValue } from '../../lib/data_layer/getLocalStorageValue'
 import CardOption from '../../lib/data_layer/model/CardOption';
 import { saveValueInLocalStorage } from '../../lib/data_layer/saveValueInLocalStorage';
 import {
+  CLAUDE_CARDS_CHANGE_EVENT,
+  CLAUDE_CARDS_KEY,
+  claudeCardsSwitchedOn,
+} from '../../lib/data_layer/claudeCardsSwitch';
+import {
   hasRecordedAiChoice,
   recordAiChoice,
 } from '../../lib/data_layer/aiChoice';
@@ -557,6 +562,20 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
       }
       setCheckboxValues(next);
     }, [options, settings, claudeOnForPdfsByDefault]);
+
+    useEffect(() => {
+      if (pageId) return;
+      const readSwitch = () => {
+        setCheckboxValues((prev) => ({
+          ...prev,
+          [CLAUDE_CARDS_KEY]: claudeCardsSwitchedOn(),
+        }));
+        setAiChoiceRecorded(hasRecordedAiChoice());
+      };
+      globalThis.addEventListener(CLAUDE_CARDS_CHANGE_EVENT, readSwitch);
+      return () =>
+        globalThis.removeEventListener(CLAUDE_CARDS_CHANGE_EVENT, readSwitch);
+    }, [pageId]);
 
     useEffect(() => {
       if (!pageId) {

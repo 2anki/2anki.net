@@ -172,6 +172,8 @@
     "fewCardsNoCredits_other": "Er kwamen maar {{count}} kaarten uit dit bestand. Met AI-credits kan Claude er meer schrijven.",
     "fewCardsPaidAi_one": "Er kwam maar {{count}} kaart uit dit bestand. Met een betaald abonnement kan Claude er meer kaarten uit halen.",
     "fewCardsPaidAi_other": "Er kwamen maar {{count}} kaarten uit dit bestand. Met een betaald abonnement kan Claude er meer kaarten uit halen.",
+    "fewCardsGift_one": "Er kwam maar {{count}} kaart uit dit bestand.",
+    "fewCardsGift_other": "Er kwamen maar {{count}} kaarten uit dit bestand.",
     "seeReport": "Volledig rapport bekijken"
   },
   "skippedAiFiles": {

@@ -12584,6 +12584,7 @@ describe('UploadForm deck result and resends of kept files', () => {
       expiresAt: '2099-11-27T12:00:00.000Z',
       feedbackDue: false,
       inUse: false,
+      minMonthlyCards: 20,
     };
     const cardsLeft = (left: number) => ({
       cards_used: 100 - left,
@@ -12597,14 +12598,22 @@ describe('UploadForm deck result and resends of kept files', () => {
         defaultOptions: { queries: { retry: false } },
       });
       queryClient.setQueryData([...AI_GIFT_QUERY_KEY, true], gift);
-      return render(
+      const tree = () => (
         <MemoryRouter>
           <QueryClientProvider client={queryClient}>
             <UploadForm setErrorMessage={vi.fn()} aiOn={aiOn} />
           </QueryClientProvider>
         </MemoryRouter>
       );
+      const view = render(tree());
+      return { ...view, renderAgain: () => view.rerender(tree()) };
     }
+
+    const otherFreeAccount = {
+      user: { id: 12, email: 'other@example.com' },
+      locals: { owner: 12, patreon: false, subscriber: false },
+      features: {},
+    } as unknown as ReturnType<typeof useUserLocals>['data'];
 
     beforeEach(() => {
       setUserLocals(freeSignedIn);
@@ -12673,6 +12682,101 @@ describe('UploadForm deck result and resends of kept files', () => {
       await screen.findAllByText('Your deck is ready — 64 cards.');
       await settle();
       expect(screen.queryByText(REDO_LINE)).toBeNull();
+    });
+
+    it('puts the sign-in changed line in its place when another account signs in', async () => {
+      stubServer([deckResponse(64)]);
+      const { container, renderAgain } = renderWithHeaderGift(activeGift);
+      await submitFiles(container, ['notes.pdf']);
+      expect(await screen.findByText(REDO_LINE)).toBeInTheDocument();
+
+      setUserLocals(otherFreeAccount);
+      renderAgain();
+
+      expect(screen.queryByText(REDO_LINE)).toBeNull();
+      expect(
+        screen.getByText(OTHER_ACCOUNT_LINE, { selector: 'p' })
+      ).toBeInTheDocument();
+    });
+
+    it('gives a thin deck the redo line in place of the day-pass offer, and still says why the deck is thin', async () => {
+      setUserLocals({
+        ...freeSignedIn,
+        features: { thinDeckAiOffer: true },
+      } as unknown as ReturnType<typeof useUserLocals>['data']);
+      stubServer([deckResponse(2)]);
+      const { container } = renderWithHeaderGift(activeGift);
+      await submitFiles(container, ['notes.pdf']);
+
+      expect(await screen.findByText(REDO_LINE)).toBeInTheDocument();
+      expect(
+        screen.getByText('Only 2 cards came from this file.')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', {
+          name: 'Preview cards Claude would write',
+        })
+      ).toBeNull();
+      expect(screen.queryByText(/on a paid plan/)).toBeNull();
+    });
+
+    it('offers nothing for a Dropbox file, whose bytes never reach the browser to send again', async () => {
+      const previousKey = process.env.REACT_APP_DROPBOX_APP_KEY;
+      process.env.REACT_APP_DROPBOX_APP_KEY = 'test-key';
+      (window as unknown as { Dropbox?: unknown }).Dropbox = {
+        choose: ({ success }: { success: (files: unknown[]) => void }) => {
+          success([
+            {
+              id: 'id:9',
+              name: 'lecture.pdf',
+              bytes: 100,
+              icon: 'page',
+              isDir: false,
+              link: 'https://dl.dropboxusercontent.com/x/lecture.pdf',
+              linkType: 'direct',
+            },
+          ]);
+        },
+      };
+      try {
+        const fetchMock = stubServer([deckResponse(64)]);
+        const { container } = renderWithHeaderGift(activeGift);
+        const dropbox = container.querySelector(
+          'button[aria-label="Choose from Dropbox"]'
+        ) as HTMLButtonElement;
+        await act(async () => {
+          dropbox.click();
+        });
+
+        await waitFor(() =>
+          expect(callsTo(fetchMock, '/api/upload/dropbox')).toHaveLength(1)
+        );
+        await screen.findAllByText('Your deck is ready — 64 cards.');
+        await settle();
+        expect(screen.queryByText(REDO_LINE)).toBeNull();
+      } finally {
+        delete (window as unknown as { Dropbox?: unknown }).Dropbox;
+        process.env.REACT_APP_DROPBOX_APP_KEY = previousKey;
+      }
+    });
+
+    it('leaves the empty-deck rescue as it was for a free account with no gift', async () => {
+      stubServer([jsonAnswer(400, emptyExport)]);
+      const { container } = renderWithHeaderGift({
+        state: 'closed',
+        feedbackDue: false,
+      });
+      await submitFiles(container, ['notes.html']);
+
+      expect(
+        await screen.findByRole('link', {
+          name: 'Get AI cards with a paid plan',
+        })
+      ).toHaveAttribute('href', '/pricing');
+      expect(screen.queryByText(REDO_LINE)).toBeNull();
+      expect(eventsNamed('upload_ai_rescue_shown')).toEqual([
+        ['upload_ai_rescue_shown', { state: 'free' }],
+      ]);
     });
 
     it('opens its file picker when the gift panel asks for a file while the zone is idle', async () => {

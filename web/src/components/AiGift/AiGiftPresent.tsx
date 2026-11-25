@@ -25,7 +25,7 @@ import { useUploadZoneActivity } from '../../lib/upload/uploadZoneActivity';
 import { chooseUploadFile } from '../../lib/upload/uploadEntry';
 import {
   claudeCardsSwitchedOn,
-  switchClaudeCardsOn,
+  switchClaudeCardsOnForThisBrowser,
   useClaudeCardsSwitchedOn,
 } from '../../lib/data_layer/claudeCardsSwitch';
 import sharedStyles from '../../styles/shared.module.css';
@@ -50,6 +50,23 @@ interface AiGiftPresentProps {
   labelFromWide?: boolean;
   planCreditsFirst?: boolean;
   giftPaysForClaude?: boolean;
+  cardsLeftThisMonth?: number | null;
+}
+
+type ClaudeCardRoom = 'room' | 'short' | 'unknown';
+
+function claudeCardRoom(
+  cardsLeft: number | null,
+  minimum: number | undefined
+): ClaudeCardRoom {
+  if (cardsLeft == null || minimum == null) return 'unknown';
+  return cardsLeft >= minimum ? 'room' : 'short';
+}
+
+function switchOnForGift(via: ClaudeCardsSwitchedBy): void {
+  if (claudeCardsSwitchedOn()) return;
+  switchClaudeCardsOnForThisBrowser();
+  track('ai_gift_claude_cards_enabled', { via });
 }
 
 const dateLocale = (language: string): string =>
@@ -85,6 +102,8 @@ type ClaimedGift = Extract<AiGiftStatus, { state: 'claimed' }>;
 interface ClaimedBodyProps {
   gift: ClaimedGift;
   giftPaysForClaude: boolean;
+  room: ClaudeCardRoom;
+  cardsLeft: number | null;
   planCreditsFirst: boolean;
   onTurnOn: () => void;
   onChooseFile: () => void;
@@ -94,6 +113,8 @@ interface ClaimedBodyProps {
 function ClaimedBody({
   gift,
   giftPaysForClaude,
+  room,
+  cardsLeft,
   planCreditsFirst,
   onTurnOn,
   onChooseFile,
@@ -109,15 +130,37 @@ function ClaimedBody({
     </button>
   );
 
+  const balance = t('balanceAlone', { count: gift.credits, date });
+
+  if (giftPaysForClaude && room === 'unknown') {
+    return (
+      <p key="wait" ref={resultRef} tabIndex={-1} className={styles.text}>
+        {balance}
+      </p>
+    );
+  }
+
+  if (giftPaysForClaude && room === 'short') {
+    return (
+      <>
+        <p key="short" ref={resultRef} tabIndex={-1} className={styles.text}>
+          {balance}
+        </p>
+        <p className={styles.text}>
+          {t('fewCardsLeft', { count: cardsLeft ?? 0 })}
+        </p>
+        {chooseFile}
+      </>
+    );
+  }
+
   if (giftPaysForClaude && claudeOn) {
     return (
       <>
         <p key="next" ref={resultRef} tabIndex={-1} className={styles.text}>
           {t('nextFile')}
         </p>
-        <p className={styles.text}>
-          {t('balanceAlone', { count: gift.credits, date })}
-        </p>
+        <p className={styles.text}>{balance}</p>
         <p className={styles.note}>{t('turnOffHint')}</p>
         {chooseFile}
       </>
@@ -128,7 +171,7 @@ function ClaimedBody({
     return (
       <>
         <p key="off" ref={resultRef} tabIndex={-1} className={styles.text}>
-          {t('balanceAlone', { count: gift.credits, date })}
+          {balance}
         </p>
         <p className={styles.text}>{t('aiOffNow')}</p>
         <button type="button" className={styles.claimButton} onClick={onTurnOn}>
@@ -164,6 +207,8 @@ interface PanelBodyProps {
   resultRef: RefCallback<HTMLParagraphElement>;
   planCreditsFirst: boolean;
   giftPaysForClaude: boolean;
+  room: ClaudeCardRoom;
+  cardsLeft: number | null;
 }
 
 function PanelBody({
@@ -179,6 +224,8 @@ function PanelBody({
   resultRef,
   planCreditsFirst,
   giftPaysForClaude,
+  room,
+  cardsLeft,
 }: Readonly<PanelBodyProps>) {
   const { t } = useTranslation('aiGift');
   const language = useAppLanguage();
@@ -196,6 +243,8 @@ function PanelBody({
       <ClaimedBody
         gift={gift}
         giftPaysForClaude={giftPaysForClaude}
+        room={room}
+        cardsLeft={cardsLeft}
         planCreditsFirst={planCreditsFirst}
         onTurnOn={onTurnOn}
         onChooseFile={onChooseFile}
@@ -207,9 +256,11 @@ function PanelBody({
   return (
     <>
       <p className={styles.text}>
-        {t('body', {
-          date: formatGiftDate(gift.expiresIfClaimedNow, language),
-        })}
+        {gift.lastsHours == null
+          ? t('bodyUntil', {
+              date: formatGiftDate(gift.expiresIfClaimedNow, language),
+            })
+          : t('body', { count: gift.lastsHours })}
       </p>
       <p className={styles.note}>
         {t('claimUntil', {
@@ -262,6 +313,7 @@ export function AiGiftPresent({
   labelFromWide = false,
   planCreditsFirst = false,
   giftPaysForClaude = false,
+  cardsLeftThisMonth = null,
 }: Readonly<AiGiftPresentProps>) {
   const { t } = useTranslation('aiGift');
   const gift = useAiGift(isLoggedIn);
@@ -295,11 +347,21 @@ export function AiGiftPresent({
   const openedOnReturn = returnedToClaim && gift?.state === 'open';
   const open = openChoice ?? openedOnReturn;
 
-  const switchOnBy = (via: ClaudeCardsSwitchedBy) => {
-    if (claudeCardsSwitchedOn()) return;
-    switchClaudeCardsOn();
-    track('ai_gift_claude_cards_enabled', { via });
-  };
+  const minMonthlyCards =
+    gift?.state === 'open' || gift?.state === 'claimed'
+      ? gift.minMonthlyCards
+      : undefined;
+  const room = claudeCardRoom(cardsLeftThisMonth, minMonthlyCards);
+  const [switchWaiting, setSwitchWaiting] =
+    useState<ClaudeCardsSwitchedBy | null>(null);
+  useEffect(() => {
+    if (switchWaiting == null || room === 'unknown') return;
+    setSwitchWaiting(null);
+    if (room === 'room') {
+      focusResultNext.current = true;
+      switchOnForGift(switchWaiting);
+    }
+  }, [switchWaiting, room]);
 
   const claim = async (automatic: boolean) => {
     track(
@@ -314,13 +376,14 @@ export function AiGiftPresent({
     setClaiming(false);
     if (result.ok) {
       focusResultNext.current = true;
-      if (giftPaysForClaude) switchOnBy(automatic ? 'return' : 'claim');
+      if (giftPaysForClaude) setSwitchWaiting(automatic ? 'return' : 'claim');
       const claimed: AiGiftStatus = {
         state: 'claimed',
         credits: result.credits,
         expiresAt: result.expiresAt,
         feedbackDue: false,
         inUse: false,
+        minMonthlyCards,
       };
       queryClient.setQueriesData<AiGiftStatus>(
         { queryKey: AI_GIFT_QUERY_KEY },
@@ -449,7 +512,7 @@ export function AiGiftPresent({
 
   const onTurnOn = () => {
     focusResultNext.current = true;
-    switchOnBy('panel');
+    switchOnForGift('panel');
   };
 
   const onChooseFile = () => {
@@ -560,6 +623,8 @@ export function AiGiftPresent({
               resultRef={resultRef}
               planCreditsFirst={planCreditsFirst}
               giftPaysForClaude={giftPaysForClaude}
+              room={room}
+              cardsLeft={cardsLeftThisMonth}
             />
           </div>
           {!dismissed && (

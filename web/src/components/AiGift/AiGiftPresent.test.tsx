@@ -23,6 +23,8 @@ const OPEN = {
   expiresIfClaimedNow: '2026-11-27T12:00:00.000Z',
   claimClosesAt: '2026-12-04T20:00:00.000Z',
   feedbackDue: false,
+  lastsHours: 48,
+  minMonthlyCards: 20,
 };
 
 const reply = (status: number, body: unknown) => ({
@@ -59,6 +61,7 @@ const CLAIMED = {
   expiresAt: '2026-11-27T12:00:00.000Z',
   feedbackDue: false,
   inUse: false,
+  minMonthlyCards: 20,
 };
 
 const CLAIM_OK = () =>
@@ -72,19 +75,20 @@ const eventsNamed = (name: string) =>
 function renderPresent(
   isLoggedIn: boolean,
   planCreditsFirst?: boolean,
-  giftPaysForClaude?: boolean
+  giftPaysForClaude?: boolean,
+  cardsLeftThisMonth: number | null = 80
 ) {
-  return render(
-    <QueryClientProvider
-      client={
-        new QueryClient({ defaultOptions: { queries: { retry: false } } })
-      }
-    >
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  const tree = (cardsLeft: number | null) => (
+    <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={['/downloads']}>
         <AiGiftPresent
           isLoggedIn={isLoggedIn}
           planCreditsFirst={planCreditsFirst}
           giftPaysForClaude={giftPaysForClaude}
+          cardsLeftThisMonth={cardsLeft}
         />
         <Routes>
           <Route path="*" element={<Where />} />
@@ -92,6 +96,11 @@ function renderPresent(
       </MemoryRouter>
     </QueryClientProvider>
   );
+  const view = render(tree(cardsLeftThisMonth));
+  return {
+    ...view,
+    cardsCounted: (cardsLeft: number | null) => view.rerender(tree(cardsLeft)),
+  };
 }
 
 const trigger = () =>
@@ -134,7 +143,7 @@ describe('AiGiftPresent', () => {
       name: 'Claude writes your flashcards, free',
     });
     expect(panel).toHaveTextContent(
-      `Drop in your notes, a PDF, or a photo and Claude writes the cards. Free until ${formatGiftDate('2026-11-27T12:00:00.000Z', 'en')}, enough for about 3 decks.`
+      'Drop in your notes, a PDF, or a photo and Claude writes the cards. The credits last 48 hours from when you claim them, enough for about 3 decks.'
     );
     expect(panel).toHaveTextContent(
       `Claim by ${formatGiftDate('2026-12-04T20:00:00.000Z', 'en')}.`
@@ -354,6 +363,108 @@ describe('AiGiftPresent', () => {
     expect(eventsNamed('ai_gift_choose_file_clicked')).toEqual([
       ['ai_gift_choose_file_clicked', { outcome: 'page' }],
     ]);
+  });
+
+  test('names the date the credits end on when the gift ends before the full length', async () => {
+    const { lastsHours: _full, ...late } = OPEN;
+    routeFetch({ ...late, expiresIfClaimedNow: '2026-12-04T22:00:00.000Z' });
+    renderPresent(false);
+
+    fireEvent.click(await trigger());
+
+    expect(screen.getByRole('dialog')).toHaveTextContent(
+      `Claimed now, the credits last until ${formatGiftDate('2026-12-04T22:00:00.000Z', 'en')}, enough for about 3 decks.`
+    );
+  });
+
+  test('says honestly that the month has too few cards for Claude, and leaves the switch off', async () => {
+    routeFetch(OPEN, CLAIM_OK());
+    localStorage.setItem('claude-ai-flashcards', 'false');
+    renderPresent(true, false, true, 12);
+
+    fireEvent.click(await trigger());
+    fireEvent.click(screen.getByRole('button', { name: 'Claim free credits' }));
+
+    expect(
+      await screen.findByText(
+        'You have 12 cards left this month, too few for a Claude deck. Your next file gets cards from its structure.'
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('Claude will write the cards for your next file.')
+    ).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Turn AI on' })).toBeNull();
+    expect(claudeCardsOn()).toBe('false');
+    expect(eventsNamed('ai_gift_claude_cards_enabled')).toEqual([]);
+  });
+
+  test('waits for the month’s card count before choosing a line or switching', async () => {
+    routeFetch(OPEN, CLAIM_OK());
+    const { cardsCounted } = renderPresent(true, false, true, null);
+
+    fireEvent.click(await trigger());
+    fireEvent.click(screen.getByRole('button', { name: 'Claim free credits' }));
+
+    expect(
+      await screen.findByText(
+        `100 free AI credits left until ${formatGiftDate('2026-11-27T12:00:00.000Z', 'en')}.`
+      )
+    ).toHaveFocus();
+    expect(screen.queryByText(/next file/)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Choose a file' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Turn AI on' })).toBeNull();
+    expect(claudeCardsOn()).toBeNull();
+
+    cardsCounted(80);
+
+    expect(
+      await screen.findByText('Claude will write the cards for your next file.')
+    ).toHaveFocus();
+    expect(claudeCardsOn()).toBe('true');
+    expect(eventsNamed('ai_gift_claude_cards_enabled')).toEqual([
+      ['ai_gift_claude_cards_enabled', { via: 'claim' }],
+    ]);
+  });
+
+  test('keeps the switch it turns on out of the account’s saved settings', async () => {
+    routeFetch(OPEN, CLAIM_OK());
+    renderPresent(true, false, true);
+
+    fireEvent.click(await trigger());
+    fireEvent.click(screen.getByRole('button', { name: 'Claim free credits' }));
+    await screen.findByText('Claude will write the cards for your next file.');
+
+    expect(localStorage.getItem('2anki-claude-cards-switched-by-gift')).toBe(
+      '1'
+    );
+  });
+
+  test('shows the whole after-claim panel at phone width', async () => {
+    const narrow = vi.fn((query: string) => ({
+      matches: false,
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+    vi.stubGlobal('matchMedia', narrow);
+    vi.stubGlobal('innerWidth', 375);
+    routeFetch(CLAIMED);
+    localStorage.setItem('claude-ai-flashcards', 'true');
+    renderPresent(true, false, true);
+
+    fireEvent.click(await trigger());
+
+    const panel = screen.getByRole('dialog', {
+      name: 'Claude writes your flashcards, free',
+    });
+    expect(panel).toHaveTextContent(
+      'Claude will write the cards for your next file.'
+    );
+    expect(
+      screen.getByRole('button', { name: 'Choose a file' })
+    ).toBeInTheDocument();
+    expect(narrow).toHaveBeenCalledWith('(min-width: 640px)');
+    vi.unstubAllGlobals();
   });
 
   test('tells an account with a plan allowance that its plan credits go first', async () => {

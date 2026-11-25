@@ -96,6 +96,7 @@ import {
   useAiGiftFromHeader,
 } from '../../../../lib/hooks/useAiGift';
 import { useActiveGiftBalance } from '../../../../components/AiGift/useAiGiftBalanceLine';
+import { cardsLeftThisMonth } from '../../../../lib/limits/cardsLeftThisMonth';
 import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
 import { fireAnalyticsEvent } from '../../../../lib/analytics/fireAnalyticsEvent';
 import { track } from '../../../../lib/analytics/track';
@@ -196,7 +197,6 @@ const NETWORK_FALLBACK =
   "Couldn't upload your file. Check your connection and try again.";
 const REATTACH_FILENAME_KEY = 'upload_pending_filename';
 const RETRY_KEEPS_AI_CHOICE = ['claude-ai-flashcards', 'pdf-page-pairs'];
-const GIFT_MIN_MONTHLY_CARDS_LEFT = 20;
 // React Query holds a read while the browser says it is offline and pauses
 // a failed read's retries in a hidden tab, so a resend never waits on the
 // account read longer than this.
@@ -1697,13 +1697,8 @@ function UploadForm({
   const giftCanPay = isAuthenticated && !isPaying;
   const gift = useAiGiftFromHeader(isAuthenticated);
   const giftBalance = useActiveGiftBalance(giftCanPay ? gift : null);
-  const monthHasRoomForGift =
-    cardUsage?.unlimited === true ||
-    (cardUsage != null &&
-      cardUsage.loading !== true &&
-      cardUsage.cards_limit - cardUsage.cards_used >=
-        GIFT_MIN_MONTHLY_CARDS_LEFT);
-  const giftRedoOffered =
+  const cardsLeft = cardsLeftThisMonth(cardUsage);
+  const giftRedoSlot =
     zoneState === 'success' &&
     giftCanPay &&
     !aiOn &&
@@ -1712,11 +1707,13 @@ function UploadForm({
     !downloadRecovered &&
     cardsHeldBack === 0 &&
     rescueFiles.length > 0 &&
-    !keptFilesBelongElsewhere &&
     giftBalance != null &&
     gift?.state === 'claimed' &&
     gift.inUse !== true &&
-    monthHasRoomForGift;
+    gift.minMonthlyCards != null &&
+    cardsLeft != null &&
+    cardsLeft >= gift.minMonthlyCards;
+  const giftRedoOffered = giftRedoSlot && !keptFilesBelongElsewhere;
   const giftRedoDeck = giftRedoOffered ? (downloadLink ?? deckName) : null;
   useEffect(() => {
     if (giftRedoDeck != null) track('ai_gift_redo_shown');
@@ -1736,10 +1733,12 @@ function UploadForm({
 
   const thinNoticeDeck =
     zoneState === 'success' &&
-    !giftRedoOffered &&
     !aiOn &&
     cardsHeldBack === 0 &&
-    (thinDeckOfferFile == null || sampleRun || lastSubmitUsedAi) &&
+    (giftRedoOffered ||
+      thinDeckOfferFile == null ||
+      sampleRun ||
+      lastSubmitUsedAi) &&
     isThinPdfOrTxtDeck(cardCount, currentFilename());
   const creditsRead = useAiCreditsRead(
     thinNoticeDeck && isAuthenticated && isPaying
@@ -1763,16 +1762,18 @@ function UploadForm({
   // rewrite the notice under the person reading it.
   const creditsWaitEnded =
     downloadLink != null && creditsWaitEndedFor === downloadLink;
-  const thinNoticeReason = thinDeckNoticeReason(
-    isPaying,
-    isAuthenticated,
-    creditsWaitEnded ? { credits: null, settled: true } : creditsRead
-  );
+  const thinNoticeReason: ThinDeckReason | null = giftRedoOffered
+    ? 'fewCardsGift'
+    : thinDeckNoticeReason(
+        isPaying,
+        isAuthenticated,
+        creditsWaitEnded ? { credits: null, settled: true } : creditsRead
+      );
 
   // The line saying the session changed takes the place of an offer: one this
   // deck showed before the change, or one the session now on the page would
   // get. A deck that never had an offer gets no line.
-  const successOfferOnScreen = thinDeckAiOffer != null;
+  const successOfferOnScreen = thinDeckAiOffer != null || giftRedoOffered;
   const [successOfferShown, setSuccessOfferShown] = useState(false);
   useEffect(() => {
     if (zoneState !== 'success') {
@@ -1782,7 +1783,8 @@ function UploadForm({
     }
   }, [zoneState, successOfferOnScreen]);
   const successSignInChanged =
-    keptFilesBelongElsewhere && (successOfferShown || thinDeckSlot != null);
+    keptFilesBelongElsewhere &&
+    (successOfferShown || thinDeckSlot != null || giftRedoSlot);
 
   const networkErrorOnScreen =
     zoneState === 'error' &&
@@ -3406,24 +3408,6 @@ function UploadForm({
             }
           />
         )}
-      {giftRedoOffered && !switchLineShown && (
-        <div className={formStyles.aiRescueActions}>
-          <p className={formStyles.rescueLead}>{t('aiGift:redo')}</p>
-          <button
-            type="button"
-            className={formStyles.aiRescueButton}
-            disabled={resendPending}
-            aria-busy={resendTapped === 'giftRedo'}
-            onClick={() =>
-              rerunWithAi(rescueFiles, 'giftRedo', () =>
-                track('ai_gift_redo_clicked')
-              )
-            }
-          >
-            {resendLabel('giftRedo', t('aiGift:redoAction'))}
-          </button>
-        </div>
-      )}
       {thinDeckAiOffer != null && (
         <ThinDeckAiOffer
           file={thinDeckAiOffer.file}
@@ -3449,6 +3433,24 @@ function UploadForm({
           {thinNoticeReason === 'fewCardsNoCredits' && (
             <BuyCreditsButton source="credits_conversion" variant="secondary" />
           )}
+        </div>
+      )}
+      {giftRedoOffered && !switchLineShown && (
+        <div className={formStyles.aiRescueActions}>
+          <p className={formStyles.rescueLead}>{t('aiGift:redo')}</p>
+          <button
+            type="button"
+            className={formStyles.aiRescueButton}
+            disabled={resendPending}
+            aria-busy={resendTapped === 'giftRedo'}
+            onClick={() =>
+              rerunWithAi(rescueFiles, 'giftRedo', () =>
+                track('ai_gift_redo_clicked')
+              )
+            }
+          >
+            {resendLabel('giftRedo', t('aiGift:redoAction'))}
+          </button>
         </div>
       )}
       {renderClaudeResendHeld()}

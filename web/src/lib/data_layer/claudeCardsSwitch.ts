@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { recordAiChoice } from './aiChoice';
-import { saveValueInLocalStorage } from './saveValueInLocalStorage';
+import { AI_CHOICE_AT_KEY } from './aiChoice';
+import { CLAUDE_CARDS_SWITCHED_BY_GIFT_KEY } from './claudeCardsGiftMark';
 
 export const CLAUDE_CARDS_KEY = 'claude-ai-flashcards';
 export const CLAUDE_CARDS_CHANGE_EVENT = '2anki:claude-cards-change';
@@ -9,9 +9,15 @@ export function claudeCardsSwitchedOn(): boolean {
   return globalThis.localStorage?.getItem(CLAUDE_CARDS_KEY) === 'true';
 }
 
-export function switchClaudeCardsOn(): void {
-  saveValueInLocalStorage(CLAUDE_CARDS_KEY, 'true', null);
-  recordAiChoice();
+// Switched for a free gift, so it stays in this browser and never reaches the
+// account's saved settings, where it would outlive the gift. Setting the
+// switch by hand clears the mark and syncs as before.
+export function switchClaudeCardsOnForThisBrowser(): void {
+  const store = globalThis.localStorage;
+  if (store == null) return;
+  store.setItem(CLAUDE_CARDS_KEY, 'true');
+  store.setItem(AI_CHOICE_AT_KEY, String(Math.floor(Date.now() / 1000)));
+  store.setItem(CLAUDE_CARDS_SWITCHED_BY_GIFT_KEY, '1');
   globalThis.dispatchEvent(new Event(CLAUDE_CARDS_CHANGE_EVENT));
 }
 

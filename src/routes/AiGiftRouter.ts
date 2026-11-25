@@ -61,7 +61,7 @@ const aiGiftRouter = (options: AiGiftRouterOptions = {}) => {
    * /api/ai/gift:
    *   get:
    *     summary: State of the free AI credits gift for this visitor
-   *     description: closed (switched off, ended, or this account's gift has expired), open (claimable), full (the gift budget is used for now) or claimed (this account's remaining gift credits and when they expire). feedbackDue is true once gift credits paid for a conversion and the account has not answered the one-question prompt. inUse (claimed only) is true while one of this account's conversions holds the gift.
+   *     description: closed (switched off, ended, or this account's gift has expired), open (claimable), full (the gift budget is used for now) or claimed (this account's remaining gift credits and when they expire). feedbackDue is true once gift credits paid for a conversion and the account has not answered the one-question prompt. inUse (claimed only) is true while one of this account's conversions holds the gift. lastsHours (open only) is how long a claim made now lasts, left out when the gift's end cuts it short. minMonthlyCards is how many cards the month must have left for a gift-only upload to reach Claude.
    *     tags: [AI]
    *     responses:
    *       200:
