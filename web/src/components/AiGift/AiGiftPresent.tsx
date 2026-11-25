@@ -24,6 +24,7 @@ import { useGiftAutoOpen } from './useGiftAutoOpen';
 import { useUploadZoneActivity } from '../../lib/upload/uploadZoneActivity';
 import { chooseUploadFile } from '../../lib/upload/uploadEntry';
 import { hasRecordedAiChoice } from '../../lib/data_layer/aiChoice';
+import { savedCardSettings } from '../../lib/upload/savedCardSettings';
 import sharedStyles from '../../styles/shared.module.css';
 import styles from './AiGiftPresent.module.css';
 
@@ -62,8 +63,11 @@ type NextUploadClaude =
   | 'onForPdfs'
   | 'off';
 
-const claudeSwitchValue = (): string | null =>
-  globalThis.localStorage?.getItem('claude-ai-flashcards') ?? null;
+// A PDF made two pages per card, or not processed at all, never reaches
+// Claude on the server, and the status cannot see these browser-held options.
+function pdfKeptFromClaude(sent: Record<string, string>): boolean {
+  return sent['pdf-page-pairs'] === 'true' || sent['process-pdfs'] === 'false';
+}
 
 // The server answers what a PDF upload would get (claudeDefaultForPdf, from
 // the upload's own default rule) and whether that upload would have budget
@@ -78,8 +82,10 @@ function nextUploadClaude(
   if (account == null) return 'unknown';
   if (gift.inUse === true) return 'inUse';
   if (!account.paying && gift.credits <= 0) return 'usedUp';
-  const switchedOn = claudeSwitchValue() === 'true';
+  const sent = savedCardSettings();
+  const switchedOn = sent['claude-ai-flashcards'] === 'true';
   if (hasRecordedAiChoice() && !switchedOn) return 'off';
+  if (pdfKeptFromClaude(sent)) return 'unknown';
   const left = gift.monthlyCardsLeft;
   const minimum = gift.minMonthlyCards;
   const monthKnown = left != null && minimum != null;

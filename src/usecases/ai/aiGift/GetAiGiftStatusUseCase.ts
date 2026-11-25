@@ -15,7 +15,7 @@ import {
 import { giftMarkerHeld } from '../../../lib/claude/aiCredits/gift/giftConversionMarker';
 import { claudeCardsByDefault } from '../../../lib/upload/claudeCardsDefault';
 import { giftWouldPayForUpload } from '../../../lib/claude/aiCredits/gift/giftPaysForUpload';
-import { getAiBudgetStatus } from '../../../lib/claude/aiSpendGuard';
+import { readAiBudgetStatus } from '../../../lib/claude/aiSpendGuard';
 import type { AiGiftDeps } from './aiGiftDeps';
 
 export type AiGiftStatus =
@@ -98,7 +98,7 @@ export class GetAiGiftStatusUseCase {
         },
         readers
       );
-      const budget = await getAiBudgetStatus(
+      const budget = await readAiBudgetStatus(
         paying ? { userId } : { userId, aiGift: 'only' },
         readers.budgetDeps
       );

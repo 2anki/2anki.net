@@ -342,6 +342,33 @@ describe('AiGiftPresent', () => {
     ).toBeInTheDocument();
   });
 
+  test.each([
+    ['two PDF pages make one card, by default', 'pdf-page-pairs', 'true', null],
+    [
+      'two PDF pages make one card, with the switch on',
+      'pdf-page-pairs',
+      'true',
+      'true',
+    ],
+    ['PDF processing is off, by default', 'process-pdfs', 'false', null],
+  ])(
+    'promises nothing for a PDF when %s in this browser',
+    async (_case, key, value, claudeSwitch) => {
+      routeFetch(CLAIMED);
+      localStorage.setItem(key, value);
+      if (claudeSwitch != null) {
+        localStorage.setItem('claude-ai-flashcards', claudeSwitch);
+      }
+      renderPresent(true, false, true);
+
+      fireEvent.click(await trigger());
+
+      expect(await screen.findByText(BALANCE)).toBeInTheDocument();
+      expect(screen.queryByText(/Claude will write/)).toBeNull();
+      expect(screen.queryByText(/AI is off/)).toBeNull();
+    }
+  );
+
   test('says the gift is used up, and promises nothing, even with the switch on', async () => {
     routeFetch({
       ...CLAIMED,

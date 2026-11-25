@@ -493,6 +493,15 @@ describe('what the next PDF upload would get, answered by the upload rule', () =
     });
   });
 
+  it('records no exhausted event when the status is read for a paying account with spent plan credits', async () => {
+    h.claudeDefault.planCredits = 0;
+
+    await next(true);
+    await new Promise((resolve) => setImmediate(resolve));
+
+    expect(eventsNamed('ai_credits_exhausted')).toEqual([]);
+  });
+
   it('is off once the account recorded turning AI off', async () => {
     h.claudeDefault.latestToggle = 'upload_ai_turned_off';
 

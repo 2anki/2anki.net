@@ -4,6 +4,7 @@ import {
   AiCreditsExhaustedError,
   assertAiBudget,
   getAiBudgetStatus,
+  readAiBudgetStatus,
   resetAiSpendClaims,
   withAiBudget,
 } from './aiSpendGuard';
@@ -295,6 +296,31 @@ describe('withAiBudget and the gift', () => {
         }),
       ],
     ]);
+  });
+});
+
+describe('reading the budget without an AI attempt', () => {
+  const exhaustedEvents = () =>
+    trackMock.mock.calls.filter(([name]) => name === 'ai_credits_exhausted');
+
+  it('answers a paying account with spent plan credits as exhausted, and records nothing', async () => {
+    const deps = makeDeps({ plan: planBalance(0), gift: giftBalance(100) });
+
+    const status = await readAiBudgetStatus({ userId: USER }, deps);
+    await flushAsync();
+
+    expect(status.exhausted).toBe(true);
+    expect(exhaustedEvents()).toEqual([]);
+  });
+
+  it('still records the exhausted event when an upload checks the same account', async () => {
+    const deps = makeDeps({ plan: planBalance(0), gift: giftBalance(100) });
+
+    const status = await getAiBudgetStatus({ userId: USER }, deps);
+    await flushAsync();
+
+    expect(status.exhausted).toBe(true);
+    expect(exhaustedEvents()).toHaveLength(1);
   });
 });
 

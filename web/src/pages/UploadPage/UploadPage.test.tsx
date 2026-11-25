@@ -34,7 +34,10 @@ vi.mock('../../lib/analytics/track', () => ({
 }));
 
 const scheduleSyncMock = vi.fn();
-vi.mock('../../lib/data_layer/userPreferencesSync', () => ({
+vi.mock('../../lib/data_layer/userPreferencesSync', async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import('../../lib/data_layer/userPreferencesSync')
+  >()),
   scheduleSync: (...args: unknown[]) => scheduleSyncMock(...args),
 }));
 
