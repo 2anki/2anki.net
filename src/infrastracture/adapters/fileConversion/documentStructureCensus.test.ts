@@ -1,6 +1,10 @@
 import JSZip from 'jszip';
 
 import { censusFromHtml, censusUploadedFile } from './documentStructureCensus';
+import {
+  noiseWithZipEnd,
+  zipDeclaringMoreEntriesThanItHolds,
+} from '../../../test/fakes/unusualZips';
 
 async function minimalDocx(paragraphText: string): Promise<Buffer> {
   const zip = new JSZip();
@@ -185,6 +189,34 @@ describe('censusUploadedFile — zip archives (#4029)', () => {
     });
     expect(census).toMatchObject({ kind: 'zip', unreadable: true });
   });
+
+  it('marks a zip declaring far more entries than it holds unreadable within milliseconds', async () => {
+    const started = performance.now();
+
+    const census = await censusUploadedFile({
+      originalname: 'export.zip',
+      buffer: zipDeclaringMoreEntriesThanItHolds(4_000_000_000),
+    });
+
+    expect(census).toMatchObject({ kind: 'zip', unreadable: true });
+    expect(performance.now() - started).toBeLessThan(50);
+  });
+
+  it.each([2_000_000, 8_000_000])(
+    'marks %i bytes of noise ending in a zip end record unreadable within milliseconds',
+    async (bytes) => {
+      const noise = noiseWithZipEnd(bytes);
+      const started = performance.now();
+
+      const census = await censusUploadedFile({
+        originalname: 'export.zip',
+        buffer: noise,
+      });
+
+      expect(census).toMatchObject({ kind: 'zip', unreadable: true });
+      expect(performance.now() - started).toBeLessThan(20);
+    }
+  );
 
   it('caps the manifest at 50 entries and flags truncation', async () => {
     const many: Record<string, Uint8Array> = {};

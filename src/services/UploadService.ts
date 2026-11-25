@@ -131,6 +131,7 @@ import {
   ZIP_PARTLY_RECOVERED_WARNING_TEXT,
 } from '../lib/zip/damagedZipMessage';
 import { censusUploadedFile } from '../infrastracture/adapters/fileConversion/documentStructureCensus';
+import { isWordDocumentTooLongError } from '../infrastracture/adapters/fileConversion/wordDocumentTooLong';
 import { formatDeckName } from '../lib/formatDeckName';
 import { monthlyLimitWallPath } from '../lib/User/monthlyLimitRefusal';
 import {
@@ -1757,6 +1758,12 @@ class UploadService {
           code: 'unknown',
           message: CONVERSION_PROCESS_CRASHED_REASON,
         });
+      } else if (isWordDocumentTooLongError(err)) {
+        this.trackUploadFailed(req, res, uploadFailureReason(err));
+        return res.status(400).json({
+          code: 'too_large',
+          message: CONVERSION_OUT_OF_MEMORY_REASON,
+        });
       } else if (err instanceof UploadFileUnavailableError) {
         // A visitor who leaves the page mid-upload takes the request with
         // them: the socket closes, multer removes the temp files, and the
@@ -2054,6 +2061,11 @@ class UploadService {
             jobId: ws.id,
             kind: err instanceof Error ? err.name : 'unknown',
           });
+          // Expected, so nothing alerts, but the refusal is still counted
+          // apart from a real out-of-memory crash.
+          if (isWordDocumentTooLongError(err)) {
+            this.trackUploadFailed(req, res, uploadFailureReason(err));
+          }
         } else {
           console.error('[UploadService] async job failed', {
             jobId: ws.id,

@@ -19,6 +19,7 @@ import {
   isConversionChildCrashedError,
   isConversionOutOfMemoryError,
 } from '../../lib/workerTermination';
+import { isWordDocumentTooLongError } from '../../infrastracture/adapters/fileConversion/wordDocumentTooLong';
 
 export const NOTION_DATABASE_NOT_PAGE_REASON =
   'This Notion link points to a database. We read the database rows as cards — share the database with the 2anki integration in Notion, then convert again.';
@@ -215,11 +216,15 @@ export type JobFailureReasonCode =
   | 'empty_content'
   | 'conversion_process_crashed'
   | 'conversion_out_of_memory'
+  | 'word_document_too_long'
   | 'unknown';
 
 export function jobFailureReasonCode(error: unknown): JobFailureReasonCode {
   if (isConversionOutOfMemoryError(error)) {
     return 'conversion_out_of_memory';
+  }
+  if (isWordDocumentTooLongError(error)) {
+    return 'word_document_too_long';
   }
   if (isConversionChildCrashedError(error)) {
     return 'conversion_process_crashed';
@@ -326,7 +331,10 @@ export function jobFailureReasonFromError(
   error: unknown,
   jobId?: string
 ): string {
-  if (isConversionOutOfMemoryError(error)) {
+  if (
+    isConversionOutOfMemoryError(error) ||
+    isWordDocumentTooLongError(error)
+  ) {
     return CONVERSION_OUT_OF_MEMORY_REASON;
   }
   if (isConversionChildCrashedError(error)) {

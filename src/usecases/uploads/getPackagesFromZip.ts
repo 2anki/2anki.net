@@ -37,6 +37,7 @@ import {
 } from '../../lib/pdf/pdfPasswordSentinel';
 import { buildLockedPdfWarning } from '../../lib/pdf/lockedPdfWarning';
 import { buildConversionFailureWarning } from './conversionFailureWarning';
+import { isWordDocumentTooLongError } from '../../infrastracture/adapters/fileConversion/wordDocumentTooLong';
 import {
   EmptyDeckError,
   EmptyDeckReason,
@@ -113,11 +114,14 @@ interface BatchOutcome {
 // from being flattened to unknown when the whole upload comes out empty.
 // The upload page asks what a PDF with no readable text should become; that
 // question belongs to the whole upload, so it is never recorded as one file's
-// failure.
-function rethrowPdfChoice(error: unknown): void {
+// failure. A Word file too long to convert fails the whole upload too: the
+// skipped-file notice never reaches the visitor, so skipping it would ship a
+// deck with a document silently missing.
+function rethrowWholeUploadFailure(error: unknown): void {
   if (error instanceof Error && isPdfFallbackChoiceSentinel(error.message)) {
     throw error;
   }
+  if (isWordDocumentTooLongError(error)) throw error;
 }
 
 function reasonFromRejection(error: unknown): EmptyDeckReason | undefined {
@@ -200,7 +204,7 @@ async function buildDeckBatch(
   const preparedResults: DeckInfoOnlyResult[] = [];
   settled.forEach((result, index) => {
     if (result.status === 'rejected') {
-      rethrowPdfChoice(result.reason);
+      rethrowWholeUploadFailure(result.reason);
       failedFiles.push(fileNames[index]);
       const reason = reasonFromRejection(result.reason);
       if (reason != null) emptyReasons.push(reason);
@@ -347,7 +351,7 @@ async function buildStragglerDecks(
         })
       );
     } catch (error) {
-      rethrowPdfChoice(error);
+      rethrowWholeUploadFailure(error);
       failedFiles.push(straggler.inputFileName);
       const reason = reasonFromRejection(error);
       if (reason != null) emptyReasons.push(reason);
@@ -518,7 +522,7 @@ async function buildAllInOneSlot(
   let cardsHeldBack: number | undefined;
   settled.forEach((result, index) => {
     if (result.status === 'rejected') {
-      rethrowPdfChoice(result.reason);
+      rethrowWholeUploadFailure(result.reason);
       failedFiles.push(supportedFileNames[index]);
       const reason = reasonFromRejection(result.reason);
       if (reason != null) emptyReasons.push(reason);
@@ -738,7 +742,7 @@ export const getPackagesFromZip = async (
   const rescueCandidateSets: RescueCandidate[][] = [];
   settledChunks.forEach((result, index) => {
     if (result.status === 'rejected') {
-      rethrowPdfChoice(result.reason);
+      rethrowWholeUploadFailure(result.reason);
       failedFiles.push(...chunks[index]);
       const reason = reasonFromRejection(result.reason);
       if (reason != null) emptyReasons.push(reason);

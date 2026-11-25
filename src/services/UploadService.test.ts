@@ -2047,6 +2047,55 @@ describe('UploadService.handleUpload — error paths', () => {
     });
   });
 
+  describe('a sync upload whose Word file is too long to convert', () => {
+    async function uploadRefused() {
+      MockGeneratePackagesUseCase.mockImplementation(function () {
+        return {
+          execute: vi
+            .fn()
+            .mockRejectedValue(
+              Object.assign(
+                new Error('word_document_too_long: 50000000 bytes of body XML'),
+                { name: 'WordDocumentTooLongError' }
+              )
+            ),
+        } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+      });
+      const service = new UploadService(
+        buildRepository(),
+        {} as JobRepository,
+        buildUsersRepo(),
+        ...fakeUploadServiceDeps()
+      );
+      const response = buildResponse();
+      await service.handleUpload(buildRequest(), response.res);
+      return response;
+    }
+
+    it('answers with the same too-large message as a conversion that ran out of memory', async () => {
+      const { capturedStatus, capturedJson } = await uploadRefused();
+
+      expect(capturedStatus()).toBe(400);
+      expect(capturedJson()).toEqual({
+        code: 'too_large',
+        message: CONVERSION_OUT_OF_MEMORY_REASON,
+      });
+    });
+
+    it('records the refusal under its own failure reason, apart from a real out-of-memory crash', async () => {
+      await uploadRefused();
+
+      expect(trackMock).toHaveBeenCalledWith(
+        'conversion_failed',
+        expect.objectContaining({
+          props: expect.objectContaining({
+            reason: 'word_document_too_long',
+          }),
+        })
+      );
+    });
+  });
+
   it('returns 400 with code pdf_processing_failed when pdf.js rejects the file structure', async () => {
     const invalidPdf = new Error('Invalid PDF structure');
     invalidPdf.name = 'InvalidPDFException';
@@ -4729,6 +4778,70 @@ describe('UploadService.promoteClaudeJobToUpload — async fs reads', () => {
     );
     expect(reason).not.toMatch(/\n\s+at /);
     expect(reason).not.toContain('tables.ts');
+    errorSpy.mockRestore();
+  });
+
+  it('records a Word file too long to convert once under its own reason on the async route, and tells the user to split it', async () => {
+    let resolveFailed!: () => void;
+    const failed = new Promise<void>((r) => {
+      resolveFailed = r;
+    });
+    const updateJobStatus = vi.fn(
+      async (
+        _id: string,
+        _owner: unknown,
+        status: string,
+        _reason?: string
+      ) => {
+        if (status === 'failed') resolveFailed();
+      }
+    );
+    const jobRepository = {
+      create: vi.fn().mockResolvedValue(undefined),
+      updateJobStatus,
+      findJobById: vi.fn().mockResolvedValue(null),
+      deleteJob: vi.fn().mockResolvedValue(undefined),
+    } as unknown as JobRepository;
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi
+          .fn()
+          .mockRejectedValue(
+            Object.assign(
+              new Error('word_document_too_long: 50000000 bytes of body XML'),
+              { name: 'WordDocumentTooLongError' }
+            )
+          ),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const service = new UploadService(
+      { ...buildRepository(), update: vi.fn().mockResolvedValue([]) },
+      jobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest({ body: { 'claude-ai-flashcards': 'true' } });
+    const { res } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+    (res.locals as Record<string, unknown>).subscriber = true;
+
+    await service.handleUpload(req, res);
+    await failed;
+
+    const failedCall = updateJobStatus.mock.calls.find(
+      (call) => call[2] === 'failed'
+    );
+    expect(failedCall?.[3]).toBe(CONVERSION_OUT_OF_MEMORY_REASON);
+    const refusals = trackMock.mock.calls.filter(
+      ([event, payload]) =>
+        event === 'conversion_failed' &&
+        (payload as { props?: { reason?: string } }).props?.reason ===
+          'word_document_too_long'
+    );
+    expect(refusals).toHaveLength(1);
+    expect(errorSpy).not.toHaveBeenCalled();
     errorSpy.mockRestore();
   });
 

@@ -39,6 +39,8 @@ import {
 } from './convertPDFToImages';
 import { combineIntoHTML } from '../../../lib/pdf/combineIntoHTML';
 import { convertDocxToHTML as convertDocxToHTMLImport } from './convertDocxToHTML';
+import { MAX_CONVERTIBLE_WORD_BODY_BYTES } from './wordDocumentTooLong';
+import { wordNotesWithBodyBytes } from '../../../test/fakes/longWordDocuments';
 import { convertImageToHTML as convertImageToHTMLImport } from './convertImageToHTML';
 import { extractPptxSourceUnits as extractPptxSourceUnitsImport } from '../../../lib/parser/sourceUnits/extractPptxSourceUnits';
 import { parsePdfFallbackChoiceSentinel } from '../../../lib/pdf/pdfFallbackChoice';
@@ -3541,5 +3543,48 @@ describe('PrepareDeck — folded nested toggles across sub-pages', () => {
 
     expect(result?.deck).toHaveLength(2);
     expect(result?.foldedToggleCount).toBe(4);
+  });
+});
+
+describe('PrepareDeck — a Word body too long to convert', () => {
+  const convertDocxToHTML = convertDocxToHTMLImport as unknown as Mock;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    convertDocxToHTML.mockResolvedValue('<p>docx text</p>');
+  });
+
+  function prepare(contents: Buffer) {
+    return PrepareDeck({
+      name: 'notes.docx',
+      files: [{ name: 'notes.docx', contents }],
+      settings: makeSettings(),
+      noLimits: false,
+      workspace: makeWorkspace(),
+    });
+  }
+
+  it('refuses a body declared over the threshold without starting the converter', async () => {
+    const docx = wordNotesWithBodyBytes(MAX_CONVERTIBLE_WORD_BODY_BYTES + 1);
+
+    await expect(prepare(docx)).rejects.toMatchObject({
+      name: 'WordDocumentTooLongError',
+    });
+    expect(convertDocxToHTML).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [
+      'a body at the threshold',
+      () => wordNotesWithBodyBytes(MAX_CONVERTIBLE_WORD_BODY_BYTES),
+    ],
+    ['a file whose zip directory cannot be read', () => Buffer.from('PK-docx')],
+  ])('converts %s as before', async (_kind, build) => {
+    const docx = build();
+
+    await prepare(docx).catch(() => {});
+
+    expect(convertDocxToHTML).toHaveBeenCalledTimes(1);
+    expect(convertDocxToHTML.mock.calls[0][0]).toBe(docx);
   });
 });
