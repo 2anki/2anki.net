@@ -18,7 +18,10 @@ export interface DocxParts {
   body: string;
   images?: DocxImage[];
   footnotes?: Record<string, string>;
+  endnotes?: Record<string, string>;
   numberingTarget?: string;
+  numberingXml?: string;
+  documentRelationships?: string;
 }
 
 function escapeXml(text: string): string {
@@ -73,6 +76,10 @@ export function docxFootnoteReference(id: string): string {
   return `<w:r><w:rPr><w:rStyle w:val="FootnoteReference"/></w:rPr><w:footnoteReference w:id="${id}"/></w:r>`;
 }
 
+export function docxEndnoteReference(id: string): string {
+  return `<w:r><w:endnoteReference w:id="${id}"/></w:r>`;
+}
+
 export function docxStructuredBlock(content: string): string {
   return `<w:sdt><w:sdtPr><w:alias w:val="Block"/></w:sdtPr><w:sdtContent>${content}</w:sdtContent></w:sdt>`;
 }
@@ -91,14 +98,22 @@ function abstractNum(id: number, formats: string[], styles: string[] = []) {
 
 const NUMBERING = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:numbering xmlns:w="${W_NS}">${abstractNum(0, ['bullet', 'bullet', 'bullet'])}${abstractNum(1, ['decimal', 'lowerLetter', 'bullet'])}${abstractNum(2, ['bullet', 'bullet'], ['ListBullet', 'ListBullet2'])}<w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num><w:num w:numId="2"><w:abstractNumId w:val="1"/></w:num><w:num w:numId="3"><w:abstractNumId w:val="2"/></w:num></w:numbering>`;
 
-function footnotesXml(footnotes: Record<string, string>): string {
-  const notes = Object.entries(footnotes)
-    .map(
-      ([id, text]) =>
-        `<w:footnote w:id="${id}">${docxParagraph(docxRun(text))}</w:footnote>`
-    )
+// A note's content is a paragraph of plain text, or raw paragraph XML when it
+// starts with `<w:p`.
+function notesXml(kind: 'footnote' | 'endnote', notes: Record<string, string>) {
+  const body = Object.entries(notes)
+    .map(([id, content]) => {
+      const paragraphs = content.startsWith('<w:p')
+        ? content
+        : docxParagraph(docxRun(content));
+      return `<w:${kind} w:id="${id}">${paragraphs}</w:${kind}>`;
+    })
     .join('');
-  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:footnotes xmlns:w="${W_NS}"><w:footnote w:type="separator" w:id="-1"><w:p><w:r><w:separator/></w:r></w:p></w:footnote>${notes}</w:footnotes>`;
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:${kind}s xmlns:w="${W_NS}" xmlns:r="${R_NS}" xmlns:wp="${WP_NS}"><w:${kind} w:type="separator" w:id="-1"><w:p><w:r><w:separator/></w:r></w:p></w:${kind}>${body}</w:${kind}s>`;
+}
+
+function relationships(entries: string): string {
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${entries}</Relationships>`;
 }
 
 export function buildDocx(parts: DocxParts): Buffer {
@@ -110,7 +125,10 @@ export function buildDocx(parts: DocxParts): Buffer {
     )
     .join('');
   const footnoteRel = parts.footnotes
-    ? '<Relationship Id="rIdFootnotes" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footnotes" Target="footnotes.xml"/>'
+    ? `<Relationship Id="rIdFootnotes" Type="${R_NS}/footnotes" Target="footnotes.xml"/>`
+    : '';
+  const endnoteRel = parts.endnotes
+    ? `<Relationship Id="rIdEndnotes" Type="${R_NS}/endnotes" Target="endnotes.xml"/>`
     : '';
   const numberingTarget = parts.numberingTarget ?? 'numbering.xml';
   const files: Zippable = {
@@ -121,16 +139,22 @@ export function buildDocx(parts: DocxParts): Buffer {
       `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${R_NS}/officeDocument" Target="word/document.xml"/></Relationships>`
     ),
     'word/_rels/document.xml.rels': strToU8(
-      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdStyles" Type="${R_NS}/styles" Target="styles.xml"/><Relationship Id="rIdNumbering" Type="${R_NS}/numbering" Target="${numberingTarget}"/>${footnoteRel}${imageRels}</Relationships>`
+      parts.documentRelationships ??
+        relationships(
+          `<Relationship Id="rIdStyles" Type="${R_NS}/styles" Target="styles.xml"/><Relationship Id="rIdNumbering" Type="${R_NS}/numbering" Target="${numberingTarget}"/>${footnoteRel}${endnoteRel}${imageRels}`
+        )
     ),
     'word/styles.xml': strToU8(STYLES),
-    [`word/${numberingTarget}`]: strToU8(NUMBERING),
+    [`word/${numberingTarget}`]: strToU8(parts.numberingXml ?? NUMBERING),
     'word/document.xml': strToU8(
       `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="${W_NS}" xmlns:r="${R_NS}" xmlns:wp="${WP_NS}" xmlns:mc="${MC_NS}" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape"><w:body>${parts.body}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/></w:sectPr></w:body></w:document>`
     ),
   };
-  if (parts.footnotes) {
-    files['word/footnotes.xml'] = strToU8(footnotesXml(parts.footnotes));
+  for (const kind of ['footnote', 'endnote'] as const) {
+    const notes = kind === 'footnote' ? parts.footnotes : parts.endnotes;
+    if (notes == null) continue;
+    files[`word/${kind}s.xml`] = strToU8(notesXml(kind, notes));
+    files[`word/_rels/${kind}s.xml.rels`] = strToU8(relationships(imageRels));
   }
   for (const image of images) {
     files[`word/media/${image.id}.png`] = [image.bytes, { level: 0 }];

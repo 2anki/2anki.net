@@ -8,6 +8,7 @@ import {
 } from './docxBodyChunks';
 import {
   buildDocx,
+  docxEndnoteReference,
   docxFootnoteReference,
   docxImageRun,
   docxParagraph,
@@ -140,7 +141,8 @@ describe('splitDocxBody', () => {
 
       expect(count).toBeGreaterThan(10);
       expect(html).toBe(expected);
-    }
+    },
+    60000
   );
 
   it('numbers footnotes in one sequence and lists them once at the end', async () => {
@@ -286,6 +288,117 @@ describe('splitDocxBody', () => {
     expect(count).toBeGreaterThan(5);
   });
 
+  it.each([
+    [
+      'single-quoted list levels and ids',
+      (level: number) =>
+        `<w:numPr><w:ilvl w:val='${level}'/><w:numId w:val='1'/></w:numPr>`,
+    ],
+    [
+      'spaces around the equals sign',
+      (level: number) =>
+        `<w:numPr><w:ilvl w:val = "${level}"/><w:numId w:val= "1"/></w:numPr>`,
+    ],
+  ])('keeps nested items nested with %s', async (_kind, numbering) => {
+    const items = Array.from(
+      { length: 12 },
+      (_, i) =>
+        `<w:p><w:pPr>${numbering(i % 3 === 0 ? 0 : 1)}</w:pPr>${docxRun(`point ${i}`)}</w:p>`
+    );
+
+    const count = await expectPiecesEqualWhole({ body: items.join('') });
+
+    expect(count).toBeGreaterThan(1);
+  });
+
+  it.each([
+    ['single quotes', "w:fldCharType='begin'", "w:fldCharType='end'", true],
+    [
+      'an entity',
+      'w:fldCharType="&#98;egin"',
+      'w:fldCharType="&#x65;nd"',
+      false,
+    ],
+  ])(
+    'keeps a link across paragraphs whose field type is written with %s',
+    async (_kind, begin, end, splits) => {
+      const body = [
+        docxParagraph(docxRun('intro')),
+        docxParagraph(
+          FIELD_BEGIN.replace('w:fldCharType="begin"', begin) +
+            docxRun('link text')
+        ),
+        docxParagraph(docxRun('inside the link')),
+        docxParagraph(
+          docxRun('still inside') +
+            FIELD_END.replace('w:fldCharType="end"', end)
+        ),
+        docxParagraph(docxRun('after the link')),
+      ].join('');
+
+      const count = await expectPiecesEqualWhole({ body });
+
+      expect(count > 1).toBe(splits);
+    }
+  );
+
+  const notesBody = Array.from({ length: 30 }, (_, i) =>
+    docxParagraph(docxRun(`point ${i}`), { listId: '1', level: i % 2 })
+  ).join('');
+
+  function timed(run: () => unknown): number {
+    const started = performance.now();
+    run();
+    return performance.now() - started;
+  }
+
+  it('reads a numbering part with a long comment inside a level in linear time', async () => {
+    const comment = `<!--${'<w:pStyle w:val='.repeat(150_000)}-->`;
+    const numberingXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:abstractNum w:abstractNumId="0"><w:lvl w:ilvl="0">${comment}<w:numFmt w:val="bullet"/></w:lvl><w:lvl w:ilvl="1"><w:numFmt w:val="bullet"/></w:lvl></w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num></w:numbering>`;
+    const docx = buildDocx({ body: notesBody, numberingXml });
+    expect(docx.length).toBeLessThan(60_000);
+
+    expect(timed(() => splitDocxBody(docx, 1))).toBeLessThan(2000);
+    await expectPiecesEqualWhole({ body: notesBody, numberingXml });
+  });
+
+  it('gives up on a body nested 100,000 elements deep in linear time', () => {
+    const depth = 100_000;
+    const body =
+      docxParagraph(docxRun('before')) +
+      `<w:p>${'<w:smartTag>'.repeat(depth)}${docxRun('deep')}${'</w:smartTag>'.repeat(depth)}</w:p>` +
+      docxParagraph(docxRun('after'));
+    const docx = buildDocx({ body });
+    let chunks: unknown = 'not run';
+
+    const elapsed = timed(() => {
+      chunks = splitDocxBody(docx, 1);
+    });
+
+    expect(elapsed).toBeLessThan(2000);
+    expect(chunks).toBeNull();
+  });
+
+  it('gives up on a malformed relationships part in linear time', () => {
+    const documentRelationships = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${'<Relationship '.repeat(15_000)}`;
+    const docx = buildDocx({ body: notesBody, documentRelationships });
+    let chunks: unknown = 'not run';
+
+    const elapsed = timed(() => {
+      chunks = splitDocxBody(docx, 1);
+    });
+
+    expect(elapsed).toBeLessThan(2000);
+    expect(chunks).toBeNull();
+  });
+
+  it('declines to split a document that is one long paragraph', () => {
+    const runs = Array.from({ length: 2000 }, (_, i) => docxRun(`word ${i} `));
+    const docx = buildDocx({ body: docxParagraph(runs.join('')) });
+
+    expect(splitDocxBody(docx, 1024)).toBeNull();
+  });
+
   it('declines to split a document that is one long table', () => {
     const rows = Array.from({ length: 400 }, (_, i) => [
       `term ${i}`,
@@ -299,17 +412,28 @@ describe('splitDocxBody', () => {
   });
 });
 
-function seededRandom(seed: number) {
-  let state = seed;
+function mulberry32(seed: number) {
+  let state = seed >>> 0;
   return () => {
-    state = (state * 1103515245 + 12345) & 0x7fffffff;
-    return state / 0x7fffffff;
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
+}
+
+function requote(xml: string, variant: 'double' | 'single' | 'spaced'): string {
+  if (variant === 'double') return xml;
+  return xml.replace(/(\s[\w:]+)="([^"]*)"/g, (_match, name, value) =>
+    variant === 'single' ? `${name}='${value}'` : `${name} = "${value}"`
+  );
 }
 
 function randomDocument(random: () => number): DocxParts {
   const pick = <T>(items: T[]): T => items[Math.floor(random() * items.length)];
   const footnotes: Record<string, string> = {};
+  const endnotes: Record<string, string> = {};
   let noteId = 1;
   let openFields = 0;
   let word = 0;
@@ -325,10 +449,27 @@ function randomDocument(random: () => number): DocxParts {
       () => movedToRun(text()),
       () => alternateContent(docxRun(text()), docxRun(text())),
       () => `${docxRun(text())}${deletedRun(text())}`,
+      () => docxRun(' '),
+      () => docxImageRun('img1'),
       () => {
         const id = `${noteId++}`;
-        footnotes[id] = `note ${id}`;
+        footnotes[id] = pick([
+          () => `note ${id}`,
+          () => docxParagraph(docxRun(`note ${id}`) + docxImageRun('img1')),
+          () => {
+            const nested = `${noteId++}`;
+            footnotes[nested] = `nested note ${nested}`;
+            return docxParagraph(
+              docxRun(`note ${id}`) + docxFootnoteReference(nested)
+            );
+          },
+        ])();
         return docxRun(text()) + docxFootnoteReference(id);
+      },
+      () => {
+        const id = `${noteId++}`;
+        endnotes[id] = `endnote ${id}`;
+        return docxRun(text()) + docxEndnoteReference(id);
       },
     ])();
   const listItem = () =>
@@ -401,16 +542,25 @@ function randomDocument(random: () => number): DocxParts {
     () => '<w:bookmarkStart w:id="1" w:name="mark1"/><w:bookmarkEnd w:id="1"/>',
   ];
   const length = 8 + Math.floor(random() * 25);
-  const body = Array.from({ length }, () => pick(blocks)()).join('');
-  return { body, footnotes: noteId > 1 ? footnotes : undefined };
+  const body = Array.from({ length }, () =>
+    requote(pick(blocks)(), pick(['double', 'double', 'single', 'spaced']))
+  ).join('');
+  return {
+    body,
+    images: [{ id: 'img1', bytes: PNG_BYTES }],
+    footnotes: Object.keys(footnotes).length > 0 ? footnotes : undefined,
+    endnotes: Object.keys(endnotes).length > 0 ? endnotes : undefined,
+  };
 }
 
 describe('splitDocxBody on random documents', () => {
   it('converts 500 random documents cut at every allowed place to the HTML of converting them whole', async () => {
-    const random = seededRandom(20261125);
+    const random = mulberry32(20261125);
     let split = 0;
+    const distinct = new Set<string>();
     for (let index = 0; index < 500; index++) {
       const parts = randomDocument(random);
+      distinct.add(parts.body);
       const docx = buildDocx(parts);
       const whole = await wholeHtml(docx);
       const { count, html } = await chunkedHtml(docx, 1);
@@ -418,5 +568,6 @@ describe('splitDocxBody on random documents', () => {
       expect({ index, html }).toEqual({ index, html: whole });
     }
     expect(split).toBeGreaterThan(400);
-  }, 120000);
+    expect(distinct.size).toBe(500);
+  }, 180000);
 });

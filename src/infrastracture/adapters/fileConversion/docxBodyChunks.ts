@@ -1,5 +1,7 @@
 import { unzipSync, zipSync, type Zippable } from 'fflate';
 
+import { UnreadableDocument, XmlTagReader } from './docxXmlTags';
+
 // mammoth holds the parsed XML, its own element tree, the document model and
 // two copies of the HTML tree at once: about 40 bytes of heap per byte of
 // word/document.xml. A long Word document (tens of MB of XML) therefore runs
@@ -20,20 +22,28 @@ import { unzipSync, zipSync, type Zippable } from 'fflate';
 // - an empty paragraph renders nothing, which would let whatever follows it
 //   merge across the cut, so a piece starts only with a paragraph carrying
 //   text mammoth renders;
-// - footnote and endnote numbers run through the whole document and the notes
-//   are listed once at the end, which the join restores.
+// - footnote and endnote numbers run through the whole document, notes cited
+//   inside notes continue after them, and the notes are listed once at the
+//   end, which the join restores.
 // Anything else declines: an embedded style map (it could merge other
-// elements), a namespace bound to an unexpected prefix, unreadable XML, and a
-// body with no place to cut, such as one long table.
+// elements), a namespace bound to an unexpected prefix, XML the tag reader
+// does not fully understand (an entity in a value it needs, nesting deeper
+// than any Word document, markup it cannot place), planning that runs past
+// its time budget, and a body with no place to cut, such as one long table.
 export const DOCX_BODY_CHUNK_BYTES = 2 * 1024 * 1024;
+
+// Planning runs in the web process too (the upload census and chat
+// attachments), where it blocks every request while it reads. Reading is
+// linear (about 0.4 s for the 47 MB body of a 10 MB file, measured locally),
+// and past this budget the file is converted whole, as before.
+export const DOCX_SPLIT_BUDGET_MS = 2000;
+const MAX_ELEMENT_DEPTH = 256;
 
 const OFFICE_DOCUMENT_REL =
   'http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument';
 const NUMBERING_REL =
   'http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering';
 const EMBEDDED_STYLE_MAP_PART = 'mammoth/style-map';
-const BODY_OPEN = /<w:body(?:\s[^>]*)?>/;
-const BODY_CLOSE = '</w:body>';
 
 const EXPECTED_PREFIX_BY_NAMESPACE = new Map([
   ['http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w'],
@@ -98,6 +108,7 @@ interface TopLevelElement {
   isParagraph: boolean;
   hasText: boolean;
   deleted: boolean;
+  propertiesSeen: boolean;
   numberingLevel?: string;
   numberingId?: string;
   style?: string;
@@ -105,7 +116,11 @@ interface TopLevelElement {
   deletedMarkPendingBefore: boolean;
 }
 
-class UnreadableDocument extends Error {}
+interface DocumentScan {
+  bodyStart: number;
+  bodyEnd: number;
+  elements: TopLevelElement[];
+}
 
 function latin1(bytes: Uint8Array): string {
   return Buffer.from(bytes.buffer, bytes.byteOffset, bytes.length).toString(
@@ -113,14 +128,56 @@ function latin1(bytes: Uint8Array): string {
   );
 }
 
-function relationshipTargets(rels: string, type: string): string[] {
+function checkNamespaces(reader: XmlTagReader): void {
+  if (!reader.declaresNamespace()) return;
+  reader.forEachAttribute((name, uri) => {
+    if (name !== 'xmlns' && !name.startsWith('xmlns:')) return;
+    const prefix = name === 'xmlns' ? '' : name.slice('xmlns:'.length);
+    const expectedPrefix = EXPECTED_PREFIX_BY_NAMESPACE.get(uri);
+    const expectedUri = EXPECTED_NAMESPACE_BY_PREFIX.get(prefix);
+    if (
+      uri.includes('&') ||
+      (expectedPrefix != null && expectedPrefix !== prefix) ||
+      (expectedUri != null && expectedUri !== uri)
+    ) {
+      throw new UnreadableDocument();
+    }
+  });
+}
+
+function pushFrame(stack: Frame[], frame: Frame): void {
+  if (stack.length >= MAX_ELEMENT_DEPTH) throw new UnreadableDocument();
+  stack.push(frame);
+}
+
+function popFrame(stack: Frame[], name: string): Frame {
+  const frame = stack.pop();
+  if (frame == null || frame.name !== name) throw new UnreadableDocument();
+  return frame;
+}
+
+function relationshipTargets(
+  rels: string,
+  type: string,
+  deadline: number
+): string[] {
   const targets: string[] = [];
-  for (const match of rels.matchAll(/<Relationship\s[^>]*>/g)) {
-    const tag = match[0];
-    if (!tag.includes(`Type="${type}"`)) continue;
-    const target = /Target="([^"]+)"/.exec(tag);
-    if (target) targets.push(target[1]);
+  const reader = new XmlTagReader(rels, 0, rels.length, deadline);
+  const stack: Frame[] = [];
+  while (reader.next()) {
+    if (reader.kind === 'close') {
+      popFrame(stack, reader.name);
+      continue;
+    }
+    if (reader.name === 'Relationship' && reader.attribute('Type') === type) {
+      const target = reader.attribute('Target');
+      if (target != null) targets.push(target);
+    }
+    if (reader.kind === 'open') {
+      pushFrame(stack, { name: reader.name, read: false, inTextBox: false });
+    }
   }
+  if (stack.length !== 0) throw new UnreadableDocument();
   return targets;
 }
 
@@ -131,9 +188,10 @@ function partPath(
   type: string,
   basePath: string,
   fallback: string,
-  names: Map<string, number>
+  names: Map<string, number>,
+  deadline: number
 ): string {
-  for (const target of relationshipTargets(rels, type)) {
+  for (const target of relationshipTargets(rels, type, deadline)) {
     const joined = target.startsWith('/')
       ? target.slice(1)
       : [basePath, target].filter(Boolean).join('/');
@@ -173,87 +231,64 @@ function declaredPartSizes(contents: Buffer): Map<string, number> {
   return sizes;
 }
 
-function namespacesAreExpected(xml: string): boolean {
-  for (const match of xml.matchAll(/xmlns(?::([\w.-]+))?="([^"]*)"/g)) {
-    const prefix = match[1] ?? '';
-    const uri = match[2];
-    const expectedPrefix = EXPECTED_PREFIX_BY_NAMESPACE.get(uri);
-    if (expectedPrefix != null && expectedPrefix !== prefix) return false;
-    const expectedUri = EXPECTED_NAMESPACE_BY_PREFIX.get(prefix);
-    if (expectedUri != null && expectedUri !== uri) return false;
-  }
-  return true;
-}
-
 // Which list levels each paragraph style is linked to, as mammoth resolves a
-// paragraph with a list style and no level of its own.
-function styleListLevels(numberingXml: string): Map<string, Set<string>> {
+// paragraph with a list style and no level of its own: a w:pStyle directly
+// inside a w:lvl.
+function styleListLevels(
+  numberingXml: string,
+  deadline: number
+): Map<string, Set<string>> {
   const levels = new Map<string, Set<string>>();
-  let from = 0;
-  for (;;) {
-    const start = numberingXml.indexOf('<w:lvl', from);
-    if (start === -1) break;
-    const end = numberingXml.indexOf('</w:lvl>', start);
-    const block = numberingXml.slice(start, end === -1 ? undefined : end);
-    from = end === -1 ? numberingXml.length : end;
-    const style = /<w:pStyle\s[^>]*w:val="([^"]*)"/.exec(block);
-    if (style == null) continue;
-    const level = /^<w:lvl\s[^>]*w:ilvl="([^"]*)"/.exec(block)?.[1] ?? '0';
-    const set = levels.get(style[1]) ?? new Set<string>();
-    set.add(level);
-    levels.set(style[1], set);
-  }
-  return levels;
-}
-
-function tagEnd(xml: string, from: number): number {
-  let quote = 0;
-  for (let i = from + 1; i < xml.length; i++) {
-    const code = xml.charCodeAt(i);
-    if (quote !== 0) {
-      if (code === quote) quote = 0;
-    } else if (code === 0x22 || code === 0x27) {
-      quote = code;
-    } else if (code === 0x3e) {
-      return i;
+  const reader = new XmlTagReader(
+    numberingXml,
+    0,
+    numberingXml.length,
+    deadline
+  );
+  const stack: Frame[] = [];
+  const levelOf: (string | undefined)[] = [];
+  while (reader.next()) {
+    if (reader.kind === 'close') {
+      popFrame(stack, reader.name);
+      levelOf.pop();
+      continue;
+    }
+    checkNamespaces(reader);
+    const parent = stack[stack.length - 1];
+    if (reader.name === 'w:pStyle' && parent?.name === 'w:lvl') {
+      const style = reader.attribute('w:val');
+      const level = levelOf[levelOf.length - 1] ?? '0';
+      if (style != null) {
+        const set = levels.get(style) ?? new Set<string>();
+        set.add(level);
+        levels.set(style, set);
+      }
+    }
+    if (reader.kind === 'open') {
+      const level =
+        reader.name === 'w:lvl' ? reader.attribute('w:ilvl') : undefined;
+      pushFrame(stack, { name: reader.name, read: false, inTextBox: false });
+      levelOf.push(level);
     }
   }
-  throw new UnreadableDocument();
-}
-
-function skipMarkup(xml: string, at: number): number | null {
-  for (const [open, close] of [
-    ['<!--', '-->'],
-    ['<![CDATA[', ']]>'],
-    ['<?', '?>'],
-  ]) {
-    if (!xml.startsWith(open, at)) continue;
-    const end = xml.indexOf(close, at);
-    if (end === -1) throw new UnreadableDocument();
-    return end + close.length;
-  }
-  return null;
-}
-
-function tagName(tag: string): string {
-  const match = /^<\/?([^\s/>]+)/.exec(tag);
-  if (match == null) throw new UnreadableDocument();
-  return match[1];
-}
-
-function attribute(tag: string, name: string): string | undefined {
-  return new RegExp(`\\s${name}="([^"]*)"`).exec(tag)?.[1];
+  if (stack.length !== 0) throw new UnreadableDocument();
+  return levels;
 }
 
 function childIsRead(parent: Frame): boolean {
   return parent.read && READ_CHILDREN.has(parent.name);
 }
 
-// One pass over the body: the top-level elements, and for each the state
-// mammoth's reader carries into it.
-function scanBody(xml: string, from: number, to: number): TopLevelElement[] {
+// One pass over word/document.xml: where the body starts and ends, its
+// top-level elements, and for each the state mammoth's reader carries into it.
+// The stack holds w:document, then w:body, then the element being read, so a
+// top-level element is stack[2], its properties stack[3], and so on.
+function scanDocument(xml: string, deadline: number): DocumentScan {
+  const reader = new XmlTagReader(xml, 0, xml.length, deadline);
   const elements: TopLevelElement[] = [];
-  const stack: Frame[] = [{ name: 'w:body', read: true, inTextBox: false }];
+  const stack: Frame[] = [];
+  let bodyStart = -1;
+  let bodyEnd = -1;
   let fieldDepth = 0;
   let deletedMarkPending = false;
   let current: TopLevelElement | null = null;
@@ -266,41 +301,56 @@ function scanBody(xml: string, from: number, to: number): TopLevelElement[] {
     current = null;
   };
 
-  let cursor = from;
-  while (cursor < to) {
-    const open = xml.indexOf('<', cursor);
-    if (open === -1 || open >= to) break;
-    const skipped = skipMarkup(xml, open);
-    if (skipped != null) {
-      cursor = skipped;
-      continue;
-    }
-    const close = tagEnd(xml, open);
-    if (close >= to) throw new UnreadableDocument();
-    const tag = xml.slice(open, close + 1);
-    const name = tagName(tag);
-    cursor = close + 1;
-
-    if (tag.startsWith('</')) {
-      const frame = stack.pop();
-      if (frame == null || frame.name !== name || stack.length === 0) {
-        throw new UnreadableDocument();
-      }
+  while (reader.next()) {
+    const name = reader.name;
+    if (reader.kind === 'close') {
+      const frame = popFrame(stack, name);
       if (frame.paragraph != null && frame.read && !frame.paragraph.deleted) {
         containsKeptParagraph = true;
       }
-      if (stack.length === 1) finishElement();
+      if (stack.length === 1 && name === 'w:body') bodyEnd = reader.start;
+      const inBody = stack[1]?.name === 'w:body' && bodyEnd === -1;
+      if (inBody && stack.length === 3 && name === 'w:pPr' && current) {
+        (current as TopLevelElement).propertiesSeen = true;
+      }
+      if (inBody && stack.length === 2) finishElement();
+      continue;
+    }
+    checkNamespaces(reader);
+
+    if (stack.length === 0) {
+      if (name !== 'w:document' || reader.kind !== 'open') {
+        throw new UnreadableDocument();
+      }
+      pushFrame(stack, { name, read: false, inTextBox: false });
+      continue;
+    }
+    if (stack.length === 1) {
+      if (name === 'w:body') {
+        if (bodyStart !== -1) throw new UnreadableDocument();
+        bodyStart = reader.end + 1;
+        if (reader.kind === 'empty') {
+          bodyEnd = bodyStart;
+          continue;
+        }
+        pushFrame(stack, { name, read: true, inTextBox: false });
+        continue;
+      }
+      if (reader.kind === 'open') {
+        pushFrame(stack, { name, read: false, inTextBox: false });
+      }
       continue;
     }
 
+    const insideBody = stack[1].name === 'w:body' && bodyEnd === -1;
     const parent = stack[stack.length - 1];
-    const selfClosing = tag.endsWith('/>');
-    if (stack.length === 1) {
+    if (insideBody && stack.length === 2) {
       current = {
-        start: open,
+        start: reader.start,
         isParagraph: name === 'w:p',
         hasText: false,
         deleted: false,
+        propertiesSeen: false,
         fieldDepthBefore: fieldDepth,
         deletedMarkPendingBefore: deletedMarkPending,
       };
@@ -308,76 +358,94 @@ function scanBody(xml: string, from: number, to: number): TopLevelElement[] {
       containsDeletedMark = false;
       containsKeptParagraph = false;
     }
-    const element = current as TopLevelElement | null;
+    const element = insideBody ? (current as TopLevelElement | null) : null;
     const read = childIsRead(parent);
-    const frame: Frame = {
-      name,
-      read,
-      inTextBox: parent.inTextBox || name === 'w:txbxContent',
-      paragraph: name === 'w:p' ? { deleted: false } : undefined,
-    };
 
-    const grandparent = stack[stack.length - 2];
-    const greatGrandparent = stack[stack.length - 3];
-    if (
-      name === 'w:del' &&
-      parent.name === 'w:rPr' &&
-      grandparent?.name === 'w:pPr' &&
-      greatGrandparent?.paragraph != null &&
-      greatGrandparent.read
-    ) {
-      greatGrandparent.paragraph.deleted = true;
-      containsDeletedMark = true;
-      if (stack.length === 4 && element != null) element.deleted = true;
-    }
-    if (name === 'w:del' && parent.name === 'w:trPr' && grandparent != null) {
-      grandparent.read = false;
-    }
-    if (read && name === 'w:fldChar' && parent.name === 'w:r') {
-      const type = attribute(tag, 'w:fldCharType');
-      if (type === 'begin') fieldDepth += 1;
-      if (type === 'end') fieldDepth = Math.max(0, fieldDepth - 1);
-    }
-    if (
-      read &&
-      name === 'w:t' &&
-      parent.name === 'w:r' &&
-      !parent.inTextBox &&
-      !selfClosing &&
-      xml.charCodeAt(close + 1) !== 0x3c &&
-      element != null &&
-      stack.length >= 3
-    ) {
-      element.hasText = true;
-    }
-    if (element != null && stack.length >= 3 && stack[1].name === 'w:p') {
-      collectNumbering(element, stack, name, tag);
+    if (element != null) {
+      noteDeletions(stack, name, element, () => {
+        containsDeletedMark = true;
+      });
+      if (read && name === 'w:fldChar' && parent.name === 'w:r') {
+        const type = reader.attribute('w:fldCharType');
+        if (type === 'begin') fieldDepth += 1;
+        if (type === 'end') fieldDepth = Math.max(0, fieldDepth - 1);
+      }
+      if (
+        read &&
+        name === 'w:t' &&
+        parent.name === 'w:r' &&
+        !parent.inTextBox &&
+        reader.kind === 'open' &&
+        reader.textFollows() &&
+        stack.length >= 4
+      ) {
+        element.hasText = true;
+      }
+      if (element.isParagraph) collectNumbering(element, stack, reader);
     }
 
-    if (selfClosing) {
-      if (stack.length === 1) finishElement();
-    } else {
-      stack.push(frame);
+    if (reader.kind === 'open') {
+      pushFrame(stack, {
+        name,
+        read,
+        inTextBox: parent.inTextBox || name === 'w:txbxContent',
+        paragraph: name === 'w:p' ? { deleted: false } : undefined,
+      });
+    } else if (insideBody && stack.length === 2) {
+      finishElement();
     }
   }
-  if (stack.length !== 1) throw new UnreadableDocument();
-  return elements;
+  if (stack.length !== 0 || bodyStart === -1 || bodyEnd === -1) {
+    throw new UnreadableDocument();
+  }
+  return { bodyStart, bodyEnd, elements };
 }
 
+function noteDeletions(
+  stack: Frame[],
+  name: string,
+  element: TopLevelElement,
+  onDeletedMark: () => void
+): void {
+  if (name !== 'w:del') return;
+  const depth = stack.length;
+  const parent = stack[depth - 1];
+  const grandparent = stack[depth - 2];
+  const paragraph = stack[depth - 3];
+  if (
+    parent.name === 'w:rPr' &&
+    grandparent?.name === 'w:pPr' &&
+    paragraph?.paragraph != null &&
+    paragraph.read
+  ) {
+    paragraph.paragraph.deleted = true;
+    onDeletedMark();
+    if (depth === 5) element.deleted = true;
+  }
+  if (parent.name === 'w:trPr' && grandparent != null) {
+    grandparent.read = false;
+  }
+}
+
+// The first w:pPr of the top-level paragraph: its w:pStyle and the w:ilvl and
+// w:numId of its w:numPr, as mammoth reads them with firstOrEmpty.
 function collectNumbering(
   element: TopLevelElement,
   stack: Frame[],
-  name: string,
-  tag: string
+  reader: XmlTagReader
 ): void {
-  const path = stack.slice(2).map((frame) => frame.name);
-  if (path[0] !== 'w:pPr') return;
-  if (path.length === 1 && name === 'w:pStyle') {
-    element.style ??= attribute(tag, 'w:val');
+  const depth = stack.length;
+  const name = reader.name;
+  if (depth === 3 && name === 'w:pPr') {
+    if (reader.kind === 'empty') element.propertiesSeen = true;
+    return;
   }
-  if (path.length === 2 && path[1] === 'w:numPr') {
-    if (name === 'w:ilvl') element.numberingLevel ??= attribute(tag, 'w:val');
-    if (name === 'w:numId') element.numberingId ??= attribute(tag, 'w:val');
+  if (stack[3]?.name !== 'w:pPr' || element.propertiesSeen) return;
+  if (depth === 4 && name === 'w:pStyle') {
+    element.style ??= reader.attribute('w:val');
+  } else if (depth === 5 && stack[4].name === 'w:numPr') {
+    if (name === 'w:ilvl') element.numberingLevel ??= reader.attribute('w:val');
+    if (name === 'w:numId') element.numberingId ??= reader.attribute('w:val');
   }
 }
 
@@ -430,7 +498,8 @@ function planCuts(
   contents: Buffer,
   sizes: Map<string, number>,
   documentPart: string,
-  chunkBytes: number
+  chunkBytes: number,
+  deadline: number
 ): { xml: string; bodyStart: number; bodyEnd: number; cuts: number[] } | null {
   const rels = readText(contents, relsPartOf(documentPart));
   const numberingPart = partPath(
@@ -438,20 +507,19 @@ function planCuts(
     NUMBERING_REL,
     directoryOf(documentPart),
     'word/numbering.xml',
-    sizes
+    sizes,
+    deadline
   );
   const parts = unzipParts(contents, new Set([documentPart, numberingPart]));
   const documentBytes = parts[documentPart];
   if (documentBytes == null) return null;
   const xml = latin1(documentBytes);
-  if (!namespacesAreExpected(xml)) return null;
-  const bodyOpen = BODY_OPEN.exec(xml);
-  const bodyEnd = xml.lastIndexOf(BODY_CLOSE);
-  if (bodyOpen == null || bodyEnd === -1) return null;
-  const bodyStart = bodyOpen.index + bodyOpen[0].length;
   const numbering = parts[numberingPart];
-  const styleLevels = styleListLevels(numbering ? latin1(numbering) : '');
-  const elements = scanBody(xml, bodyStart, bodyEnd);
+  const styleLevels = styleListLevels(
+    numbering ? latin1(numbering) : '',
+    deadline
+  );
+  const { bodyStart, bodyEnd, elements } = scanDocument(xml, deadline);
   const cuts = cutOffsets(elements, styleLevels, bodyStart, chunkBytes);
   return cuts.length === 0 ? null : { xml, bodyStart, bodyEnd, cuts };
 }
@@ -460,6 +528,7 @@ export function splitDocxBody(
   contents: Buffer,
   chunkBytes: number
 ): DocxBodyChunks | null {
+  const deadline = Date.now() + DOCX_SPLIT_BUDGET_MS;
   try {
     const sizes = declaredPartSizes(contents);
     if (sizes.has(EMBEDDED_STYLE_MAP_PART)) return null;
@@ -468,10 +537,11 @@ export function splitDocxBody(
       OFFICE_DOCUMENT_REL,
       '',
       'word/document.xml',
-      sizes
+      sizes,
+      deadline
     );
     if ((sizes.get(documentPart) ?? 0) <= chunkBytes) return null;
-    const plan = planCuts(contents, sizes, documentPart, chunkBytes);
+    const plan = planCuts(contents, sizes, documentPart, chunkBytes, deadline);
     if (plan == null) return null;
 
     const { xml, bodyStart, bodyEnd, cuts } = plan;
@@ -514,6 +584,21 @@ function trailingNotesStart(html: string): number {
   return start !== -1 && html.endsWith('</ol>') ? start : -1;
 }
 
+function renumberNoteReferences(
+  html: string,
+  renumber: (label: number) => number
+): { html: string; references: number } {
+  let references = 0;
+  const renumbered = html.replace(
+    NOTE_REFERENCE_LABEL,
+    (_match: string, open: string, label: string, close: string) => {
+      references += 1;
+      return `${open}${renumber(Number(label))}${close}`;
+    }
+  );
+  return { html: renumbered, references };
+}
+
 function appendBody(bodies: string[], body: string): void {
   if (body.length === 0) return;
   const last = bodies.length - 1;
@@ -529,33 +614,46 @@ function appendBody(bodies: string[], body: string): void {
   bodies.push(body);
 }
 
+interface PieceNotes {
+  html: string;
+  bodyReferences: number;
+}
+
 // Each piece numbers its note references from 1 and lists its own notes after
-// its body; the whole document numbers them in one sequence and lists every
-// note once, at the end. A list cut between two top-level items comes back as
-// two lists, which mammoth would have written as one.
+// its body; the whole document numbers them in one sequence, numbers a note
+// cited inside a note after every citation in the body, and lists every note
+// once, at the end. A list cut between two top-level items comes back as two
+// lists, which mammoth would have written as one.
 export function joinDocxChunkHtml(chunks: string[]): string {
   const bodies: string[] = [];
-  const notes: string[] = [];
-  let notesBefore = 0;
+  const pieceNotes: PieceNotes[] = [];
+  let bodyReferences = 0;
   for (const html of chunks) {
     const notesStart = trailingNotesStart(html);
-    const body = notesStart === -1 ? html : html.slice(0, notesStart);
-    let references = 0;
-    appendBody(
-      bodies,
-      body.replace(
-        NOTE_REFERENCE_LABEL,
-        (_match: string, open: string, label: string, close: string) => {
-          references += 1;
-          return `${open}${Number(label) + notesBefore}${close}`;
-        }
-      )
+    const offset = bodyReferences;
+    const body = renumberNoteReferences(
+      notesStart === -1 ? html : html.slice(0, notesStart),
+      (label) => label + offset
     );
-    notesBefore += references;
+    appendBody(bodies, body.html);
+    bodyReferences += body.references;
     if (notesStart !== -1) {
-      notes.push(html.slice(notesStart + '<ol>'.length, -'</ol>'.length));
+      pieceNotes.push({
+        html: html.slice(notesStart + '<ol>'.length, -'</ol>'.length),
+        bodyReferences: body.references,
+      });
     }
   }
+  let nestedBefore = 0;
+  const notes = pieceNotes.map((piece) => {
+    const before = nestedBefore;
+    const renumbered = renumberNoteReferences(
+      piece.html,
+      (label) => label - piece.bodyReferences + bodyReferences + before
+    );
+    nestedBefore += renumbered.references;
+    return renumbered.html;
+  });
   const notesList = notes.length > 0 ? `<ol>${notes.join('')}</ol>` : '';
   return bodies.join('') + notesList;
 }
