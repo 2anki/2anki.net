@@ -158,6 +158,20 @@ describe('the upload card with the gift off or not for this account', () => {
     }
   );
 
+  it('shows a signed-out visitor no AI mode, Free pill or sign-up when the server answers full for their network', async () => {
+    vi.mocked(getAiGift).mockResolvedValue({
+      state: 'full',
+      feedbackDue: false,
+    });
+    renderCard(false);
+
+    await waitFor(() => expect(getAiGift).toHaveBeenCalled());
+    expect(screen.queryByRole('button', { name: /AI from notes/ })).toBeNull();
+    expect(screen.queryByText('Free')).toBeNull();
+    expect(screen.queryByLabelText('Email')).toBeNull();
+    expect(screen.getByTestId('upload-form')).toBeVisible();
+  });
+
   it('waits for the session before offering anything', async () => {
     vi.mocked(getAiGift).mockResolvedValue(OPEN_SIGNED_OUT);
     renderCard(undefined);

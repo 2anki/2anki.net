@@ -71,6 +71,31 @@ describe('RegisterForm', () => {
     ).toHaveLength(1);
   });
 
+  it('clears the upload card sign-up origin once an email sign-up from the card completes, tagging that sign-up', async () => {
+    registerMock.mockResolvedValue({ status: 200 });
+    globalThis.sessionStorage.setItem(
+      '2anki-ai-gift-signup-origin',
+      'upload_card_ai'
+    );
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <RegisterForm setErrorMessage={vi.fn()} eventOrigin="upload_card_ai" />
+      </MemoryRouter>
+    );
+    fillAndSubmit();
+
+    await waitFor(() => {
+      expect(trackMock).toHaveBeenCalledWith('signup_completed', {
+        method: 'email',
+        signup_origin: 'upload_card_ai',
+      });
+    });
+    expect(
+      globalThis.sessionStorage.getItem('2anki-ai-gift-signup-origin')
+    ).toBeNull();
+  });
+
   describe('post-signup destination', () => {
     let hrefValue: string;
 

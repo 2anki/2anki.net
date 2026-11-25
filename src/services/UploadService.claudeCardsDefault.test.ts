@@ -631,6 +631,30 @@ describe('an account with no plan whose free AI gift pays uploads on the web', (
     20_000
   );
 
+  it('makes no grant for a signed-out pass holder who sends the switch value, and converts exactly as without it, on the pass', async () => {
+    const passHolder: Account = {
+      locals: { subscriber: true, passKind: '24h', anonymousPassId: 77 },
+    };
+    const gifts = new InMemoryAiCreditGiftsRepository();
+    const withoutSwitch = await send(
+      { ...passHolder, gift: storeReaders(gifts) },
+      { name: 'lecture.pdf', body: { 'claude-ai-flashcards': 'true' } }
+    );
+
+    const withSwitch = await send(
+      { ...passHolder, gift: storeReaders(gifts) },
+      { name: 'lecture.pdf', body: FROM_SWITCH_ON }
+    );
+
+    expect(gifts.gifts).toEqual([]);
+    expect(withSwitch.locals.aiGift ?? null).toBeNull();
+    expect(withSwitch.locals.aiGiftMarker ?? null).toBeNull();
+    expect({ status: withSwitch.status, jobType: withSwitch.jobType }).toEqual({
+      status: withoutSwitch.status,
+      jobType: withoutSwitch.jobType,
+    });
+  }, 20_000);
+
   it.each<[string, Account, Sent]>([
     [
       'MCP',

@@ -1,8 +1,12 @@
-import { fireEvent, render, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { MemoryRouter } from 'react-router-dom';
+import {
+  MemoryRouter,
+  useNavigate,
+  type NavigateFunction,
+} from 'react-router-dom';
 
 import UploadForm from './UploadForm';
 import { resetPendingUploadStoreForTests } from '../../../../lib/upload/pendingUpload';
@@ -201,6 +205,86 @@ describe('UploadForm and the upload card', () => {
         .map(([key, value]) => [key, String(value)]);
     expect(fields(sent[1])).toEqual(fields(sent[0]));
     expect(sent[1].get('font-size')).toBe('24');
+    globalThis.localStorage.clear();
+  });
+
+  const CHOICE_FIELDS = new Set([
+    'pakker',
+    'claude-ai-flashcards',
+    'ai-gift-switch',
+    'ai-choice-at',
+  ]);
+  const optionFields = (body: FormData) =>
+    Array.from(body.entries())
+      .filter(([key]) => !CHOICE_FIELDS.has(key))
+      .map(([key, value]) => [key, String(value)]);
+
+  async function directSend() {
+    const { container, unmount } = renderForm();
+    await waitFor(() =>
+      expect(vi.mocked(fetch).mock.calls.map(([url]) => String(url))).toEqual(
+        expect.arrayContaining([expect.stringContaining('users/debug/locals')])
+      )
+    );
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    chooseFile(container, 'notes.txt');
+    await waitFor(() => expect(sent).toHaveLength(1));
+    unmount();
+  }
+
+  it.each([true, false])(
+    'sends the same card options from a convert-step hand-off with Claude %s as from choosing the file on the form',
+    async (claude) => {
+      globalThis.localStorage.setItem('font-size', '24');
+      globalThis.localStorage.setItem(
+        'user-instructions',
+        'Keep answers short'
+      );
+      await directSend();
+      const notes = new File(['Some notes about cells'], 'notes.txt', {
+        type: 'text/plain',
+      });
+
+      renderForm({ state: giftHandoffState({ files: [notes], claude }) });
+
+      await waitFor(() => expect(sent).toHaveLength(2));
+      expect(optionFields(sent[1])).toEqual(optionFields(sent[0]));
+      expect(sent[1].get('claude-ai-flashcards')).toBe(String(claude));
+      globalThis.localStorage.clear();
+    }
+  );
+
+  it('sends an option changed on the page after the form mounted, as a direct send would', async () => {
+    let navigate: NavigateFunction | null = null;
+    function NavigateProbe() {
+      navigate = useNavigate();
+      return null;
+    }
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    render(
+      <MemoryRouter initialEntries={['/upload']}>
+        <QueryClientProvider client={queryClient}>
+          <NavigateProbe />
+          <UploadForm setErrorMessage={vi.fn()} />
+        </QueryClientProvider>
+      </MemoryRouter>
+    );
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    globalThis.localStorage.setItem('font-size', '30');
+    const notes = new File(['Some notes about cells'], 'notes.txt', {
+      type: 'text/plain',
+    });
+
+    act(() => {
+      navigate?.('/upload', {
+        state: giftHandoffState({ files: [notes], claude: true }),
+      });
+    });
+
+    await waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0].get('font-size')).toBe('30');
     globalThis.localStorage.clear();
   });
 
