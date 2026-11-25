@@ -4,7 +4,7 @@ import { useAiGift } from '../../lib/hooks/useAiGift';
 import { useAppLanguage } from '../../lib/i18n/useAppLanguage';
 import type { AiGiftStatus } from '../../lib/backend/aiGift';
 import type { AiCreditsState } from '../../lib/hooks/useAiCredits';
-import { formatGiftDate } from './AiGiftPresent';
+import { formatGiftDate } from './formatGiftDate';
 
 const LONGEST_TIMER_MS = 2_147_483_647;
 

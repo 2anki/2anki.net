@@ -12,7 +12,10 @@ import { AiCreditBalance } from './aiCredits/balance';
 import { AiGiftBalance } from './aiCredits/gift/giftBalance';
 import { currentGiftId } from './aiCredits/gift/giftFunding';
 import { computeAiGiftBalance } from './aiCredits/gift/giftBalance';
-import { AI_GIFT_RESERVED_CREDITS_PER_CALL } from './aiCredits/gift/giftTerms';
+import {
+  AI_GIFT_CREDITS_EXPIRE_BY,
+  AI_GIFT_RESERVED_CREDITS_PER_CALL,
+} from './aiCredits/gift/giftTerms';
 import { InMemoryAiCreditGiftsRepository } from '../../data_layer/AiCreditGiftsRepository';
 import {
   reservedCreditsFor,
@@ -50,6 +53,7 @@ function giftBalance(credits: number): AiGiftBalance {
     spent: 100 - credits,
     claimedAt: new Date('2026-11-25T10:00:00.000Z'),
     expiresAt: new Date('2026-11-27T10:00:00.000Z'),
+    firstUsedAt: new Date('2026-11-25T10:30:00.000Z'),
   };
 }
 
@@ -256,10 +260,10 @@ describe('withAiBudget and the gift', () => {
 
   it('runs the gift down on calls Claude refused, which still cost input', async () => {
     const gifts = new InMemoryAiCreditGiftsRepository();
-    await gifts.claim({
+    await gifts.startGrant({
       userId: USER,
       credits: 100,
-      claimedAt: new Date('2026-11-25T10:00:00.000Z'),
+      startedAt: new Date('2026-11-25T10:00:00.000Z'),
       expiresAt: new Date('2026-11-27T10:00:00.000Z'),
       ipHash: null,
     });
@@ -291,10 +295,49 @@ describe('withAiBudget and the gift', () => {
     expect(run).not.toHaveBeenCalled();
   });
 
-  it('records the first AI use on the gift once', async () => {
-    const deps = makeDeps({ gift: giftBalance(100) });
+  async function unusedGrant() {
+    const gifts = new InMemoryAiCreditGiftsRepository();
+    await gifts.startGrant({
+      userId: USER,
+      credits: 100,
+      startedAt: new Date('2026-11-25T10:00:00.000Z'),
+      expiresAt: AI_GIFT_CREDITS_EXPIRE_BY,
+      ipHash: null,
+    });
+    const deps = {
+      ...makeDeps({}),
+      computeGiftBalance: (userId: number, now: Date) =>
+        computeAiGiftBalance(userId, now, {
+          isEnabled: async () => true,
+          findGrant: (id) => gifts.findGrant(id),
+          giftCostSince: (giftId, id, since) =>
+            gifts.giftCostSince(giftId, id, since),
+        }),
+      markGiftFirstUse: (giftId: number, at: Date, expiresAt: Date) =>
+        gifts.markFirstUse(giftId, at, expiresAt),
+    };
+    return { gifts, deps };
+  }
+
+  it('starts the 7-day clock at the first gift-funded AI call, not when the grant was made', async () => {
+    const { gifts, deps } = await unusedGrant();
 
     await withAiBudget({ userId: USER, aiGift: 'only' }, async () => 1, deps);
+
+    expect(await gifts.findGrant(USER)).toMatchObject({
+      firstUsedAt: NOW,
+      expiresAt: new Date('2026-12-02T12:00:00.000Z'),
+    });
+  });
+
+  it('records the first AI call once per account when the first conversion runs calls together', async () => {
+    const { gifts, deps } = await unusedGrant();
+    const giftId = (await gifts.findGrant(USER))?.id;
+
+    await Promise.all([
+      withAiBudget({ userId: USER, aiGift: 'only' }, async () => 1, deps),
+      withAiBudget({ userId: USER, aiGift: 'only' }, async () => 1, deps),
+    ]);
     await withAiBudget({ userId: USER, aiGift: 'only' }, async () => 1, deps);
 
     const firstUse = trackMock.mock.calls.filter(
@@ -305,10 +348,25 @@ describe('withAiBudget and the gift', () => {
         'ai_gift_first_use',
         expect.objectContaining({
           userId: USER,
-          props: expect.objectContaining({ gift_id: GIFT_ID, mode: 'only' }),
+          props: expect.objectContaining({ gift_id: giftId, mode: 'only' }),
         }),
       ],
     ]);
+  });
+
+  it('records no first AI call for a grant already in use', async () => {
+    const deps = {
+      ...makeDeps({ gift: giftBalance(100) }),
+      markGiftFirstUse: vi.fn(async () => true),
+    };
+
+    await withAiBudget({ userId: USER, aiGift: 'only' }, async () => 1, deps);
+
+    expect(deps.markGiftFirstUse).not.toHaveBeenCalled();
+    const firstUse = trackMock.mock.calls.filter(
+      ([name]) => name === 'ai_gift_first_use'
+    );
+    expect(firstUse).toEqual([]);
   });
 });
 

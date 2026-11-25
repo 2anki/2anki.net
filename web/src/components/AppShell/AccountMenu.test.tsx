@@ -8,7 +8,7 @@ import { getCardUsage } from '../../lib/backend/getCardUsage';
 import { getAiCredits } from '../../lib/backend/getAiCredits';
 import { getSubscriptionStatus } from '../../lib/backend/getSubscriptionStatus';
 import { getAiGift } from '../../lib/backend/aiGift';
-import { formatGiftDate } from '../AiGift/AiGiftPresent';
+import { formatGiftDate } from '../AiGift/formatGiftDate';
 import { STRIPE_CUSTOMER_PORTAL_URL } from '../../lib/stripePortal';
 import { AccountMenu } from './AccountMenu';
 
@@ -487,8 +487,9 @@ describe('AccountMenu free AI credits gift line', () => {
     vi.mocked(getAiGift).mockResolvedValue({
       state: 'open',
       credits: 100,
-      expiresIfClaimedNow: EXPIRES,
-      claimClosesAt: '2026-12-04T20:00:00.000Z',
+      hasCredits: false,
+      validDays: 7,
+      endsAt: '2026-12-04T22:00:00.000Z',
       feedbackDue: false,
     });
     renderMenu({ locals: { patreon: true } });

@@ -43,6 +43,27 @@ describe('AiCreditGiftsRepository generated SQL', () => {
     expect(bindings).toEqual([NOW, 12]);
   });
 
+  it('starts the clock of a grant only once, at its first AI call', () => {
+    const expiresAt = new Date('2026-12-02T12:00:00.000Z');
+    const { sql, bindings } = repo
+      .buildMarkFirstUseQuery(4, NOW, expiresAt)
+      .toSQL()
+      .toNative();
+
+    expect(sql).toBe(
+      'update "ai_credit_gifts" set "first_used_at" = $1, "expires_at" = $2 where "id" = $3 and "first_used_at" is null returning "id"'
+    );
+    expect(bindings).toEqual([NOW, expiresAt, 4]);
+  });
+
+  it('reads when the grant was first used', () => {
+    const { sql } = repo.buildFindGrantQuery(12).toSQL().toNative();
+
+    expect(sql).toBe(
+      'select "id", "user_id", "credits", "claimed_at", "expires_at", "first_used_at", "feedback_answered_at" from "ai_credit_gifts" where "user_id" = $1 limit $2'
+    );
+  });
+
   it('counts claims from one hashed network over the last 24 hours', () => {
     const { sql, bindings } = repo
       .buildIpClaimCountQuery('abc', NOW)

@@ -13,6 +13,7 @@ export interface AiGiftGrant {
   credits: number;
   claimedAt: Date;
   expiresAt: Date;
+  firstUsedAt?: Date | null;
   feedbackAnsweredAt?: Date | null;
 }
 
@@ -23,6 +24,7 @@ export interface AiGiftBalance {
   spent: number;
   claimedAt: Date;
   expiresAt: Date;
+  firstUsedAt: Date | null;
 }
 
 export interface AiGiftBalanceReaders {
@@ -51,6 +53,7 @@ export function buildGiftBalance(
     spent: Math.max(0, Math.round(spentCredits)),
     claimedAt: grant.claimedAt,
     expiresAt: grant.expiresAt,
+    firstUsedAt: grant.firstUsedAt ?? null,
   };
 }
 

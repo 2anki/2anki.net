@@ -75,6 +75,11 @@ import {
   resetGiftMarkers,
   takeGiftMarker,
 } from '../lib/claude/aiCredits/gift/giftConversionMarker';
+import { InMemoryAiCreditGiftsRepository } from '../data_layer/AiCreditGiftsRepository';
+import {
+  AI_GIFT_CREDITS_EXPIRE_BY,
+  AI_GIFT_CREDITS_PER_CLAIM,
+} from '../lib/claude/aiCredits/gift/giftTerms';
 
 const OWNER = 42;
 const PPTX_MIMETYPE =
@@ -118,6 +123,14 @@ function backgroundJobs() {
     deleteJob: vi.fn(async () => settle()),
   };
   return { jobs, settled };
+}
+
+function mimetypeOf(name: string): string {
+  if (name.endsWith('.pdf')) return 'application/pdf';
+  if (name.endsWith('.zip')) return 'application/zip';
+  if (name.endsWith('.apkg')) return 'application/octet-stream';
+  if (name.endsWith('.md')) return 'text/markdown';
+  return PPTX_MIMETYPE;
 }
 
 interface Account {
@@ -164,9 +177,7 @@ async function send(account: Account, file: Sent) {
     files: [
       {
         originalname: file.name,
-        mimetype: file.name.endsWith('.pdf')
-          ? 'application/pdf'
-          : PPTX_MIMETYPE,
+        mimetype: mimetypeOf(file.name),
         buffer,
         size: buffer.length,
       },
@@ -412,6 +423,7 @@ describe('an account with no plan whose free AI gift pays uploads on the web', (
         grant?: typeof grant | null;
         spendUsd?: number;
         enabled?: boolean;
+        mayStart?: boolean;
       } = {}
     ) =>
     (): UploadGiftModeDeps => ({
@@ -421,11 +433,40 @@ describe('an account with no plan whose free AI gift pays uploads on the web', (
       giftCostSince: async () => options.spendUsd ?? 0,
       now: () => new Date('2026-11-25T12:00:00.000Z'),
       planSpent: async () => false,
+      mayStartGrant: async () => options.mayStart ?? false,
+      startGrant: async () => null,
+    });
+
+  // The readers the upload uses, over the same grant store the guard and the
+  // status read, so a test sees the grant the upload made.
+  const storeReaders =
+    (gifts: InMemoryAiCreditGiftsRepository) => (): UploadGiftModeDeps => ({
+      isEnabled: async () => true,
+      findGrant: (userId) => gifts.findGrant(userId),
+      giftCostSince: (giftId, userId, since) =>
+        gifts.giftCostSince(giftId, userId, since),
+      now: () => new Date('2026-11-25T12:00:00.000Z'),
+      planSpent: async () => false,
+      mayStartGrant: async (now) =>
+        (await gifts.exposureCredits(now)) + AI_GIFT_CREDITS_PER_CLAIM <= 8000,
+      startGrant: async (userId, ipHash, now) => {
+        const outcome = await gifts.startGrant({
+          userId,
+          credits: AI_GIFT_CREDITS_PER_CLAIM,
+          startedAt: now,
+          expiresAt: AI_GIFT_CREDITS_EXPIRE_BY,
+          ipHash,
+        });
+        return outcome.ok
+          ? { grant: outcome.grant, created: outcome.created }
+          : null;
+      },
     });
   const GIFTED: Account = { locals: { owner: OWNER }, gift: giftReaders() };
 
   beforeEach(() => {
     resetGiftMarkers();
+    process.env.THE_HASHING_SECRET = 'test-hashing-secret';
     warn.mockImplementation(() => undefined);
     error.mockImplementation(() => undefined);
     vi.mocked(getAiBudgetStatus).mockClear();
@@ -450,13 +491,92 @@ describe('an account with no plan whose free AI gift pays uploads on the web', (
     ]);
   }, 20_000);
 
-  it('checks the gift alone, never a bought or plan balance, before applying it', async () => {
+  it('reads no plan or bought balance before applying it, only the gift', async () => {
     await send(GIFTED, { name: 'lecture.pdf' });
 
-    expect(vi.mocked(getAiBudgetStatus)).toHaveBeenCalledWith({
+    expect(vi.mocked(getAiBudgetStatus)).not.toHaveBeenCalledWith({
       userId: OWNER,
-      aiGift: 'only',
     });
+  }, 20_000);
+
+  it.each(['export.zip', 'notes.md', 'slides.pptx'])(
+    'makes Claude cards on the gift from %s, since Claude cards read it',
+    async (name) => {
+      const { status, jobType, locals } = await send(GIFTED, { name });
+
+      expect(status).toBe(202);
+      expect(jobType).toBe('claude');
+      expect(locals.aiGift).toBe('only');
+    },
+    20_000
+  );
+
+  it('leaves an Anki deck on its own converter and draws nothing from the gift', async () => {
+    const { jobType, locals } = await send(GIFTED, { name: 'deck.apkg' });
+
+    expect(jobType).toBeNull();
+    expect(locals.aiGift ?? null).toBeNull();
+    expect(defaultAppliedEvents()).toEqual([]);
+  }, 20_000);
+
+  it("makes a free account's grant at its first upload the gift pays for, and runs it on the gift", async () => {
+    const gifts = new InMemoryAiCreditGiftsRepository();
+
+    const { jobType, locals } = await send(
+      { ...GIFTED, gift: storeReaders(gifts) },
+      { name: 'lecture.pdf' }
+    );
+
+    expect(jobType).toBe('claude');
+    expect(locals.aiGift).toBe('only');
+    expect(gifts.gifts).toEqual([
+      expect.objectContaining({
+        userId: OWNER,
+        credits: 100,
+        firstUsedAt: null,
+        expiresAt: AI_GIFT_CREDITS_EXPIRE_BY,
+      }),
+    ]);
+    expect(recordedEvents.filter((e) => e.name === 'ai_gift_claimed')).toEqual([
+      expect.objectContaining({
+        user_id: OWNER,
+        props: expect.objectContaining({ trigger: 'upload', gift_id: 1 }),
+      }),
+    ]);
+  }, 20_000);
+
+  it('makes one grant when two first uploads of one account arrive together', async () => {
+    const gifts = new InMemoryAiCreditGiftsRepository();
+    const account = { ...GIFTED, gift: storeReaders(gifts) };
+
+    const results = await Promise.all([
+      send(account, { name: 'a.pdf' }),
+      send(account, { name: 'b.pdf' }),
+    ]);
+
+    expect(gifts.gifts).toHaveLength(1);
+    expect(results.filter((r) => r.jobType === 'claude')).toHaveLength(1);
+  }, 20_000);
+
+  it('makes no grant and keeps the parser once the gift total is full', async () => {
+    const gifts = new InMemoryAiCreditGiftsRepository();
+    for (let i = 0; i < 80; i += 1) {
+      await gifts.startGrant({
+        userId: 1000 + i,
+        credits: 100,
+        startedAt: new Date('2026-11-25T11:00:00.000Z'),
+        expiresAt: AI_GIFT_CREDITS_EXPIRE_BY,
+        ipHash: null,
+      });
+    }
+
+    const { jobType } = await send(
+      { ...GIFTED, gift: storeReaders(gifts) },
+      { name: 'lecture.pdf', body: { 'claude-ai-flashcards': 'true' } }
+    );
+
+    expect(jobType).toBeNull();
+    expect(gifts.gifts).toHaveLength(80);
   }, 20_000);
 
   it.each<[string, Account]>([
@@ -492,7 +612,10 @@ describe('an account with no plan whose free AI gift pays uploads on the web', (
       { ...GIFTED, gift: giftReaders({ spendUsd: 100 }) },
     ],
     ['the month has fewer than 20 cards left', { ...GIFTED, cardsUsed: 81 }],
-    ['there is no gift', { ...GIFTED, gift: giftReaders({ grant: null }) }],
+    [
+      'there is no grant and the gift total is full',
+      { ...GIFTED, gift: giftReaders({ grant: null, mayStart: false }) },
+    ],
     [
       'the gift is switched off or has ended',
       { ...GIFTED, gift: giftReaders({ enabled: false }) },
@@ -540,6 +663,15 @@ describe('an account with no plan whose free AI gift pays uploads on the web', (
     },
     20_000
   );
+
+  it("leaves a paying account's zip and markdown exactly as before, on the parser", async () => {
+    for (const name of ['export.zip', 'notes.md']) {
+      const { jobType } = await send(PAYING, { name });
+
+      expect(jobType).not.toBe('claude');
+    }
+    expect(defaultAppliedEvents()).toEqual([]);
+  }, 20_000);
 
   it('keeps the parser and records no default while another gift conversion runs', async () => {
     takeGiftMarker(OWNER);

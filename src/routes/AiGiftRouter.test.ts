@@ -14,9 +14,12 @@ import {
   type AiGiftDeps,
 } from '../usecases/ai/aiGift/aiGiftDeps';
 import {
+  AI_GIFT_CREDITS_EXPIRE_BY,
   AI_GIFT_CREDITS_PER_CLAIM,
   AI_GIFT_TOTAL_BUDGET_CREDITS,
 } from '../lib/claude/aiCredits/gift/giftTerms';
+import { ipRateLimitBucket } from '../lib/rateLimit/ipHelpers';
+import hmacToken from '../lib/misc/hmacToken';
 import { track } from '../services/events/track';
 import { computeAiGiftBalance } from '../lib/claude/aiCredits/gift/giftBalance';
 import type { AiCreditBalance } from '../lib/claude/aiCredits/balance';
@@ -28,7 +31,7 @@ import {
 
 const trackMock = track as Mock;
 const OPENING = new Date('2026-11-25T12:00:00.000Z');
-const CLAIMS_THAT_FIT =
+const GRANTS_THAT_FIT =
   AI_GIFT_TOTAL_BUDGET_CREDITS / AI_GIFT_CREDITS_PER_CLAIM;
 
 interface ClaudeDefaultFixture {
@@ -56,6 +59,7 @@ interface Harness {
   gifts: InMemoryAiCreditGiftsRepository;
   claudeDefault: ClaudeDefaultFixture;
   setNow: (date: Date) => void;
+  now: () => Date;
   setEnabled: (enabled: boolean) => void;
   close: () => Promise<void>;
 }
@@ -82,6 +86,8 @@ async function startHarness(): Promise<Harness> {
     now: () => now,
     planSpent: async () =>
       claudeDefault.planCredits != null && claudeDefault.planCredits <= 0,
+    mayStartGrant: async () => true,
+    startGrant: async () => null,
   });
   const deps: AiGiftDeps = {
     gifts,
@@ -145,6 +151,7 @@ async function startHarness(): Promise<Harness> {
     setNow: (date) => {
       now = date;
     },
+    now: () => now,
     setEnabled: (value) => {
       enabled = value;
     },
@@ -155,7 +162,9 @@ async function startHarness(): Promise<Harness> {
   };
 }
 
-function headers(user: number | null, ip = '203.0.113.7') {
+const DEFAULT_IP = '203.0.113.7';
+
+function headers(user: number | null, ip = DEFAULT_IP) {
   return {
     'content-type': 'application/json',
     'x-forwarded-for': ip,
@@ -163,9 +172,31 @@ function headers(user: number | null, ip = '203.0.113.7') {
   };
 }
 
-async function getGift(h: Harness, user: number | null) {
-  const res = await fetch(`${h.url}/api/ai/gift`, { headers: headers(user) });
+async function getGift(
+  h: Harness,
+  user: number | null,
+  options: { ip?: string; paying?: boolean } = {}
+) {
+  const res = await fetch(`${h.url}/api/ai/gift`, {
+    headers: {
+      ...headers(user, options.ip),
+      ...(options.paying === true ? { 'x-test-paying': '1' } : {}),
+    },
+  });
   return { status: res.status, body: await res.json() };
+}
+
+// What an account's first upload the gift pays for does: make its grant,
+// keyed to the hashed network the request came from.
+async function firstUpload(h: Harness, user: number, ip = DEFAULT_IP) {
+  const outcome = await h.gifts.startGrant({
+    userId: user,
+    credits: AI_GIFT_CREDITS_PER_CLAIM,
+    startedAt: h.now(),
+    expiresAt: AI_GIFT_CREDITS_EXPIRE_BY,
+    ipHash: hmacToken(ipRateLimitBucket(ip)),
+  });
+  return outcome.ok ? outcome : null;
 }
 
 async function claim(h: Harness, user: number | null, ip?: string) {
@@ -220,53 +251,127 @@ describe('the gift switched off', () => {
     });
   });
 
-  it('refuses a claim and stores nothing', async () => {
-    const res = await claim(h, 5);
+  it('is closed for an account that already holds a grant', async () => {
+    await firstUpload(h, 5);
 
-    expect(res).toEqual({ status: 410, body: { code: 'gift_closed' } });
-    expect(h.gifts.gifts).toEqual([]);
+    expect((await getGift(h, 5)).body.state).toBe('closed');
   });
 });
 
-describe('GET /api/ai/gift while the gift is open', () => {
-  it('offers the gift to a signed-out visitor', async () => {
-    const res = await getGift(h, null);
-
-    expect(res).toEqual({
+describe('GET /api/ai/gift for each kind of account', () => {
+  it('offers the gift to a signed-out visitor, who has no credits until they sign up', async () => {
+    expect(await getGift(h, null)).toEqual({
       status: 200,
       body: {
         state: 'open',
         credits: 100,
-        expiresIfClaimedNow: '2026-11-27T12:00:00.000Z',
-        claimClosesAt: '2026-12-04T20:00:00.000Z',
-        feedbackDue: false,
-        lastsHours: 48,
+        hasCredits: false,
+        validDays: 7,
+        endsAt: '2026-12-04T22:00:00.000Z',
         minMonthlyCards: 20,
+        feedbackDue: false,
       },
     });
   });
 
-  it('offers a signed-in account that has not claimed the same open body', async () => {
+  it('gives a free account with no grant the whole amount while the total has room', async () => {
     expect((await getGift(h, 6)).body).toEqual({
       state: 'open',
       credits: 100,
-      expiresIfClaimedNow: '2026-11-27T12:00:00.000Z',
-      claimClosesAt: '2026-12-04T20:00:00.000Z',
-      feedbackDue: false,
-      lastsHours: 48,
+      hasCredits: true,
+      validDays: 7,
+      endsAt: '2026-12-04T22:00:00.000Z',
       minMonthlyCards: 20,
+      feedbackDue: false,
+      claudeDefaultForPdf: true,
+      aiBudgetAvailable: true,
+      storedPdfSkipsClaude: false,
+      monthlyCardsLeft: 90,
     });
   });
 
-  it('tells a visitor late in the window when a claim made now would expire, and drops the full length it no longer gets', async () => {
-    h.setNow(new Date('2026-12-04T10:00:00.000Z'));
-    const body = (await getGift(h, null)).body;
+  it('shows a grant made at a first upload but never used as the whole amount with no clock running', async () => {
+    await firstUpload(h, 5);
 
-    expect(body.expiresIfClaimedNow).toBe('2026-12-04T22:00:00.000Z');
-    expect(body).not.toHaveProperty('lastsHours');
+    expect((await getGift(h, 5)).body).toMatchObject({
+      state: 'claimed',
+      credits: 100,
+      hasCredits: true,
+      firstUsed: false,
+      expiresAt: '2026-12-04T22:00:00.000Z',
+      validDays: 7,
+    });
   });
 
-  it('closes for everyone without a gift once claims close', async () => {
+  it('shows what is left of a grant in use, and when its seven days end', async () => {
+    await firstUpload(h, 5);
+    await h.gifts.markFirstUse(
+      1,
+      OPENING,
+      new Date('2026-12-02T12:00:00.000Z')
+    );
+    h.gifts.spend.push({ giftId: 1, userId: 5, costUsd: 0.3, at: OPENING });
+
+    expect((await getGift(h, 5)).body).toMatchObject({
+      state: 'claimed',
+      credits: 70,
+      hasCredits: true,
+      firstUsed: true,
+      expiresAt: '2026-12-02T12:00:00.000Z',
+    });
+  });
+
+  it('closes a grant seven days after its first AI call', async () => {
+    await firstUpload(h, 5);
+    await h.gifts.markFirstUse(
+      1,
+      OPENING,
+      new Date('2026-12-02T12:00:00.000Z')
+    );
+    h.setNow(new Date('2026-12-02T12:00:00.000Z'));
+
+    expect((await getGift(h, 5)).body).toEqual({
+      state: 'closed',
+      feedbackDue: false,
+    });
+  });
+
+  it('closes every grant at the end of the gift, used or not', async () => {
+    await firstUpload(h, 5);
+    h.setNow(new Date('2026-12-04T22:00:00.000Z'));
+
+    expect((await getGift(h, 5)).body.state).toBe('closed');
+  });
+
+  it('shows a used-up grant as having no credits', async () => {
+    await firstUpload(h, 5);
+    h.gifts.spend.push({ giftId: 1, userId: 5, costUsd: 5, at: OPENING });
+
+    expect((await getGift(h, 5)).body).toMatchObject({
+      state: 'claimed',
+      credits: 0,
+      hasCredits: false,
+    });
+  });
+
+  it('shows a paying account that holds a grant its credits, but never as credits the offer spends', async () => {
+    await firstUpload(h, 5);
+
+    expect((await getGift(h, 5, { paying: true })).body).toMatchObject({
+      state: 'claimed',
+      credits: 100,
+      hasCredits: false,
+    });
+  });
+
+  it('offers a paying account with no grant nothing, since its plan pays', async () => {
+    expect((await getGift(h, 5, { paying: true })).body).toEqual({
+      state: 'closed',
+      feedbackDue: false,
+    });
+  });
+
+  it('closes for everyone without a grant once new grants stop', async () => {
     h.setNow(new Date('2026-12-04T20:00:00.000Z'));
 
     expect((await getGift(h, null)).body.state).toBe('closed');
@@ -274,7 +379,7 @@ describe('GET /api/ai/gift while the gift is open', () => {
   });
 });
 
-describe('POST /api/ai/gift/claim', () => {
+describe('POST /api/ai/gift/claim, kept for pages opened before the claim step went', () => {
   it('needs an account', async () => {
     const res = await claim(h, null);
 
@@ -282,108 +387,100 @@ describe('POST /api/ai/gift/claim', () => {
     expect(h.gifts.gifts).toEqual([]);
   });
 
-  it('grants 100 credits for 48 hours and shows them as claimed', async () => {
+  it('answers with the account status and makes no grant', async () => {
     const res = await claim(h, 5);
 
-    expect(res).toEqual({
-      status: 200,
-      body: { credits: 100, expiresAt: '2026-11-27T12:00:00.000Z' },
-    });
-    expect((await getGift(h, 5)).body).toEqual({
-      state: 'claimed',
-      credits: 100,
-      expiresAt: '2026-11-27T12:00:00.000Z',
-      feedbackDue: false,
-      inUse: false,
-      minMonthlyCards: 20,
-      claudeDefaultForPdf: true,
-      aiBudgetAvailable: true,
-      storedPdfSkipsClaude: false,
-      monthlyCardsLeft: 90,
-    });
-    expect(eventsNamed('ai_gift_claimed')).toEqual([
-      [
-        'ai_gift_claimed',
-        expect.objectContaining({
-          userId: 5,
-          props: expect.objectContaining({ credits: 100, gift_id: 1 }),
-        }),
-      ],
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ state: 'open', hasCredits: true });
+    expect(h.gifts.gifts).toEqual([]);
+    expect(eventsNamed('ai_gift_claimed')).toEqual([]);
+  });
+});
+
+describe('the gift total and the per-network limit', () => {
+  it('makes one grant when two first uploads of one account arrive together', async () => {
+    const [first, second] = await Promise.all([
+      firstUpload(h, 5),
+      firstUpload(h, 5),
     ]);
+
+    expect(h.gifts.gifts).toHaveLength(1);
+    expect([first?.created, second?.created].sort()).toEqual([false, true]);
   });
 
-  it('says the gift is in use while a conversion holds the account marker', async () => {
-    await claim(h, 5);
-    const marker = takeGiftMarker(5, OPENING.getTime());
+  it('never grants past the total, even when first uploads arrive together', async () => {
+    const uploads = Array.from({ length: GRANTS_THAT_FIT + 20 }, (_, i) =>
+      firstUpload(h, 1000 + i, `10.0.${Math.floor(i / 200)}.${i % 200}`)
+    );
 
-    expect((await getGift(h, 5)).body.inUse).toBe(true);
-    expect((await getGift(h, 6)).body.state).toBe('open');
+    const results = await Promise.all(uploads);
 
-    releaseGiftMarker(marker);
-    expect((await getGift(h, 5)).body.inUse).toBe(false);
+    expect(results.filter((r) => r != null)).toHaveLength(GRANTS_THAT_FIT);
+    expect(await h.gifts.exposureCredits(OPENING)).toBe(
+      AI_GIFT_TOTAL_BUDGET_CREDITS
+    );
+  });
+
+  it('takes the offer away from everyone without a grant once the total is full', async () => {
+    for (let i = 0; i < GRANTS_THAT_FIT; i += 1) {
+      await firstUpload(h, 2000 + i, `10.1.${Math.floor(i / 3)}.1`);
+    }
+
+    expect((await getGift(h, null)).body).toEqual({
+      state: 'full',
+      feedbackDue: false,
+    });
+    expect((await getGift(h, 6)).body.state).toBe('full');
+    expect((await getGift(h, 2000)).body).toMatchObject({
+      state: 'claimed',
+      hasCredits: true,
+    });
+  });
+
+  it('frees the unspent credits of expired grants, but keeps what they spent', async () => {
+    for (let i = 0; i < GRANTS_THAT_FIT; i += 1) {
+      await firstUpload(h, 3000 + i, `10.2.${Math.floor(i / 3)}.1`);
+    }
+    const weekLater = new Date('2026-12-02T12:00:00.000Z');
+    await h.gifts.markFirstUse(1, OPENING, weekLater);
+    await h.gifts.markFirstUse(2, OPENING, weekLater);
+    h.gifts.spend.push({ giftId: 1, userId: 3000, costUsd: 0.6, at: OPENING });
+    h.setNow(weekLater);
+
+    expect(await h.gifts.exposureCredits(weekLater)).toBeCloseTo(7860, 5);
+    expect(await firstUpload(h, 4000, '10.9.9.9')).not.toBeNull();
+  });
+
+  it('counts a grant that in-flight calls took past 100 at what it cost', async () => {
+    for (let i = 0; i < GRANTS_THAT_FIT - 1; i += 1) {
+      await firstUpload(h, 5000 + i, `10.3.${Math.floor(i / 3)}.1`);
+    }
+    h.gifts.spend.push({ giftId: 1, userId: 5000, costUsd: 1.3, at: OPENING });
+
+    expect(await firstUpload(h, 6000, '10.8.8.8')).toBeNull();
   });
 
   it('stores a keyed hash of the network, never the address', async () => {
-    await claim(h, 5, '198.51.100.23');
+    await firstUpload(h, 5, '198.51.100.23');
 
     const stored = h.gifts.gifts[0].ipHash;
     expect(stored).toMatch(/^[0-9a-f]{64}$/);
     expect(stored).not.toContain('198.51.100.23');
   });
 
-  it('allows one claim per account, ever', async () => {
-    await claim(h, 5);
-    h.setNow(new Date('2026-11-30T12:00:00.000Z'));
-
-    const second = await claim(h, 5, '198.51.100.99');
-
-    expect(second).toEqual({
-      status: 409,
-      body: { code: 'gift_already_claimed' },
-    });
-    expect(h.gifts.gifts).toHaveLength(1);
-    expect(eventsNamed('ai_gift_claim_refused')).toEqual([
-      [
-        'ai_gift_claim_refused',
-        expect.objectContaining({
-          userId: 5,
-          props: expect.objectContaining({ reason: 'gift_already_claimed' }),
-        }),
-      ],
-    ]);
-  });
-
-  it('never lets credits outlive 2026-12-04 22:00 UTC', async () => {
-    h.setNow(new Date('2026-12-04T19:00:00.000Z'));
-
-    const res = await claim(h, 5);
-
-    expect(res.body.expiresAt).toBe('2026-12-04T22:00:00.000Z');
-  });
-
-  it('refuses every claim from 2026-12-04 20:00 UTC', async () => {
-    h.setNow(new Date('2026-12-04T20:00:00.000Z'));
-
-    expect(await claim(h, 5)).toEqual({
-      status: 410,
-      body: { code: 'gift_closed' },
-    });
-  });
-
-  it('caps a network at three claims a day', async () => {
+  it('caps a network at three grants a day, and stops offering the gift there', async () => {
     const ip = '192.0.2.44';
     for (const user of [1, 2, 3]) {
-      expect((await claim(h, user, ip)).status).toBe(200);
+      expect(await firstUpload(h, user, ip)).not.toBeNull();
     }
 
-    expect(await claim(h, 4, ip)).toEqual({
-      status: 429,
-      body: { code: 'gift_ip_limit' },
-    });
-    expect((await claim(h, 4, '192.0.2.45')).status).toBe(200);
+    expect(await firstUpload(h, 4, ip)).toBeNull();
+    expect((await getGift(h, 4, { ip })).body.state).toBe('full');
+    expect((await getGift(h, null, { ip })).body.state).toBe('full');
+    expect(await firstUpload(h, 4, '192.0.2.45')).not.toBeNull();
 
     h.setNow(new Date(OPENING.getTime() + 24 * 60 * 60 * 1000 + 1));
-    expect((await claim(h, 6, ip)).status).toBe(200);
+    expect(await firstUpload(h, 6, ip)).not.toBeNull();
   });
 
   it('counts an IPv6 /64 as one network', async () => {
@@ -392,93 +489,27 @@ describe('POST /api/ai/gift/claim', () => {
       [2, '2'],
       [3, '3'],
     ] as const) {
-      await claim(h, user, `2001:db8:aa:bb::${suffix}`);
+      await firstUpload(h, user, `2001:db8:aa:bb::${suffix}`);
     }
 
-    expect((await claim(h, 4, '2001:db8:aa:bb::ffff')).status).toBe(429);
+    expect(await firstUpload(h, 4, '2001:db8:aa:bb::ffff')).toBeNull();
   });
 });
 
-describe('the gift budget', () => {
-  it('never grants past the budget, even when claims arrive together', async () => {
-    const claims = Array.from({ length: CLAIMS_THAT_FIT + 20 }, (_, i) =>
-      claim(h, 1000 + i, `10.0.${Math.floor(i / 200)}.${i % 200}`)
-    );
-
-    const results = await Promise.all(claims);
-
-    expect(results.filter((r) => r.status === 200)).toHaveLength(
-      CLAIMS_THAT_FIT
-    );
-    expect(
-      results
-        .filter((r) => r.status !== 200)
-        .every((r) => r.body.code === 'gift_budget_full')
-    ).toBe(true);
-    expect(await h.gifts.exposureCredits(OPENING)).toBe(
-      AI_GIFT_TOTAL_BUDGET_CREDITS
-    );
-  });
-
-  it('shows the gifts as all claimed for now once the budget is full', async () => {
-    for (let i = 0; i < CLAIMS_THAT_FIT; i += 1) {
-      await claim(h, 2000 + i, `10.1.${Math.floor(i / 3)}.1`);
-    }
-
-    expect((await getGift(h, null)).body).toEqual({
-      state: 'full',
-      feedbackDue: false,
-    });
-  });
-
-  it('frees the unspent credits of expired gifts, but keeps what they spent', async () => {
-    for (let i = 0; i < CLAIMS_THAT_FIT; i += 1) {
-      await claim(h, 3000 + i, `10.2.${Math.floor(i / 3)}.1`);
-    }
-    h.gifts.spend.push({
-      giftId: 1,
-      userId: 3000,
-      costUsd: 0.6,
-      at: OPENING,
-    });
-
-    h.setNow(new Date('2026-11-27T12:00:00.000Z'));
-
-    expect((await claim(h, 4000, '10.9.9.9')).status).toBe(200);
-    expect(
-      await h.gifts.exposureCredits(new Date('2026-11-27T12:00:00.000Z'))
-    ).toBeCloseTo(160, 5);
-  });
-
-  it('counts a gift that in-flight calls took past 100 at what it cost', async () => {
-    for (let i = 0; i < CLAIMS_THAT_FIT - 1; i += 1) {
-      await claim(h, 5000 + i, `10.3.${Math.floor(i / 3)}.1`);
-    }
-    h.gifts.spend.push({
-      giftId: 1,
-      userId: 5000,
-      costUsd: 1.3,
-      at: OPENING,
-    });
-
-    expect(await claim(h, 6000, '10.8.8.8')).toEqual({
-      status: 409,
-      body: { code: 'gift_budget_full' },
-    });
-  });
-});
-
-describe('what the next PDF upload would get, answered by the upload rule', () => {
+describe('what the next upload would get, answered by the upload rule', () => {
   beforeEach(async () => {
-    await claim(h, 5);
+    await firstUpload(h, 5);
   });
 
-  const next = async (paying = false) => {
-    const res = await fetch(h.url + '/api/ai/gift', {
-      headers: paying ? { ...headers(5), 'x-test-paying': '1' } : headers(5),
-    });
-    return res.json();
-  };
+  const next = async (paying = false) => (await getGift(h, 5, { paying })).body;
+
+  it('says the gift is in use while a conversion holds the account marker', async () => {
+    const marker = takeGiftMarker(5);
+
+    expect((await next()).inUse).toBe(true);
+    releaseGiftMarker(marker);
+    expect((await next()).inUse).toBe(false);
+  });
 
   it('turns Claude on, with budget, for an account with no plan whose gift pays and that never chose', async () => {
     expect(await next()).toMatchObject({
@@ -545,7 +576,7 @@ describe('what the next PDF upload would get, answered by the upload rule', () =
   });
 
   it('is off while a gift conversion runs', async () => {
-    takeGiftMarker(5, OPENING.getTime());
+    takeGiftMarker(5);
 
     expect(await next()).toMatchObject({
       claudeDefaultForPdf: false,
@@ -576,7 +607,7 @@ describe('what the next PDF upload would get, answered by the upload rule', () =
 
 describe('the one question after a gift-funded conversion', () => {
   beforeEach(async () => {
-    await claim(h, 5);
+    await firstUpload(h, 5);
   });
 
   it('is not due before the gift paid for anything', async () => {
@@ -589,7 +620,11 @@ describe('the one question after a gift-funded conversion', () => {
     expect((await getGift(h, 5)).body).toEqual({
       state: 'claimed',
       credits: 63,
-      expiresAt: '2026-11-27T12:00:00.000Z',
+      hasCredits: true,
+      expiresAt: '2026-12-04T22:00:00.000Z',
+      firstUsed: false,
+      validDays: 7,
+      endsAt: '2026-12-04T22:00:00.000Z',
       feedbackDue: true,
       inUse: false,
       minMonthlyCards: 20,

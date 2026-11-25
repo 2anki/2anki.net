@@ -1,4 +1,5 @@
-import { isPDFFile, isPPTFile } from '../storage/checks';
+import { isImageFile, isPDFFile, isPPTFile } from '../storage/checks';
+import { routedAwayFromClaude } from '../../usecases/uploads/routedAwayFromClaude';
 
 // Written by every signed-in AI toggle on the web from this change on. A stored
 // claude-ai-flashcards off without it may still be a choice made before toggles
@@ -34,6 +35,24 @@ function isPdfOrSlidesUpload(fileNames: readonly string[]): boolean {
       (name) => isPDFFile(name) != null || isPPTFile(name) != null
     )
   );
+}
+
+// Every input Claude cards read: not a photo (Photo to Deck takes those) and
+// not a deck, XML, mind map, Kindle clippings or e-book, which keep their own
+// converters. A zip counts, since its notes are read once it is unpacked.
+function isClaudeReadableUpload(fileNames: readonly string[]): boolean {
+  return (
+    fileNames.length > 0 &&
+    fileNames.every((name) => !isImageFile(name) && !routedAwayFromClaude(name))
+  );
+}
+
+// A paying account keeps the PDF and PowerPoint default it always had. An
+// account the gift pays for gets it for every input Claude cards can read.
+function defaultCoversFiles(candidate: ClaudeDefaultCandidate): boolean {
+  return candidate.paying
+    ? isPdfOrSlidesUpload(candidate.fileNames)
+    : isClaudeReadableUpload(candidate.fileNames);
 }
 
 function hasAiChoiceMarker(options: Record<string, unknown>): boolean {
@@ -95,7 +114,7 @@ export async function claudeCardsByDefault(
   if (
     candidate.ownerId == null ||
     candidate.entry !== 'web' ||
-    !isPdfOrSlidesUpload(candidate.fileNames) ||
+    !defaultCoversFiles(candidate) ||
     !aiSettingLeftAtDefault(candidate.options) ||
     !(await aiPaidFor(candidate))
   ) {

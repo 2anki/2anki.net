@@ -125,6 +125,7 @@ import {
   type GiftMarker,
 } from '../lib/claude/aiCredits/gift/giftConversionMarker';
 import { getAiGiftReaders } from '../data_layer/createAiGiftReaders';
+import { giftNetworkHash } from '../lib/claude/aiCredits/gift/giftNetworkHash';
 import { isExpectedUploadState } from '../lib/upload/isExpectedUploadState';
 import {
   ZIP_PARTLY_RECOVERED_WARNING,
@@ -173,6 +174,7 @@ import {
   WORKER_INTERRUPTED_REASON,
 } from '../lib/workerTermination';
 import { track } from './events/track';
+import { withServerMarker } from '../lib/events/serverEventProps';
 import { parseFirstTouch } from '../controllers/helpers/parseFirstTouch';
 import { classifyDevice } from '../lib/analytics/classifyDevice';
 import {
@@ -1028,10 +1030,13 @@ class UploadService {
   // path, with the out-of-credits notice when the gift is spent and the busy
   // notice when another conversion holds the marker. A paying account whose
   // plan is spent draws on the gift only while it holds the marker; without
-  // it the upload behaves as it does with no credits left.
+  // it the upload behaves as it does with no credits left. An account with no
+  // plan and no grant yet makes its grant here, once it holds the marker, so
+  // only an upload that will run on the gift counts against the total.
   private async giftForUpload(
     owner: unknown,
-    paying: boolean
+    paying: boolean,
+    networkHash: () => string
   ): Promise<{
     aiGift: AiGiftMode | null;
     aiGiftCardLimit: number | null;
@@ -1058,12 +1063,49 @@ class UploadService {
     if (remaining < AI_GIFT_MIN_MONTHLY_CARDS) return none;
     const marker = takeGiftMarker(userId);
     if (marker == null) return { ...none, aiGiftStop: 'busy' };
+    if (gift === 'start' && !(await this.startGiftGrant(userId, networkHash))) {
+      releaseGiftMarker(marker);
+      return none;
+    }
     return {
       aiGift: 'only',
       aiGiftCardLimit: remaining,
       aiGiftStop: null,
       aiGiftMarker: marker,
     };
+  }
+
+  // The grant is made under the advisory lock, which checks the total and the
+  // per-network limit again; a refusal, a network that cannot be hashed or a
+  // failed write leaves the upload on the free path, as an account without
+  // the gift.
+  private async startGiftGrant(
+    userId: number,
+    networkHash: () => string
+  ): Promise<boolean> {
+    try {
+      const readers = this.aiGiftReaders();
+      const started = await readers.startGrant(
+        userId,
+        networkHash(),
+        readers.now()
+      );
+      if (started == null) return false;
+      if (started.created) {
+        track('ai_gift_claimed', {
+          userId,
+          props: withServerMarker({
+            gift_id: started.grant.id,
+            credits: started.grant.credits,
+            trigger: 'upload',
+          }),
+        });
+      }
+      return true;
+    } catch (error) {
+      console.error('[ai-gift] grant start failed', error);
+      return false;
+    }
   }
 
   private async remainingMonthlyCards(owner: string): Promise<number> {
@@ -1558,7 +1600,10 @@ class UploadService {
         settings.claudeAIFlashcards &&
         mayReachClaude(req.files as UploadedFile[])
       ) {
-        Object.assign(res.locals, await this.giftForUpload(owner, paying));
+        Object.assign(
+          res.locals,
+          await this.giftForUpload(owner, paying, () => giftNetworkHash(req))
+        );
       }
 
       if (owner != null && settings.n2aBasic == null) {
@@ -2187,11 +2232,10 @@ class UploadService {
     );
     if (!turnOn) return options;
     // With no credits left the job would only fall back to the parser, later
-    // and through a queue, so the default is not applied.
-    const budget = paying
-      ? { userId: ownerId }
-      : { userId: ownerId, aiGift: 'only' as const };
-    if ((await getAiBudgetStatus(budget)).exhausted) {
+    // and through a queue, so the default is not applied. An account with no
+    // plan reached here only because giftWouldPayForUpload found gift credits,
+    // or room for a first grant, so no plan or bought balance is read for it.
+    if (paying && (await getAiBudgetStatus({ userId: ownerId })).exhausted) {
       return options;
     }
     track('upload_ai_default_applied', {

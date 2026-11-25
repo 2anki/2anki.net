@@ -5,7 +5,7 @@ import { useAppLanguage } from '../../lib/i18n/useAppLanguage';
 import { useTheme } from '../../lib/hooks/useTheme';
 import styles from './NavigationBar.module.css';
 import { RightSide } from './components/RightSide';
-import { AiGiftPresent } from '../AiGift/AiGiftPresent';
+import { AiGiftCreditsPill } from '../AiGift/AiGiftCreditsPill';
 
 interface NavigationBarProps {
   isLoggedIn: boolean | undefined;
@@ -39,14 +39,10 @@ function NavigationBar({ isLoggedIn }: Readonly<NavigationBarProps>) {
             fetchPriority="high"
           />
         </a>
-        {isResolved && (
-          <AiGiftPresent
-            isLoggedIn={isLoggedIn === true}
-            align="start"
-            className={styles.navPresent}
-            labelFromWide
-          />
-        )}
+        <AiGiftCreditsPill
+          signedIn={isLoggedIn === true}
+          className={styles.navPresent}
+        />
         <button
           type="button"
           className={styles.burger}

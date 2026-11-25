@@ -5,6 +5,12 @@ import { createAiCreditReaders } from './createAiCreditReaders';
 import { getFeatureFlag } from '../lib/featureFlags/getFeatureFlag';
 import { AI_CREDITS_GIFT_FLAG } from '../lib/featureFlags/aiCreditsGift';
 import { computeAiCreditBalance } from '../lib/claude/aiCredits/balance';
+import {
+  AI_GIFT_CREDITS_EXPIRE_BY,
+  AI_GIFT_CREDITS_PER_CLAIM,
+  giftBudgetHasRoom,
+  giftClaimsOpen,
+} from '../lib/claude/aiCredits/gift/giftTerms';
 import type { UploadGiftModeDeps } from '../lib/claude/aiCredits/gift/uploadGiftMode';
 
 export function createAiGiftReaders(db: Knex): UploadGiftModeDeps {
@@ -23,9 +29,36 @@ export function createAiGiftReaders(db: Knex): UploadGiftModeDeps {
       const balance = await computeAiCreditBalance(userId, new Date(), plans);
       return balance != null && balance.credits <= 0;
     },
+    mayStartGrant: async (now) =>
+      giftClaimsOpen(now) &&
+      giftBudgetHasRoom(await gifts.exposureCredits(now)),
+    // A grant made before its first AI call runs until the gift's end; its
+    // first call moves the end to seven days later, never past the gift's.
+    startGrant: async (userId, ipHash, now) => {
+      if (!giftClaimsOpen(now)) return null;
+      const outcome = await gifts.startGrant({
+        userId,
+        credits: AI_GIFT_CREDITS_PER_CLAIM,
+        startedAt: now,
+        expiresAt: AI_GIFT_CREDITS_EXPIRE_BY,
+        ipHash,
+      });
+      return outcome.ok
+        ? { grant: outcome.grant, created: outcome.created }
+        : null;
+    },
   };
 }
 
 export function getAiGiftReaders(): UploadGiftModeDeps {
   return createAiGiftReaders(getDatabase());
+}
+
+export function markAiGiftFirstUse(
+  db: Knex,
+  giftId: number,
+  at: Date,
+  expiresAt: Date
+): Promise<boolean> {
+  return new AiCreditGiftsRepository(db).markFirstUse(giftId, at, expiresAt);
 }

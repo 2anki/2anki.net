@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { getAiCredits } from '../../lib/backend/getAiCredits';
 import { getAiGift } from '../../lib/backend/aiGift';
 import { TopBar } from './TopBar';
+import { formatGiftDate } from '../AiGift/formatGiftDate';
 
 vi.mock('../../lib/analytics/track', () => ({
   track: vi.fn(),
@@ -126,111 +127,68 @@ describe('TopBar', () => {
   });
 });
 
-describe('TopBar gift panel spending order', () => {
-  const planCredits = (allowance: number) => ({
-    credits: allowance,
-    used: 0,
-    allowance,
-    usable: allowance > 0,
-    windowEnd: null,
-    resets: 'period' as const,
-  });
-
-  beforeEach(() => {
-    vi.mocked(getAiGift).mockResolvedValue({
-      state: 'claimed',
-      credits: 100,
-      expiresAt: '2099-11-26T19:15:00.000Z',
-      feedbackDue: false,
-    });
-  });
-
-  const openGift = async () =>
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Free AI credits gift' })
-    );
-
-  it('says plan credits go first for a paying account with an allowance', async () => {
-    vi.mocked(getAiCredits).mockResolvedValue(planCredits(300));
-    renderTopBar({ locals: { patreon: true } });
-    await openGift();
-    expect(
-      await screen.findByText('Your plan credits are used first.')
-    ).toBeInTheDocument();
-  });
-
-  it.each([
-    [
-      'a free account',
-      { patreon: false, subscriber: false },
-      300,
-      /100 free AI credits left until/,
-    ],
-    [
-      'a paying account with no allowance',
-      { patreon: true },
-      0,
-      'You have 100 AI credits from the gift.',
-    ],
-  ])(
-    'says nothing about spending order for %s',
-    async (_name, locals, allowance, giftLine) => {
-      vi.mocked(getAiCredits).mockResolvedValue(planCredits(allowance));
-      renderTopBar({ locals });
-      await openGift();
-      expect(await screen.findByText(giftLine)).toBeInTheDocument();
-      expect(
-        screen.queryByText('Your plan credits are used first.')
-      ).toBeNull();
-    }
-  );
-});
-
-describe('TopBar gift panel for an account with no plan', () => {
-  const claimedWith = (fields: Record<string, unknown>) => {
-    localStorage.clear();
-    vi.mocked(getAiGift).mockResolvedValue({
-      state: 'claimed',
-      credits: 100,
-      expiresAt: '2099-11-26T19:15:00.000Z',
-      feedbackDue: false,
-      inUse: false,
-      minMonthlyCards: 20,
-      ...fields,
-    });
+describe('TopBar free AI credits pill', () => {
+  const claimed = {
+    state: 'claimed' as const,
+    credits: 70,
+    hasCredits: true,
+    expiresAt: '2026-12-02T12:00:00.000Z',
+    firstUsed: true,
+    validDays: 7,
+    endsAt: '2026-12-04T22:00:00.000Z',
+    feedbackDue: false,
   };
 
-  const openPanel = async () => {
-    renderTopBar({ locals: { patreon: false, subscriber: false } });
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Free AI credits gift' })
-    );
-    await screen.findByText(/100 free AI credits left until/);
-  };
+  it('shows the credits left, with when they run out, only while the account has gift credits', async () => {
+    vi.mocked(getAiGift).mockResolvedValue(claimed);
+    renderTopBar();
 
-  it('promises Claude for the next PDF when the gift turns it on by default', async () => {
-    claimedWith({
-      claudeDefaultForPdf: true,
-      aiBudgetAvailable: true,
-      monthlyCardsLeft: 80,
-    });
-    await openPanel();
-
+    expect(await screen.findByText('70 credits')).toBeInTheDocument();
     expect(
       screen.getByText(
-        'Claude will write the cards for your next PDF or PowerPoint file.'
+        `Free AI credits, valid until ${formatGiftDate(claimed.expiresAt, 'en')}`
       )
     ).toBeInTheDocument();
   });
 
-  it('promises nothing when the status could not read the month', async () => {
-    claimedWith({
-      claudeDefaultForPdf: null,
-      aiBudgetAvailable: null,
-      monthlyCardsLeft: null,
+  it('says the clock starts at the first AI deck for credits not yet used', async () => {
+    vi.mocked(getAiGift).mockResolvedValue({
+      state: 'open',
+      credits: 100,
+      hasCredits: true,
+      validDays: 7,
+      endsAt: '2026-12-04T22:00:00.000Z',
+      feedbackDue: false,
     });
-    await openPanel();
+    renderTopBar();
 
-    expect(screen.queryByText(/Claude will write/)).toBeNull();
+    expect(await screen.findByText('100 credits')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        `Free AI credits, valid 7 days from your first AI deck and until ${formatGiftDate('2026-12-04T22:00:00.000Z', 'en')} at the latest`
+      )
+    ).toBeInTheDocument();
+  });
+
+  it.each([
+    ['the gift is closed', { state: 'closed' as const, feedbackDue: false }],
+    ['the gift total is full', { state: 'full' as const, feedbackDue: false }],
+    ['the credits are used up', { ...claimed, credits: 0, hasCredits: false }],
+  ])('shows no pill when %s', async (_case, status) => {
+    vi.mocked(getAiGift).mockResolvedValue(status);
+    renderTopBar();
+
+    await waitFor(() => expect(getAiGift).toHaveBeenCalled());
+    expect(screen.queryByText(/credits$/)).toBeNull();
+  });
+
+  it('never shows a gift icon or the old present button', async () => {
+    vi.mocked(getAiGift).mockResolvedValue(claimed);
+    renderTopBar();
+
+    await screen.findByText('70 credits');
+    expect(
+      screen.queryByRole('button', { name: 'Free AI credits gift' })
+    ).toBeNull();
   });
 });

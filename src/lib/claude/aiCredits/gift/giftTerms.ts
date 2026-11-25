@@ -5,12 +5,13 @@
 export const AI_GIFT_CREDITS_PER_CLAIM = 100;
 
 // Exposure (credits already spent from gift grants plus unspent credits of
-// grants that have not expired) may never pass this. A claim needs room for
-// a whole AI_GIFT_CREDITS_PER_CLAIM.
+// grants that have not expired) may never pass this. A new grant needs room
+// for a whole AI_GIFT_CREDITS_PER_CLAIM.
 export const AI_GIFT_TOTAL_BUDGET_CREDITS = 8000;
 
-export const AI_GIFT_HOURS = 48;
-export const AI_GIFT_DURATION_MS = AI_GIFT_HOURS * 60 * 60 * 1000;
+// A grant's clock starts at its first AI call, not when it is made.
+export const AI_GIFT_VALID_DAYS = 7;
+export const AI_GIFT_VALIDITY_MS = AI_GIFT_VALID_DAYS * 24 * 60 * 60 * 1000;
 
 export const AI_GIFT_CLAIMS_CLOSE_AT = new Date('2026-12-04T20:00:00.000Z');
 export const AI_GIFT_CREDITS_EXPIRE_BY = new Date('2026-12-04T22:00:00.000Z');
@@ -36,8 +37,8 @@ export function giftClaimsOpen(now: Date): boolean {
   return now.getTime() < AI_GIFT_CLAIMS_CLOSE_AT.getTime();
 }
 
-export function giftExpiresAt(claimedAt: Date): Date {
-  const natural = claimedAt.getTime() + AI_GIFT_DURATION_MS;
+export function giftExpiresAfterFirstUse(firstUsedAt: Date): Date {
+  const natural = firstUsedAt.getTime() + AI_GIFT_VALIDITY_MS;
   return new Date(Math.min(natural, AI_GIFT_CREDITS_EXPIRE_BY.getTime()));
 }
 

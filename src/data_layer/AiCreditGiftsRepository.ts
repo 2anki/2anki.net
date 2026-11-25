@@ -9,28 +9,27 @@ import { JOB_LOCK_KEYS } from './JobLockRepository';
 
 const AI_USAGE_EVENT = 'ai_usage_recorded';
 
-export interface AiGiftClaimInput {
+export interface AiGiftStartInput {
   userId: number;
   credits: number;
-  claimedAt: Date;
+  startedAt: Date;
   expiresAt: Date;
   ipHash: string | null;
 }
 
-export type AiGiftClaimRefusal =
-  | 'gift_already_claimed'
-  | 'gift_ip_limit'
-  | 'gift_budget_full';
+export type AiGiftStartRefusal = 'gift_ip_limit' | 'gift_budget_full';
 
-export type AiGiftClaimOutcome =
-  | { ok: true; grant: AiGiftGrant }
-  | { ok: false; reason: AiGiftClaimRefusal };
+export type AiGiftStartOutcome =
+  | { ok: true; grant: AiGiftGrant; created: boolean }
+  | { ok: false; reason: AiGiftStartRefusal };
 
 export interface IAiCreditGiftsRepository {
   findGrant(userId: number): Promise<AiGiftGrant | null>;
   giftCostSince(giftId: number, userId: number, since: Date): Promise<number>;
   exposureCredits(now: Date): Promise<number>;
-  claim(input: AiGiftClaimInput): Promise<AiGiftClaimOutcome>;
+  networkGrantCount(ipHash: string, now: Date): Promise<number>;
+  startGrant(input: AiGiftStartInput): Promise<AiGiftStartOutcome>;
+  markFirstUse(giftId: number, at: Date, expiresAt: Date): Promise<boolean>;
   recordFeedbackAnswer(userId: number, at: Date): Promise<boolean>;
 }
 
@@ -40,6 +39,7 @@ interface GiftRow {
   credits: number | string;
   claimed_at: Date | string;
   expires_at: Date | string;
+  first_used_at?: Date | string | null;
   feedback_answered_at?: Date | string | null;
 }
 
@@ -49,8 +49,13 @@ const GIFT_COLUMNS = [
   'credits',
   'claimed_at',
   'expires_at',
+  'first_used_at',
   'feedback_answered_at',
 ];
+
+function optionalDate(value: Date | string | null | undefined): Date | null {
+  return value == null ? null : new Date(value);
+}
 
 function toGrant(row: GiftRow): AiGiftGrant {
   return {
@@ -59,10 +64,8 @@ function toGrant(row: GiftRow): AiGiftGrant {
     credits: Number(row.credits),
     claimedAt: new Date(row.claimed_at),
     expiresAt: new Date(row.expires_at),
-    feedbackAnsweredAt:
-      row.feedback_answered_at == null
-        ? null
-        : new Date(row.feedback_answered_at),
+    firstUsedAt: optionalDate(row.first_used_at),
+    feedbackAnsweredAt: optionalDate(row.feedback_answered_at),
   };
 }
 
@@ -156,7 +159,28 @@ export class AiCreditGiftsRepository implements IAiCreditGiftsRepository {
       .count({ count: '*' });
   }
 
-  async claim(input: AiGiftClaimInput): Promise<AiGiftClaimOutcome> {
+  private async countFromNetwork(
+    ipHash: string,
+    now: Date,
+    db: Knex
+  ): Promise<number> {
+    const counted = (await this.buildIpClaimCountQuery(
+      ipHash,
+      now,
+      db
+    ).first()) as { count: number | string } | undefined;
+    return Number(counted?.count ?? 0);
+  }
+
+  async networkGrantCount(ipHash: string, now: Date): Promise<number> {
+    return this.countFromNetwork(ipHash, now, this.database);
+  }
+
+  // One grant per account, made at its first upload the gift pays for. An
+  // account that already has one gets it back unchanged, so two uploads racing
+  // to make the first grant end with one row; the advisory lock makes the cap
+  // and network reads and the insert one step across processes.
+  async startGrant(input: AiGiftStartInput): Promise<AiGiftStartOutcome> {
     return this.database.transaction(async (trx) => {
       await trx.raw('select pg_advisory_xact_lock(?)', [
         JOB_LOCK_KEYS.aiGiftClaims,
@@ -165,19 +189,16 @@ export class AiCreditGiftsRepository implements IAiCreditGiftsRepository {
         | GiftRow
         | undefined;
       if (existing != null) {
-        return { ok: false, reason: 'gift_already_claimed' } as const;
+        return { ok: true, grant: toGrant(existing), created: false } as const;
       }
-      if (input.ipHash != null) {
-        const counted = (await this.buildIpClaimCountQuery(
-          input.ipHash,
-          input.claimedAt,
-          trx
-        ).first()) as { count: number | string } | undefined;
-        if (Number(counted?.count ?? 0) >= AI_GIFT_MAX_CLAIMS_PER_IP) {
-          return { ok: false, reason: 'gift_ip_limit' } as const;
-        }
+      if (
+        input.ipHash != null &&
+        (await this.countFromNetwork(input.ipHash, input.startedAt, trx)) >=
+          AI_GIFT_MAX_CLAIMS_PER_IP
+      ) {
+        return { ok: false, reason: 'gift_ip_limit' } as const;
       }
-      const exposure = await this.readExposure(input.claimedAt, trx);
+      const exposure = await this.readExposure(input.startedAt, trx);
       if (!giftBudgetHasRoom(exposure)) {
         return { ok: false, reason: 'gift_budget_full' } as const;
       }
@@ -185,13 +206,40 @@ export class AiCreditGiftsRepository implements IAiCreditGiftsRepository {
         .insert({
           user_id: input.userId,
           credits: input.credits,
-          claimed_at: input.claimedAt,
+          claimed_at: input.startedAt,
           expires_at: input.expiresAt,
           ip_hash: input.ipHash,
         })
         .returning(GIFT_COLUMNS)) as GiftRow[];
-      return { ok: true, grant: toGrant(row) } as const;
+      return { ok: true, grant: toGrant(row), created: true } as const;
     });
+  }
+
+  buildMarkFirstUseQuery(
+    giftId: number,
+    at: Date,
+    expiresAt: Date
+  ): Knex.QueryBuilder {
+    return this.database(this.table)
+      .where('id', giftId)
+      .whereNull('first_used_at')
+      .update({ first_used_at: at, expires_at: expiresAt })
+      .returning('id');
+  }
+
+  // Only the first call finds first_used_at empty, so the clock starts once
+  // however many calls of the first conversion run at the same moment.
+  async markFirstUse(
+    giftId: number,
+    at: Date,
+    expiresAt: Date
+  ): Promise<boolean> {
+    const updated = (await this.buildMarkFirstUseQuery(
+      giftId,
+      at,
+      expiresAt
+    )) as unknown[];
+    return updated.length > 0;
   }
 
   buildRecordFeedbackQuery(userId: number, at: Date): Knex.QueryBuilder {
@@ -226,8 +274,8 @@ export interface InMemoryGiftSpend {
 }
 
 // A stand-in for route and use case tests, with the same rules as the SQL
-// repository. Claims run one at a time through a promise chain, the way the
-// advisory lock serializes them in Postgres.
+// repository. New grants run one at a time through a promise chain, the way
+// the advisory lock serializes them in Postgres.
 export class InMemoryAiCreditGiftsRepository implements IAiCreditGiftsRepository {
   readonly gifts: InMemoryGift[] = [];
   readonly spend: InMemoryGiftSpend[] = [];
@@ -266,10 +314,30 @@ export class InMemoryAiCreditGiftsRepository implements IAiCreditGiftsRepository
     }, 0);
   }
 
-  claim(input: AiGiftClaimInput): Promise<AiGiftClaimOutcome> {
-    const next = this.queue.then(() => this.claimNow(input));
+  async networkGrantCount(ipHash: string, now: Date): Promise<number> {
+    const since = now.getTime() - AI_GIFT_IP_WINDOW_MS;
+    return this.gifts.filter(
+      (g) => g.ipHash === ipHash && g.claimedAt.getTime() > since
+    ).length;
+  }
+
+  startGrant(input: AiGiftStartInput): Promise<AiGiftStartOutcome> {
+    const next = this.queue.then(() => this.startNow(input));
     this.queue = next.catch(() => undefined);
     return next;
+  }
+
+  async markFirstUse(
+    giftId: number,
+    at: Date,
+    expiresAt: Date
+  ): Promise<boolean> {
+    await Promise.resolve();
+    const gift = this.gifts.find((g) => g.id === giftId);
+    if (gift == null || gift.firstUsedAt != null) return false;
+    gift.firstUsedAt = at;
+    gift.expiresAt = expiresAt;
+    return true;
   }
 
   async recordFeedbackAnswer(userId: number, at: Date): Promise<boolean> {
@@ -279,21 +347,20 @@ export class InMemoryAiCreditGiftsRepository implements IAiCreditGiftsRepository
     return true;
   }
 
-  private async claimNow(input: AiGiftClaimInput): Promise<AiGiftClaimOutcome> {
+  private async startNow(input: AiGiftStartInput): Promise<AiGiftStartOutcome> {
     await Promise.resolve();
-    if (this.gifts.some((g) => g.userId === input.userId)) {
-      return { ok: false, reason: 'gift_already_claimed' };
+    const existing = this.gifts.find((g) => g.userId === input.userId);
+    if (existing != null) {
+      return { ok: true, grant: { ...existing }, created: false };
     }
-    if (input.ipHash != null) {
-      const since = input.claimedAt.getTime() - AI_GIFT_IP_WINDOW_MS;
-      const fromIp = this.gifts.filter(
-        (g) => g.ipHash === input.ipHash && g.claimedAt.getTime() > since
-      ).length;
-      if (fromIp >= AI_GIFT_MAX_CLAIMS_PER_IP) {
-        return { ok: false, reason: 'gift_ip_limit' };
-      }
+    if (
+      input.ipHash != null &&
+      (await this.networkGrantCount(input.ipHash, input.startedAt)) >=
+        AI_GIFT_MAX_CLAIMS_PER_IP
+    ) {
+      return { ok: false, reason: 'gift_ip_limit' };
     }
-    const exposure = await this.exposureCredits(input.claimedAt);
+    const exposure = await this.exposureCredits(input.startedAt);
     await Promise.resolve();
     if (!giftBudgetHasRoom(exposure)) {
       return { ok: false, reason: 'gift_budget_full' };
@@ -302,13 +369,14 @@ export class InMemoryAiCreditGiftsRepository implements IAiCreditGiftsRepository
       id: this.gifts.length + 1,
       userId: input.userId,
       credits: input.credits,
-      claimedAt: input.claimedAt,
+      claimedAt: input.startedAt,
       expiresAt: input.expiresAt,
+      firstUsedAt: null,
       feedbackAnsweredAt: null,
       ipHash: input.ipHash,
     };
     this.gifts.push(grant);
-    return { ok: true, grant: { ...grant } };
+    return { ok: true, grant: { ...grant }, created: true };
   }
 }
 

@@ -29,10 +29,6 @@ import {
   type UploadZoneActivity,
 } from '../../../../lib/upload/uploadZoneActivity';
 import {
-  chooseUploadFile,
-  resetUploadEntryForTests,
-} from '../../../../lib/upload/uploadEntry';
-import {
   aiPreviewCheckoutMarked,
   clearAiPreviewCheckout,
   markAiPreviewCheckout,
@@ -12937,31 +12933,6 @@ describe('UploadForm deck result and resends of kept files', () => {
       await screen.findAllByText('Your deck is ready — 64 cards.');
       await settle();
       expect(screen.queryByText(REDO_LINE)).toBeNull();
-    });
-
-    it('opens its file picker when the gift panel asks for a file while the zone is idle', async () => {
-      resetUploadEntryForTests();
-      stubServer([eligibleDeck(64)]);
-      const { container } = renderWithHeaderGift(activeGift);
-      const input = container.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
-      const openPicker = vi.spyOn(input, 'click');
-      await waitFor(() => expect(readUploadZoneActivity()).toBe('idle'));
-
-      expect(chooseUploadFile()).toBe('picker');
-      expect(openPicker).toHaveBeenCalledTimes(1);
-    });
-
-    it('brings its zone into focus when the gift panel sent the visitor to this page', async () => {
-      resetUploadEntryForTests();
-      expect(chooseUploadFile()).toBe('page');
-      stubServer([eligibleDeck(64)]);
-      const { container } = renderWithHeaderGift(activeGift);
-
-      await waitFor(() =>
-        expect(container.querySelector('input[type="file"]')).toHaveFocus()
-      );
     });
 
     it('offers nothing when the month has too few cards left for Claude to run on the gift', async () => {

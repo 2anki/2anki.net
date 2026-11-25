@@ -1,51 +1,43 @@
 import { get, post } from './api';
 
+interface GiftNextUpload {
+  claudeDefaultForPdf?: boolean | null;
+  aiBudgetAvailable?: boolean | null;
+  storedPdfSkipsClaude?: boolean | null;
+  monthlyCardsLeft?: number | null;
+}
+
+// hasCredits is the server's answer to whether this account's next upload
+// runs on gift credits; the page shows the offer from it and never works it
+// out on its own.
 export type AiGiftStatus =
   | { state: 'closed'; feedbackDue: boolean }
-  | {
+  | (GiftNextUpload & {
       state: 'open';
       credits: number;
-      expiresIfClaimedNow: string;
-      claimClosesAt: string;
+      hasCredits: boolean;
+      validDays: number;
+      endsAt: string;
       feedbackDue: boolean;
-      lastsHours?: number;
       minMonthlyCards?: number;
-    }
+    })
   | { state: 'full'; feedbackDue: boolean }
-  | {
+  | (GiftNextUpload & {
       state: 'claimed';
       credits: number;
+      hasCredits?: boolean;
       expiresAt: string;
+      firstUsed?: boolean;
+      validDays?: number;
+      endsAt?: string;
       feedbackDue: boolean;
       inUse?: boolean;
       minMonthlyCards?: number;
-      claudeDefaultForPdf?: boolean | null;
-      aiBudgetAvailable?: boolean | null;
-      storedPdfSkipsClaude?: boolean | null;
-      monthlyCardsLeft?: number | null;
-    };
-
-export type AiGiftRefusal =
-  | 'gift_closed'
-  | 'gift_already_claimed'
-  | 'gift_budget_full'
-  | 'gift_ip_limit'
-  | 'unknown';
-
-export type AiGiftClaimResult =
-  | { ok: true; credits: number; expiresAt: string }
-  | { ok: false; reason: AiGiftRefusal };
+    });
 
 export type AiGiftFeedbackAnswer = 'yes' | 'no' | 'dismissed';
 
 const CLOSED: AiGiftStatus = { state: 'closed', feedbackDue: false };
-
-const KNOWN_REFUSALS = new Set<AiGiftRefusal>([
-  'gift_closed',
-  'gift_already_claimed',
-  'gift_budget_full',
-  'gift_ip_limit',
-]);
 
 function optionalCount(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value)
@@ -61,23 +53,36 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value != null && typeof value === 'object';
 }
 
+function nextUploadOf(data: Record<string, unknown>): GiftNextUpload {
+  return {
+    claudeDefaultForPdf: optionalBoolean(data.claudeDefaultForPdf),
+    aiBudgetAvailable: optionalBoolean(data.aiBudgetAvailable),
+    storedPdfSkipsClaude: optionalBoolean(data.storedPdfSkipsClaude),
+    monthlyCardsLeft: optionalCount(data.monthlyCardsLeft) ?? null,
+  };
+}
+
+function hasTerms(data: Record<string, unknown>): boolean {
+  return (
+    typeof data.credits === 'number' &&
+    typeof data.validDays === 'number' &&
+    typeof data.endsAt === 'string'
+  );
+}
+
 export function parseAiGiftStatus(data: unknown): AiGiftStatus {
   if (!isRecord(data)) return CLOSED;
   const feedbackDue = data.feedbackDue === true;
-  if (
-    data.state === 'open' &&
-    typeof data.credits === 'number' &&
-    typeof data.expiresIfClaimedNow === 'string' &&
-    typeof data.claimClosesAt === 'string'
-  ) {
+  if (data.state === 'open' && hasTerms(data)) {
     return {
       state: 'open',
-      credits: data.credits,
-      expiresIfClaimedNow: data.expiresIfClaimedNow,
-      claimClosesAt: data.claimClosesAt,
+      credits: data.credits as number,
+      hasCredits: data.hasCredits === true,
+      validDays: data.validDays as number,
+      endsAt: data.endsAt as string,
       feedbackDue,
-      lastsHours: optionalCount(data.lastsHours),
       minMonthlyCards: optionalCount(data.minMonthlyCards),
+      ...nextUploadOf(data),
     };
   }
   if (data.state === 'full') {
@@ -85,23 +90,65 @@ export function parseAiGiftStatus(data: unknown): AiGiftStatus {
   }
   if (
     data.state === 'claimed' &&
-    typeof data.credits === 'number' &&
+    hasTerms(data) &&
     typeof data.expiresAt === 'string'
   ) {
     return {
       state: 'claimed',
-      credits: data.credits,
+      credits: data.credits as number,
+      hasCredits: data.hasCredits === true,
       expiresAt: data.expiresAt,
+      firstUsed: data.firstUsed === true,
+      validDays: data.validDays as number,
+      endsAt: data.endsAt as string,
       feedbackDue,
       inUse: data.inUse === true,
       minMonthlyCards: optionalCount(data.minMonthlyCards),
-      claudeDefaultForPdf: optionalBoolean(data.claudeDefaultForPdf),
-      aiBudgetAvailable: optionalBoolean(data.aiBudgetAvailable),
-      storedPdfSkipsClaude: optionalBoolean(data.storedPdfSkipsClaude),
-      monthlyCardsLeft: optionalCount(data.monthlyCardsLeft) ?? null,
+      ...nextUploadOf(data),
     };
   }
   return { state: 'closed', feedbackDue };
+}
+
+// The gift as the upload card offers it: shown when the server says the
+// offer is open to this visitor, and the credits the next upload would use.
+export interface GiftOffer {
+  credits: number;
+  hasCredits: boolean;
+  validDays: number;
+  endsAt: string;
+  expiresAt: string | null;
+  claudeByDefault: boolean;
+}
+
+export function giftOfferOf(status: AiGiftStatus | null): GiftOffer | null {
+  if (status == null) return null;
+  if (status.state === 'open') {
+    return {
+      credits: status.credits,
+      hasCredits: status.hasCredits,
+      validDays: status.validDays,
+      endsAt: status.endsAt,
+      expiresAt: null,
+      claudeByDefault: status.claudeDefaultForPdf === true,
+    };
+  }
+  if (
+    status.state === 'claimed' &&
+    status.hasCredits === true &&
+    status.validDays != null &&
+    status.endsAt != null
+  ) {
+    return {
+      credits: status.credits,
+      hasCredits: true,
+      validDays: status.validDays,
+      endsAt: status.endsAt,
+      expiresAt: status.firstUsed === true ? status.expiresAt : null,
+      claudeByDefault: status.claudeDefaultForPdf === true,
+    };
+  }
+  return null;
 }
 
 export const getAiGift = async (): Promise<AiGiftStatus> => {
@@ -109,32 +156,6 @@ export const getAiGift = async (): Promise<AiGiftStatus> => {
     return parseAiGiftStatus(await get('/api/ai/gift', { redirect: false }));
   } catch {
     return CLOSED;
-  }
-};
-
-function refusalOf(data: unknown): AiGiftRefusal {
-  if (isRecord(data) && typeof data.code === 'string') {
-    const code = data.code as AiGiftRefusal;
-    return KNOWN_REFUSALS.has(code) ? code : 'unknown';
-  }
-  return 'unknown';
-}
-
-export const claimAiGift = async (): Promise<AiGiftClaimResult> => {
-  try {
-    const response = await post('/api/ai/gift/claim', {});
-    const data: unknown = await response.json().catch(() => null);
-    if (
-      response.ok &&
-      isRecord(data) &&
-      typeof data.credits === 'number' &&
-      typeof data.expiresAt === 'string'
-    ) {
-      return { ok: true, credits: data.credits, expiresAt: data.expiresAt };
-    }
-    return { ok: false, reason: refusalOf(data) };
-  } catch {
-    return { ok: false, reason: 'unknown' };
   }
 };
 

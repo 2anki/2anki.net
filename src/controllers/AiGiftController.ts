@@ -1,24 +1,15 @@
 import type express from 'express';
 import { getOwnerId } from '../lib/User/getOwner';
 import { isPaying } from '../lib/isPaying';
-import { ipRateLimitBucket, resolveClientIp } from '../lib/rateLimit/ipHelpers';
-import hmacToken from '../lib/misc/hmacToken';
-import type { GetAiGiftStatusUseCase } from '../usecases/ai/aiGift/GetAiGiftStatusUseCase';
+import { giftNetworkHash } from '../lib/claude/aiCredits/gift/giftNetworkHash';
 import type {
-  ClaimAiGiftRefusal,
-  ClaimAiGiftUseCase,
-} from '../usecases/ai/aiGift/ClaimAiGiftUseCase';
+  AiGiftStatus,
+  GetAiGiftStatusUseCase,
+} from '../usecases/ai/aiGift/GetAiGiftStatusUseCase';
 import type {
   AiGiftFeedbackAnswer,
   RecordAiGiftFeedbackUseCase,
 } from '../usecases/ai/aiGift/RecordAiGiftFeedbackUseCase';
-
-const REFUSAL_STATUS: Record<ClaimAiGiftRefusal, number> = {
-  gift_closed: 410,
-  gift_already_claimed: 409,
-  gift_budget_full: 409,
-  gift_ip_limit: 429,
-};
 
 const FEEDBACK_ANSWERS = new Set<AiGiftFeedbackAnswer>([
   'yes',
@@ -33,76 +24,87 @@ function isFeedbackAnswer(value: unknown): value is AiGiftFeedbackAnswer {
   );
 }
 
-// The claim cap counts claims per network, never by the raw address: the
-// address is bucketed (IPv6 /64, IPv4 as is) and stored only as a keyed hash.
-function claimIpHash(req: express.Request): string {
-  return hmacToken(ipRateLimitBucket(resolveClientIp(req)));
+function nextUploadBody(result: {
+  claudeDefaultForPdf?: boolean | null;
+  aiBudgetAvailable?: boolean | null;
+  storedPdfSkipsClaude?: boolean | null;
+  monthlyCardsLeft?: number | null;
+}) {
+  if (result.claudeDefaultForPdf === undefined) return {};
+  return {
+    claudeDefaultForPdf: result.claudeDefaultForPdf,
+    aiBudgetAvailable: result.aiBudgetAvailable ?? null,
+    storedPdfSkipsClaude: result.storedPdfSkipsClaude ?? null,
+    monthlyCardsLeft: result.monthlyCardsLeft ?? null,
+  };
+}
+
+function statusBody(result: AiGiftStatus) {
+  switch (result.state) {
+    case 'open':
+      return {
+        state: 'open',
+        credits: result.credits,
+        hasCredits: result.hasCredits,
+        validDays: result.validDays,
+        endsAt: result.endsAt.toISOString(),
+        minMonthlyCards: result.minMonthlyCards,
+        feedbackDue: false,
+        ...nextUploadBody(result),
+      };
+    case 'claimed':
+      return {
+        state: 'claimed',
+        credits: result.credits,
+        hasCredits: result.hasCredits,
+        expiresAt: result.expiresAt.toISOString(),
+        firstUsed: result.firstUsed,
+        validDays: result.validDays,
+        endsAt: result.endsAt.toISOString(),
+        feedbackDue: result.feedbackDue,
+        inUse: result.inUse,
+        minMonthlyCards: result.minMonthlyCards,
+        ...nextUploadBody(result),
+      };
+    case 'full':
+      return { state: 'full', feedbackDue: false };
+    default:
+      return { state: 'closed', feedbackDue: result.feedbackDue };
+  }
 }
 
 export class AiGiftController {
   constructor(
     private readonly status: GetAiGiftStatusUseCase,
-    private readonly claimGift: ClaimAiGiftUseCase,
     private readonly feedback: RecordAiGiftFeedbackUseCase
   ) {}
 
-  async getStatus(_req: express.Request, res: express.Response) {
-    const result = await this.status.execute(
-      getOwnerId(res),
-      isPaying(res.locals)
+  private async statusFor(req: express.Request, res: express.Response) {
+    return statusBody(
+      await this.status.execute(
+        getOwnerId(res),
+        isPaying(res.locals),
+        giftNetworkHash(req)
+      )
     );
-    res.set('Cache-Control', 'private, no-store');
-    switch (result.state) {
-      case 'open':
-        return res.json({
-          state: 'open',
-          credits: result.credits,
-          expiresIfClaimedNow: result.expiresIfClaimedNow.toISOString(),
-          claimClosesAt: result.claimClosesAt.toISOString(),
-          feedbackDue: false,
-          ...(result.lastsHours == null
-            ? {}
-            : { lastsHours: result.lastsHours }),
-          minMonthlyCards: result.minMonthlyCards,
-        });
-      case 'claimed':
-        return res.json({
-          state: 'claimed',
-          credits: result.credits,
-          expiresAt: result.expiresAt.toISOString(),
-          feedbackDue: result.feedbackDue,
-          inUse: result.inUse,
-          minMonthlyCards: result.minMonthlyCards,
-          claudeDefaultForPdf: result.claudeDefaultForPdf,
-          aiBudgetAvailable: result.aiBudgetAvailable,
-          storedPdfSkipsClaude: result.storedPdfSkipsClaude,
-          monthlyCardsLeft: result.monthlyCardsLeft,
-        });
-      case 'full':
-        return res.json({ state: 'full', feedbackDue: false });
-      default:
-        return res.json({ state: 'closed', feedbackDue: result.feedbackDue });
-    }
   }
 
+  async getStatus(req: express.Request, res: express.Response) {
+    const body = await this.statusFor(req, res);
+    res.set('Cache-Control', 'private, no-store');
+    return res.json(body);
+  }
+
+  // Claiming is gone: a grant is made at the account's first upload the gift
+  // pays for. A page opened before that change still posts here, so it gets
+  // the account's status back and nothing is stored.
   async claim(req: express.Request, res: express.Response) {
-    const userId = getOwnerId(res);
-    if (userId == null) {
+    if (getOwnerId(res) == null) {
       return res.status(401).json({ message: 'Authentication required' });
     }
-    const result = await this.claimGift.execute({
-      userId,
-      ipHash: claimIpHash(req),
-    });
-    if (result.ok) {
-      return res.json({
-        credits: result.credits,
-        expiresAt: result.expiresAt.toISOString(),
-      });
-    }
-    return res
-      .status(REFUSAL_STATUS[result.reason])
-      .json({ code: result.reason });
+    const body = await this.statusFor(req, res);
+    res.set('Cache-Control', 'private, no-store');
+    return res.json(body);
   }
 
   async recordFeedback(req: express.Request, res: express.Response) {

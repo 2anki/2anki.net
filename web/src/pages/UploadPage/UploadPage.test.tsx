@@ -13,7 +13,7 @@ import { HelmetProvider } from 'react-helmet-async';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 
 import i18n from '../../lib/i18n';
-import { formatGiftDate } from '../../components/AiGift/AiGiftPresent';
+import { formatGiftDate } from '../../components/AiGift/formatGiftDate';
 import { UploadPage } from './UploadPage';
 
 let startPassDeck: (() => void) | undefined;
@@ -484,6 +484,43 @@ describe('UploadPage Claude cards on by default for PDFs and PowerPoint', () => 
     await waitFor(() => {
       expect(globalThis.localStorage.getItem('ai-choice-at')).toMatch(/^\d+$/);
     });
+  });
+
+  it('puts the offer in the upload card and drops the AI badge row for an account the gift pays for', async () => {
+    fakeLocals = { patreon: false, subscriber: false };
+    fakeGift = {
+      state: 'open',
+      credits: 100,
+      hasCredits: true,
+      validDays: 7,
+      endsAt: '2026-12-04T22:00:00.000Z',
+      feedbackDue: false,
+      claudeDefaultForPdf: true,
+    };
+    renderPage();
+
+    expect(
+      await screen.findByRole('button', { name: 'Notion export' })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', {
+        name: /upgrade to write cards with claude/i,
+      })
+    ).toBeNull();
+    expect(
+      screen.getByText('100 free credits, about 3 decks')
+    ).toBeInTheDocument();
+    fakeGift = null;
+  });
+
+  it('keeps the AI badge row and no card for a paying account', async () => {
+    fakeLocals = { patreon: false, subscriber: true };
+    fakeGift = { state: 'closed', feedbackDue: false };
+    renderPage();
+
+    expect(screen.getAllByRole('status').length).toBeGreaterThan(0);
+    expect(screen.queryByRole('button', { name: 'Notion export' })).toBeNull();
+    fakeGift = null;
   });
 
   it('gives a free account holding gift credits the Claude cards switch', async () => {

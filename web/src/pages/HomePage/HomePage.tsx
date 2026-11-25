@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate } from 'react-router-dom';
 import UploadForm from '../UploadPage/components/UploadForm/UploadForm';
+import { AiGiftUploadCard } from '../UploadPage/components/AiGiftUploadCard/AiGiftUploadCard';
 import { ErrorHandlerType } from '../../components/errors/helpers/getErrorMessage';
 import { useSettingsCardsOptions } from '../../components/modals/SettingsModal/useSettingsCardsOptions';
 import ArrowUpTrayIcon from '../../components/icons/ArrowUpTrayIcon';
@@ -204,7 +205,15 @@ export function HomePage({
             .
           </p>
         </div>
-        <UploadForm setErrorMessage={setErrorMessage} sample />
+        <AiGiftUploadCard signedIn={false}>
+          {(holdChosenFiles) => (
+            <UploadForm
+              setErrorMessage={setErrorMessage}
+              sample
+              holdChosenFiles={holdChosenFiles}
+            />
+          )}
+        </AiGiftUploadCard>
         <div className={styles.heroFooter}>
           <Link
             to="/card-options"

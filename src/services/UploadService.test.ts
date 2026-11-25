@@ -54,6 +54,8 @@ vi.mock('../data_layer/createAiGiftReaders', () => ({
     giftCostSince: async () => 0,
     now: () => new Date(),
     planSpent: async () => false,
+    mayStartGrant: async () => false,
+    startGrant: async () => null,
   }),
 }));
 
@@ -11027,6 +11029,8 @@ describe('UploadService.handleUpload — the free AI credits gift', () => {
       giftCostSince: async () => options.spendUsd ?? 0,
       now: () => new Date('2026-11-25T12:00:00.000Z'),
       planSpent: async () => options.planSpent ?? false,
+      mayStartGrant: async () => false,
+      startGrant: async () => null,
     });
   }
 
@@ -11208,12 +11212,15 @@ describe('UploadService.handleUpload — the free AI credits gift', () => {
     expect(third.capturedStatus()).toBe(202);
   });
 
-  it('reads the gift only when the upload asked for Claude cards', async () => {
+  it('reads no gift for an upload the person sent with Claude turned off', async () => {
     sendsCards();
     const readers = vi.fn(giftReaders({}));
     const { res } = signedIn(false);
     const request = aiRequest();
-    request.body = {};
+    request.body = {
+      'claude-ai-flashcards': 'false',
+      'ai-choice-at': '1762300000',
+    };
 
     await serviceWith(jobRepository(), readers).handleUpload(request, res);
 
@@ -11475,6 +11482,8 @@ describe('UploadService.restartClaudeJob — the free AI credits gift', () => {
       giftCostSince: async () => 0,
       now: () => new Date('2026-11-25T12:00:00.000Z'),
       planSpent: async () => planSpent,
+      mayStartGrant: async () => false,
+      startGrant: async () => null,
     });
   }
 
