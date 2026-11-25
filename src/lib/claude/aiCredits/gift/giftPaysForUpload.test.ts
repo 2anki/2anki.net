@@ -64,4 +64,24 @@ describe('giftWouldPayForUpload', () => {
     expect(await giftWouldPayForUpload(9, readers)).toBe(false);
     expect(readers.remainingMonthlyCards).not.toHaveBeenCalled();
   });
+
+  describe('reading the running conversion by the readers clock', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('is false for a conversion taken just before the readers time, whatever the wall clock says', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2027-01-01T00:00:00.000Z'));
+      takeGiftMarker(9, NOW.getTime() - 60_000);
+
+      expect(await giftWouldPayForUpload(9, deps())).toBe(false);
+    });
+
+    it('is true once the readers clock is past the conversion marker lifetime', async () => {
+      takeGiftMarker(9, NOW.getTime() - 2 * 60 * 60 * 1000);
+
+      expect(await giftWouldPayForUpload(9, deps())).toBe(true);
+    });
+  });
 });
