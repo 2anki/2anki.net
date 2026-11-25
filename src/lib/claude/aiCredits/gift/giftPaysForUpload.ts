@@ -16,7 +16,7 @@ export async function giftWouldPayForUpload(
   userId: number,
   deps: GiftPaysForUploadDeps
 ): Promise<boolean> {
-  if (giftMarkerHeld(userId)) return false;
+  if (giftMarkerHeld(userId, deps.gift().now().getTime())) return false;
   if ((await uploadAiGiftMode(userId, false, deps.gift)) !== 'only') {
     return false;
   }
