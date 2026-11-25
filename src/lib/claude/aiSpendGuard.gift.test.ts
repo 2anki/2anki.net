@@ -156,6 +156,19 @@ describe('withAiBudget and the gift', () => {
     expect(run).not.toHaveBeenCalled();
   });
 
+  it('fails closed on a gift read error without recording the exhausted event', async () => {
+    const deps = makeDeps({ giftError: new Error('db down') });
+
+    await expect(
+      withAiBudget({ userId: USER, aiGift: 'only' }, vi.fn(), deps)
+    ).rejects.toBeInstanceOf(AiCreditsExhaustedError);
+    await flushAsync();
+
+    expect(
+      trackMock.mock.calls.filter(([name]) => name === 'ai_credits_exhausted')
+    ).toEqual([]);
+  });
+
   it('spends a paying account on its plan while plan credits remain', async () => {
     const deps = makeDeps({ plan: planBalance(120), gift: giftBalance(100) });
 

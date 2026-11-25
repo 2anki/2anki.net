@@ -93,6 +93,32 @@ describe('assertAiBudget', () => {
     });
   });
 
+  it('records the exhausted event once when two checks are refused in the same window', async () => {
+    const deps = makeDeps({ balance: balanceWith(0) });
+
+    await expect(assertAiBudget(42, deps)).rejects.toThrow(
+      AiCreditsExhaustedError
+    );
+    await expect(assertAiBudget(42, deps)).rejects.toThrow(
+      AiCreditsExhaustedError
+    );
+    await flushAsync();
+
+    expect(
+      trackMock.mock.calls.filter(([name]) => name === 'ai_credits_exhausted')
+    ).toHaveLength(1);
+  });
+
+  it('records nothing when the balance read throws', async () => {
+    const deps = makeDeps({});
+    deps.computeBalance = vi.fn().mockRejectedValue(new Error('db down'));
+
+    await assertAiBudget(42, deps);
+    await flushAsync();
+
+    expect(trackMock).not.toHaveBeenCalled();
+  });
+
   it('still throws but does not re-fire the event inside the same window', async () => {
     const deps = makeDeps({ balance: balanceWith(0), eventCount: 1 });
     await expect(assertAiBudget(42, deps)).rejects.toThrow(
@@ -305,6 +331,48 @@ describe('withAiBudget', () => {
       AiCreditsExhaustedError
     );
     expect(run).not.toHaveBeenCalled();
+  });
+
+  const exhaustedEvents = () =>
+    trackMock.mock.calls.filter(([name]) => name === 'ai_credits_exhausted');
+
+  it('records ai_credits_exhausted once, with its usual props, when a call is refused at zero', async () => {
+    const deps = makeDeps({ balance: balanceWith(0) });
+
+    await expect(
+      withAiBudget(42, vi.fn().mockResolvedValue('ok'), deps)
+    ).rejects.toBeInstanceOf(AiCreditsExhaustedError);
+    await flush();
+
+    expect(exhaustedEvents()).toEqual([
+      ['ai_credits_exhausted', { userId: 42, props: { server_marker: true } }],
+    ]);
+  });
+
+  it('records the exhausted event once when two calls are refused in the same window', async () => {
+    const deps = makeDeps({ balance: balanceWith(0) });
+    const run = vi.fn().mockResolvedValue('ok');
+
+    await expect(withAiBudget(42, run, deps)).rejects.toBeInstanceOf(
+      AiCreditsExhaustedError
+    );
+    await expect(withAiBudget(42, run, deps)).rejects.toBeInstanceOf(
+      AiCreditsExhaustedError
+    );
+    await flush();
+
+    expect(exhaustedEvents()).toHaveLength(1);
+  });
+
+  it('records nothing when the balance read throws, and runs the call for a signed-in user', async () => {
+    const deps = makeDeps({});
+    deps.computeBalance = vi.fn().mockRejectedValue(new Error('db down'));
+    const run = vi.fn().mockResolvedValue('ok');
+
+    await expect(withAiBudget(42, run, deps)).resolves.toBe('ok');
+    await flush();
+
+    expect(exhaustedEvents()).toEqual([]);
   });
 
   it('bounds concurrency: a second call is refused while the balance is fully reserved', async () => {

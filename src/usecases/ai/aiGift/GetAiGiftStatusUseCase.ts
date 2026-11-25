@@ -16,6 +16,8 @@ import { giftMarkerHeld } from '../../../lib/claude/aiCredits/gift/giftConversio
 import { claudeCardsByDefault } from '../../../lib/upload/claudeCardsDefault';
 import { giftWouldPayForUpload } from '../../../lib/claude/aiCredits/gift/giftPaysForUpload';
 import { readAiBudgetStatus } from '../../../lib/claude/aiSpendGuard';
+import CardOption from '../../../lib/parser/Settings/CardOption';
+import { pagePairsSuppressesAi } from '../../../infrastracture/adapters/fileConversion/pagePairsSuppressesAi';
 import type { AiGiftDeps } from './aiGiftDeps';
 
 export type AiGiftStatus =
@@ -39,6 +41,7 @@ export type AiGiftStatus =
       minMonthlyCards: number;
       claudeDefaultForPdf: boolean | null;
       aiBudgetAvailable: boolean | null;
+      storedPdfSkipsClaude: boolean | null;
       monthlyCardsLeft: number | null;
     };
 
@@ -47,14 +50,27 @@ const CLOSED: AiGiftStatus = { state: 'closed', feedbackDue: false };
 interface NextUploadAnswers {
   claudeDefaultForPdf: boolean | null;
   aiBudgetAvailable: boolean | null;
+  storedPdfSkipsClaude: boolean | null;
   monthlyCardsLeft: number | null;
 }
 
 const UNKNOWN_NEXT_UPLOAD: NextUploadAnswers = {
   claudeDefaultForPdf: null,
   aiBudgetAvailable: null,
+  storedPdfSkipsClaude: null,
   monthlyCardsLeft: null,
 };
+
+// The conversion's own reasons a PDF never reaches Claude, read from the
+// account's saved options: page pairs, and PDF processing switched off (the
+// PDF is then not converted at all).
+function storedOptionsSkipClaude(stored: Record<string, unknown>): boolean {
+  const settings = new CardOption(stored as Record<string, string>);
+  return (
+    settings.processPDFs === false ||
+    pagePairsSuppressesAi(settings, [{ name: PROBE_PDF }])
+  );
+}
 
 const PROBE_PDF = 'notes.pdf';
 
@@ -105,6 +121,9 @@ export class GetAiGiftStatusUseCase {
       return {
         claudeDefaultForPdf,
         aiBudgetAvailable: !budget.exhausted,
+        storedPdfSkipsClaude: storedOptionsSkipClaude(
+          storedOptionsRecord(stored)
+        ),
         monthlyCardsLeft,
       };
     } catch (error) {

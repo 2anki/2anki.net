@@ -75,6 +75,7 @@ export class AiGiftController {
           minMonthlyCards: result.minMonthlyCards,
           claudeDefaultForPdf: result.claudeDefaultForPdf,
           aiBudgetAvailable: result.aiBudgetAvailable,
+          storedPdfSkipsClaude: result.storedPdfSkipsClaude,
           monthlyCardsLeft: result.monthlyCardsLeft,
         });
       case 'full':

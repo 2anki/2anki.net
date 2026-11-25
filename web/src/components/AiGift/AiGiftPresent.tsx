@@ -64,9 +64,17 @@ type NextUploadClaude =
   | 'off';
 
 // A PDF made two pages per card, or not processed at all, never reaches
-// Claude on the server, and the status cannot see these browser-held options.
-function pdfKeptFromClaude(sent: Record<string, string>): boolean {
-  return sent['pdf-page-pairs'] === 'true' || sent['process-pdfs'] === 'false';
+// Claude on the server. The status answers for the account's saved options;
+// the browser's own copy is read here, since an upload sends that one.
+function pdfKeptFromClaude(
+  sent: Record<string, string>,
+  gift: ClaimedGift
+): boolean {
+  return (
+    gift.storedPdfSkipsClaude === true ||
+    sent['pdf-page-pairs'] === 'true' ||
+    sent['process-pdfs'] === 'false'
+  );
 }
 
 // The server answers what a PDF upload would get (claudeDefaultForPdf, from
@@ -85,7 +93,7 @@ function nextUploadClaude(
   const sent = savedCardSettings();
   const switchedOn = sent['claude-ai-flashcards'] === 'true';
   if (hasRecordedAiChoice() && !switchedOn) return 'off';
-  if (pdfKeptFromClaude(sent)) return 'unknown';
+  if (pdfKeptFromClaude(sent, gift)) return 'unknown';
   const left = gift.monthlyCardsLeft;
   const minimum = gift.minMonthlyCards;
   const monthKnown = left != null && minimum != null;

@@ -21,6 +21,7 @@ export type AiGiftStatus =
       minMonthlyCards?: number;
       claudeDefaultForPdf?: boolean | null;
       aiBudgetAvailable?: boolean | null;
+      storedPdfSkipsClaude?: boolean | null;
       monthlyCardsLeft?: number | null;
     };
 
@@ -96,6 +97,7 @@ export function parseAiGiftStatus(data: unknown): AiGiftStatus {
       minMonthlyCards: optionalCount(data.minMonthlyCards),
       claudeDefaultForPdf: optionalBoolean(data.claudeDefaultForPdf),
       aiBudgetAvailable: optionalBoolean(data.aiBudgetAvailable),
+      storedPdfSkipsClaude: optionalBoolean(data.storedPdfSkipsClaude),
       monthlyCardsLeft: optionalCount(data.monthlyCardsLeft) ?? null,
     };
   }

@@ -246,6 +246,18 @@ describe('GET /api/ai/gift while the gift is open', () => {
     });
   });
 
+  it('offers a signed-in account that has not claimed the same open body', async () => {
+    expect((await getGift(h, 6)).body).toEqual({
+      state: 'open',
+      credits: 100,
+      expiresIfClaimedNow: '2026-11-27T12:00:00.000Z',
+      claimClosesAt: '2026-12-04T20:00:00.000Z',
+      feedbackDue: false,
+      lastsHours: 48,
+      minMonthlyCards: 20,
+    });
+  });
+
   it('tells a visitor late in the window when a claim made now would expire, and drops the full length it no longer gets', async () => {
     h.setNow(new Date('2026-12-04T10:00:00.000Z'));
     const body = (await getGift(h, null)).body;
@@ -286,6 +298,7 @@ describe('POST /api/ai/gift/claim', () => {
       minMonthlyCards: 20,
       claudeDefaultForPdf: true,
       aiBudgetAvailable: true,
+      storedPdfSkipsClaude: false,
       monthlyCardsLeft: 90,
     });
     expect(eventsNamed('ai_gift_claimed')).toEqual([
@@ -471,6 +484,7 @@ describe('what the next PDF upload would get, answered by the upload rule', () =
     expect(await next()).toMatchObject({
       claudeDefaultForPdf: true,
       aiBudgetAvailable: true,
+      storedPdfSkipsClaude: false,
       monthlyCardsLeft: 90,
     });
   });
@@ -501,6 +515,19 @@ describe('what the next PDF upload would get, answered by the upload rule', () =
 
     expect(eventsNamed('ai_credits_exhausted')).toEqual([]);
   });
+
+  it.each([
+    ['nothing saved', null, false],
+    ['two PDF pages per card saved', { 'pdf-page-pairs': 'true' }, true],
+    ['PDF processing off saved', { 'process-pdfs': 'false' }, true],
+  ])(
+    'says whether the account’s saved options keep a PDF from Claude, with %s',
+    async (_case, stored, skips) => {
+      h.claudeDefault.stored = stored;
+
+      expect((await next()).storedPdfSkipsClaude).toBe(skips);
+    }
+  );
 
   it('is off once the account recorded turning AI off', async () => {
     h.claudeDefault.latestToggle = 'upload_ai_turned_off';
@@ -568,6 +595,7 @@ describe('the one question after a gift-funded conversion', () => {
       minMonthlyCards: 20,
       claudeDefaultForPdf: true,
       aiBudgetAvailable: true,
+      storedPdfSkipsClaude: false,
       monthlyCardsLeft: 90,
     });
   });

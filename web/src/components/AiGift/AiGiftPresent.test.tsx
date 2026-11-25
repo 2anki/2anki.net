@@ -369,6 +369,29 @@ describe('AiGiftPresent', () => {
     }
   );
 
+  test('promises nothing when the account saved page pairs on another device, though this browser has the switch on', async () => {
+    routeFetch({ ...CLAIMED, storedPdfSkipsClaude: true });
+    localStorage.setItem('claude-ai-flashcards', 'true');
+    renderPresent(true, false, true);
+
+    fireEvent.click(await trigger());
+
+    expect(await screen.findByText(BALANCE)).toBeInTheDocument();
+    expect(screen.queryByText(/Claude will write/)).toBeNull();
+  });
+
+  test('still promises the next file when neither the account nor this browser keeps a PDF from Claude', async () => {
+    routeFetch({ ...CLAIMED, storedPdfSkipsClaude: false });
+    localStorage.setItem('claude-ai-flashcards', 'true');
+    renderPresent(true, false, true);
+
+    fireEvent.click(await trigger());
+
+    expect(
+      await screen.findByText('Claude will write the cards for your next file.')
+    ).toBeInTheDocument();
+  });
+
   test('says the gift is used up, and promises nothing, even with the switch on', async () => {
     routeFetch({
       ...CLAIMED,
