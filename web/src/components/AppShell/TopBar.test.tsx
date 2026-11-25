@@ -23,6 +23,19 @@ vi.mock('../../lib/backend/getAiCredits', () => ({
   getAiCredits: vi.fn().mockResolvedValue(null),
 }));
 
+const session = vi.hoisted(() => ({
+  locals: { patreon: false, subscriber: false } as Record<string, unknown>,
+}));
+
+vi.mock('../../lib/backend/getUserLocals', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../lib/backend/getUserLocals')>()),
+  getUserLocals: vi.fn(async () => ({
+    user: { id: 5 },
+    locals: session.locals,
+    claudeCardsByDefault: false,
+  })),
+}));
+
 vi.mock('../../lib/backend/aiGift', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../lib/backend/aiGift')>()),
   getAiGift: vi.fn(),
@@ -48,6 +61,7 @@ function renderTopBar(overrides: Partial<Parameters<typeof TopBar>[0]> = {}) {
     onCloseDrawer: vi.fn(),
     ...overrides,
   };
+  session.locals = { ...props.locals };
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
@@ -146,20 +160,77 @@ describe('TopBar gift panel spending order', () => {
   });
 
   it.each([
-    ['a free account', { patreon: false, subscriber: false }, 300],
-    ['a paying account with no allowance', { patreon: true }, 0],
+    [
+      'a free account',
+      { patreon: false, subscriber: false },
+      300,
+      /100 free AI credits left until/,
+    ],
+    [
+      'a paying account with no allowance',
+      { patreon: true },
+      0,
+      'You have 100 AI credits from the gift.',
+    ],
   ])(
     'says nothing about spending order for %s',
-    async (_name, locals, allowance) => {
+    async (_name, locals, allowance, giftLine) => {
       vi.mocked(getAiCredits).mockResolvedValue(planCredits(allowance));
       renderTopBar({ locals });
       await openGift();
-      expect(
-        await screen.findByText('You have 100 AI credits from the gift.')
-      ).toBeInTheDocument();
+      expect(await screen.findByText(giftLine)).toBeInTheDocument();
       expect(
         screen.queryByText('Your plan credits are used first.')
       ).toBeNull();
     }
   );
+});
+
+describe('TopBar gift panel for an account with no plan', () => {
+  const claimedWith = (fields: Record<string, unknown>) => {
+    localStorage.clear();
+    vi.mocked(getAiGift).mockResolvedValue({
+      state: 'claimed',
+      credits: 100,
+      expiresAt: '2099-11-26T19:15:00.000Z',
+      feedbackDue: false,
+      inUse: false,
+      minMonthlyCards: 20,
+      ...fields,
+    });
+  };
+
+  const openPanel = async () => {
+    renderTopBar({ locals: { patreon: false, subscriber: false } });
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Free AI credits gift' })
+    );
+    await screen.findByText(/100 free AI credits left until/);
+  };
+
+  it('promises Claude for the next PDF when the gift turns it on by default', async () => {
+    claimedWith({
+      claudeDefaultForPdf: true,
+      aiBudgetAvailable: true,
+      monthlyCardsLeft: 80,
+    });
+    await openPanel();
+
+    expect(
+      screen.getByText(
+        'Claude will write the cards for your next PDF or PowerPoint file.'
+      )
+    ).toBeInTheDocument();
+  });
+
+  it('promises nothing when the status could not read the month', async () => {
+    claimedWith({
+      claudeDefaultForPdf: null,
+      aiBudgetAvailable: null,
+      monthlyCardsLeft: null,
+    });
+    await openPanel();
+
+    expect(screen.queryByText(/Claude will write/)).toBeNull();
+  });
 });

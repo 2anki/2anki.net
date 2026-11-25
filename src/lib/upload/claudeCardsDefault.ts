@@ -24,6 +24,7 @@ export interface ClaudeDefaultCandidate {
   fileNames: readonly string[];
   options: Record<string, unknown>;
   storedOptions: unknown;
+  giftPays?: () => Promise<boolean>;
 }
 
 function isPdfOrSlidesUpload(fileNames: readonly string[]): boolean {
@@ -73,16 +74,30 @@ async function defaultMayApply(
   return aiSettingNeverStored(options);
 }
 
+// An account with no plan reaches the default only while the free AI gift
+// would pay for this upload. The gift is read last, so an upload the rule
+// leaves alone never pays for that read; a failed read keeps AI off.
+async function aiPaidFor(candidate: ClaudeDefaultCandidate): Promise<boolean> {
+  if (candidate.paying) return true;
+  if (candidate.giftPays == null) return false;
+  try {
+    return await candidate.giftPays();
+  } catch (error) {
+    console.warn('[claude-default] gift read failed, keeping AI off', error);
+    return false;
+  }
+}
+
 export async function claudeCardsByDefault(
   candidate: ClaudeDefaultCandidate,
   reader: AiChoiceHistoryReader
 ): Promise<boolean> {
   if (
     candidate.ownerId == null ||
-    !candidate.paying ||
     candidate.entry !== 'web' ||
     !isPdfOrSlidesUpload(candidate.fileNames) ||
-    !aiSettingLeftAtDefault(candidate.options)
+    !aiSettingLeftAtDefault(candidate.options) ||
+    !(await aiPaidFor(candidate))
   ) {
     return false;
   }

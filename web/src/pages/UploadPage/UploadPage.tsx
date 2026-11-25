@@ -47,6 +47,7 @@ type AiBadgeState =
   | 'free'
   | 'on'
   | 'onForPdfs'
+  | 'onForPdfsGift'
   | 'off'
   | 'giftOff';
 
@@ -63,7 +64,10 @@ function deriveAiBadgeState(
   hasGiftCredits: boolean
 ): AiBadgeState {
   if (!isSignedIn) return localsLoaded ? 'anonPreview' : 'anon';
-  if (!isPaying && hasGiftCredits) return isAiOn ? 'on' : 'giftOff';
+  if (!isPaying && hasGiftCredits) {
+    if (isAiOn) return 'on';
+    return claudeOnForPdfs ? 'onForPdfsGift' : 'giftOff';
+  }
   if (!isPaying) return 'free';
   if (isAiOn) return 'on';
   if (claudeOnForPdfs) return 'onForPdfs';
@@ -132,9 +136,12 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
     ? (isPaying || giftCredits != null) && aiFlag
     : localsLoaded && aiFlag;
   const sessionHint = hasSessionHint();
+  const claudeOnByDefault = isPaying
+    ? userLocals?.claudeCardsByDefault === true
+    : gift?.state === 'claimed' && gift.claudeDefaultForPdf === true;
   const claudeOnForPdfs =
     !aiChoiceRecorded &&
-    userLocals?.claudeCardsByDefault === true &&
+    claudeOnByDefault &&
     globalThis.localStorage?.getItem('pdf-page-pairs') !== 'true';
   const aiBadgeState = userLocalsLoading
     ? pendingAiBadgeState(sessionHint)
@@ -391,6 +398,35 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
             <AiCreditsReadout credits={aiCredits} gift={giftAfterPlan} />
           </>
         )}
+        {aiBadgeState === 'onForPdfsGift' && (
+          <>
+            <button
+              type="button"
+              className={styles.aiToggle}
+              aria-pressed="true"
+              aria-label={t('upload.page.turnAiOff')}
+              onClick={() => setAi(false)}
+            >
+              <span className={styles.badgeSuccess}>
+                {t('upload.page.aiOnForPdfs')}
+              </span>
+            </button>
+            <span className={styles.aiOffBadgeBody}>
+              <span>
+                {' '}
+                {t('upload.page.aiOnForPdfsGiftBody')}
+                {sentenceGap}
+              </span>
+              <Link
+                to="/card-options?returnTo=/upload#pdf-ai"
+                onClick={() => track('upload_ai_settings_link_clicked')}
+              >
+                {t('upload.page.manageInSettings')}
+              </Link>
+              <span>{sentenceEnd}</span>
+            </span>
+          </>
+        )}
         {aiBadgeState === 'off' && (
           <>
             <button
@@ -507,11 +543,13 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
             </span>
           </>
         )}
-        {aiBadgeState === 'on' && giftCredits != null && !isPaying && (
-          <span className={styles.aiOffBadgeBody}>
-            {tGift('claimed', { count: giftCredits })}
-          </span>
-        )}
+        {(aiBadgeState === 'on' || aiBadgeState === 'onForPdfsGift') &&
+          giftCredits != null &&
+          !isPaying && (
+            <span className={styles.aiOffBadgeBody}>
+              {tGift('claimed', { count: giftCredits })}
+            </span>
+          )}
         {aiBadgeState === 'anonPreview' && (
           <AiChoice aiOn={aiChoiceOn} onChange={setAi} />
         )}

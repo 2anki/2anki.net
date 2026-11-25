@@ -96,6 +96,7 @@ export interface ConversionSuccessHandlers {
   setHeldDeck: (value: HeldDeckState | null) => void;
   setAiPreviewCards: (value: AiPreviewCard[] | null) => void;
   setAiPreviewUnavailable: (value: boolean) => void;
+  setClaudeEligible?: (value: boolean) => void;
   setZoneState: (value: ZoneState) => void;
   setStructureRescuedRule: (value: StructureRescueRule | null) => void;
   setPdfFallbackMode: (value: PdfFallbackMode | null) => void;
@@ -270,6 +271,9 @@ export async function applyConversionSuccess(
   handlers.setHeldForPlan(response.headers.get('X-Held-For-Plan') === '1');
   handlers.setAiPreviewUnavailable(
     response.headers.get('X-AI-Preview-Unavailable') === '1'
+  );
+  handlers.setClaudeEligible?.(
+    response.headers.get('X-Claude-Eligible') === '1'
   );
   handlers.setOverSplit(response.headers.get('X-Over-Split') === '1');
   handlers.setCreditsUsed(

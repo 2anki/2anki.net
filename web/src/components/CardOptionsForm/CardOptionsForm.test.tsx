@@ -1082,6 +1082,49 @@ describe('CardOptionsForm AI checkbox analytics', () => {
     ).toBeNull();
   });
 
+  it('shows the gift’s PDF default as on, with the gift hint, for an account with no plan', async () => {
+    setUserLocalsPaying(false);
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    client.setQueryData(['aiGift', true], {
+      state: 'claimed',
+      credits: 100,
+      expiresAt: '2099-11-27T12:00:00.000Z',
+      feedbackDue: false,
+      claudeDefaultForPdf: true,
+      aiBudgetAvailable: true,
+      monthlyCardsLeft: 80,
+    });
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <CardOptionsForm
+            pageId={null}
+            isLoggedIn
+            onReset={vi.fn()}
+            setError={vi.fn()}
+          />
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+
+    expect(await aiCheckbox()).toBeChecked();
+    expect(
+      screen.getByText(/Your free AI credits pay for Claude cards/)
+    ).toBeInTheDocument();
+  });
+
+  it('leaves the switch off for an account with no plan and no gift default, as before', async () => {
+    setUserLocalsPaying(false);
+    renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
+
+    expect(await aiCheckbox()).not.toBeChecked();
+    expect(
+      screen.queryByText(/Claude writes them when you upload only PDF/)
+    ).toBeNull();
+  });
+
   it('keeps a Notion page setting as saved, without the PDF default, when the account has one', async () => {
     mockUseUserLocals.mockReturnValue({
       data: {

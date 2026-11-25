@@ -287,6 +287,17 @@ async function budgetStatusFor(
   subject: NormalizedSubject,
   deps: AiBudgetDeps
 ): Promise<AiBudgetStatus> {
+  const status = await readBudgetStatusFor(subject, deps);
+  if (status.exhausted && status.balance != null) {
+    fireExhaustedOnce(deps, subject, status.balance.windowStart);
+  }
+  return status;
+}
+
+async function readBudgetStatusFor(
+  subject: NormalizedSubject,
+  deps: AiBudgetDeps
+): Promise<AiBudgetStatus> {
   if (subject.kind === 'none') {
     return { exhausted: false, balance: null };
   }
@@ -306,7 +317,6 @@ async function budgetStatusFor(
     // Boundary matches the number the user sees: the rounded `credits`, not
     // `rawCredits`, so "0 AI credits left" and "out of credits" always agree.
     if (balance.credits <= 0) {
-      fireExhaustedOnce(deps, subject, balance.windowStart);
       return { exhausted: true, balance };
     }
     return { exhausted: false, balance };
@@ -324,9 +334,29 @@ async function budgetStatusFor(
 // the badge read (computeAiCreditBalance) never does. A signed-in user fails
 // open (a metrics outage never blocks a paying conversion); an anonymous pass
 // fails closed (no balance means no AI).
-export async function getAiBudgetStatus(
+export function getAiBudgetStatus(
   subject: AiSpendSubject,
   deps?: AiBudgetDeps
+): Promise<AiBudgetStatus> {
+  return budgetStatusOf(subject, deps, budgetStatusFor);
+}
+
+// The same answer as getAiBudgetStatus with no event recorded, for a page that
+// shows what an upload would get rather than one that is about to spend.
+export function readAiBudgetStatus(
+  subject: AiSpendSubject,
+  deps?: AiBudgetDeps
+): Promise<AiBudgetStatus> {
+  return budgetStatusOf(subject, deps, readBudgetStatusFor);
+}
+
+async function budgetStatusOf(
+  subject: AiSpendSubject,
+  deps: AiBudgetDeps | undefined,
+  statusFor: (
+    subject: NormalizedSubject,
+    deps: AiBudgetDeps
+  ) => Promise<AiBudgetStatus>
 ): Promise<AiBudgetStatus> {
   const normalized = normalizeSubject(subject);
   if (normalized.kind === 'none') {
@@ -345,7 +375,7 @@ export async function getAiBudgetStatus(
     const gift = await giftBalanceFor(resolved, normalized, now);
     return { exhausted: gift == null || gift.credits <= 0, balance: null };
   }
-  const status = await budgetStatusFor(normalized, resolved);
+  const status = await statusFor(normalized, resolved);
   if (status.exhausted && normalized.aiGift === 'fallback') {
     const gift = await giftBalanceFor(resolved, normalized, now);
     if (gift != null && gift.credits > 0) {

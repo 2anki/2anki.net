@@ -118,6 +118,7 @@ import {
   type UploadGiftModeDeps,
 } from '../lib/claude/aiCredits/gift/uploadGiftMode';
 import { AI_GIFT_MIN_MONTHLY_CARDS } from '../lib/claude/aiCredits/gift/giftTerms';
+import { giftWouldPayForUpload } from '../lib/claude/aiCredits/gift/giftPaysForUpload';
 import {
   releaseGiftMarker,
   takeGiftMarker,
@@ -2151,26 +2152,41 @@ class UploadService {
   ): Promise<Record<string, unknown>> {
     const files = (req.files as UploadedFile[] | undefined) ?? [];
     const ownerId = owner == null ? null : Number(owner);
+    const paying = isPaying(res.locals);
     const turnOn = await claudeCardsByDefault(
       {
         ownerId,
-        paying: isPaying(res.locals),
+        paying,
         entry: this.uploadEntry(req, res),
         fileNames: files.map((file) => file.originalname),
         options,
         storedOptions: storedCardOptions,
+        giftPays:
+          ownerId == null
+            ? undefined
+            : () =>
+                giftWouldPayForUpload(ownerId, {
+                  gift: this.aiGiftReaders,
+                  remainingMonthlyCards: (userId) =>
+                    this.remainingMonthlyCards(String(userId)),
+                }),
       },
       this.usersRepository
     );
     if (!turnOn) return options;
     // With no credits left the job would only fall back to the parser, later
     // and through a queue, so the default is not applied.
-    if ((await getAiBudgetStatus({ userId: ownerId })).exhausted) {
+    const budget = paying
+      ? { userId: ownerId }
+      : { userId: ownerId, aiGift: 'only' as const };
+    if ((await getAiBudgetStatus(budget)).exhausted) {
       return options;
     }
     track('upload_ai_default_applied', {
       userId: ownerId,
-      props: { format: uploadInputFormat(files) },
+      props: paying
+        ? { format: uploadInputFormat(files) }
+        : { format: uploadInputFormat(files), reason: 'gift' },
     });
     return { ...options, 'claude-ai-flashcards': 'true' };
   }
@@ -2476,6 +2492,10 @@ class UploadService {
       if (res.locals.aiPreviewUnavailable === true) {
         res.set('X-AI-Preview-Unavailable', '1');
         exposedHeaders.push('X-AI-Preview-Unavailable');
+      }
+      if (mayReachClaude((req.files as UploadedFile[] | undefined) ?? [])) {
+        res.set('X-Claude-Eligible', '1');
+        exposedHeaders.push('X-Claude-Eligible');
       }
       if (totalDroppedImageCount > 0) {
         res.set('X-Dropped-Assets', totalDroppedImageCount.toString());

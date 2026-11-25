@@ -8,6 +8,8 @@ export type AiGiftStatus =
       expiresIfClaimedNow: string;
       claimClosesAt: string;
       feedbackDue: boolean;
+      lastsHours?: number;
+      minMonthlyCards?: number;
     }
   | { state: 'full'; feedbackDue: boolean }
   | {
@@ -15,6 +17,12 @@ export type AiGiftStatus =
       credits: number;
       expiresAt: string;
       feedbackDue: boolean;
+      inUse?: boolean;
+      minMonthlyCards?: number;
+      claudeDefaultForPdf?: boolean | null;
+      aiBudgetAvailable?: boolean | null;
+      storedPdfSkipsClaude?: boolean | null;
+      monthlyCardsLeft?: number | null;
     };
 
 export type AiGiftRefusal =
@@ -39,6 +47,16 @@ const KNOWN_REFUSALS = new Set<AiGiftRefusal>([
   'gift_ip_limit',
 ]);
 
+function optionalCount(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? value
+    : undefined;
+}
+
+function optionalBoolean(value: unknown): boolean | null {
+  return typeof value === 'boolean' ? value : null;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value != null && typeof value === 'object';
 }
@@ -58,6 +76,8 @@ export function parseAiGiftStatus(data: unknown): AiGiftStatus {
       expiresIfClaimedNow: data.expiresIfClaimedNow,
       claimClosesAt: data.claimClosesAt,
       feedbackDue,
+      lastsHours: optionalCount(data.lastsHours),
+      minMonthlyCards: optionalCount(data.minMonthlyCards),
     };
   }
   if (data.state === 'full') {
@@ -73,6 +93,12 @@ export function parseAiGiftStatus(data: unknown): AiGiftStatus {
       credits: data.credits,
       expiresAt: data.expiresAt,
       feedbackDue,
+      inUse: data.inUse === true,
+      minMonthlyCards: optionalCount(data.minMonthlyCards),
+      claudeDefaultForPdf: optionalBoolean(data.claudeDefaultForPdf),
+      aiBudgetAvailable: optionalBoolean(data.aiBudgetAvailable),
+      storedPdfSkipsClaude: optionalBoolean(data.storedPdfSkipsClaude),
+      monthlyCardsLeft: optionalCount(data.monthlyCardsLeft) ?? null,
     };
   }
   return { state: 'closed', feedbackDue };

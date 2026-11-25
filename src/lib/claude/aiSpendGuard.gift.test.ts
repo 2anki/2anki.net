@@ -4,6 +4,7 @@ import {
   AiCreditsExhaustedError,
   assertAiBudget,
   getAiBudgetStatus,
+  readAiBudgetStatus,
   resetAiSpendClaims,
   withAiBudget,
 } from './aiSpendGuard';
@@ -94,6 +95,25 @@ describe('withAiBudget and the gift', () => {
     expect(reservedGiftCreditsFor(GIFT_ID)).toBe(0);
   });
 
+  it('leaves the bought credit packs of an account with no plan untouched while it converts on the gift', async () => {
+    const packOnly: AiCreditBalance = {
+      ...planBalance(200),
+      allowance: 0,
+      spent: 0,
+    };
+    const deps = makeDeps({ plan: packOnly, gift: giftBalance(100) });
+    const run = vi.fn(async () => currentGiftId());
+
+    const fundedBy = await withAiBudget(
+      { userId: USER, aiGift: 'only' },
+      run,
+      deps
+    );
+
+    expect(fundedBy).toBe(GIFT_ID);
+    expect(deps.computeBalance).not.toHaveBeenCalled();
+  });
+
   it('never reads the plan balance for a free account on the gift', async () => {
     const deps = makeDeps({ plan: planBalance(250), gift: giftBalance(100) });
 
@@ -134,6 +154,19 @@ describe('withAiBudget and the gift', () => {
       withAiBudget({ userId: USER, aiGift: 'only' }, run, deps)
     ).rejects.toBeInstanceOf(AiCreditsExhaustedError);
     expect(run).not.toHaveBeenCalled();
+  });
+
+  it('fails closed on a gift read error without recording the exhausted event', async () => {
+    const deps = makeDeps({ giftError: new Error('db down') });
+
+    await expect(
+      withAiBudget({ userId: USER, aiGift: 'only' }, vi.fn(), deps)
+    ).rejects.toBeInstanceOf(AiCreditsExhaustedError);
+    await flushAsync();
+
+    expect(
+      trackMock.mock.calls.filter(([name]) => name === 'ai_credits_exhausted')
+    ).toEqual([]);
   });
 
   it('spends a paying account on its plan while plan credits remain', async () => {
@@ -276,6 +309,31 @@ describe('withAiBudget and the gift', () => {
         }),
       ],
     ]);
+  });
+});
+
+describe('reading the budget without an AI attempt', () => {
+  const exhaustedEvents = () =>
+    trackMock.mock.calls.filter(([name]) => name === 'ai_credits_exhausted');
+
+  it('answers a paying account with spent plan credits as exhausted, and records nothing', async () => {
+    const deps = makeDeps({ plan: planBalance(0), gift: giftBalance(100) });
+
+    const status = await readAiBudgetStatus({ userId: USER }, deps);
+    await flushAsync();
+
+    expect(status.exhausted).toBe(true);
+    expect(exhaustedEvents()).toEqual([]);
+  });
+
+  it('still records the exhausted event when an upload checks the same account', async () => {
+    const deps = makeDeps({ plan: planBalance(0), gift: giftBalance(100) });
+
+    const status = await getAiBudgetStatus({ userId: USER }, deps);
+    await flushAsync();
+
+    expect(status.exhausted).toBe(true);
+    expect(exhaustedEvents()).toHaveLength(1);
   });
 });
 

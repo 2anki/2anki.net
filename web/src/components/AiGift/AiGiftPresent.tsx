@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type RefCallback } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import GiftIcon from '../icons/GiftIcon';
@@ -22,6 +22,9 @@ import {
 } from './giftUiState';
 import { useGiftAutoOpen } from './useGiftAutoOpen';
 import { useUploadZoneActivity } from '../../lib/upload/uploadZoneActivity';
+import { chooseUploadFile } from '../../lib/upload/uploadEntry';
+import { hasRecordedAiChoice } from '../../lib/data_layer/aiChoice';
+import { savedCardSettings } from '../../lib/upload/savedCardSettings';
 import sharedStyles from '../../styles/shared.module.css';
 import styles from './AiGiftPresent.module.css';
 
@@ -42,7 +45,75 @@ interface AiGiftPresentProps {
   className?: string;
   labelFromWide?: boolean;
   planCreditsFirst?: boolean;
+  account?: PanelAccount;
 }
+
+// Whether the signed-in account pays for a plan, when the page knows. Left
+// out where it does not, and then the panel makes no claim about AI.
+export interface PanelAccount {
+  paying: boolean;
+}
+
+type NextUploadClaude =
+  | 'unknown'
+  | 'inUse'
+  | 'usedUp'
+  | 'short'
+  | 'on'
+  | 'onForPdfs'
+  | 'off';
+
+// A PDF made two pages per card, or not processed at all, never reaches
+// Claude on the server. The status answers for the account's saved options;
+// the browser's own copy is read here, since an upload sends that one.
+function pdfKeptFromClaude(
+  sent: Record<string, string>,
+  gift: ClaimedGift
+): boolean {
+  return (
+    gift.storedPdfSkipsClaude === true ||
+    sent['pdf-page-pairs'] === 'true' ||
+    sent['process-pdfs'] === 'false'
+  );
+}
+
+// The server answers what a PDF upload would get (claudeDefaultForPdf, from
+// the upload's own default rule) and whether that upload would have budget
+// (aiBudgetAvailable, from its own budget check); the panel only adds the
+// person's own switch. It promises Claude when the default or their switch
+// is on and the budget, the month and the gift allow it, says AI is off only
+// when they turned it off themselves, and otherwise makes no claim.
+function nextUploadClaude(
+  gift: ClaimedGift,
+  account: PanelAccount | undefined
+): NextUploadClaude {
+  if (account == null) return 'unknown';
+  if (gift.inUse === true) return 'inUse';
+  if (!account.paying && gift.credits <= 0) return 'usedUp';
+  const sent = savedCardSettings();
+  const switchedOn = sent['claude-ai-flashcards'] === 'true';
+  if (hasRecordedAiChoice() && !switchedOn) return 'off';
+  if (pdfKeptFromClaude(sent, gift)) return 'unknown';
+  const left = gift.monthlyCardsLeft;
+  const minimum = gift.minMonthlyCards;
+  const monthKnown = left != null && minimum != null;
+  if (!account.paying && monthKnown && left < minimum) return 'short';
+  const monthAllows = account.paying || monthKnown;
+  const claudeOn = gift.claudeDefaultForPdf === true || switchedOn;
+  if (claudeOn && gift.aiBudgetAvailable === true && monthAllows) {
+    return switchedOn ? 'on' : 'onForPdfs';
+  }
+  return 'unknown';
+}
+
+const CLAUDE_LINE: Record<Exclude<NextUploadClaude, 'unknown'>, string> = {
+  inUse: 'inUseNow',
+  usedUp: 'usedUp',
+  short: 'fewCardsLeft',
+  on: 'nextFile',
+  onForPdfs: 'nextPdf',
+  off: 'aiOffPlan',
+};
 
 const dateLocale = (language: string): string =>
   language.startsWith('en') ? 'en-GB' : language;
@@ -72,6 +143,67 @@ function refusalKey(reason: AiGiftRefusal): string {
 }
 
 type VisibleGift = Exclude<AiGiftStatus, { state: 'closed' }>;
+type ClaimedGift = Extract<AiGiftStatus, { state: 'claimed' }>;
+
+interface ClaimedBodyProps {
+  gift: ClaimedGift;
+  account: PanelAccount | undefined;
+  planCreditsFirst: boolean;
+  onChooseFile: () => void;
+  resultRef: RefCallback<HTMLParagraphElement>;
+}
+
+function ClaimedBody({
+  gift,
+  account,
+  planCreditsFirst,
+  onChooseFile,
+  resultRef,
+}: Readonly<ClaimedBodyProps>) {
+  const { t } = useTranslation('aiGift');
+  const language = useAppLanguage();
+  const date = formatGiftDate(gift.expiresAt, language);
+  const chooseFile = (
+    <button type="button" className={styles.claimButton} onClick={onChooseFile}>
+      {t('chooseFile')}
+    </button>
+  );
+
+  const state = nextUploadClaude(gift, account);
+  const paying = account?.paying !== false;
+  const lineKey = state === 'unknown' ? null : CLAUDE_LINE[state];
+  const offersFile =
+    state === 'on' ||
+    state === 'onForPdfs' ||
+    state === 'off' ||
+    state === 'short';
+
+  return (
+    <>
+      <p ref={resultRef} tabIndex={-1} className={styles.text}>
+        {paying
+          ? t('claimed', { count: gift.credits })
+          : t('balanceAlone', { count: gift.credits, date })}
+      </p>
+      {paying && <p className={styles.text}>{t('claimedExpires', { date })}</p>}
+      {paying && planCreditsFirst && (
+        <p className={styles.note}>{t('planFirst')}</p>
+      )}
+      {lineKey != null && (
+        <p className={styles.text}>
+          {t(lineKey, { count: gift.monthlyCardsLeft ?? 0 })}
+        </p>
+      )}
+      {state === 'onForPdfs' && (
+        <p className={styles.text}>{t('otherUploads')}</p>
+      )}
+      {(state === 'on' || state === 'onForPdfs') && (
+        <p className={styles.note}>{t('turnOffHint')}</p>
+      )}
+      {offersFile && chooseFile}
+    </>
+  );
+}
 
 interface PanelBodyProps {
   gift: VisibleGift;
@@ -81,9 +213,10 @@ interface PanelBodyProps {
   onClaim: () => void;
   onSignUp: () => void;
   onSignIn: () => void;
-  onUse: () => void;
+  onChooseFile: () => void;
   resultRef: RefCallback<HTMLParagraphElement>;
   planCreditsFirst: boolean;
+  account: PanelAccount | undefined;
 }
 
 function PanelBody({
@@ -94,14 +227,13 @@ function PanelBody({
   onClaim,
   onSignUp,
   onSignIn,
-  onUse,
+  onChooseFile,
   resultRef,
   planCreditsFirst,
+  account,
 }: Readonly<PanelBodyProps>) {
   const { t } = useTranslation('aiGift');
   const language = useAppLanguage();
-  const { pathname } = useLocation();
-  const onUploadPage = pathname === GIFT_RETURN_PATH;
 
   if (gift.state === 'full') {
     return (
@@ -113,32 +245,24 @@ function PanelBody({
 
   if (gift.state === 'claimed') {
     return (
-      <>
-        <p ref={resultRef} tabIndex={-1} className={styles.text}>
-          {t('claimed', { count: gift.credits })}
-        </p>
-        <p className={styles.text}>
-          {t('claimedExpires', {
-            date: formatGiftDate(gift.expiresAt, language),
-          })}
-        </p>
-        {planCreditsFirst && <p className={styles.note}>{t('planFirst')}</p>}
-        {!onUploadPage && (
-          <Link to={GIFT_RETURN_PATH} className={styles.link} onClick={onUse}>
-            {t('useThem')}
-          </Link>
-        )}
-      </>
+      <ClaimedBody
+        gift={gift}
+        account={account}
+        planCreditsFirst={planCreditsFirst}
+        onChooseFile={onChooseFile}
+        resultRef={resultRef}
+      />
     );
   }
 
   return (
     <>
       <p className={styles.text}>
-        {t('body', {
-          credits: gift.credits,
-          date: formatGiftDate(gift.expiresIfClaimedNow, language),
-        })}
+        {gift.lastsHours == null
+          ? t('bodyUntil', {
+              date: formatGiftDate(gift.expiresIfClaimedNow, language),
+            })
+          : t('body', { count: gift.lastsHours })}
       </p>
       <p className={styles.note}>
         {t('claimUntil', {
@@ -157,7 +281,7 @@ function PanelBody({
           onClick={onClaim}
           disabled={claiming}
         >
-          {claiming ? t('claiming') : t('claim', { credits: gift.credits })}
+          {claiming ? t('claiming') : t('claim')}
         </button>
       ) : (
         <>
@@ -166,10 +290,10 @@ function PanelBody({
             className={styles.claimButton}
             onClick={onSignUp}
           >
-            {t('signUpToClaim')}
+            {t('claim')}
           </button>
           <p className={styles.note}>
-            {t('haveAccount')}{' '}
+            {t('needsAccount')} {t('haveAccount')}{' '}
             <button
               type="button"
               className={styles.inlineLink}
@@ -190,6 +314,7 @@ export function AiGiftPresent({
   className,
   labelFromWide = false,
   planCreditsFirst = false,
+  account,
 }: Readonly<AiGiftPresentProps>) {
   const { t } = useTranslation('aiGift');
   const gift = useAiGift(isLoggedIn);
@@ -223,10 +348,59 @@ export function AiGiftPresent({
   const openedOnReturn = returnedToClaim && gift?.state === 'open';
   const open = openChoice ?? openedOnReturn;
 
+  const claim = async (automatic: boolean) => {
+    track(
+      'ai_gift_claim_clicked',
+      automatic
+        ? { signed_in: true, trigger: 'return', automatic: true }
+        : { signed_in: true, trigger: openedBy }
+    );
+    setClaiming(true);
+    setRefusal(null);
+    const result = await claimAiGift();
+    setClaiming(false);
+    if (result.ok) {
+      focusResultNext.current = true;
+      const claimed: AiGiftStatus = {
+        state: 'claimed',
+        credits: result.credits,
+        expiresAt: result.expiresAt,
+        feedbackDue: false,
+      };
+      queryClient.setQueriesData<AiGiftStatus>(
+        { queryKey: AI_GIFT_QUERY_KEY },
+        () => claimed
+      );
+      void queryClient.invalidateQueries({ queryKey: AI_GIFT_QUERY_KEY });
+      return;
+    }
+    if (result.reason === 'gift_budget_full') {
+      focusResultNext.current = true;
+      const full: AiGiftStatus = { state: 'full', feedbackDue: false };
+      queryClient.setQueriesData<AiGiftStatus>(
+        { queryKey: AI_GIFT_QUERY_KEY },
+        () => full
+      );
+      return;
+    }
+    setRefusal(result.reason);
+  };
+
+  const claimAs = useRef<(automatic: boolean) => Promise<void>>(
+    async () => undefined
+  );
   useEffect(() => {
-    if (!openedOnReturn) return;
+    claimAs.current = claim;
+  });
+  const claimedOnReturn = useRef(false);
+  useEffect(() => {
+    if (!openedOnReturn || claimedOnReturn.current) return;
+    claimedOnReturn.current = true;
     forgetClaimIntent();
     rememberGiftOpened();
+    setOpenedBy('return');
+    setOpen(true);
+    void claimAs.current(true);
   }, [openedOnReturn]);
 
   useGiftAutoOpen(
@@ -319,36 +493,11 @@ export function AiGiftPresent({
     setOpen(true);
   };
 
-  const onClaim = async () => {
-    track('ai_gift_claim_clicked', { signed_in: true, trigger: openedBy });
-    setClaiming(true);
-    setRefusal(null);
-    const result = await claimAiGift();
-    setClaiming(false);
-    if (result.ok) {
-      focusResultNext.current = true;
-      const claimed: AiGiftStatus = {
-        state: 'claimed',
-        credits: result.credits,
-        expiresAt: result.expiresAt,
-        feedbackDue: false,
-      };
-      queryClient.setQueriesData<AiGiftStatus>(
-        { queryKey: AI_GIFT_QUERY_KEY },
-        () => claimed
-      );
-      return;
-    }
-    if (result.reason === 'gift_budget_full') {
-      focusResultNext.current = true;
-      const full: AiGiftStatus = { state: 'full', feedbackDue: false };
-      queryClient.setQueriesData<AiGiftStatus>(
-        { queryKey: AI_GIFT_QUERY_KEY },
-        () => full
-      );
-      return;
-    }
-    setRefusal(result.reason);
+  const onChooseFile = () => {
+    const outcome = chooseUploadFile();
+    track('ai_gift_choose_file_clicked', { outcome });
+    setOpen(false);
+    if (outcome === 'page') navigate(GIFT_RETURN_PATH);
   };
 
   const leaveToAuth = (page: '/register' | '/login') => {
@@ -444,12 +593,13 @@ export function AiGiftPresent({
               isLoggedIn={isLoggedIn}
               claiming={claiming}
               refusal={refusal}
-              onClaim={onClaim}
+              onClaim={() => void claim(false)}
               onSignUp={() => leaveToAuth('/register')}
               onSignIn={() => leaveToAuth('/login')}
-              onUse={() => setOpen(false)}
+              onChooseFile={onChooseFile}
               resultRef={resultRef}
               planCreditsFirst={planCreditsFirst}
+              account={account}
             />
           </div>
           {!dismissed && (

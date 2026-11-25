@@ -172,6 +172,8 @@
     "fewCardsNoCredits_other": "Solo {{count}} carte sono nate da questo file. Claude può scriverne di più con i crediti IA.",
     "fewCardsPaidAi_one": "Solo {{count}} carta è nata da questo file. Con un piano a pagamento, Claude può ricavarne più carte.",
     "fewCardsPaidAi_other": "Solo {{count}} carte sono nate da questo file. Con un piano a pagamento, Claude può ricavarne più carte.",
+    "fewCardsGift_one": "Solo {{count}} carta è nata da questo file.",
+    "fewCardsGift_other": "Solo {{count}} carte sono nate da questo file.",
     "seeReport": "Vedi il rapporto completo"
   },
   "skippedAiFiles": {

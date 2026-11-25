@@ -3183,6 +3183,47 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     expect(res.set).toHaveBeenCalledWith('X-Credits-Used', '88');
   });
 
+  it.each([
+    ['a zip of notes', 'study-notes.zip', true],
+    ['a PDF', 'lecture.pdf', true],
+    ['an Anki deck', 'deck.apkg', false],
+    ['an XML file', 'export.xml', false],
+    ['an epub', 'book.epub', false],
+    ['Kindle clippings', 'My Clippings.txt', false],
+  ])(
+    'says whether Claude could have written %s',
+    async (_name, filename, eligible) => {
+      mockPackages([{ name: 'deck', cardCount: 12 }]);
+      const service = new UploadService(
+        buildRepository(),
+        {} as JobRepository,
+        buildUsersRepo(),
+        ...fakeUploadServiceDeps()
+      );
+      const req = buildRequest({
+        files: [
+          {
+            originalname: filename,
+            mimetype: 'application/octet-stream',
+            size: 1024,
+            path: `/tmp/${filename}`,
+          } as unknown as Express.Multer.File,
+        ],
+      });
+      const { res } = buildResponse();
+      (res.locals as Record<string, unknown>).owner = 42;
+
+      await service.handleUpload(req, res);
+
+      const setCalls = vi.mocked(res.set).mock.calls as unknown[][];
+      expect(
+        setCalls.some(
+          ([name, value]) => name === 'X-Claude-Eligible' && value === '1'
+        )
+      ).toBe(eligible);
+    }
+  );
+
   it('omits X-Credits-Used when the conversion recorded no AI cost', async () => {
     mockPackages([{ name: 'deck', cardCount: 12 }]);
     const costByRequestId = vi.fn().mockResolvedValue(0);

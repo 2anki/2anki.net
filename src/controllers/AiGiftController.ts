@@ -1,5 +1,6 @@
 import type express from 'express';
 import { getOwnerId } from '../lib/User/getOwner';
+import { isPaying } from '../lib/isPaying';
 import { ipRateLimitBucket, resolveClientIp } from '../lib/rateLimit/ipHelpers';
 import hmacToken from '../lib/misc/hmacToken';
 import type { GetAiGiftStatusUseCase } from '../usecases/ai/aiGift/GetAiGiftStatusUseCase';
@@ -46,7 +47,10 @@ export class AiGiftController {
   ) {}
 
   async getStatus(_req: express.Request, res: express.Response) {
-    const result = await this.status.execute(getOwnerId(res));
+    const result = await this.status.execute(
+      getOwnerId(res),
+      isPaying(res.locals)
+    );
     res.set('Cache-Control', 'private, no-store');
     switch (result.state) {
       case 'open':
@@ -56,6 +60,10 @@ export class AiGiftController {
           expiresIfClaimedNow: result.expiresIfClaimedNow.toISOString(),
           claimClosesAt: result.claimClosesAt.toISOString(),
           feedbackDue: false,
+          ...(result.lastsHours == null
+            ? {}
+            : { lastsHours: result.lastsHours }),
+          minMonthlyCards: result.minMonthlyCards,
         });
       case 'claimed':
         return res.json({
@@ -63,6 +71,12 @@ export class AiGiftController {
           credits: result.credits,
           expiresAt: result.expiresAt.toISOString(),
           feedbackDue: result.feedbackDue,
+          inUse: result.inUse,
+          minMonthlyCards: result.minMonthlyCards,
+          claudeDefaultForPdf: result.claudeDefaultForPdf,
+          aiBudgetAvailable: result.aiBudgetAvailable,
+          storedPdfSkipsClaude: result.storedPdfSkipsClaude,
+          monthlyCardsLeft: result.monthlyCardsLeft,
         });
       case 'full':
         return res.json({ state: 'full', feedbackDue: false });

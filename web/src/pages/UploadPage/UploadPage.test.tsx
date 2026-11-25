@@ -34,7 +34,10 @@ vi.mock('../../lib/analytics/track', () => ({
 }));
 
 const scheduleSyncMock = vi.fn();
-vi.mock('../../lib/data_layer/userPreferencesSync', () => ({
+vi.mock('../../lib/data_layer/userPreferencesSync', async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import('../../lib/data_layer/userPreferencesSync')
+  >()),
   scheduleSync: (...args: unknown[]) => scheduleSyncMock(...args),
 }));
 
@@ -512,6 +515,55 @@ describe('UploadPage Claude cards on by default for PDFs and PowerPoint', () => 
     expect(
       screen.getByRole('button', { name: /turn ai off/i })
     ).toHaveTextContent('AI is on');
+    fakeGift = null;
+  });
+
+  it('shows AI on for PDF and PowerPoint when the gift turns Claude on by default, with the switch to turn it off', () => {
+    fakeLocals = { patreon: false, subscriber: false };
+    fakeGift = {
+      state: 'claimed',
+      credits: 100,
+      expiresAt: '2026-11-27T12:00:00.000Z',
+      feedbackDue: false,
+      claudeDefaultForPdf: true,
+      aiBudgetAvailable: true,
+      monthlyCardsLeft: 80,
+    };
+    renderPage();
+
+    const toggle = screen.getByRole('button', { name: /turn ai off/i });
+    expect(toggle).toHaveTextContent('AI is on for PDF and PowerPoint');
+    expect(
+      screen.getByText(/Your free AI credits pay for Claude cards/)
+    ).toBeInTheDocument();
+
+    fireEvent.click(toggle);
+
+    expect(globalThis.localStorage.getItem('claude-ai-flashcards')).toBe(
+      'false'
+    );
+    expect(
+      screen.getByRole('button', { name: /turn ai on/i })
+    ).toHaveTextContent('AI is off');
+    fakeGift = null;
+  });
+
+  it('keeps the gift switch off for an account whose gift does not turn Claude on by default', () => {
+    fakeLocals = { patreon: false, subscriber: false };
+    fakeGift = {
+      state: 'claimed',
+      credits: 100,
+      expiresAt: '2026-11-27T12:00:00.000Z',
+      feedbackDue: false,
+      claudeDefaultForPdf: false,
+      aiBudgetAvailable: true,
+      monthlyCardsLeft: 80,
+    };
+    renderPage();
+
+    expect(
+      screen.getByRole('button', { name: /turn ai on/i })
+    ).toHaveTextContent('AI is off');
     fakeGift = null;
   });
 

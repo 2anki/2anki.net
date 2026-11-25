@@ -37,6 +37,7 @@ import {
 import { LastDeckOffer } from './LastDeckOffer';
 import { keepLastDeck } from '../../../../lib/upload/lastDeck';
 import { reportUploadZoneActivity } from '../../../../lib/upload/uploadZoneActivity';
+import { registerUploadEntry } from '../../../../lib/upload/uploadEntry';
 import { BuyCreditsButton } from '../../../../components/BuyCreditsButton/BuyCreditsButton';
 import { getDownloadFileName } from '../../../DownloadsPage/helpers/getDownloadFileName';
 import { ImageDropNotice } from '../../../DownloadsPage/components/ImageDropNotice';
@@ -90,7 +91,11 @@ import {
   type AiCreditsRead,
   useAiCreditsRead,
 } from '../../../../lib/hooks/useAiCredits';
-import { AI_GIFT_QUERY_KEY } from '../../../../lib/hooks/useAiGift';
+import {
+  AI_GIFT_QUERY_KEY,
+  useAiGiftFromHeader,
+} from '../../../../lib/hooks/useAiGift';
+import { useActiveGiftBalance } from '../../../../components/AiGift/useAiGiftBalanceLine';
 import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
 import { fireAnalyticsEvent } from '../../../../lib/analytics/fireAnalyticsEvent';
 import { track } from '../../../../lib/analytics/track';
@@ -840,6 +845,8 @@ function UploadForm({
     setAiPreviewCards,
     aiPreviewUnavailable,
     setAiPreviewUnavailable,
+    claudeEligible,
+    setClaudeEligible,
     setOverSplit,
     creditsUsed,
     setCreditsUsed,
@@ -963,6 +970,7 @@ function UploadForm({
     setHeldDeck,
     setAiPreviewCards,
     setAiPreviewUnavailable,
+    setClaudeEligible,
     setZoneState: (state) => {
       setDeckKeptForAccount(keptForAccountRef.current);
       keptForAccountRef.current = false;
@@ -1688,7 +1696,33 @@ function UploadForm({
     );
   };
 
+  const giftCanPay = isAuthenticated && !isPaying;
+  const gift = useAiGiftFromHeader(isAuthenticated);
+  const giftBalance = useActiveGiftBalance(giftCanPay ? gift : null);
+  const giftRedoSlot =
+    zoneState === 'success' &&
+    giftCanPay &&
+    !aiOn &&
+    !lastSubmitUsedAi &&
+    !sampleRun &&
+    !downloadRecovered &&
+    cardsHeldBack === 0 &&
+    rescueFiles.length > 0 &&
+    claudeEligible &&
+    giftBalance != null &&
+    gift?.state === 'claimed' &&
+    gift.inUse !== true &&
+    gift.minMonthlyCards != null &&
+    gift.monthlyCardsLeft != null &&
+    gift.monthlyCardsLeft >= gift.minMonthlyCards;
+  const giftRedoOffered = giftRedoSlot && !keptFilesBelongElsewhere;
+  const giftRedoDeck = giftRedoOffered ? (downloadLink ?? deckName) : null;
+  useEffect(() => {
+    if (giftRedoDeck != null) track('ai_gift_redo_shown');
+  }, [giftRedoDeck]);
+
   const thinDeckSlot =
+    !giftRedoOffered &&
     !aiOn &&
     !lastSubmitUsedAi &&
     !sampleRun &&
@@ -1703,7 +1737,10 @@ function UploadForm({
     zoneState === 'success' &&
     !aiOn &&
     cardsHeldBack === 0 &&
-    (thinDeckOfferFile == null || sampleRun || lastSubmitUsedAi) &&
+    (giftRedoOffered ||
+      thinDeckOfferFile == null ||
+      sampleRun ||
+      lastSubmitUsedAi) &&
     isThinPdfOrTxtDeck(cardCount, currentFilename());
   const creditsRead = useAiCreditsRead(
     thinNoticeDeck && isAuthenticated && isPaying
@@ -1727,16 +1764,18 @@ function UploadForm({
   // rewrite the notice under the person reading it.
   const creditsWaitEnded =
     downloadLink != null && creditsWaitEndedFor === downloadLink;
-  const thinNoticeReason = thinDeckNoticeReason(
-    isPaying,
-    isAuthenticated,
-    creditsWaitEnded ? { credits: null, settled: true } : creditsRead
-  );
+  const thinNoticeReason: ThinDeckReason | null = giftRedoOffered
+    ? 'fewCardsGift'
+    : thinDeckNoticeReason(
+        isPaying,
+        isAuthenticated,
+        creditsWaitEnded ? { credits: null, settled: true } : creditsRead
+      );
 
   // The line saying the session changed takes the place of an offer: one this
   // deck showed before the change, or one the session now on the page would
   // get. A deck that never had an offer gets no line.
-  const successOfferOnScreen = thinDeckAiOffer != null;
+  const successOfferOnScreen = thinDeckAiOffer != null || giftRedoOffered;
   const [successOfferShown, setSuccessOfferShown] = useState(false);
   useEffect(() => {
     if (zoneState !== 'success') {
@@ -1746,7 +1785,8 @@ function UploadForm({
     }
   }, [zoneState, successOfferOnScreen]);
   const successSignInChanged =
-    keptFilesBelongElsewhere && (successOfferShown || thinDeckSlot != null);
+    keptFilesBelongElsewhere &&
+    (successOfferShown || thinDeckSlot != null || giftRedoSlot);
 
   const networkErrorOnScreen =
     zoneState === 'error' &&
@@ -2537,6 +2577,21 @@ function UploadForm({
     reportUploadZoneActivity(zoneIdle ? 'idle' : 'busy');
   }, [zoneIdle]);
   useEffect(() => () => reportUploadZoneActivity('absent'), []);
+  useEffect(() => {
+    const showZone = () => {
+      document
+        .getElementById('upload-panel-local')
+        ?.scrollIntoView?.({ block: 'center' });
+      fileInputRef.current?.focus({ preventScroll: true });
+    };
+    return registerUploadEntry({
+      openPicker: () => {
+        showZone();
+        fileInputRef.current?.click();
+      },
+      showZone,
+    });
+  }, []);
   const resumeCheckedRef = useRef(false);
   const resumedUploadRef = useRef(false);
 
@@ -3380,6 +3435,24 @@ function UploadForm({
           {thinNoticeReason === 'fewCardsNoCredits' && (
             <BuyCreditsButton source="credits_conversion" variant="secondary" />
           )}
+        </div>
+      )}
+      {giftRedoOffered && !switchLineShown && (
+        <div className={formStyles.aiRescueActions}>
+          <p className={formStyles.rescueLead}>{t('aiGift:redo')}</p>
+          <button
+            type="button"
+            className={formStyles.aiRescueButton}
+            disabled={resendPending}
+            aria-busy={resendTapped === 'giftRedo'}
+            onClick={() =>
+              rerunWithAi(rescueFiles, 'giftRedo', () =>
+                track('ai_gift_redo_clicked')
+              )
+            }
+          >
+            {resendLabel('giftRedo', t('aiGift:redoAction'))}
+          </button>
         </div>
       )}
       {renderClaudeResendHeld()}

@@ -18,15 +18,43 @@ import {
   AI_GIFT_TOTAL_BUDGET_CREDITS,
 } from '../lib/claude/aiCredits/gift/giftTerms';
 import { track } from '../services/events/track';
+import { computeAiGiftBalance } from '../lib/claude/aiCredits/gift/giftBalance';
+import type { AiCreditBalance } from '../lib/claude/aiCredits/balance';
+import {
+  releaseGiftMarker,
+  resetGiftMarkers,
+  takeGiftMarker,
+} from '../lib/claude/aiCredits/gift/giftConversionMarker';
 
 const trackMock = track as Mock;
 const OPENING = new Date('2026-11-25T12:00:00.000Z');
 const CLAIMS_THAT_FIT =
   AI_GIFT_TOTAL_BUDGET_CREDITS / AI_GIFT_CREDITS_PER_CLAIM;
 
+interface ClaudeDefaultFixture {
+  cardsLeft: number;
+  stored: Record<string, string> | null;
+  latestToggle: string | null;
+  planCredits: number | null;
+  fails?: boolean;
+}
+
+function planBalance(credits: number): AiCreditBalance {
+  return {
+    rawCredits: credits,
+    credits,
+    spent: 300 - credits,
+    allowance: 300,
+    windowStart: new Date('2026-11-01T00:00:00.000Z'),
+    windowEnd: new Date('2026-12-01T00:00:00.000Z'),
+    resets: 'period',
+  };
+}
+
 interface Harness {
   url: string;
   gifts: InMemoryAiCreditGiftsRepository;
+  claudeDefault: ClaudeDefaultFixture;
   setNow: (date: Date) => void;
   setEnabled: (enabled: boolean) => void;
   close: () => Promise<void>;
@@ -40,17 +68,58 @@ async function startHarness(): Promise<Harness> {
     (at) => gifts.exposureCredits(at),
     () => 0
   );
+  const claudeDefault: ClaudeDefaultFixture = {
+    cardsLeft: 90,
+    stored: null,
+    latestToggle: null,
+    planCredits: null,
+  };
+  const giftReaders = () => ({
+    isEnabled: async () => enabled,
+    findGrant: (userId: number) => gifts.findGrant(userId),
+    giftCostSince: (giftId: number, userId: number, since: Date) =>
+      gifts.giftCostSince(giftId, userId, since),
+    now: () => now,
+    planSpent: async () =>
+      claudeDefault.planCredits != null && claudeDefault.planCredits <= 0,
+  });
   const deps: AiGiftDeps = {
     gifts,
     isEnabled: async () => enabled,
     exposureCredits: (at) => gifts.exposureCredits(at),
     forgetExposure: exposure.forget,
     now: () => now,
+    claudeDefault: {
+      remainingMonthlyCards: async () => {
+        if (claudeDefault.fails) throw new Error('db down');
+        return claudeDefault.cardsLeft;
+      },
+      storedCardOptions: async () => claudeDefault.stored,
+      latestAiToggleEventName: async () => claudeDefault.latestToggle,
+      giftReaders,
+      budgetDeps: {
+        computeBalance: async () =>
+          claudeDefault.planCredits == null
+            ? null
+            : planBalance(claudeDefault.planCredits),
+        computeGiftBalance: (userId, at) =>
+          computeAiGiftBalance(userId, at, giftReaders()),
+        reader: {
+          userRecordedCostSince: async () => 0,
+          eventCountSince: async () => 0,
+        },
+        sendAlert: async () => undefined,
+        now: () => now,
+      },
+    },
   };
   const signedIn: express.RequestHandler = (req, res, next) => {
     const user = req.header('x-test-user');
     if (user != null) {
       res.locals.owner = Number(user);
+    }
+    if (req.header('x-test-paying') === '1') {
+      res.locals.subscriber = true;
     }
     next();
   };
@@ -72,6 +141,7 @@ async function startHarness(): Promise<Harness> {
   return {
     url: `http://127.0.0.1:${(server.address() as AddressInfo).port}`,
     gifts,
+    claudeDefault,
     setNow: (date) => {
       now = date;
     },
@@ -128,6 +198,7 @@ beforeAll(() => {
 
 beforeEach(async () => {
   trackMock.mockClear();
+  resetGiftMarkers();
   h = await startHarness();
 });
 
@@ -169,16 +240,30 @@ describe('GET /api/ai/gift while the gift is open', () => {
         expiresIfClaimedNow: '2026-11-27T12:00:00.000Z',
         claimClosesAt: '2026-12-04T20:00:00.000Z',
         feedbackDue: false,
+        lastsHours: 48,
+        minMonthlyCards: 20,
       },
     });
   });
 
-  it('tells a visitor late in the window when a claim made now would expire', async () => {
-    h.setNow(new Date('2026-12-04T10:00:00.000Z'));
+  it('offers a signed-in account that has not claimed the same open body', async () => {
+    expect((await getGift(h, 6)).body).toEqual({
+      state: 'open',
+      credits: 100,
+      expiresIfClaimedNow: '2026-11-27T12:00:00.000Z',
+      claimClosesAt: '2026-12-04T20:00:00.000Z',
+      feedbackDue: false,
+      lastsHours: 48,
+      minMonthlyCards: 20,
+    });
+  });
 
-    expect((await getGift(h, null)).body.expiresIfClaimedNow).toBe(
-      '2026-12-04T22:00:00.000Z'
-    );
+  it('tells a visitor late in the window when a claim made now would expire, and drops the full length it no longer gets', async () => {
+    h.setNow(new Date('2026-12-04T10:00:00.000Z'));
+    const body = (await getGift(h, null)).body;
+
+    expect(body.expiresIfClaimedNow).toBe('2026-12-04T22:00:00.000Z');
+    expect(body).not.toHaveProperty('lastsHours');
   });
 
   it('closes for everyone without a gift once claims close', async () => {
@@ -209,6 +294,12 @@ describe('POST /api/ai/gift/claim', () => {
       credits: 100,
       expiresAt: '2026-11-27T12:00:00.000Z',
       feedbackDue: false,
+      inUse: false,
+      minMonthlyCards: 20,
+      claudeDefaultForPdf: true,
+      aiBudgetAvailable: true,
+      storedPdfSkipsClaude: false,
+      monthlyCardsLeft: 90,
     });
     expect(eventsNamed('ai_gift_claimed')).toEqual([
       [
@@ -219,6 +310,17 @@ describe('POST /api/ai/gift/claim', () => {
         }),
       ],
     ]);
+  });
+
+  it('says the gift is in use while a conversion holds the account marker', async () => {
+    await claim(h, 5);
+    const marker = takeGiftMarker(5, OPENING.getTime());
+
+    expect((await getGift(h, 5)).body.inUse).toBe(true);
+    expect((await getGift(h, 6)).body.state).toBe('open');
+
+    releaseGiftMarker(marker);
+    expect((await getGift(h, 5)).body.inUse).toBe(false);
   });
 
   it('stores a keyed hash of the network, never the address', async () => {
@@ -366,6 +468,112 @@ describe('the gift budget', () => {
   });
 });
 
+describe('what the next PDF upload would get, answered by the upload rule', () => {
+  beforeEach(async () => {
+    await claim(h, 5);
+  });
+
+  const next = async (paying = false) => {
+    const res = await fetch(h.url + '/api/ai/gift', {
+      headers: paying ? { ...headers(5), 'x-test-paying': '1' } : headers(5),
+    });
+    return res.json();
+  };
+
+  it('turns Claude on, with budget, for an account with no plan whose gift pays and that never chose', async () => {
+    expect(await next()).toMatchObject({
+      claudeDefaultForPdf: true,
+      aiBudgetAvailable: true,
+      storedPdfSkipsClaude: false,
+      monthlyCardsLeft: 90,
+    });
+  });
+
+  it('keeps the default for a paying account with plan credits left', async () => {
+    h.claudeDefault.planCredits = 120;
+
+    expect(await next(true)).toMatchObject({
+      claudeDefaultForPdf: true,
+      aiBudgetAvailable: true,
+    });
+  });
+
+  it('has no budget for a paying account whose plan credits are spent, gift or not', async () => {
+    h.claudeDefault.planCredits = 0;
+
+    expect(await next(true)).toMatchObject({
+      claudeDefaultForPdf: true,
+      aiBudgetAvailable: false,
+    });
+  });
+
+  it('records no exhausted event when the status is read for a paying account with spent plan credits', async () => {
+    h.claudeDefault.planCredits = 0;
+
+    await next(true);
+    await new Promise((resolve) => setImmediate(resolve));
+
+    expect(eventsNamed('ai_credits_exhausted')).toEqual([]);
+  });
+
+  it.each([
+    ['nothing saved', null, false],
+    ['two PDF pages per card saved', { 'pdf-page-pairs': 'true' }, true],
+    ['PDF processing off saved', { 'process-pdfs': 'false' }, true],
+  ])(
+    'says whether the account’s saved options keep a PDF from Claude, with %s',
+    async (_case, stored, skips) => {
+      h.claudeDefault.stored = stored;
+
+      expect((await next()).storedPdfSkipsClaude).toBe(skips);
+    }
+  );
+
+  it('is off once the account recorded turning AI off', async () => {
+    h.claudeDefault.latestToggle = 'upload_ai_turned_off';
+
+    expect((await next()).claudeDefaultForPdf).toBe(false);
+  });
+
+  it('is off, with the count, when the month has too few cards left', async () => {
+    h.claudeDefault.cardsLeft = 12;
+
+    expect(await next()).toMatchObject({
+      claudeDefaultForPdf: false,
+      monthlyCardsLeft: 12,
+    });
+  });
+
+  it('is off while a gift conversion runs', async () => {
+    takeGiftMarker(5, OPENING.getTime());
+
+    expect(await next()).toMatchObject({
+      claudeDefaultForPdf: false,
+      inUse: true,
+    });
+  });
+
+  it('has neither the default nor budget once an account with no plan used up its gift', async () => {
+    h.gifts.spend.push({ giftId: 1, userId: 5, costUsd: 5, at: OPENING });
+
+    expect(await next()).toMatchObject({
+      credits: 0,
+      claudeDefaultForPdf: false,
+      aiBudgetAvailable: false,
+    });
+  });
+
+  it('is unknown, never on, when the reads fail', async () => {
+    h.claudeDefault.fails = true;
+
+    expect(await next()).toMatchObject({
+      claudeDefaultForPdf: null,
+      aiBudgetAvailable: null,
+      monthlyCardsLeft: null,
+    });
+  });
+});
+
 describe('the one question after a gift-funded conversion', () => {
   beforeEach(async () => {
     await claim(h, 5);
@@ -383,6 +591,12 @@ describe('the one question after a gift-funded conversion', () => {
       credits: 63,
       expiresAt: '2026-11-27T12:00:00.000Z',
       feedbackDue: true,
+      inUse: false,
+      minMonthlyCards: 20,
+      claudeDefaultForPdf: true,
+      aiBudgetAvailable: true,
+      storedPdfSkipsClaude: false,
+      monthlyCardsLeft: 90,
     });
   });
 

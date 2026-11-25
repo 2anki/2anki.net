@@ -640,6 +640,25 @@ describe('applyConversionSuccess', () => {
     expect(handlers.setAiPreviewUnavailable).toHaveBeenCalledWith(false);
   });
 
+  it.each([
+    [
+      'says Claude could have written the deck',
+      { 'X-Claude-Eligible': '1' },
+      true,
+    ],
+    ['says Claude could not have written the deck', {}, false],
+  ])(
+    '%s from the X-Claude-Eligible header',
+    async (_case, headers, eligible) => {
+      const setClaudeEligible = vi.fn();
+      const handlers = { ...buildHandlers(), setClaudeEligible };
+
+      await applyConversionSuccess(singleDeckResponse(headers), handlers);
+
+      expect(setClaudeEligible).toHaveBeenCalledWith(eligible);
+    }
+  );
+
   it('flags over-split output from the X-Over-Split header', async () => {
     const handlers = buildHandlers();
 

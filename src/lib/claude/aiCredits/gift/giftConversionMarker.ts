@@ -12,12 +12,19 @@ export interface GiftMarker {
 
 const markers = new Map<number, { token: symbol; takenAt: number }>();
 
+export function giftMarkerHeld(
+  userId: number,
+  now: number = Date.now()
+): boolean {
+  const held = markers.get(userId);
+  return held != null && now - held.takenAt < AI_GIFT_MARKER_MAX_AGE_MS;
+}
+
 export function takeGiftMarker(
   userId: number,
   now: number = Date.now()
 ): GiftMarker | null {
-  const held = markers.get(userId);
-  if (held != null && now - held.takenAt < AI_GIFT_MARKER_MAX_AGE_MS) {
+  if (giftMarkerHeld(userId, now)) {
     return null;
   }
   const token = Symbol('gift-marker');

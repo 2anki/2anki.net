@@ -21,6 +21,7 @@ import { getLocalStorageBooleanValue } from '../../lib/data_layer/getLocalStorag
 import { getLocalStorageValue } from '../../lib/data_layer/getLocalStorageValue';
 import CardOption from '../../lib/data_layer/model/CardOption';
 import { saveValueInLocalStorage } from '../../lib/data_layer/saveValueInLocalStorage';
+import { useAiGiftFromHeader } from '../../lib/hooks/useAiGift';
 import {
   hasRecordedAiChoice,
   recordAiChoice,
@@ -532,10 +533,15 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
     const [aiChoiceRecorded, setAiChoiceRecorded] = useState(() =>
       hasRecordedAiChoice()
     );
+    const gift = useAiGiftFromHeader(isLoggedIn);
+    const giftTurnsClaudeOn =
+      gift?.state === 'claimed' && gift.claudeDefaultForPdf === true;
     const claudeOnForPdfsByDefault =
       pageId == null &&
       !aiChoiceRecorded &&
-      userLocals?.claudeCardsByDefault === true &&
+      (isPaying
+        ? userLocals?.claudeCardsByDefault === true
+        : giftTurnsClaudeOn) &&
       checkboxValues['pdf-page-pairs'] !== true;
 
     useEffect(() => {
@@ -1269,7 +1275,11 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
                       {o.key === 'claude-ai-flashcards' &&
                         claudeOnForPdfsByDefault && (
                           <p className={fieldStyles.sectionHint}>
-                            {t('upload.page.aiOnForPdfsBody')}
+                            {t(
+                              isPaying
+                                ? 'upload.page.aiOnForPdfsBody'
+                                : 'upload.page.aiOnForPdfsGiftBody'
+                            )}
                           </p>
                         )}
                       {o.key === 'cherry' &&

@@ -9,8 +9,17 @@ vi.mock('../../lib/analytics/track', () => ({ track: vi.fn() }));
 
 import { track } from '../../lib/analytics/track';
 import { forgetNoticesShownThisLoad } from '../../lib/analytics/trackNoticeOncePerLoad';
-import { AiGiftPresent, formatGiftDate } from './AiGiftPresent';
+import {
+  AiGiftPresent,
+  formatGiftDate,
+  type PanelAccount,
+} from './AiGiftPresent';
 import { rememberClaimIntent } from './giftUiState';
+import {
+  registerUploadEntry,
+  resetUploadEntryForTests,
+} from '../../lib/upload/uploadEntry';
+import { reportUploadZoneActivity } from '../../lib/upload/uploadZoneActivity';
 
 const OPEN = {
   state: 'open',
@@ -18,6 +27,20 @@ const OPEN = {
   expiresIfClaimedNow: '2026-11-27T12:00:00.000Z',
   claimClosesAt: '2026-12-04T20:00:00.000Z',
   feedbackDue: false,
+  lastsHours: 48,
+  minMonthlyCards: 20,
+};
+
+const CLAIMED = {
+  state: 'claimed',
+  credits: 100,
+  expiresAt: '2026-11-27T12:00:00.000Z',
+  feedbackDue: false,
+  inUse: false,
+  minMonthlyCards: 20,
+  claudeDefaultForPdf: true,
+  aiBudgetAvailable: true,
+  monthlyCardsLeft: 80,
 };
 
 const reply = (status: number, body: unknown) => ({
@@ -27,16 +50,22 @@ const reply = (status: number, body: unknown) => ({
   json: async () => body,
 });
 
-function routeFetch(gift: unknown, claim?: ReturnType<typeof reply>) {
+function routeFetch(
+  gift: unknown,
+  claim?: ReturnType<typeof reply>,
+  afterClaim: unknown = CLAIMED
+) {
   const calls: Array<{ url: string; method: string }> = [];
+  let claimed = false;
   globalThis.fetch = vi.fn(async (url: string, init?: { method?: string }) => {
     const method = init?.method ?? 'GET';
     calls.push({ url: String(url), method });
     if (String(url).endsWith('/api/ai/gift/claim')) {
+      claimed = true;
       return claim ?? reply(200, {});
     }
     if (String(url).endsWith('/api/ai/gift')) {
-      return reply(200, gift);
+      return reply(200, claimed ? afterClaim : gift);
     }
     return reply(200, {});
   }) as unknown as typeof fetch;
@@ -48,7 +77,26 @@ function Where() {
   return <p data-testid="where">{location.pathname + location.search}</p>;
 }
 
-function renderPresent(isLoggedIn: boolean, planCreditsFirst?: boolean) {
+const CLAIM_OK = () =>
+  reply(200, { credits: 100, expiresAt: '2026-11-27T12:00:00.000Z' });
+
+const BALANCE = `100 free AI credits left until ${formatGiftDate('2026-11-27T12:00:00.000Z', 'en')}.`;
+
+const eventsNamed = (name: string) =>
+  vi.mocked(track).mock.calls.filter(([event]) => event === name);
+
+function accountFor(
+  giftPaysForClaude: boolean | undefined
+): PanelAccount | undefined {
+  if (giftPaysForClaude == null) return undefined;
+  return { paying: !giftPaysForClaude };
+}
+
+function renderPresent(
+  isLoggedIn: boolean,
+  planCreditsFirst?: boolean,
+  giftPaysForClaude?: boolean
+) {
   return render(
     <QueryClientProvider
       client={
@@ -59,6 +107,7 @@ function renderPresent(isLoggedIn: boolean, planCreditsFirst?: boolean) {
         <AiGiftPresent
           isLoggedIn={isLoggedIn}
           planCreditsFirst={planCreditsFirst}
+          account={accountFor(giftPaysForClaude)}
         />
         <Routes>
           <Route path="*" element={<Where />} />
@@ -75,6 +124,8 @@ beforeEach(async () => {
   await i18n.changeLanguage('en');
   localStorage.clear();
   forgetNoticesShownThisLoad();
+  resetUploadEntryForTests();
+  reportUploadZoneActivity('absent');
   vi.mocked(track).mockClear();
 });
 
@@ -102,11 +153,16 @@ describe('AiGiftPresent', () => {
 
     fireEvent.click(await trigger());
 
-    const panel = screen.getByRole('dialog', { name: 'Free AI credits' });
+    const panel = screen.getByRole('dialog', {
+      name: 'Claude writes your flashcards, free',
+    });
     expect(panel).toHaveTextContent(
-      `Claim 100 AI credits for Claude cards on your uploads. Claimed now, they expire on ${formatGiftDate('2026-11-27T12:00:00.000Z', 'en')}.`
+      'Drop in your notes, a PDF, or a photo and Claude writes the cards. The credits last 48 hours from when you claim them, enough for about 3 decks.'
     );
-    expect(panel).toHaveTextContent('You can claim them until');
+    expect(panel).toHaveTextContent(
+      `Claim by ${formatGiftDate('2026-12-04T20:00:00.000Z', 'en')}.`
+    );
+    expect(panel).not.toHaveTextContent('Claude cards');
     expect(track).toHaveBeenCalledWith('ai_gift_opened', {
       state: 'open',
       signed_in: false,
@@ -114,12 +170,15 @@ describe('AiGiftPresent', () => {
     });
   });
 
-  test('sends a signed-out visitor to sign up, returning to the upload page, without claiming', async () => {
+  test('sends a signed-out visitor to sign up from a claim button, returning to the upload page, without claiming', async () => {
     const calls = routeFetch(OPEN);
     renderPresent(false);
 
     fireEvent.click(await trigger());
-    fireEvent.click(screen.getByRole('button', { name: 'Sign up to claim' }));
+    expect(screen.getByRole('dialog')).toHaveTextContent(
+      'Claiming takes a free account. Have an account? Sign in'
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Claim free credits' }));
 
     expect(screen.getByTestId('where')).toHaveTextContent(
       '/register?redirect=%2Fupload'
@@ -144,45 +203,370 @@ describe('AiGiftPresent', () => {
     );
   });
 
-  test('opens the panel on return from sign-up so one more press claims, and claims nothing by itself', async () => {
-    const calls = routeFetch(OPEN);
+  test('claims by itself on return from sign-up and shows what the gift does next', async () => {
+    const calls = routeFetch(OPEN, CLAIM_OK());
     rememberClaimIntent(Date.now());
 
-    renderPresent(true);
+    renderPresent(true, false, true);
 
     expect(
-      await screen.findByRole('button', { name: 'Claim 100 credits' })
-    ).toBeInTheDocument();
-    expect(calls.some((c) => c.method === 'POST')).toBe(false);
-  });
-
-  test('claims for a signed-in account and shows the credits and when they expire', async () => {
-    const calls = routeFetch(
-      OPEN,
-      reply(200, { credits: 100, expiresAt: '2026-11-27T12:00:00.000Z' })
-    );
-    renderPresent(true);
-
-    fireEvent.click(await trigger());
-    fireEvent.click(screen.getByRole('button', { name: 'Claim 100 credits' }));
-
-    const claimed = await screen.findByText(
-      'You have 100 AI credits from the gift.'
-    );
-    expect(claimed).toHaveFocus();
-    expect(claimed.closest('[aria-live="polite"]')).not.toBeNull();
-    expect(
-      screen.getByText(
-        `They expire on ${formatGiftDate('2026-11-27T12:00:00.000Z', 'en')}. Turn on Claude cards and drop a file to use them.`
+      await screen.findByText(
+        'Claude will write the cards for your next PDF or PowerPoint file.'
       )
     ).toBeInTheDocument();
     expect(
       calls.filter((c) => c.url.endsWith('/claim') && c.method === 'POST')
     ).toHaveLength(1);
-    expect(track).toHaveBeenCalledWith('ai_gift_claim_clicked', {
-      signed_in: true,
-      trigger: 'click',
+    expect(
+      screen.getByRole('button', { name: 'Choose a file' })
+    ).toBeInTheDocument();
+    expect(eventsNamed('ai_gift_claim_clicked')).toEqual([
+      [
+        'ai_gift_claim_clicked',
+        { signed_in: true, trigger: 'return', automatic: true },
+      ],
+    ]);
+  });
+
+  test('claims on return for an account with a plan', async () => {
+    const calls = routeFetch(OPEN, CLAIM_OK());
+    rememberClaimIntent(Date.now());
+
+    renderPresent(true, true, false);
+
+    expect(
+      await screen.findByText('You have 100 AI credits from the gift.')
+    ).toBeInTheDocument();
+    expect(
+      calls.filter((c) => c.url.endsWith('/claim') && c.method === 'POST')
+    ).toHaveLength(1);
+  });
+
+  test('claims for an account with no plan, stores nothing, and says Claude writes the next PDF', async () => {
+    routeFetch(OPEN, CLAIM_OK());
+    renderPresent(true, false, true);
+
+    fireEvent.click(await trigger());
+    fireEvent.click(screen.getByRole('button', { name: 'Claim free credits' }));
+
+    expect(await screen.findByText(BALANCE)).toHaveFocus();
+    expect(
+      await screen.findByText(
+        'Claude will write the cards for your next PDF or PowerPoint file.'
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toHaveTextContent(
+      'Other uploads get cards from their structure.'
+    );
+    expect(screen.getByRole('dialog')).toHaveTextContent(
+      'You can turn AI off on the upload page.'
+    );
+    expect(localStorage.getItem('claude-ai-flashcards')).toBeNull();
+    expect(localStorage.getItem('ai-choice-at')).toBeNull();
+    expect(eventsNamed('ai_gift_claim_clicked')).toEqual([
+      ['ai_gift_claim_clicked', { signed_in: true, trigger: 'click' }],
+    ]);
+  });
+
+  test('promises nothing until the status says what the gift will do', async () => {
+    routeFetch(OPEN, CLAIM_OK(), {
+      ...CLAIMED,
+      claudeDefaultForPdf: null,
+      aiBudgetAvailable: null,
+      monthlyCardsLeft: null,
     });
+    renderPresent(true, false, true);
+
+    fireEvent.click(await trigger());
+    fireEvent.click(screen.getByRole('button', { name: 'Claim free credits' }));
+
+    expect(await screen.findByText(BALANCE)).toBeInTheDocument();
+    expect(screen.queryByText(/Claude will write/)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Choose a file' })).toBeNull();
+  });
+
+  test('says honestly that the month has too few cards for a Claude deck', async () => {
+    routeFetch({
+      ...CLAIMED,
+      claudeDefaultForPdf: false,
+      monthlyCardsLeft: 12,
+    });
+    renderPresent(true, false, true);
+
+    fireEvent.click(await trigger());
+
+    expect(
+      await screen.findByText(
+        'You have 12 cards left this month, too few for a Claude deck. Your next file gets cards from its structure.'
+      )
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Claude will write/)).toBeNull();
+  });
+
+  test('says AI is off for an account that turned it off for itself', async () => {
+    routeFetch({ ...CLAIMED, claudeDefaultForPdf: false });
+    localStorage.setItem('claude-ai-flashcards', 'false');
+    localStorage.setItem('ai-choice-at', '1762300000');
+    renderPresent(true, false, true);
+
+    fireEvent.click(await trigger());
+
+    expect(
+      await screen.findByText(
+        'AI is off. Turn it on from the upload page to use them.'
+      )
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Claude will write/)).toBeNull();
+  });
+
+  test('makes no claim when the default is off and the person never chose', async () => {
+    routeFetch({ ...CLAIMED, claudeDefaultForPdf: false });
+    renderPresent(true, false, true);
+
+    fireEvent.click(await trigger());
+
+    expect(await screen.findByText(BALANCE)).toBeInTheDocument();
+    expect(screen.queryByText(/Claude will write/)).toBeNull();
+    expect(screen.queryByText(/AI is off/)).toBeNull();
+  });
+
+  test('says Claude writes the next file of any kind when the account turned AI on itself', async () => {
+    routeFetch({ ...CLAIMED, claudeDefaultForPdf: false });
+    localStorage.setItem('claude-ai-flashcards', 'true');
+    renderPresent(true, false, true);
+
+    fireEvent.click(await trigger());
+
+    expect(
+      await screen.findByText('Claude will write the cards for your next file.')
+    ).toBeInTheDocument();
+  });
+
+  test.each([
+    ['two PDF pages make one card, by default', 'pdf-page-pairs', 'true', null],
+    [
+      'two PDF pages make one card, with the switch on',
+      'pdf-page-pairs',
+      'true',
+      'true',
+    ],
+    ['PDF processing is off, by default', 'process-pdfs', 'false', null],
+  ])(
+    'promises nothing for a PDF when %s in this browser',
+    async (_case, key, value, claudeSwitch) => {
+      routeFetch(CLAIMED);
+      localStorage.setItem(key, value);
+      if (claudeSwitch != null) {
+        localStorage.setItem('claude-ai-flashcards', claudeSwitch);
+      }
+      renderPresent(true, false, true);
+
+      fireEvent.click(await trigger());
+
+      expect(await screen.findByText(BALANCE)).toBeInTheDocument();
+      expect(screen.queryByText(/Claude will write/)).toBeNull();
+      expect(screen.queryByText(/AI is off/)).toBeNull();
+    }
+  );
+
+  test('promises nothing when the account saved page pairs on another device, though this browser has the switch on', async () => {
+    routeFetch({ ...CLAIMED, storedPdfSkipsClaude: true });
+    localStorage.setItem('claude-ai-flashcards', 'true');
+    renderPresent(true, false, true);
+
+    fireEvent.click(await trigger());
+
+    expect(await screen.findByText(BALANCE)).toBeInTheDocument();
+    expect(screen.queryByText(/Claude will write/)).toBeNull();
+  });
+
+  test('still promises the next file when neither the account nor this browser keeps a PDF from Claude', async () => {
+    routeFetch({ ...CLAIMED, storedPdfSkipsClaude: false });
+    localStorage.setItem('claude-ai-flashcards', 'true');
+    renderPresent(true, false, true);
+
+    fireEvent.click(await trigger());
+
+    expect(
+      await screen.findByText('Claude will write the cards for your next file.')
+    ).toBeInTheDocument();
+  });
+
+  test('says the gift is used up, and promises nothing, even with the switch on', async () => {
+    routeFetch({
+      ...CLAIMED,
+      credits: 0,
+      claudeDefaultForPdf: false,
+      aiBudgetAvailable: false,
+    });
+    localStorage.setItem('claude-ai-flashcards', 'true');
+    renderPresent(true, false, true);
+
+    fireEvent.click(await trigger());
+
+    expect(
+      await screen.findByText('Your free AI credits are used up.')
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Claude will write/)).toBeNull();
+  });
+
+  test('promises nothing to a paying account whose plan credits are spent, though it holds a gift', async () => {
+    routeFetch({
+      ...CLAIMED,
+      claudeDefaultForPdf: true,
+      aiBudgetAvailable: false,
+    });
+    renderPresent(true, true, false);
+
+    fireEvent.click(await trigger());
+
+    expect(
+      await screen.findByText('You have 100 AI credits from the gift.')
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Claude will write/)).toBeNull();
+    expect(screen.queryByText(/AI is off/)).toBeNull();
+  });
+
+  test('says AI is off for a paying account that turned it off by hand', async () => {
+    routeFetch(CLAIMED);
+    localStorage.setItem('claude-ai-flashcards', 'false');
+    localStorage.setItem('ai-choice-at', '1762300000');
+    renderPresent(true, true, false);
+
+    fireEvent.click(await trigger());
+
+    expect(screen.getByRole('dialog')).toHaveTextContent(
+      'AI is off. Turn it on from the upload page to use them.'
+    );
+    expect(screen.queryByText(/Claude will write/)).toBeNull();
+  });
+
+  test('shows a signed-in visitor whose plan is unknown the balance, never an on or off claim', async () => {
+    routeFetch(CLAIMED);
+    renderPresent(true);
+
+    fireEvent.click(await trigger());
+
+    expect(
+      await screen.findByText('You have 100 AI credits from the gift.')
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Claude will write/)).toBeNull();
+    expect(screen.queryByText(/AI is (on|off)/)).toBeNull();
+  });
+
+  test('tells a paying account with budget that its PDF default is on, and what other files get', async () => {
+    routeFetch(CLAIMED);
+    renderPresent(true, true, false);
+
+    fireEvent.click(await trigger());
+
+    const panel = screen.getByRole('dialog');
+    expect(panel).toHaveTextContent(
+      'Claude will write the cards for your next PDF or PowerPoint file.'
+    );
+    expect(panel).toHaveTextContent(
+      'Other uploads get cards from their structure.'
+    );
+    expect(panel).not.toHaveTextContent('AI is off');
+  });
+
+  test.each([
+    ['an account with no plan', true],
+    ['an account with a plan', false],
+  ])(
+    'tells %s that a conversion is using the gift, with no promise and no off',
+    async (_case, giftOnly) => {
+      routeFetch({ ...CLAIMED, inUse: true });
+      renderPresent(true, false, giftOnly);
+
+      fireEvent.click(await trigger());
+
+      const panel = screen.getByRole('dialog');
+      expect(panel).toHaveTextContent(
+        'A conversion is using your free AI credits right now.'
+      );
+      expect(panel).not.toHaveTextContent('Claude will write');
+      expect(panel).not.toHaveTextContent('AI is off');
+      expect(
+        screen.queryByRole('button', { name: 'Choose a file' })
+      ).toBeNull();
+    }
+  );
+
+  test.each([
+    ['idle', 'picker', 'openPicker'],
+    ['busy', 'zone', 'showZone'],
+  ] as const)(
+    'Choose a file on a page whose upload zone is %s reaches the zone in place',
+    async (activity, outcome, called) => {
+      routeFetch(CLAIMED);
+      const zone = { openPicker: vi.fn(), showZone: vi.fn() };
+      registerUploadEntry(zone);
+      reportUploadZoneActivity(activity);
+      renderPresent(true, false, true);
+
+      fireEvent.click(await trigger());
+      fireEvent.click(screen.getByRole('button', { name: 'Choose a file' }));
+
+      expect(zone[called]).toHaveBeenCalledTimes(1);
+      expect(screen.getByTestId('where')).toHaveTextContent('/downloads');
+      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(eventsNamed('ai_gift_choose_file_clicked')).toEqual([
+        ['ai_gift_choose_file_clicked', { outcome }],
+      ]);
+    }
+  );
+
+  test('Choose a file on a page without an upload zone goes to the upload page', async () => {
+    routeFetch(CLAIMED);
+    renderPresent(true, false, true);
+
+    fireEvent.click(await trigger());
+    fireEvent.click(screen.getByRole('button', { name: 'Choose a file' }));
+
+    expect(screen.getByTestId('where')).toHaveTextContent('/upload');
+    expect(eventsNamed('ai_gift_choose_file_clicked')).toEqual([
+      ['ai_gift_choose_file_clicked', { outcome: 'page' }],
+    ]);
+  });
+
+  test('names the date the credits end on when the gift ends before the full length', async () => {
+    const { lastsHours: _full, ...late } = OPEN;
+    routeFetch({ ...late, expiresIfClaimedNow: '2026-12-04T22:00:00.000Z' });
+    renderPresent(false);
+
+    fireEvent.click(await trigger());
+
+    expect(screen.getByRole('dialog')).toHaveTextContent(
+      `Claimed now, the credits last until ${formatGiftDate('2026-12-04T22:00:00.000Z', 'en')}, enough for about 3 decks.`
+    );
+  });
+
+  test('shows the whole after-claim panel at phone width', async () => {
+    const narrow = vi.fn((query: string) => ({
+      matches: false,
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+    vi.stubGlobal('matchMedia', narrow);
+    vi.stubGlobal('innerWidth', 375);
+    routeFetch(CLAIMED);
+    renderPresent(true, false, true);
+
+    fireEvent.click(await trigger());
+
+    const panel = screen.getByRole('dialog', {
+      name: 'Claude writes your flashcards, free',
+    });
+    expect(panel).toHaveTextContent(
+      'Claude will write the cards for your next PDF or PowerPoint file.'
+    );
+    expect(
+      screen.getByRole('button', { name: 'Choose a file' })
+    ).toBeInTheDocument();
+    expect(narrow).toHaveBeenCalledWith('(min-width: 640px)');
+    vi.unstubAllGlobals();
   });
 
   test('tells an account with a plan allowance that its plan credits go first', async () => {
@@ -202,19 +586,12 @@ describe('AiGiftPresent', () => {
   });
 
   test('says nothing about spending order to an account without a plan', async () => {
-    routeFetch({
-      state: 'claimed',
-      credits: 100,
-      expiresAt: '2026-11-27T12:00:00.000Z',
-      feedbackDue: false,
-    });
-    renderPresent(true);
+    routeFetch(CLAIMED);
+    renderPresent(true, false, true);
 
     fireEvent.click(await trigger());
 
-    expect(
-      await screen.findByText('You have 100 AI credits from the gift.')
-    ).toBeInTheDocument();
+    expect(await screen.findByText(BALANCE)).toBeInTheDocument();
     expect(screen.queryByText('Your plan credits are used first.')).toBeNull();
   });
 
@@ -225,7 +602,7 @@ describe('AiGiftPresent', () => {
     fireEvent.click(await trigger());
 
     expect(
-      await screen.findByRole('button', { name: 'Claim 100 credits' })
+      await screen.findByRole('button', { name: 'Claim free credits' })
     ).toBeInTheDocument();
     expect(screen.queryByText('Your plan credits are used first.')).toBeNull();
   });
@@ -235,7 +612,7 @@ describe('AiGiftPresent', () => {
     renderPresent(true);
 
     fireEvent.click(await trigger());
-    fireEvent.click(screen.getByRole('button', { name: 'Claim 100 credits' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Claim free credits' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'This account has already claimed the gift.'
@@ -247,7 +624,7 @@ describe('AiGiftPresent', () => {
     renderPresent(true);
 
     fireEvent.click(await trigger());
-    fireEvent.click(screen.getByRole('button', { name: 'Claim 100 credits' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Claim free credits' }));
 
     expect(
       await screen.findByText('The free AI credits are all claimed for now.')
