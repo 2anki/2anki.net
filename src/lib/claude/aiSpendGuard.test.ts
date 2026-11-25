@@ -683,6 +683,29 @@ describe('anonymous pass metering', () => {
     expect(run).not.toHaveBeenCalled();
   });
 
+  it('records the exhausted event once and refuses when a pass call meets a spent balance', async () => {
+    const deps = makePassDeps({ balance: passBalanceWith(0) });
+    const run = vi.fn().mockResolvedValue('ok');
+
+    await expect(
+      withAiBudget({ anonymousPassId: 7 }, run, deps)
+    ).rejects.toBeInstanceOf(AiCreditsExhaustedError);
+    await expect(
+      withAiBudget({ anonymousPassId: 7 }, run, deps)
+    ).rejects.toBeInstanceOf(AiCreditsExhaustedError);
+    await flushAsync();
+
+    expect(run).not.toHaveBeenCalled();
+    expect(
+      trackMock.mock.calls.filter(([name]) => name === 'ai_credits_exhausted')
+    ).toEqual([
+      [
+        'ai_credits_exhausted',
+        { anonymousPassId: 7, props: { server_marker: true } },
+      ],
+    ]);
+  });
+
   it('does not re-fire the exhausted event inside the same window for a pass', async () => {
     const deps = makePassDeps({
       balance: passBalanceWith(0),
