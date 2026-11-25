@@ -16,6 +16,7 @@
   "nextPdf": "次の PDF または PowerPoint ファイルのカードはClaudeが書きます。",
   "otherUploads": "その他のアップロードでは構造からカードを作成します。",
   "inUseNow": "現在、別の変換が無料のAIクレジットを使用中です。",
+  "usedUp": "無料のAIクレジットを使い切りました。",
   "fewCardsLeft_other": "今月の残りカードは{{count}}枚で、Claudeのデッキには足りません。次のファイルは構造からカードを作ります。",
   "turnOffHint": "AIはアップロードページでオフにできます。",
   "aiOnPlan": "アップロードのAIはオンです。",

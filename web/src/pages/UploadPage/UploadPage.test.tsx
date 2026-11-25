@@ -522,7 +522,8 @@ describe('UploadPage Claude cards on by default for PDFs and PowerPoint', () => 
       credits: 100,
       expiresAt: '2026-11-27T12:00:00.000Z',
       feedbackDue: false,
-      claudeByDefaultOnGift: true,
+      claudeDefaultForPdf: true,
+      aiBudgetAvailable: true,
       monthlyCardsLeft: 80,
     };
     renderPage();
@@ -551,7 +552,8 @@ describe('UploadPage Claude cards on by default for PDFs and PowerPoint', () => 
       credits: 100,
       expiresAt: '2026-11-27T12:00:00.000Z',
       feedbackDue: false,
-      claudeByDefaultOnGift: false,
+      claudeDefaultForPdf: false,
+      aiBudgetAvailable: true,
       monthlyCardsLeft: 80,
     };
     renderPage();

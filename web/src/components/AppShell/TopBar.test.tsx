@@ -209,7 +209,11 @@ describe('TopBar gift panel for an account with no plan', () => {
   };
 
   it('promises Claude for the next PDF when the gift turns it on by default', async () => {
-    claimedWith({ claudeByDefaultOnGift: true, monthlyCardsLeft: 80 });
+    claimedWith({
+      claudeDefaultForPdf: true,
+      aiBudgetAvailable: true,
+      monthlyCardsLeft: 80,
+    });
     await openPanel();
 
     expect(
@@ -220,7 +224,11 @@ describe('TopBar gift panel for an account with no plan', () => {
   });
 
   it('promises nothing when the status could not read the month', async () => {
-    claimedWith({ claudeByDefaultOnGift: null, monthlyCardsLeft: null });
+    claimedWith({
+      claudeDefaultForPdf: null,
+      aiBudgetAvailable: null,
+      monthlyCardsLeft: null,
+    });
     await openPanel();
 
     expect(screen.queryByText(/Claude will write/)).toBeNull();

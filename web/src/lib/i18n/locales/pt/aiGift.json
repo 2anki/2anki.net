@@ -18,6 +18,7 @@
   "nextPdf": "O Claude vai escrever os cartões do seu próximo arquivo PDF ou PowerPoint.",
   "otherUploads": "Os outros envios recebem cartões a partir da estrutura deles.",
   "inUseNow": "Uma conversão está usando seus créditos de IA grátis agora.",
+  "usedUp": "Seus créditos de IA grátis acabaram.",
   "fewCardsLeft_one": "Resta {{count}} cartão neste mês, pouco para um baralho do Claude. Seu próximo arquivo terá cartões pela estrutura dele.",
   "fewCardsLeft_other": "Restam {{count}} cartões neste mês, poucos para um baralho do Claude. Seu próximo arquivo terá cartões pela estrutura dele.",
   "turnOffHint": "Você pode desativar a IA na página de envio.",

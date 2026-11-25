@@ -73,7 +73,8 @@ export class AiGiftController {
           feedbackDue: result.feedbackDue,
           inUse: result.inUse,
           minMonthlyCards: result.minMonthlyCards,
-          claudeByDefaultOnGift: result.claudeByDefaultOnGift,
+          claudeDefaultForPdf: result.claudeDefaultForPdf,
+          aiBudgetAvailable: result.aiBudgetAvailable,
           monthlyCardsLeft: result.monthlyCardsLeft,
         });
       case 'full':

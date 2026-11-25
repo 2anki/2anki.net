@@ -18,6 +18,7 @@
   "nextPdf": "Claude scriverà le carte del tuo prossimo file PDF o PowerPoint.",
   "otherUploads": "Gli altri caricamenti ricevono carte dalla loro struttura.",
   "inUseNow": "Una conversione sta usando i tuoi crediti IA gratuiti in questo momento.",
+  "usedUp": "Hai esaurito i tuoi crediti IA gratuiti.",
   "fewCardsLeft_one": "Ti resta {{count}} carta questo mese, troppo poche per un mazzo di Claude. Il tuo prossimo file avrà carte basate sulla sua struttura.",
   "fewCardsLeft_other": "Ti restano {{count}} carte questo mese, troppo poche per un mazzo di Claude. Il tuo prossimo file avrà carte basate sulla sua struttura.",
   "turnOffHint": "Puoi disattivare l’IA nella pagina di caricamento.",

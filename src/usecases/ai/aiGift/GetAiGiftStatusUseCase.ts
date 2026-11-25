@@ -13,7 +13,9 @@ import {
   giftExpiresAt,
 } from '../../../lib/claude/aiCredits/gift/giftTerms';
 import { giftMarkerHeld } from '../../../lib/claude/aiCredits/gift/giftConversionMarker';
-import { accountHasClaudeCardsByDefault } from '../../../lib/upload/claudeCardsDefault';
+import { claudeCardsByDefault } from '../../../lib/upload/claudeCardsDefault';
+import { giftWouldPayForUpload } from '../../../lib/claude/aiCredits/gift/giftPaysForUpload';
+import { getAiBudgetStatus } from '../../../lib/claude/aiSpendGuard';
 import type { AiGiftDeps } from './aiGiftDeps';
 
 export type AiGiftStatus =
@@ -35,52 +37,79 @@ export type AiGiftStatus =
       feedbackDue: boolean;
       inUse: boolean;
       minMonthlyCards: number;
-      claudeByDefaultOnGift: boolean | null;
+      claudeDefaultForPdf: boolean | null;
+      aiBudgetAvailable: boolean | null;
       monthlyCardsLeft: number | null;
     };
 
 const CLOSED: AiGiftStatus = { state: 'closed', feedbackDue: false };
 
-const UNKNOWN_DEFAULT = { claudeByDefaultOnGift: null, monthlyCardsLeft: null };
+interface NextUploadAnswers {
+  claudeDefaultForPdf: boolean | null;
+  aiBudgetAvailable: boolean | null;
+  monthlyCardsLeft: number | null;
+}
+
+const UNKNOWN_NEXT_UPLOAD: NextUploadAnswers = {
+  claudeDefaultForPdf: null,
+  aiBudgetAvailable: null,
+  monthlyCardsLeft: null,
+};
+
+const PROBE_PDF = 'notes.pdf';
+
+function storedOptionsRecord(stored: unknown): Record<string, unknown> {
+  if (stored == null || typeof stored !== 'object' || Array.isArray(stored)) {
+    return {};
+  }
+  return stored as Record<string, unknown>;
+}
 
 export class GetAiGiftStatusUseCase {
   constructor(private readonly deps: AiGiftDeps) {}
 
-  // The same rule an upload applies: the gift turns Claude cards on by
-  // default only for an account with no paid plan, while it would pay
-  // (credits left, no gift conversion running, the month's card minimum left)
-  // and the account never chose for itself.
-  // A failed read answers unknown, which the page shows as nothing promised.
-  private async claudeDefaultOnGift(
+  // What a web PDF upload by this account would get right now, answered by
+  // the functions the upload itself calls: the Claude default rule (with the
+  // gift as what pays for an account with no plan) and the budget check in
+  // the wallet that upload would use. A failed read answers unknown, which
+  // the page shows as nothing promised.
+  private async nextUploadAnswers(
     userId: number,
-    paying: boolean,
-    credits: number,
-    inUse: boolean
-  ): Promise<{
-    claudeByDefaultOnGift: boolean | null;
-    monthlyCardsLeft: number | null;
-  }> {
+    paying: boolean
+  ): Promise<NextUploadAnswers> {
     const readers = this.deps.claudeDefault;
-    if (readers == null) return UNKNOWN_DEFAULT;
+    if (readers == null) return UNKNOWN_NEXT_UPLOAD;
     try {
       const monthlyCardsLeft = await readers.remainingMonthlyCards(userId);
-      const giftPays =
-        !paying &&
-        credits > 0 &&
-        !inUse &&
-        monthlyCardsLeft >= AI_GIFT_MIN_MONTHLY_CARDS;
-      const claudeByDefaultOnGift =
-        giftPays &&
-        (await accountHasClaudeCardsByDefault(
-          userId,
-          giftPays,
-          await readers.storedCardOptions(userId),
-          readers
-        ));
-      return { claudeByDefaultOnGift, monthlyCardsLeft };
+      const stored = await readers.storedCardOptions(userId);
+      const claudeDefaultForPdf = await claudeCardsByDefault(
+        {
+          ownerId: userId,
+          paying,
+          entry: 'web',
+          fileNames: [PROBE_PDF],
+          options: storedOptionsRecord(stored),
+          storedOptions: stored,
+          giftPays: () =>
+            giftWouldPayForUpload(userId, {
+              gift: readers.giftReaders,
+              remainingMonthlyCards: async () => monthlyCardsLeft,
+            }),
+        },
+        readers
+      );
+      const budget = await getAiBudgetStatus(
+        paying ? { userId } : { userId, aiGift: 'only' },
+        readers.budgetDeps
+      );
+      return {
+        claudeDefaultForPdf,
+        aiBudgetAvailable: !budget.exhausted,
+        monthlyCardsLeft,
+      };
     } catch (error) {
-      console.warn('[ai-gift] Claude default read failed', error);
-      return UNKNOWN_DEFAULT;
+      console.warn('[ai-gift] next upload read failed', error);
+      return UNKNOWN_NEXT_UPLOAD;
     }
   }
 
@@ -108,7 +137,7 @@ export class GetAiGiftStatusUseCase {
             feedbackDue,
             inUse,
             minMonthlyCards: AI_GIFT_MIN_MONTHLY_CARDS,
-            ...(await this.claudeDefaultOnGift(userId, paying, credits, inUse)),
+            ...(await this.nextUploadAnswers(userId, paying)),
           };
         }
         return { state: 'closed', feedbackDue };

@@ -1092,7 +1092,8 @@ describe('CardOptionsForm AI checkbox analytics', () => {
       credits: 100,
       expiresAt: '2099-11-27T12:00:00.000Z',
       feedbackDue: false,
-      claudeByDefaultOnGift: true,
+      claudeDefaultForPdf: true,
+      aiBudgetAvailable: true,
       monthlyCardsLeft: 80,
     });
     render(

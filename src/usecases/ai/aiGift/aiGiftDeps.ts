@@ -3,12 +3,17 @@ import type { IAiCreditGiftsRepository } from '../../../data_layer/AiCreditGifts
 import UsersRepository from '../../../data_layer/UsersRepository';
 import { MONTHLY_CARD_LIMIT } from '../../../lib/limits';
 import type { AiChoiceHistoryReader } from '../../../lib/upload/claudeCardsDefault';
+import type { UploadGiftModeDeps } from '../../../lib/claude/aiCredits/gift/uploadGiftMode';
+import type { AiBudgetDeps } from '../../../lib/claude/aiSpendGuard';
+import { createAiGiftReaders } from '../../../data_layer/createAiGiftReaders';
 
 export const AI_GIFT_FEEDBACK_EVENT = 'ai_gift_feedback_answered';
 
 export interface ClaudeDefaultStatusReaders extends AiChoiceHistoryReader {
   remainingMonthlyCards(userId: number): Promise<number>;
   storedCardOptions(userId: number): Promise<unknown>;
+  giftReaders: () => UploadGiftModeDeps;
+  budgetDeps?: AiBudgetDeps;
 }
 
 export interface AiGiftDeps {
@@ -31,6 +36,7 @@ export function createClaudeDefaultStatusReaders(
     },
     storedCardOptions: (userId) => users.getCardOptions(userId),
     latestAiToggleEventName: (userId) => users.latestAiToggleEventName(userId),
+    giftReaders: () => createAiGiftReaders(database),
   };
 }
 

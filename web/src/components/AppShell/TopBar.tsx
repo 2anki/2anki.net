@@ -38,10 +38,7 @@ export function TopBar({
   const account: PanelAccount | undefined =
     session?.locals == null
       ? undefined
-      : {
-          paying: isPayingUser(session.locals),
-          claudeCardsByDefault: session.claudeCardsByDefault === true,
-        };
+      : { paying: isPayingUser(session.locals) };
   const logoSrc =
     theme === 'light' ? '/mascot/navbar-logo.png' : '/mascot/Notion 1.png';
   return (

@@ -18,6 +18,8 @@ import {
   AI_GIFT_TOTAL_BUDGET_CREDITS,
 } from '../lib/claude/aiCredits/gift/giftTerms';
 import { track } from '../services/events/track';
+import { computeAiGiftBalance } from '../lib/claude/aiCredits/gift/giftBalance';
+import type { AiCreditBalance } from '../lib/claude/aiCredits/balance';
 import {
   releaseGiftMarker,
   resetGiftMarkers,
@@ -33,7 +35,20 @@ interface ClaudeDefaultFixture {
   cardsLeft: number;
   stored: Record<string, string> | null;
   latestToggle: string | null;
+  planCredits: number | null;
   fails?: boolean;
+}
+
+function planBalance(credits: number): AiCreditBalance {
+  return {
+    rawCredits: credits,
+    credits,
+    spent: 300 - credits,
+    allowance: 300,
+    windowStart: new Date('2026-11-01T00:00:00.000Z'),
+    windowEnd: new Date('2026-12-01T00:00:00.000Z'),
+    resets: 'period',
+  };
 }
 
 interface Harness {
@@ -57,7 +72,17 @@ async function startHarness(): Promise<Harness> {
     cardsLeft: 90,
     stored: null,
     latestToggle: null,
+    planCredits: null,
   };
+  const giftReaders = () => ({
+    isEnabled: async () => enabled,
+    findGrant: (userId: number) => gifts.findGrant(userId),
+    giftCostSince: (giftId: number, userId: number, since: Date) =>
+      gifts.giftCostSince(giftId, userId, since),
+    now: () => now,
+    planSpent: async () =>
+      claudeDefault.planCredits != null && claudeDefault.planCredits <= 0,
+  });
   const deps: AiGiftDeps = {
     gifts,
     isEnabled: async () => enabled,
@@ -71,6 +96,21 @@ async function startHarness(): Promise<Harness> {
       },
       storedCardOptions: async () => claudeDefault.stored,
       latestAiToggleEventName: async () => claudeDefault.latestToggle,
+      giftReaders,
+      budgetDeps: {
+        computeBalance: async () =>
+          claudeDefault.planCredits == null
+            ? null
+            : planBalance(claudeDefault.planCredits),
+        computeGiftBalance: (userId, at) =>
+          computeAiGiftBalance(userId, at, giftReaders()),
+        reader: {
+          userRecordedCostSince: async () => 0,
+          eventCountSince: async () => 0,
+        },
+        sendAlert: async () => undefined,
+        now: () => now,
+      },
     },
   };
   const signedIn: express.RequestHandler = (req, res, next) => {
@@ -244,7 +284,8 @@ describe('POST /api/ai/gift/claim', () => {
       feedbackDue: false,
       inUse: false,
       minMonthlyCards: 20,
-      claudeByDefaultOnGift: true,
+      claudeDefaultForPdf: true,
+      aiBudgetAvailable: true,
       monthlyCardsLeft: 90,
     });
     expect(eventsNamed('ai_gift_claimed')).toEqual([
@@ -414,39 +455,55 @@ describe('the gift budget', () => {
   });
 });
 
-describe('whether the gift turns Claude cards on by default', () => {
+describe('what the next PDF upload would get, answered by the upload rule', () => {
   beforeEach(async () => {
     await claim(h, 5);
   });
 
-  const defaultOn = async () => (await getGift(h, 5)).body;
+  const next = async (paying = false) => {
+    const res = await fetch(h.url + '/api/ai/gift', {
+      headers: paying ? { ...headers(5), 'x-test-paying': '1' } : headers(5),
+    });
+    return res.json();
+  };
 
-  it('is on for an account that never chose, with room in the month', async () => {
-    expect(await defaultOn()).toMatchObject({
-      claudeByDefaultOnGift: true,
+  it('turns Claude on, with budget, for an account with no plan whose gift pays and that never chose', async () => {
+    expect(await next()).toMatchObject({
+      claudeDefaultForPdf: true,
+      aiBudgetAvailable: true,
       monthlyCardsLeft: 90,
     });
   });
 
-  it('is never on for an account with a paid plan, whose plan pays first', async () => {
-    const res = await fetch(h.url + '/api/ai/gift', {
-      headers: { ...headers(5), 'x-test-paying': '1' },
-    });
+  it('keeps the default for a paying account with plan credits left', async () => {
+    h.claudeDefault.planCredits = 120;
 
-    expect((await res.json()).claudeByDefaultOnGift).toBe(false);
+    expect(await next(true)).toMatchObject({
+      claudeDefaultForPdf: true,
+      aiBudgetAvailable: true,
+    });
   });
 
-  it('is off once the account recorded its own choice', async () => {
+  it('has no budget for a paying account whose plan credits are spent, gift or not', async () => {
+    h.claudeDefault.planCredits = 0;
+
+    expect(await next(true)).toMatchObject({
+      claudeDefaultForPdf: true,
+      aiBudgetAvailable: false,
+    });
+  });
+
+  it('is off once the account recorded turning AI off', async () => {
     h.claudeDefault.latestToggle = 'upload_ai_turned_off';
 
-    expect((await defaultOn()).claudeByDefaultOnGift).toBe(false);
+    expect((await next()).claudeDefaultForPdf).toBe(false);
   });
 
   it('is off, with the count, when the month has too few cards left', async () => {
     h.claudeDefault.cardsLeft = 12;
 
-    expect(await defaultOn()).toMatchObject({
-      claudeByDefaultOnGift: false,
+    expect(await next()).toMatchObject({
+      claudeDefaultForPdf: false,
       monthlyCardsLeft: 12,
     });
   });
@@ -454,20 +511,28 @@ describe('whether the gift turns Claude cards on by default', () => {
   it('is off while a gift conversion runs', async () => {
     takeGiftMarker(5, OPENING.getTime());
 
-    expect((await defaultOn()).claudeByDefaultOnGift).toBe(false);
+    expect(await next()).toMatchObject({
+      claudeDefaultForPdf: false,
+      inUse: true,
+    });
   });
 
-  it('is off once the gift is used up', async () => {
+  it('has neither the default nor budget once an account with no plan used up its gift', async () => {
     h.gifts.spend.push({ giftId: 1, userId: 5, costUsd: 5, at: OPENING });
 
-    expect((await defaultOn()).claudeByDefaultOnGift).toBe(false);
+    expect(await next()).toMatchObject({
+      credits: 0,
+      claudeDefaultForPdf: false,
+      aiBudgetAvailable: false,
+    });
   });
 
-  it('is unknown, never on, when the counts cannot be read', async () => {
+  it('is unknown, never on, when the reads fail', async () => {
     h.claudeDefault.fails = true;
 
-    expect(await defaultOn()).toMatchObject({
-      claudeByDefaultOnGift: null,
+    expect(await next()).toMatchObject({
+      claudeDefaultForPdf: null,
+      aiBudgetAvailable: null,
       monthlyCardsLeft: null,
     });
   });
@@ -492,7 +557,8 @@ describe('the one question after a gift-funded conversion', () => {
       feedbackDue: true,
       inUse: false,
       minMonthlyCards: 20,
-      claudeByDefaultOnGift: true,
+      claudeDefaultForPdf: true,
+      aiBudgetAvailable: true,
       monthlyCardsLeft: 90,
     });
   });

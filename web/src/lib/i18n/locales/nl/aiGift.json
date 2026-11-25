@@ -18,6 +18,7 @@
   "nextPdf": "Claude schrijft de kaarten voor je volgende PDF- of PowerPoint-bestand.",
   "otherUploads": "Andere uploads krijgen kaarten op basis van hun structuur.",
   "inUseNow": "Er gebruikt nu een conversie je gratis AI-credits.",
+  "usedUp": "Je gratis AI-credits zijn op.",
   "fewCardsLeft_one": "Je hebt deze maand nog {{count}} kaart over, te weinig voor een Claude-deck. Je volgende bestand krijgt kaarten op basis van de structuur.",
   "fewCardsLeft_other": "Je hebt deze maand nog {{count}} kaarten over, te weinig voor een Claude-deck. Je volgende bestand krijgt kaarten op basis van de structuur.",
   "turnOffHint": "Je kunt AI uitzetten op de uploadpagina.",

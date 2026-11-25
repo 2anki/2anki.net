@@ -138,7 +138,7 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
   const sessionHint = hasSessionHint();
   const claudeOnByDefault = isPaying
     ? userLocals?.claudeCardsByDefault === true
-    : gift?.state === 'claimed' && gift.claudeByDefaultOnGift === true;
+    : gift?.state === 'claimed' && gift.claudeDefaultForPdf === true;
   const claudeOnForPdfs =
     !aiChoiceRecorded &&
     claudeOnByDefault &&

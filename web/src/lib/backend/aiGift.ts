@@ -19,7 +19,8 @@ export type AiGiftStatus =
       feedbackDue: boolean;
       inUse?: boolean;
       minMonthlyCards?: number;
-      claudeByDefaultOnGift?: boolean | null;
+      claudeDefaultForPdf?: boolean | null;
+      aiBudgetAvailable?: boolean | null;
       monthlyCardsLeft?: number | null;
     };
 
@@ -49,6 +50,10 @@ function optionalCount(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value)
     ? value
     : undefined;
+}
+
+function optionalBoolean(value: unknown): boolean | null {
+  return typeof value === 'boolean' ? value : null;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -89,10 +94,8 @@ export function parseAiGiftStatus(data: unknown): AiGiftStatus {
       feedbackDue,
       inUse: data.inUse === true,
       minMonthlyCards: optionalCount(data.minMonthlyCards),
-      claudeByDefaultOnGift:
-        typeof data.claudeByDefaultOnGift === 'boolean'
-          ? data.claudeByDefaultOnGift
-          : null,
+      claudeDefaultForPdf: optionalBoolean(data.claudeDefaultForPdf),
+      aiBudgetAvailable: optionalBoolean(data.aiBudgetAvailable),
       monthlyCardsLeft: optionalCount(data.monthlyCardsLeft) ?? null,
     };
   }

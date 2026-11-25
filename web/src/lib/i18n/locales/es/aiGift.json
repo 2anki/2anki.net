@@ -18,6 +18,7 @@
   "nextPdf": "Claude escribirá las tarjetas de tu próximo archivo PDF o PowerPoint.",
   "otherUploads": "Las demás subidas reciben tarjetas según su estructura.",
   "inUseNow": "Una conversión está usando tus créditos de IA gratis ahora mismo.",
+  "usedUp": "Ya usaste todos tus créditos de IA gratis.",
   "fewCardsLeft_one": "Te queda {{count}} tarjeta este mes, muy pocas para un mazo de Claude. Tu próximo archivo tendrá tarjetas según su estructura.",
   "fewCardsLeft_other": "Te quedan {{count}} tarjetas este mes, muy pocas para un mazo de Claude. Tu próximo archivo tendrá tarjetas según su estructura.",
   "turnOffHint": "Puedes desactivar la IA en la página de subida.",

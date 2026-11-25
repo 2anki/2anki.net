@@ -1835,7 +1835,8 @@ describe('UploadForm Google Drive picker interaction', () => {
       feedbackDue: false,
       inUse: false,
       minMonthlyCards: 20,
-      claudeByDefaultOnGift: true,
+      claudeDefaultForPdf: true,
+      aiBudgetAvailable: true,
       monthlyCardsLeft: 80,
     });
     try {
@@ -12682,7 +12683,8 @@ describe('UploadForm deck result and resends of kept files', () => {
       feedbackDue: false,
       inUse: false,
       minMonthlyCards: 20,
-      claudeByDefaultOnGift: true,
+      claudeDefaultForPdf: true,
+      aiBudgetAvailable: true,
       monthlyCardsLeft: 80,
     };
     const eligibleDeck = (cards: number) =>
@@ -12889,7 +12891,8 @@ describe('UploadForm deck result and resends of kept files', () => {
       stubServer([eligibleDeck(64)]);
       const { container } = renderWithHeaderGift({
         ...activeGift,
-        claudeByDefaultOnGift: null,
+        claudeDefaultForPdf: null,
+        aiBudgetAvailable: null,
         monthlyCardsLeft: null,
       });
       await submitFiles(container, ['notes.pdf']);
@@ -12965,7 +12968,8 @@ describe('UploadForm deck result and resends of kept files', () => {
       stubServer([eligibleDeck(64)]);
       const { container } = renderWithHeaderGift({
         ...activeGift,
-        claudeByDefaultOnGift: false,
+        claudeDefaultForPdf: false,
+        aiBudgetAvailable: true,
         monthlyCardsLeft: 19,
       });
       await submitFiles(container, ['notes.pdf']);

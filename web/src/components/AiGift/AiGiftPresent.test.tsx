@@ -38,7 +38,8 @@ const CLAIMED = {
   feedbackDue: false,
   inUse: false,
   minMonthlyCards: 20,
-  claudeByDefaultOnGift: true,
+  claudeDefaultForPdf: true,
+  aiBudgetAvailable: true,
   monthlyCardsLeft: 80,
 };
 
@@ -85,20 +86,16 @@ const eventsNamed = (name: string) =>
   vi.mocked(track).mock.calls.filter(([event]) => event === name);
 
 function accountFor(
-  giftPaysForClaude: boolean | undefined,
-  claudeCardsByDefault: boolean
+  giftPaysForClaude: boolean | undefined
 ): PanelAccount | undefined {
   if (giftPaysForClaude == null) return undefined;
-  return giftPaysForClaude
-    ? { paying: false, claudeCardsByDefault: false }
-    : { paying: true, claudeCardsByDefault };
+  return { paying: !giftPaysForClaude };
 }
 
 function renderPresent(
   isLoggedIn: boolean,
   planCreditsFirst?: boolean,
-  giftPaysForClaude?: boolean,
-  claudeCardsByDefault = false
+  giftPaysForClaude?: boolean
 ) {
   return render(
     <QueryClientProvider
@@ -110,7 +107,7 @@ function renderPresent(
         <AiGiftPresent
           isLoggedIn={isLoggedIn}
           planCreditsFirst={planCreditsFirst}
-          account={accountFor(giftPaysForClaude, claudeCardsByDefault)}
+          account={accountFor(giftPaysForClaude)}
         />
         <Routes>
           <Route path="*" element={<Where />} />
@@ -231,7 +228,7 @@ describe('AiGiftPresent', () => {
     ]);
   });
 
-  test('claims on return for an account with a plan and points to the switch', async () => {
+  test('claims on return for an account with a plan', async () => {
     const calls = routeFetch(OPEN, CLAIM_OK());
     rememberClaimIntent(Date.now());
 
@@ -274,7 +271,8 @@ describe('AiGiftPresent', () => {
   test('promises nothing until the status says what the gift will do', async () => {
     routeFetch(OPEN, CLAIM_OK(), {
       ...CLAIMED,
-      claudeByDefaultOnGift: null,
+      claudeDefaultForPdf: null,
+      aiBudgetAvailable: null,
       monthlyCardsLeft: null,
     });
     renderPresent(true, false, true);
@@ -290,7 +288,7 @@ describe('AiGiftPresent', () => {
   test('says honestly that the month has too few cards for a Claude deck', async () => {
     routeFetch({
       ...CLAIMED,
-      claudeByDefaultOnGift: false,
+      claudeDefaultForPdf: false,
       monthlyCardsLeft: 12,
     });
     renderPresent(true, false, true);
@@ -306,7 +304,9 @@ describe('AiGiftPresent', () => {
   });
 
   test('says AI is off for an account that turned it off for itself', async () => {
-    routeFetch({ ...CLAIMED, claudeByDefaultOnGift: false });
+    routeFetch({ ...CLAIMED, claudeDefaultForPdf: false });
+    localStorage.setItem('claude-ai-flashcards', 'false');
+    localStorage.setItem('ai-choice-at', '1762300000');
     renderPresent(true, false, true);
 
     fireEvent.click(await trigger());
@@ -319,8 +319,19 @@ describe('AiGiftPresent', () => {
     expect(screen.queryByText(/Claude will write/)).toBeNull();
   });
 
+  test('makes no claim when the default is off and the person never chose', async () => {
+    routeFetch({ ...CLAIMED, claudeDefaultForPdf: false });
+    renderPresent(true, false, true);
+
+    fireEvent.click(await trigger());
+
+    expect(await screen.findByText(BALANCE)).toBeInTheDocument();
+    expect(screen.queryByText(/Claude will write/)).toBeNull();
+    expect(screen.queryByText(/AI is off/)).toBeNull();
+  });
+
   test('says Claude writes the next file of any kind when the account turned AI on itself', async () => {
-    routeFetch({ ...CLAIMED, claudeByDefaultOnGift: false });
+    routeFetch({ ...CLAIMED, claudeDefaultForPdf: false });
     localStorage.setItem('claude-ai-flashcards', 'true');
     renderPresent(true, false, true);
 
@@ -331,8 +342,45 @@ describe('AiGiftPresent', () => {
     ).toBeInTheDocument();
   });
 
-  test('tells an account with a plan whether AI is on, never what the gift turns on', async () => {
+  test('says the gift is used up, and promises nothing, even with the switch on', async () => {
+    routeFetch({
+      ...CLAIMED,
+      credits: 0,
+      claudeDefaultForPdf: false,
+      aiBudgetAvailable: false,
+    });
+    localStorage.setItem('claude-ai-flashcards', 'true');
+    renderPresent(true, false, true);
+
+    fireEvent.click(await trigger());
+
+    expect(
+      await screen.findByText('Your free AI credits are used up.')
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Claude will write/)).toBeNull();
+  });
+
+  test('promises nothing to a paying account whose plan credits are spent, though it holds a gift', async () => {
+    routeFetch({
+      ...CLAIMED,
+      claudeDefaultForPdf: true,
+      aiBudgetAvailable: false,
+    });
+    renderPresent(true, true, false);
+
+    fireEvent.click(await trigger());
+
+    expect(
+      await screen.findByText('You have 100 AI credits from the gift.')
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Claude will write/)).toBeNull();
+    expect(screen.queryByText(/AI is off/)).toBeNull();
+  });
+
+  test('says AI is off for a paying account that turned it off by hand', async () => {
     routeFetch(CLAIMED);
+    localStorage.setItem('claude-ai-flashcards', 'false');
+    localStorage.setItem('ai-choice-at', '1762300000');
     renderPresent(true, true, false);
 
     fireEvent.click(await trigger());
@@ -356,9 +404,9 @@ describe('AiGiftPresent', () => {
     expect(screen.queryByText(/AI is (on|off)/)).toBeNull();
   });
 
-  test('tells a paying account its PDF default is on, the same as the upload page, and what other files get', async () => {
+  test('tells a paying account with budget that its PDF default is on, and what other files get', async () => {
     routeFetch(CLAIMED);
-    renderPresent(true, true, false, true);
+    renderPresent(true, true, false);
 
     fireEvent.click(await trigger());
 
@@ -372,18 +420,6 @@ describe('AiGiftPresent', () => {
     expect(panel).not.toHaveTextContent('AI is off');
   });
 
-  test('drops the PDF default line once the person recorded a choice of their own', async () => {
-    routeFetch(CLAIMED);
-    localStorage.setItem('ai-choice-at', '1762300000');
-    renderPresent(true, true, false, true);
-
-    fireEvent.click(await trigger());
-
-    expect(screen.getByRole('dialog')).toHaveTextContent(
-      'AI is off. Turn it on from the upload page to use them.'
-    );
-  });
-
   test.each([
     ['an account with no plan', true],
     ['an account with a plan', false],
@@ -391,7 +427,7 @@ describe('AiGiftPresent', () => {
     'tells %s that a conversion is using the gift, with no promise and no off',
     async (_case, giftOnly) => {
       routeFetch({ ...CLAIMED, inUse: true });
-      renderPresent(true, false, giftOnly, true);
+      renderPresent(true, false, giftOnly);
 
       fireEvent.click(await trigger());
 

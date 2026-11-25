@@ -47,77 +47,59 @@ interface AiGiftPresentProps {
   account?: PanelAccount;
 }
 
-// What the page knows about the signed-in account: whether it pays for a plan
-// and, if so, whether its plan turns Claude on by default for PDF and
-// PowerPoint uploads. Left out where the page does not know, and then the
-// panel makes no claim about AI being on or off.
+// Whether the signed-in account pays for a plan, when the page knows. Left
+// out where it does not, and then the panel makes no claim about AI.
 export interface PanelAccount {
   paying: boolean;
-  claudeCardsByDefault: boolean;
 }
 
 type NextUploadClaude =
   | 'unknown'
   | 'inUse'
+  | 'usedUp'
   | 'short'
   | 'on'
   | 'onForPdfs'
   | 'off';
 
-const claudeSwitchedOnHere = (): boolean =>
-  globalThis.localStorage?.getItem('claude-ai-flashcards') === 'true';
+const claudeSwitchValue = (): string | null =>
+  globalThis.localStorage?.getItem('claude-ai-flashcards') ?? null;
 
-// The upload page's own reading of the default: it holds until the person
-// records a choice, and a PDF made two pages per card skips it.
-const defaultHoldsHere = (serverDefault: boolean): boolean =>
-  serverDefault &&
-  !hasRecordedAiChoice() &&
-  globalThis.localStorage?.getItem('pdf-page-pairs') !== 'true';
-
-function giftAccountClaude(gift: ClaimedGift): NextUploadClaude {
-  const left = gift.monthlyCardsLeft;
-  const minimum = gift.minMonthlyCards;
-  if (left == null || minimum == null || gift.claudeByDefaultOnGift == null) {
-    return 'unknown';
-  }
-  if (left < minimum) return 'short';
-  if (claudeSwitchedOnHere()) return 'on';
-  return defaultHoldsHere(gift.claudeByDefaultOnGift) ? 'onForPdfs' : 'off';
-}
-
-// What the server will do with the next PDF or PowerPoint upload: the plan's
-// default for a paying account, the gift status for one with no plan, and a
-// switch the person turned on themselves for either.
+// The server answers what a PDF upload would get (claudeDefaultForPdf, from
+// the upload's own default rule) and whether that upload would have budget
+// (aiBudgetAvailable, from its own budget check); the panel only adds the
+// person's own switch. It promises Claude when the default or their switch
+// is on and the budget, the month and the gift allow it, says AI is off only
+// when they turned it off themselves, and otherwise makes no claim.
 function nextUploadClaude(
   gift: ClaimedGift,
   account: PanelAccount | undefined
 ): NextUploadClaude {
   if (account == null) return 'unknown';
   if (gift.inUse === true) return 'inUse';
-  if (!account.paying) return giftAccountClaude(gift);
-  if (claudeSwitchedOnHere()) return 'on';
-  return defaultHoldsHere(account.claudeCardsByDefault) ? 'onForPdfs' : 'off';
+  if (!account.paying && gift.credits <= 0) return 'usedUp';
+  const switchedOn = claudeSwitchValue() === 'true';
+  if (hasRecordedAiChoice() && !switchedOn) return 'off';
+  const left = gift.monthlyCardsLeft;
+  const minimum = gift.minMonthlyCards;
+  const monthKnown = left != null && minimum != null;
+  if (!account.paying && monthKnown && left < minimum) return 'short';
+  const monthAllows = account.paying || monthKnown;
+  const claudeOn = gift.claudeDefaultForPdf === true || switchedOn;
+  if (claudeOn && gift.aiBudgetAvailable === true && monthAllows) {
+    return switchedOn ? 'on' : 'onForPdfs';
+  }
+  return 'unknown';
 }
 
-function claudeLineKey(
-  state: NextUploadClaude,
-  paying: boolean
-): string | null {
-  switch (state) {
-    case 'inUse':
-      return 'inUseNow';
-    case 'short':
-      return 'fewCardsLeft';
-    case 'on':
-      return paying ? 'aiOnPlan' : 'nextFile';
-    case 'onForPdfs':
-      return 'nextPdf';
-    case 'off':
-      return 'aiOffPlan';
-    default:
-      return null;
-  }
-}
+const CLAUDE_LINE: Record<Exclude<NextUploadClaude, 'unknown'>, string> = {
+  inUse: 'inUseNow',
+  usedUp: 'usedUp',
+  short: 'fewCardsLeft',
+  on: 'nextFile',
+  onForPdfs: 'nextPdf',
+  off: 'aiOffPlan',
+};
 
 const dateLocale = (language: string): string =>
   language.startsWith('en') ? 'en-GB' : language;
@@ -175,8 +157,12 @@ function ClaimedBody({
 
   const state = nextUploadClaude(gift, account);
   const paying = account?.paying !== false;
-  const lineKey = claudeLineKey(state, paying);
-  const offersFile = state !== 'unknown' && state !== 'inUse';
+  const lineKey = state === 'unknown' ? null : CLAUDE_LINE[state];
+  const offersFile =
+    state === 'on' ||
+    state === 'onForPdfs' ||
+    state === 'off' ||
+    state === 'short';
 
   return (
     <>
