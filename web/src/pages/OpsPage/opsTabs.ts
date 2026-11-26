@@ -66,7 +66,10 @@ export const OPS_TABS: OpsTab[] = [
     to: '/ops/tools',
     label: 'Tools',
     group: 'more',
-    match: childRoute('/ops/tools'),
+    match: (path) =>
+      ['/ops/tools', '/ops/commands', '/ops/users'].some((prefix) =>
+        path.startsWith(prefix)
+      ),
   },
   {
     to: '/ops/showcase',

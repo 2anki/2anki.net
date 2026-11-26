@@ -95,6 +95,13 @@ describe('OPS_TABS', () => {
     }
   });
 
+  it('keeps Tools active on the old Commands and Users addresses', () => {
+    for (const path of ['/ops/commands', '/ops/users']) {
+      const matching = OPS_TABS.filter((tab) => tab.match(path));
+      expect(matching.map((tab) => tab.to)).toEqual(['/ops/tools']);
+    }
+  });
+
   it('matches a child row only on its own route', () => {
     const growth = OPS_TABS.find((tab) => tab.to === '/ops/growth');
     expect(growth?.match('/ops/growth')).toBe(true);
