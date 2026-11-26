@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { vi } from 'vitest';
 import {
   AI_CHOICE_AT_KEY,
@@ -295,6 +296,129 @@ describe('accountHasClaudeCardsByDefault', () => {
   });
 });
 
+const SHARED_RULE_ON_MAIN = {
+  cases: 79_310,
+  on: 559,
+  digest: '80b1a222e6f37d2ad00517390da522d757f1f690d66f54310f27033c30a94517',
+};
+
+const MATRIX_STORED: unknown[] = [
+  null,
+  {},
+  'not an object',
+  ['claude-ai-flashcards'],
+  { 'claude-ai-flashcards': 'true' },
+  { 'claude-ai-flashcards': 'false' },
+  { 'claude-ai-flashcards': '' },
+  { 'claude-ai-flashcards': 'false', [AI_CHOICE_AT_KEY]: '1762300000' },
+  { [AI_CHOICE_AT_KEY]: '1762300000' },
+  { [AI_CHOICE_AT_KEY]: '' },
+  { 'pdf-page-pairs': 'true' },
+];
+
+const MATRIX_LATEST: (string | Error | null)[] = [
+  null,
+  'upload_ai_turned_on',
+  'upload_ai_turned_off',
+  'upload_started',
+  new Error('history read failed'),
+];
+
+function matrixHistory(latest: string | Error | null): AiChoiceHistoryReader {
+  return {
+    latestAiToggleEventName: async () => {
+      if (latest instanceof Error) throw latest;
+      return latest;
+    },
+  };
+}
+
+async function sharedRuleOutputs(): Promise<string> {
+  const ownerIds = [null, 7];
+  const entries = ['web', 'mcp', 'app'] as const;
+  const fileSets = [
+    ['lecture.pdf'],
+    ['slides.pptx'],
+    ['export.zip'],
+    ['lecture.pdf', 'notes.md'],
+    [],
+  ];
+  const requestOptions: Record<string, unknown>[] = [
+    {},
+    { 'claude-ai-flashcards': 'true' },
+    { 'claude-ai-flashcards': 'false' },
+    { 'pdf-page-pairs': 'true' },
+    { [AI_CHOICE_AT_KEY]: '1762300000' },
+    { 'claude-ai-flashcards': 'false', [AI_CHOICE_AT_KEY]: '1762300000' },
+  ];
+  const giftPaysVariants: (ClaudeDefaultCandidate['giftPays'] | undefined)[] = [
+    undefined,
+    async () => true,
+    async () => false,
+    async () => {
+      throw new Error('gift read failed');
+    },
+  ];
+  let bits = '';
+  for (const ownerId of ownerIds) {
+    for (const paying of [true, false]) {
+      for (const entry of entries) {
+        for (const fileNames of fileSets) {
+          for (const options of requestOptions) {
+            for (const storedOptions of MATRIX_STORED) {
+              for (const giftPays of giftPaysVariants) {
+                for (const latest of MATRIX_LATEST) {
+                  const on = await claudeCardsByDefault(
+                    {
+                      ownerId,
+                      paying,
+                      entry,
+                      fileNames,
+                      options,
+                      storedOptions,
+                      giftPays,
+                    },
+                    matrixHistory(latest)
+                  );
+                  bits += on ? '1' : '0';
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  for (const paying of [true, false]) {
+    for (const stored of MATRIX_STORED) {
+      for (const latest of MATRIX_LATEST) {
+        const on = await accountHasClaudeCardsByDefault(
+          7,
+          paying,
+          stored,
+          matrixHistory(latest)
+        );
+        bits += on ? '1' : '0';
+      }
+    }
+  }
+  return bits;
+}
+
+describe('the shared Claude default rule, for uploads without the card switch', () => {
+  it('answers every case in the matrix exactly as main did before the card switch changed', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    const bits = await sharedRuleOutputs();
+
+    expect({
+      cases: bits.length,
+      on: bits.split('').filter((bit) => bit === '1').length,
+      digest: createHash('sha256').update(bits).digest('hex'),
+    }).toEqual(SHARED_RULE_ON_MAIN);
+  });
+});
+
 describe('accountChoiceAllowsClaude', () => {
   it.each<[string, Record<string, string> | null, string | null, boolean]>([
     ['nothing stored or recorded', null, null, true],
@@ -305,11 +429,30 @@ describe('accountChoiceAllowsClaude', () => {
       null,
       false,
     ],
-    ['a latest toggle off', null, 'upload_ai_turned_off', false],
     [
-      'a stored off with no record',
+      'a recorded off with a later toggle on',
+      { 'claude-ai-flashcards': 'false', [AI_CHOICE_AT_KEY]: '1762300000' },
+      'upload_ai_turned_on',
+      false,
+    ],
+    [
+      'a recorded choice with Claude never stored',
+      { [AI_CHOICE_AT_KEY]: '1762300000' },
+      null,
+      false,
+    ],
+    ['a latest toggle off', null, 'upload_ai_turned_off', false],
+    ['a latest toggle on', null, 'upload_ai_turned_on', true],
+    [
+      'a stored off with no record, as a settings sync writes it',
       { 'claude-ai-flashcards': 'false' },
       null,
+      true,
+    ],
+    [
+      'a stored off with a latest toggle off',
+      { 'claude-ai-flashcards': 'false' },
+      'upload_ai_turned_off',
       false,
     ],
     [
@@ -318,9 +461,30 @@ describe('accountChoiceAllowsClaude', () => {
       'upload_ai_turned_on',
       true,
     ],
+    [
+      'a stored on with a recorded choice',
+      { 'claude-ai-flashcards': 'true', [AI_CHOICE_AT_KEY]: '1762300000' },
+      null,
+      true,
+    ],
   ])('answers %s', async (_case, stored, latest, allows) => {
     expect(await accountChoiceAllowsClaude(7, stored, historyOf(latest))).toBe(
       allows
     );
+  });
+
+  it('keeps the switch off when the toggle history cannot be read', async () => {
+    const failing: AiChoiceHistoryReader = {
+      latestAiToggleEventName: vi.fn().mockRejectedValue(new Error('db down')),
+    };
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    expect(
+      await accountChoiceAllowsClaude(
+        7,
+        { 'claude-ai-flashcards': 'false' },
+        failing
+      )
+    ).toBe(false);
   });
 });

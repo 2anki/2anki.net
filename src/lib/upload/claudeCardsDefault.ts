@@ -128,10 +128,12 @@ export async function accountHasClaudeCardsByDefault(
   return defaultMayApply(reader, userId, stored);
 }
 
-// Whether the account's own record leaves Claude on: on when it stored or
-// last turned Claude on, off when it recorded turning it off or stored an off
-// that may have been a choice. The upload card's switch starts from this; it
-// never decides an upload, which only the switch's sent value does.
+// Whether the account's own record leaves Claude on: off only when the person
+// chose against it (a stored off carrying the choice marker, or a latest
+// toggle off). A stored off with neither is what the settings sync writes for
+// an account that never touched an AI control, so it is not a choice. The
+// upload card's switch starts from this; it never decides an upload, which
+// only the switch's sent value does.
 export async function accountChoiceAllowsClaude(
   userId: number,
   storedCardOptions: unknown,
@@ -140,5 +142,15 @@ export async function accountChoiceAllowsClaude(
   const stored = storedOptionsOf(storedCardOptions);
   if (stored['claude-ai-flashcards'] === 'true') return true;
   if (hasAiChoiceMarker(stored)) return false;
-  return defaultMayApply(reader, userId, stored);
+  try {
+    return (
+      (await reader.latestAiToggleEventName(userId)) !== AI_TURNED_OFF_EVENT
+    );
+  } catch (error) {
+    console.warn(
+      '[claude-default] toggle history read failed, keeping the switch off',
+      error
+    );
+    return false;
+  }
 }
