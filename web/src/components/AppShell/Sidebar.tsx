@@ -71,13 +71,14 @@ function isActiveRoute(pathname: string, href: string, matchPrefix: boolean) {
 
 function SidebarCount({ count }: Readonly<{ count: number }>) {
   return (
-    <>
-      <span className={styles.sidebarRowCount} aria-hidden="true">
-        {count}
-      </span>
-      <span className={styles.srOnly}>{`, ${count} unread`}</span>
-    </>
+    <span className={styles.sidebarRowCount} aria-hidden="true">
+      {count}
+    </span>
   );
+}
+
+function labelWithUnread(label: string, count: number): string | undefined {
+  return count > 0 ? `${label}, ${count} unread` : undefined;
 }
 
 function SidebarRow({
@@ -97,6 +98,7 @@ function SidebarRow({
       to={href}
       onClick={onClick}
       aria-current={active ? 'page' : undefined}
+      aria-label={label ? labelWithUnread(label, count) : undefined}
       title={label}
       className={`${styles.sidebarRow} ${
         active ? styles.sidebarRowActive : ''
@@ -190,6 +192,9 @@ function OpsSidebarFolder({
             type="button"
             className={`${styles.sidebarRow} ${styles.sidebarFolderHeader}`}
             aria-expanded={moreExpanded}
+            aria-label={
+              moreExpanded ? undefined : labelWithUnread('More', unread)
+            }
             aria-controls="ops-more-items"
             onClick={() => setMoreOpen((value) => !value)}
           >
