@@ -1,18 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { OPS_TABS } from './opsTabs';
+import { OPS_MAIN_TABS, OPS_MORE_TABS, OPS_TABS } from './opsTabs';
 
 describe('OPS_TABS', () => {
-  it('lists the ops rows in order, with the split command pages last', () => {
+  it('lists the four everyday rows first, then the rest', () => {
     expect(OPS_TABS.map((tab) => tab.label)).toEqual([
       'Today',
-      'Growth',
       'Business',
+      'Growth',
+      'Flags',
       'System',
       'Errors',
       'Messages',
-      'Commands',
-      'Users',
-      'Flags',
+      'Tools',
       'Showcase',
     ]);
   });
@@ -20,14 +19,13 @@ describe('OPS_TABS', () => {
   it('points each row at its consolidated route', () => {
     expect(OPS_TABS.map((tab) => tab.to)).toEqual([
       '/ops/today',
-      '/ops/growth',
       '/ops/business',
+      '/ops/growth',
+      '/ops/flags',
       '/ops/system',
       '/ops/errors',
       '/ops/messages',
-      '/ops/commands',
-      '/ops/users',
-      '/ops/flags',
+      '/ops/tools',
       '/ops/showcase',
     ]);
   });
@@ -39,6 +37,8 @@ describe('OPS_TABS', () => {
       '/ops/upload-funnel',
       '/ops/return-rate',
       '/ops/performance',
+      '/ops/commands',
+      '/ops/users',
     ]) {
       expect(paths).not.toContain(redirected);
     }
@@ -72,13 +72,24 @@ describe('OPS_TABS', () => {
     expect(system?.match('/ops')).toBe(false);
   });
 
+  it('shows four rows up front and keeps the rest under More', () => {
+    expect(OPS_MAIN_TABS.map((tab) => tab.label)).toEqual([
+      'Today',
+      'Business',
+      'Growth',
+      'Flags',
+    ]);
+    expect(OPS_MORE_TABS.map((tab) => tab.label)).toEqual([
+      'System',
+      'Errors',
+      'Messages',
+      'Tools',
+      'Showcase',
+    ]);
+  });
+
   it('matches each split command page only on its own route', () => {
-    for (const path of [
-      '/ops/commands',
-      '/ops/users',
-      '/ops/flags',
-      '/ops/showcase',
-    ]) {
+    for (const path of ['/ops/tools', '/ops/flags', '/ops/showcase']) {
       const matching = OPS_TABS.filter((tab) => tab.match(path));
       expect(matching.map((tab) => tab.to)).toEqual([path]);
     }

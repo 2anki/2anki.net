@@ -18,7 +18,13 @@ import SparklesIcon from '../icons/SparklesIcon';
 import StarIcon from '../icons/StarIcon';
 import WrenchIcon from '../icons/WrenchIcon';
 import ShareIcon from '../icons/ShareIcon';
-import { OPS_TABS } from '../../pages/OpsPage/opsTabs';
+import {
+  OPS_MAIN_TABS,
+  OPS_MESSAGES_PATH,
+  OPS_MORE_TABS,
+  OpsTab,
+} from '../../pages/OpsPage/opsTabs';
+import { useUnreadMessageCount } from '../../pages/OpsPage/useUnreadMessageCount';
 import { OPS_WINDOW_PARAM, isOpsWindow } from '../../pages/OpsPage/opsWindow';
 import styles from './AppShell.module.css';
 import { useSidebarCollapseState } from './useSidebarCollapseState';
@@ -53,6 +59,7 @@ interface SidebarRowProps {
   active?: boolean;
   onClick?: React.MouseEventHandler<HTMLAnchorElement>;
   icon?: React.ComponentType<{ width?: number; height?: number }>;
+  count?: number;
   children: React.ReactNode;
 }
 
@@ -62,6 +69,17 @@ function isActiveRoute(pathname: string, href: string, matchPrefix: boolean) {
   return pathname.startsWith(`${href}/`);
 }
 
+function SidebarCount({ count }: Readonly<{ count: number }>) {
+  return (
+    <>
+      <span className={styles.sidebarRowCount} aria-hidden="true">
+        {count}
+      </span>
+      <span className={styles.srOnly}>{`, ${count} unread`}</span>
+    </>
+  );
+}
+
 function SidebarRow({
   href,
   pathname,
@@ -69,6 +87,7 @@ function SidebarRow({
   active: activeOverride,
   onClick,
   icon: Icon,
+  count = 0,
   children,
 }: Readonly<SidebarRowProps>) {
   const active = activeOverride ?? isActiveRoute(pathname, href, matchPrefix);
@@ -85,6 +104,7 @@ function SidebarRow({
     >
       {Icon && <Icon width={20} height={20} />}
       <span className={styles.sidebarRowLabel}>{children}</span>
+      {count > 0 && <SidebarCount count={count} />}
     </Link>
   );
 }
@@ -104,10 +124,26 @@ function OpsSidebarFolder({
   const opsActive = pathname === '/ops' || pathname.startsWith('/ops/');
   const [open, setOpen] = useState(opsActive);
   const expanded = open || opsActive;
+  const moreActive = OPS_MORE_TABS.some((tab) => tab.match(pathname));
+  const [moreOpen, setMoreOpen] = useState(moreActive);
+  const moreExpanded = moreOpen || moreActive;
+  const unread = useUnreadMessageCount(expanded && !collapsed);
   const { search } = useLocation();
   const opsWindow = new URLSearchParams(search).get(OPS_WINDOW_PARAM);
   const withOpsWindow = (to: string): string =>
     isOpsWindow(opsWindow) ? `${to}?${OPS_WINDOW_PARAM}=${opsWindow}` : to;
+  const renderRow = (tab: OpsTab) => (
+    <SidebarRow
+      key={tab.to}
+      href={withOpsWindow(tab.to)}
+      pathname={pathname}
+      active={tab.match(pathname)}
+      onClick={onNavigate}
+      count={tab.to === OPS_MESSAGES_PATH ? unread : 0}
+    >
+      {tab.label}
+    </SidebarRow>
+  );
 
   if (collapsed) {
     return (
@@ -149,17 +185,34 @@ function OpsSidebarFolder({
           aria-label={t('chrome:nav.ops')}
           className={styles.sidebarFolderItems}
         >
-          {OPS_TABS.map((tab) => (
-            <SidebarRow
-              key={tab.to}
-              href={withOpsWindow(tab.to)}
-              pathname={pathname}
-              active={tab.match(pathname)}
-              onClick={onNavigate}
+          {OPS_MAIN_TABS.map(renderRow)}
+          <button
+            type="button"
+            className={`${styles.sidebarRow} ${styles.sidebarFolderHeader}`}
+            aria-expanded={moreExpanded}
+            aria-controls="ops-more-items"
+            onClick={() => setMoreOpen((value) => !value)}
+          >
+            <span className={styles.sidebarRowLabel}>More</span>
+            {!moreExpanded && unread > 0 && <SidebarCount count={unread} />}
+            <ChevronRightIcon
+              width={16}
+              height={16}
+              className={`${styles.sidebarFolderChevron} ${
+                moreExpanded ? styles.sidebarFolderChevronOpen : ''
+              }`}
+            />
+          </button>
+          {moreExpanded && (
+            <div
+              id="ops-more-items"
+              role="group"
+              aria-label="More ops pages"
+              className={styles.sidebarMoreItems}
             >
-              {tab.label}
-            </SidebarRow>
-          ))}
+              {OPS_MORE_TABS.map(renderRow)}
+            </div>
+          )}
         </div>
       )}
     </>

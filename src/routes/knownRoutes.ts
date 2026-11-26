@@ -60,6 +60,7 @@ const OPS_ROUTES = new Set<string>([
   '/ops/return-rate',
   '/ops/showcase',
   '/ops/messages',
+  '/ops/tools',
   '/ops/commands',
   '/ops/users',
   '/ops/flags',
