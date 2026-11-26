@@ -1,11 +1,14 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
 import { ContactMessage } from '../../lib/backend/Backend';
 import { get2ankiApi } from '../../lib/backend/get2ankiApi';
 import sharedStyles from '../../styles/shared.module.css';
 import styles from './OpsPage.module.css';
+import { UNREAD_MESSAGES_QUERY_KEY } from './useUnreadMessageCount';
 
 export default function ContactMessagesTab() {
+  const queryClient = useQueryClient();
   const [messages, setMessages] = useState<ContactMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,6 +33,9 @@ export default function ContactMessagesTab() {
     );
     try {
       await get2ankiApi().acknowledgeContactMessage(id, nextValue);
+      await queryClient.invalidateQueries({
+        queryKey: UNREAD_MESSAGES_QUERY_KEY,
+      });
     } catch {
       setMessages((prev) =>
         prev.map((m) =>

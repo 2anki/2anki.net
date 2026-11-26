@@ -175,6 +175,10 @@ const CommandsTab = lazyWithRetry(
   () => import('./pages/OpsPage/CommandsTab'),
   './pages/OpsPage/CommandsTab'
 );
+const ToolsTab = lazyWithRetry(
+  () => import('./pages/OpsPage/ToolsTab'),
+  './pages/OpsPage/ToolsTab'
+);
 const UsersTab = lazyWithRetry(
   () => import('./pages/OpsPage/UsersTab'),
   './pages/OpsPage/UsersTab'
@@ -596,6 +600,7 @@ function AppContent({
               <Route path="system" element={<SystemTab />} />
               <Route path="errors" element={<ErrorsTab />} />
               <Route path="messages" element={<ContactMessagesTab />} />
+              <Route path="tools" element={<ToolsTab />} />
               <Route path="commands" element={<CommandsTab />} />
               <Route path="users" element={<UsersTab />} />
               <Route path="flags" element={<FlagsTab />} />

@@ -1,6 +1,9 @@
+export type OpsTabGroup = 'main' | 'more';
+
 export interface OpsTab {
   to: string;
   label: string;
+  group: OpsTabGroup;
   match: (path: string) => boolean;
 }
 
@@ -12,57 +15,69 @@ const childRoute =
 const todayTab: OpsTab = {
   to: '/ops/today',
   label: 'Today',
+  group: 'main',
   match: (path) =>
     path === '/ops' ||
     path.startsWith('/ops?') ||
     path.startsWith('/ops/today'),
 };
 
+export const OPS_MESSAGES_PATH = '/ops/messages';
+
 export const OPS_TABS: OpsTab[] = [
   todayTab,
   {
+    to: '/ops/business',
+    label: 'Business',
+    group: 'main',
+    match: childRoute('/ops/business'),
+  },
+  {
     to: '/ops/growth',
     label: 'Growth',
+    group: 'main',
     match: childRoute('/ops/growth'),
   },
   {
-    to: '/ops/business',
-    label: 'Business',
-    match: childRoute('/ops/business'),
+    to: '/ops/flags',
+    label: 'Flags',
+    group: 'main',
+    match: childRoute('/ops/flags'),
   },
   {
     to: '/ops/system',
     label: 'System',
+    group: 'more',
     match: childRoute('/ops/system'),
   },
   {
     to: '/ops/errors',
     label: 'Errors',
+    group: 'more',
     match: childRoute('/ops/errors'),
   },
   {
-    to: '/ops/messages',
+    to: OPS_MESSAGES_PATH,
     label: 'Messages',
-    match: childRoute('/ops/messages'),
+    group: 'more',
+    match: childRoute(OPS_MESSAGES_PATH),
   },
   {
-    to: '/ops/commands',
-    label: 'Commands',
-    match: childRoute('/ops/commands'),
-  },
-  {
-    to: '/ops/users',
-    label: 'Users',
-    match: childRoute('/ops/users'),
-  },
-  {
-    to: '/ops/flags',
-    label: 'Flags',
-    match: childRoute('/ops/flags'),
+    to: '/ops/tools',
+    label: 'Tools',
+    group: 'more',
+    match: (path) =>
+      ['/ops/tools', '/ops/commands', '/ops/users'].some((prefix) =>
+        path.startsWith(prefix)
+      ),
   },
   {
     to: '/ops/showcase',
     label: 'Showcase',
+    group: 'more',
     match: childRoute('/ops/showcase'),
   },
 ];
+
+export const OPS_MAIN_TABS = OPS_TABS.filter((tab) => tab.group === 'main');
+export const OPS_MORE_TABS = OPS_TABS.filter((tab) => tab.group === 'more');

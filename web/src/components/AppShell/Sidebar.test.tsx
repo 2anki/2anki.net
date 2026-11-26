@@ -25,6 +25,12 @@ vi.mock('../../lib/backend/getCardUsage', () => ({
   }),
 }));
 
+const listContactMessages = vi.hoisted(() => vi.fn());
+
+vi.mock('../../lib/backend/get2ankiApi', () => ({
+  get2ankiApi: () => ({ listContactMessages }),
+}));
+
 vi.mock('../../lib/backend/getAiCredits', () => ({
   getAiCredits: vi.fn().mockResolvedValue(null),
 }));
@@ -172,7 +178,11 @@ describe('Sidebar admin group', () => {
 });
 
 describe('Sidebar Ops folder', () => {
-  beforeEach(() => localStorage.clear());
+  beforeEach(() => {
+    localStorage.clear();
+    listContactMessages.mockReset();
+    listContactMessages.mockResolvedValue([]);
+  });
   afterEach(() => localStorage.clear());
 
   it('keeps the folder collapsed and its tabs hidden off /ops', () => {
@@ -189,13 +199,76 @@ describe('Sidebar Ops folder', () => {
       'aria-expanded',
       'true'
     );
+    expect(screen.getByRole('link', { name: 'Business' })).toHaveAttribute(
+      'href',
+      '/ops/business'
+    );
+  });
+
+  it('shows only the four everyday rows until More is opened', () => {
+    renderSidebar({ ops: true, pathname: '/ops/today' });
+    for (const label of ['Today', 'Business', 'Growth', 'Flags']) {
+      expect(screen.getByRole('link', { name: label })).toBeInTheDocument();
+    }
+    for (const label of ['System', 'Errors', 'Messages', 'Tools', 'Showcase']) {
+      expect(
+        screen.queryByRole('link', { name: label })
+      ).not.toBeInTheDocument();
+    }
+    expect(screen.getByRole('button', { name: 'More' })).toHaveAttribute(
+      'aria-expanded',
+      'false'
+    );
+  });
+
+  it('reveals the rest when More is clicked', () => {
+    renderSidebar({ ops: true, pathname: '/ops/today' });
+    fireEvent.click(screen.getByRole('button', { name: 'More' }));
+    expect(screen.getByRole('link', { name: 'Tools' })).toHaveAttribute(
+      'href',
+      '/ops/tools'
+    );
     expect(screen.getByRole('link', { name: 'Errors' })).toHaveAttribute(
       'href',
       '/ops/errors'
     );
   });
 
-  it('auto-expands and lists every ops tab when on an /ops route', () => {
+  it('shows the unread message count on More while it is closed', async () => {
+    listContactMessages.mockResolvedValue([
+      { id: 1, is_acknowledged: false },
+      { id: 2, is_acknowledged: true },
+      { id: 3, is_acknowledged: false },
+    ]);
+    renderSidebar({ ops: true, pathname: '/ops/today' });
+    expect(
+      await screen.findByRole('button', { name: 'More, 2 unread' })
+    ).toBeInTheDocument();
+  });
+
+  it('moves the unread count to the Messages row once More is open', async () => {
+    listContactMessages.mockResolvedValue([{ id: 1, is_acknowledged: false }]);
+    renderSidebar({ ops: true, pathname: '/ops/errors' });
+    expect(
+      await screen.findByRole('link', { name: 'Messages, 1 unread' })
+    ).toHaveAttribute('href', '/ops/messages');
+    expect(screen.getByRole('button', { name: 'More' })).toBeInTheDocument();
+  });
+
+  it('shows no count when every message is acknowledged', async () => {
+    listContactMessages.mockResolvedValue([{ id: 1, is_acknowledged: true }]);
+    renderSidebar({ ops: true, pathname: '/ops/errors' });
+    await act(async () => {});
+    expect(screen.getByRole('link', { name: 'Messages' })).toBeInTheDocument();
+  });
+
+  it('does not ask for messages while the Ops folder is closed', async () => {
+    renderSidebar({ ops: true, pathname: '/upload' });
+    await act(async () => {});
+    expect(listContactMessages).not.toHaveBeenCalled();
+  });
+
+  it('auto-expands Ops and More when on a page kept under More', () => {
     renderSidebar({ ops: true, pathname: '/ops/errors' });
     expect(screen.getByRole('button', { name: 'Ops' })).toHaveAttribute(
       'aria-expanded',
@@ -205,9 +278,13 @@ describe('Sidebar Ops folder', () => {
       'href',
       '/ops/system'
     );
-    expect(screen.getByRole('link', { name: 'Commands' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'More' })).toHaveAttribute(
+      'aria-expanded',
+      'true'
+    );
+    expect(screen.getByRole('link', { name: 'Tools' })).toHaveAttribute(
       'href',
-      '/ops/commands'
+      '/ops/tools'
     );
   });
 
@@ -217,9 +294,9 @@ describe('Sidebar Ops folder', () => {
       'href',
       '/ops/business?window=90d'
     );
-    expect(screen.getByRole('link', { name: 'Errors' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Flags' })).toHaveAttribute(
       'href',
-      '/ops/errors?window=90d'
+      '/ops/flags?window=90d'
     );
   });
 
@@ -235,14 +312,13 @@ describe('Sidebar Ops folder', () => {
     renderSidebar({ ops: true, pathname: '/ops/errors' });
     for (const [label, href] of [
       ['Today', '/ops/today'],
-      ['Growth', '/ops/growth'],
       ['Business', '/ops/business'],
+      ['Growth', '/ops/growth'],
+      ['Flags', '/ops/flags'],
       ['System', '/ops/system'],
       ['Errors', '/ops/errors'],
       ['Messages', '/ops/messages'],
-      ['Commands', '/ops/commands'],
-      ['Users', '/ops/users'],
-      ['Flags', '/ops/flags'],
+      ['Tools', '/ops/tools'],
       ['Showcase', '/ops/showcase'],
     ] as const) {
       expect(screen.getByRole('link', { name: label })).toHaveAttribute(
@@ -251,6 +327,8 @@ describe('Sidebar Ops folder', () => {
       );
     }
     for (const retired of [
+      'Commands',
+      'Users',
       'Engineering',
       'Performance',
       'Conversions',
@@ -284,7 +362,7 @@ describe('Sidebar Ops folder', () => {
       'aria-current',
       'page'
     );
-    expect(screen.getByRole('link', { name: 'Errors' })).not.toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Business' })).not.toHaveAttribute(
       'aria-current',
       'page'
     );

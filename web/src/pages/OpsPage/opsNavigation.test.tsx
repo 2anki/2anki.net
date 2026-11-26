@@ -8,12 +8,11 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { Sidebar } from '../../components/AppShell/Sidebar';
-import CommandsTab from './CommandsTab';
 import FlagsTab from './FlagsTab';
 import OpsLayout from './OpsLayout';
 import { OPS_TABS } from './opsTabs';
 import ShowcaseTab from './ShowcaseTab';
-import UsersTab from './UsersTab';
+import ToolsTab from './ToolsTab';
 
 vi.mock('../../lib/analytics/track', () => ({
   track: vi.fn(),
@@ -41,18 +40,11 @@ interface OpsPageCase {
 
 const SPLIT_PAGES: OpsPageCase[] = [
   {
-    label: 'Commands',
-    path: 'commands',
-    component: 'CommandsTab',
-    Page: CommandsTab,
+    label: 'Tools',
+    path: 'tools',
+    component: 'ToolsTab',
+    Page: ToolsTab,
     heading: 'Commands',
-  },
-  {
-    label: 'Users',
-    path: 'users',
-    component: 'UsersTab',
-    Page: UsersTab,
-    heading: 'Users',
   },
   {
     label: 'Flags',
@@ -127,6 +119,9 @@ describe('the split ops command pages', () => {
     async ({ label, path, heading }) => {
       renderOpsAt('/ops/today');
 
+      if (screen.queryByRole('link', { name: label }) == null) {
+        fireEvent.click(screen.getByRole('button', { name: 'More' }));
+      }
       fireEvent.click(screen.getByRole('link', { name: label }));
 
       expect(
@@ -150,18 +145,16 @@ describe('the split ops command pages', () => {
     }
   });
 
-  test('the Commands page no longer hosts the per-account, flag or showcase tools', async () => {
-    renderOpsAt('/ops/commands');
+  test('the Tools page hosts the jobs and the per-account tools, not flags or showcase', async () => {
+    renderOpsAt('/ops/tools');
 
     expect(
       await screen.findByText('Commands', { selector: 'p' })
     ).toBeInTheDocument();
+    expect(screen.getByText('Users', { selector: 'p' })).toBeInTheDocument();
     expect(
-      screen.queryByRole('heading', { name: 'Grant unclaimed pass' })
-    ).toBeNull();
-    expect(
-      screen.queryByRole('heading', { name: 'Delete account' })
-    ).toBeNull();
+      screen.getByRole('heading', { name: 'Grant unclaimed pass' })
+    ).toBeInTheDocument();
     expect(screen.queryByText('Homepage showcase')).toBeNull();
     expect(screen.queryByText('Flags', { selector: 'p' })).toBeNull();
   });

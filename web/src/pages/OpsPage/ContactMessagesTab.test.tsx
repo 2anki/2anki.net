@@ -1,9 +1,11 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { ContactMessage } from '../../lib/backend/Backend';
 import ContactMessagesTab from './ContactMessagesTab';
+import { UNREAD_MESSAGES_QUERY_KEY } from './useUnreadMessageCount';
 
 const mockListContactMessages = vi.fn();
 const mockAcknowledgeContactMessage = vi.fn();
@@ -28,6 +30,15 @@ const buildMessage = (
   ...overrides,
 });
 
+function renderTab(queryClient = new QueryClient()) {
+  render(
+    <QueryClientProvider client={queryClient}>
+      <ContactMessagesTab />
+    </QueryClientProvider>
+  );
+  return queryClient;
+}
+
 describe('ContactMessagesTab acknowledge action', () => {
   beforeEach(() => {
     mockListContactMessages.mockResolvedValue([buildMessage()]);
@@ -40,7 +51,7 @@ describe('ContactMessagesTab acknowledge action', () => {
 
   test('marks a message as read when the request succeeds', async () => {
     mockAcknowledgeContactMessage.mockResolvedValue(undefined);
-    render(<ContactMessagesTab />);
+    renderTab();
 
     const button = await screen.findByRole('button', { name: 'Mark as read' });
     fireEvent.click(button);
@@ -54,9 +65,26 @@ describe('ContactMessagesTab acknowledge action', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
+  test('refreshes the sidebar unread count once a message is marked as read', async () => {
+    mockAcknowledgeContactMessage.mockResolvedValue(undefined);
+    const queryClient = new QueryClient();
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries');
+    renderTab(queryClient);
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Mark as read' })
+    );
+
+    await waitFor(() =>
+      expect(invalidate).toHaveBeenCalledWith({
+        queryKey: UNREAD_MESSAGES_QUERY_KEY,
+      })
+    );
+  });
+
   test('reverts the toggle and shows an error when the request fails', async () => {
     mockAcknowledgeContactMessage.mockRejectedValue(new Error('500'));
-    render(<ContactMessagesTab />);
+    renderTab();
 
     const button = await screen.findByRole('button', { name: 'Mark as read' });
     fireEvent.click(button);
@@ -77,7 +105,7 @@ describe('ContactMessagesTab acknowledge action', () => {
       buildMessage({ id: 2, name: 'Second reporter' }),
     ]);
     mockAcknowledgeContactMessage.mockRejectedValue(new Error('500'));
-    render(<ContactMessagesTab />);
+    renderTab();
 
     const buttons = await screen.findAllByRole('button', {
       name: 'Mark as read',

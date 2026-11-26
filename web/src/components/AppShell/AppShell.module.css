@@ -260,6 +260,30 @@
   padding-left: 44px;
 }
 
+.sidebarMoreItems {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.sidebarMoreItems .sidebarRow {
+  padding-left: 60px;
+}
+
+.sidebarRowCount {
+  flex-shrink: 0;
+  min-width: 1.25rem;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+  color: var(--color-bg-primary);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25rem;
+  text-align: center;
+}
+
 .sidebarRow {
   display: flex;
   align-items: center;
