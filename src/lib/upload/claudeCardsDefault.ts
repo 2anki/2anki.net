@@ -1,11 +1,12 @@
 import { isPDFFile, isPPTFile } from '../storage/checks';
 
-// Written by every signed-in AI toggle on the web from this change on. A stored
-// claude-ai-flashcards off without it may still be a choice made before toggles
-// were recorded (about half of recorded toggles are offs), so only an account
-// value never stored or a latest recorded "on" lets the default apply. The
-// account value decides, not the browser's, so the upload badge (which reads
-// the account) and the upload agree.
+// Written by every signed-in AI toggle on the web. For claudeCardsByDefault,
+// the rule for uploads that arrive without the page's switch field, a stored
+// claude-ai-flashcards off without this marker may still be a choice made
+// before toggles were recorded, so only an account value never stored or a
+// latest recorded "on" lets that default apply. The account value decides,
+// not the browser's, so the upload badge (which reads the account) and the
+// upload agree.
 export const AI_CHOICE_AT_KEY = 'ai-choice-at';
 
 const AI_TURNED_ON_EVENT = 'upload_ai_turned_on';
@@ -128,10 +129,10 @@ export async function accountHasClaudeCardsByDefault(
   return defaultMayApply(reader, userId, stored);
 }
 
-// Whether the account's own record leaves Claude on: on when it stored or
-// last turned Claude on, off when it recorded turning it off or stored an off
-// that may have been a choice. The upload card's switch starts from this; it
-// never decides an upload, which only the switch's sent value does.
+// Where the upload card's switch starts: on unless the person deliberately
+// turned AI off, meaning the choice marker without Claude on, or a latest
+// "turned off" toggle event. A failed history read keeps it off. It never
+// decides an upload, which only the switch's sent value does.
 export async function accountChoiceAllowsClaude(
   userId: number,
   storedCardOptions: unknown,
@@ -140,5 +141,15 @@ export async function accountChoiceAllowsClaude(
   const stored = storedOptionsOf(storedCardOptions);
   if (stored['claude-ai-flashcards'] === 'true') return true;
   if (hasAiChoiceMarker(stored)) return false;
-  return defaultMayApply(reader, userId, stored);
+  try {
+    return (
+      (await reader.latestAiToggleEventName(userId)) !== AI_TURNED_OFF_EVENT
+    );
+  } catch (error) {
+    console.warn(
+      '[claude-default] toggle history read failed, keeping the switch off',
+      error
+    );
+    return false;
+  }
 }

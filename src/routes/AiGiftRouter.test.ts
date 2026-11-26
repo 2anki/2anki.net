@@ -328,6 +328,100 @@ describe('GET /api/ai/gift for each kind of account', () => {
     });
   });
 
+  it.each<[string, Record<string, string> | null, string | null, boolean]>([
+    [
+      'saved settings with Claude off and no choice',
+      { 'claude-ai-flashcards': 'false' },
+      null,
+      true,
+    ],
+    [
+      'a recorded choice with Claude off',
+      { 'claude-ai-flashcards': 'false', 'ai-choice-at': '1762300000' },
+      null,
+      false,
+    ],
+    [
+      'Claude last toggled off',
+      { 'claude-ai-flashcards': 'false' },
+      'upload_ai_turned_off',
+      false,
+    ],
+    [
+      'Claude last toggled on',
+      { 'claude-ai-flashcards': 'false' },
+      'upload_ai_turned_on',
+      true,
+    ],
+    ['Claude saved on', { 'claude-ai-flashcards': 'true' }, null, true],
+  ])(
+    'starts the switch of a free account with credits from %s',
+    async (_case, stored, latest, on) => {
+      h.claudeDefault.stored = stored;
+      h.claudeDefault.latestToggle = latest;
+
+      expect((await getGift(h, 6)).body).toMatchObject({
+        hasCredits: true,
+        nextUploadUsesCredits: true,
+        switchOnByDefault: on,
+      });
+    }
+  );
+
+  it('starts the switch on for an account that holds a grant and has saved settings with Claude off and no choice', async () => {
+    await firstUpload(h, 5);
+    h.claudeDefault.stored = { 'claude-ai-flashcards': 'false' };
+
+    expect((await getGift(h, 5)).body).toMatchObject({
+      state: 'claimed',
+      hasCredits: true,
+      switchOnByDefault: true,
+    });
+  });
+
+  it('starts the switch off, whatever was saved, when the month is short of the card minimum', async () => {
+    h.claudeDefault.stored = { 'claude-ai-flashcards': 'false' };
+    h.claudeDefault.cardsLeft = 12;
+
+    expect((await getGift(h, 6)).body).toMatchObject({
+      nextUploadUsesCredits: false,
+      switchOnByDefault: false,
+    });
+  });
+
+  it('starts the switch off, whatever was saved, while a gift conversion runs', async () => {
+    h.claudeDefault.stored = { 'claude-ai-flashcards': 'false' };
+    takeGiftMarker(6);
+
+    expect((await getGift(h, 6)).body).toMatchObject({
+      nextUploadUsesCredits: false,
+      switchOnByDefault: false,
+    });
+  });
+
+  it('starts the switch off, whatever was saved, once the gift credits are spent', async () => {
+    await firstUpload(h, 5);
+    h.claudeDefault.stored = { 'claude-ai-flashcards': 'false' };
+    h.gifts.spend.push({ giftId: 1, userId: 5, costUsd: 5, at: OPENING });
+
+    expect((await getGift(h, 5)).body).toMatchObject({
+      credits: 0,
+      hasCredits: false,
+      switchOnByDefault: false,
+    });
+  });
+
+  it('never starts the switch on for a paying account that holds a grant, whatever was saved', async () => {
+    await firstUpload(h, 5);
+    h.claudeDefault.stored = { 'claude-ai-flashcards': 'false' };
+
+    expect((await getGift(h, 5, { paying: true })).body).toMatchObject({
+      hasCredits: false,
+      nextUploadUsesCredits: false,
+      switchOnByDefault: false,
+    });
+  });
+
   it('reads no network count for an account that holds a grant', async () => {
     await firstUpload(h, 5);
     const count = vi.spyOn(h.gifts, 'networkGrantCount');
