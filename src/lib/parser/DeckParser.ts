@@ -117,6 +117,7 @@ import {
 } from './induction/induceCardsFromDom';
 import { hasVisibleContent } from './hasVisibleContent';
 import type { AiGiftMode } from '../claude/aiCredits/gift/giftBalance';
+import type { GiftCardAllowance } from '../claude/aiCredits/gift/giftCardAllowance';
 
 type SectionTagLookup = (element: Element) => string[];
 
@@ -159,6 +160,7 @@ export interface DeckParserInput {
   uploadIdentity?: UploadIdentityContext;
   crossFileDedup?: CrossFileDedupState;
   cardLimit?: number;
+  giftCardAllowance?: GiftCardAllowance;
 }
 
 // Present only for signed-in uploads of a format whose fronts are stable

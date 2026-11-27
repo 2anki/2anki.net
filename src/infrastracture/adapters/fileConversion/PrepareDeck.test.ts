@@ -7,12 +7,12 @@ import path from 'node:path';
 import { strToU8, zipSync } from 'fflate';
 import {
   PrepareDeck,
-  keepWithinGiftCardLimit,
   parserWarning,
   prepareDeckInfoOnly,
   conversionInvokesAi,
   assembleParserFiles,
 } from './PrepareDeck';
+import { keepWithinGiftCardLimit } from '../../../lib/claude/aiCredits/gift/giftCardAllowance';
 import CardOption from '../../../lib/parser/Settings/CardOption';
 import type Workspace from '../../../lib/parser/WorkSpace';
 import { mcpOptionsToCardSettings } from '../../../services/mcp/mcpOptionsToCardSettings';
@@ -216,7 +216,56 @@ describe('PrepareDeck — Claude AI flashcards branch', () => {
     expect(generateDeckInfo).toHaveBeenCalledTimes(1);
     expect(result?.name).toContain('My Deck');
     expect(result?.apkg).toEqual(Buffer.from('fake-apkg'));
+    expect(result?.cardCount).toBe(1);
   });
+
+  it.each([
+    ['a paying account', undefined],
+    ['a pass holder without an account', 7],
+  ])(
+    'calls Claude for every file of %s with no gift mode and keeps every card past 100',
+    async (_who, anonymousPassId) => {
+      const fiftyCards = (topic: string) => [
+        {
+          name: topic,
+          image: '',
+          style: null,
+          id: topic.length,
+          settings: { template: 'specialstyle' },
+          cards: Array.from({ length: 50 }, (_, i) => ({
+            name: `${topic} front ${i}`,
+            back: `${topic} back ${i}`,
+            tags: [],
+            cloze: false,
+            number: i,
+            enableInput: false,
+            answer: '',
+            media: [],
+          })),
+        },
+      ];
+      generateDeckInfo.mockImplementation(async (html: string) =>
+        fiftyCards(html)
+      );
+
+      const result = await PrepareDeck({
+        name: 'notes',
+        files: [
+          { name: 'one.html', contents: '<p>one</p>' },
+          { name: 'two.html', contents: '<p>two</p>' },
+          { name: 'three.html', contents: '<p>three</p>' },
+        ],
+        settings: makeSettings({ 'claude-ai-flashcards': 'true' }),
+        noLimits: true,
+        workspace: makeWorkspace(),
+        anonymousPassId,
+      });
+
+      expect(generateDeckInfo).toHaveBeenCalledTimes(3);
+      expect(result?.cardCount).toBe(150);
+      expect(result?.cardsHeldBack).toBeUndefined();
+    }
+  );
 
   it.each([
     ['a signed-in subscriber', undefined],
@@ -448,16 +497,16 @@ describe('PrepareDeck — Claude AI flashcards branch', () => {
     });
   });
 
-  it("keeps a gift-only deck within the month's remaining cards", () => {
+  it("keeps a gift-only deck within what is left of the job's card allowance", () => {
     const card = (name: string) => ({ name, back: 'b' });
     const decks = [
       { name: 'One', cards: [card('a'), card('b')] },
       { name: 'Two', cards: [card('c'), card('d')] },
-    ] as unknown as Parameters<typeof keepWithinGiftCardLimit>[0];
+    ];
 
     const kept = keepWithinGiftCardLimit(decks, {
       aiGift: 'only',
-      cardLimit: 3,
+      giftCardAllowance: { remaining: 3 },
     });
 
     expect(kept.heldBack).toBe(1);
@@ -466,8 +515,10 @@ describe('PrepareDeck — Claude AI flashcards branch', () => {
       ['c'],
     ]);
     expect(
-      keepWithinGiftCardLimit(decks, { aiGift: 'fallback', cardLimit: 1 })
-        .heldBack
+      keepWithinGiftCardLimit(decks, {
+        aiGift: 'fallback',
+        giftCardAllowance: { remaining: 1 },
+      }).heldBack
     ).toBe(0);
   });
 

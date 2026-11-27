@@ -115,9 +115,15 @@ import type { AiGiftMode } from '../lib/claude/aiCredits/gift/giftBalance';
 import {
   restartAiGiftMode,
   uploadAiGiftMode,
+  type RestartGift,
   type UploadGiftModeDeps,
 } from '../lib/claude/aiCredits/gift/uploadGiftMode';
 import { AI_GIFT_MIN_MONTHLY_CARDS } from '../lib/claude/aiCredits/gift/giftTerms';
+import {
+  createGiftCardAllowance,
+  keepWithinGiftCardLimit,
+  type GiftCardLimits,
+} from '../lib/claude/aiCredits/gift/giftCardAllowance';
 import { giftWouldPayForUpload } from '../lib/claude/aiCredits/gift/giftPaysForUpload';
 import {
   releaseGiftMarker,
@@ -854,6 +860,25 @@ function positiveId(owner: unknown): number | null {
   return owner != null && Number.isFinite(id) && id > 0 ? id : null;
 }
 
+// The person already spent gift credits on the cards Claude made while the gift
+// alone could pay, so those cards are delivered even past the month's free
+// cards. Cards the parser or a file's own converter made still meet the limit,
+// so a small Claude file cannot carry a large non-Claude one past it.
+function giftPaidForDeck(
+  admittedOnGiftAlone: boolean,
+  packages: { engine?: ConversionEngine }[]
+): boolean {
+  return admittedOnGiftAlone && packages.some((p) => p.engine === 'claude');
+}
+
+function cardsNotMadeByClaude(
+  packages: { engine?: ConversionEngine; cardCount?: number }[]
+): number {
+  return packages
+    .filter((p) => p.engine !== 'claude')
+    .reduce((sum, p) => sum + (p.cardCount ?? 0), 0);
+}
+
 function giftContextOf(res: express.Response): {
   aiGift?: AiGiftMode;
   cardLimit?: number;
@@ -1295,7 +1320,6 @@ class UploadService {
       paying,
       this.aiGiftReaders
     );
-    const aiGift = restartGift === 'off' ? 'only' : restartGift;
     const mayDrawOnGift = restartGift != null && restartGift !== 'off';
     const giftMarker =
       mayDrawOnGift && restartUserId != null
@@ -1330,7 +1354,7 @@ class UploadService {
       owner,
       workspaceDir,
       paying,
-      aiGift,
+      restartGift,
       res.locals.requestId,
       async (step) => {
         await this.jobRepository.updateJobStatus(job.object_id, owner, step);
@@ -1361,20 +1385,48 @@ class UploadService {
     res.status(202).json({ jobId: job.object_id });
   }
 
-  private async promoteClaudeJobToUpload(
-    objectId: string,
-    workspaceDir: string,
+  private async checkMonthlyCardLimit(
     owner: string,
-    totalCards = 0,
-    source: UploadSource | null = null,
-    paying = false,
-    skippedAiFiles: AiFileFailure[] = []
+    totalCards: number,
+    paying: boolean
   ): Promise<void> {
     await new CheckMonthlyCardLimitUseCase(this.usersRepository).execute({
       userId: owner,
       candidateCardCount: totalCards,
       isPaying: paying,
     });
+  }
+
+  // A gift restart follows the first run's rule: the gift pays only while the
+  // month has the minimum cards left, and the job's Claude cards stay within
+  // its allowance.
+  private async giftRestartCardLimits(owner: string): Promise<GiftCardLimits> {
+    await this.checkMonthlyCardLimit(owner, AI_GIFT_MIN_MONTHLY_CARDS, false);
+    return { aiGift: 'only', giftCardAllowance: createGiftCardAllowance() };
+  }
+
+  private async noteGiftDeckOverLimit(
+    jobId: string,
+    owner: string,
+    totalCards: number
+  ): Promise<void> {
+    const remaining = await this.remainingMonthlyCards(owner);
+    if (totalCards > remaining) {
+      console.info(
+        '[ai-gift] gift-paid deck delivered past the monthly card limit',
+        { jobId, cardsOverLimit: totalCards - remaining }
+      );
+    }
+  }
+
+  private async promoteClaudeJobToUpload(
+    objectId: string,
+    workspaceDir: string,
+    owner: string,
+    totalCards = 0,
+    source: UploadSource | null = null,
+    skippedAiFiles: AiFileFailure[] = []
+  ): Promise<void> {
     const files = await fs.promises.readdir(workspaceDir);
     const apkgFilename = files.find((f) => f.endsWith('.apkg'));
     if (!apkgFilename) {
@@ -1412,10 +1464,11 @@ class UploadService {
     owner: string,
     workspaceDir: string,
     paying: boolean,
-    aiGift: AiGiftMode | null,
+    restartGift: RestartGift | null,
     requestId: string | undefined,
     onProgress: (step: string) => Promise<void>
   ) {
+    const aiGift = restartGift === 'off' ? 'only' : restartGift;
     const htmlFiles = walkHtmlFiles(workspaceDir);
     const mediaFiles = walkMediaFiles(workspaceDir);
 
@@ -1436,6 +1489,8 @@ class UploadService {
     // balance so it stops cleanly at zero; if a later file trips the always-on
     // per-call guard, stop issuing calls and ship the files already produced
     // rather than failing the whole job.
+    const giftLimits =
+      restartGift === 'only' ? await this.giftRestartCardLimits(owner) : null;
     const preCheck = await getAiBudgetStatus({ userId, aiGift });
     if (preCheck.exhausted) {
       throw new AiCreditsExhaustedError();
@@ -1461,8 +1516,14 @@ class UploadService {
         onProgress
       );
 
+    const keptPerFile =
+      giftLimits == null
+        ? deckInfoArrays
+        : deckInfoArrays.map(
+            (decks) => keepWithinGiftCardLimit(decks, giftLimits).decks
+          );
     const deckInfo = withUserNoteTypes(
-      deckInfoArrays.flat().filter((d) => d.cards.length > 0),
+      keptPerFile.flat().filter((d) => d.cards.length > 0),
       settings ?? new CardOption({})
     );
     if (deckInfo.length === 0) {
@@ -1477,13 +1538,17 @@ class UploadService {
     exporter.configure(deckInfo as unknown as Deck[]);
     await exporter.save();
 
+    if (giftLimits != null) {
+      await this.noteGiftDeckOverLimit(objectId, owner, totalCards);
+    } else {
+      await this.checkMonthlyCardLimit(owner, totalCards, paying);
+    }
     await this.promoteClaudeJobToUpload(
       objectId,
       workspaceDir,
       owner,
       totalCards,
       null,
-      paying,
       skippedFiles
     );
   }
@@ -1992,6 +2057,7 @@ class UploadService {
       settings,
       paying
     );
+    const admittedOnGiftAlone = aiGiftOf(res) === 'only';
     const giftMarker = handOffGiftMarker(res);
     useCase
       .execute(
@@ -2053,13 +2119,22 @@ class UploadService {
             uploadInputFormat(req.files as UploadedFile[])
           );
           logEmptyBackAttribution(packages, this.resolveUploadSource(req));
+          if (giftPaidForDeck(admittedOnGiftAlone, packages)) {
+            await this.checkMonthlyCardLimit(
+              owner,
+              cardsNotMadeByClaude(packages),
+              paying
+            );
+            await this.noteGiftDeckOverLimit(ws.id, owner, totalCards);
+          } else {
+            await this.checkMonthlyCardLimit(owner, totalCards, paying);
+          }
           await this.promoteClaudeJobToUpload(
             ws.id,
             ws.location,
             owner,
             totalCards,
             source,
-            paying,
             skippedAiFiles
           );
           track('conversion_succeeded', {

@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-26-gift-deck-past-monthly-limit",
+  "date": "2026-11-26",
+  "type": "fix",
+  "title": "A deck made with free AI credits lands in My decks in full, even when it goes past the monthly card limit"
+}

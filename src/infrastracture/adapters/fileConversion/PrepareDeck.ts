@@ -94,6 +94,10 @@ import { track } from '../../../services/events/track';
 import { withDeckStyle } from '../../../lib/parser/buildDeckStyle';
 import { withUserNoteTypes } from '../../../lib/claude/withUserNoteTypes';
 import { AI_FILE_CONCURRENCY } from '../../../lib/claude/aiFileConcurrency';
+import {
+  giftCardAllowanceSpent,
+  keepWithinGiftCardLimit,
+} from '../../../lib/claude/aiCredits/gift/giftCardAllowance';
 
 const HTML_GENERATION_CONCURRENCY = AI_FILE_CONCURRENCY;
 
@@ -1104,6 +1108,12 @@ async function buildClaudeDeck(
   const htmlFiles = allFiles.filter(
     (f) => isClaudeTextInput(f.name) && f.contents
   );
+  if (htmlFiles.length > 0 && giftCardAllowanceSpent(input)) {
+    console.info(
+      '[PrepareDeck] Claude branch: gift card allowance used up, no Claude call'
+    );
+    return undefined;
+  }
 
   // Figure images extracted per source file (PDF text-layer, DOCX) travel
   // to their own HTML via pdfFigureNamesByHtml below; keeping them out of
@@ -1286,6 +1296,15 @@ async function buildClaudeDeck(
       );
       return undefined;
     }
+    // Earlier files of the gift-paid job used its whole card allowance. The
+    // parser must not make this file's cards instead, or they would pass the
+    // allowance by another route.
+    if (giftCardsHeldBack > 0) {
+      console.info('[PrepareDeck] Claude branch: gift card allowance used up', {
+        heldBack: giftCardsHeldBack,
+      });
+      return undefined;
+    }
     // A single-file upload whose only chunk tripped mid-run (or an AI pass that
     // produced nothing) falls back to the standard parser and carries the
     // credits warning, so the upload degrades gracefully instead of crashing.
@@ -1367,38 +1386,6 @@ export function conversionInvokesAi(
 interface ResolvedAiGate {
   exhausted: boolean;
   warning?: string;
-}
-
-// A gift-only upload is still a free account's: its deck may not pass what is
-// left of the month's cards, or the whole upload would be refused after the
-// gift already paid for it. Cards past the limit are dropped front to back and
-// counted, the way the parser holds cards back for a free account.
-export function keepWithinGiftCardLimit(
-  decks: Deck[],
-  input: Pick<DeckParserInput, 'aiGift' | 'cardLimit'>
-): { decks: Deck[]; heldBack: number } {
-  const limit = input.cardLimit;
-  if (input.aiGift !== 'only' || limit == null) {
-    return { decks, heldBack: 0 };
-  }
-  let room = limit;
-  let heldBack = 0;
-  const kept: Deck[] = [];
-  for (const deck of decks) {
-    const cards = deck.cards.slice(0, Math.max(0, room));
-    heldBack += deck.cards.length - cards.length;
-    room -= cards.length;
-    if (cards.length > 0) {
-      kept.push({ ...deck, cards } as Deck);
-    }
-  }
-  if (heldBack > 0) {
-    console.info('[PrepareDeck] gift deck kept within the monthly cards', {
-      limit,
-      heldBack,
-    });
-  }
-  return { decks: kept, heldBack };
 }
 
 // Claude cards run for a paying upload, or for an account with no plan whose
