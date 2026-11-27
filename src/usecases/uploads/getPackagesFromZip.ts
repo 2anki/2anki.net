@@ -1,5 +1,6 @@
 import path from 'node:path';
 import type { AiGiftMode } from '../../lib/claude/aiCredits/gift/giftBalance';
+import type { GiftCardAllowance } from '../../lib/claude/aiCredits/gift/giftCardAllowance';
 import pLimit from 'p-limit';
 import { collectIssuedGuids } from '../../lib/anki/collectIssuedGuids';
 import type { KnownGuids } from '../../lib/anki/guidLedgerTypes';
@@ -417,6 +418,7 @@ async function buildClaudeFlashcardDeck(
     aiGift?: AiGiftMode | null;
     requestId?: string;
     crossFileDedup?: CrossFileDedupState;
+    giftCardAllowance?: GiftCardAllowance;
   }
 ): Promise<PackageResult> {
   const deck = await PrepareDeck({
@@ -431,6 +433,7 @@ async function buildClaudeFlashcardDeck(
     aiGift: ctx.aiGift,
     requestId: ctx.requestId,
     crossFileDedup: ctx.crossFileDedup,
+    giftCardAllowance: ctx.giftCardAllowance,
   });
 
   const packages: Package[] = [];
@@ -445,6 +448,7 @@ async function buildClaudeFlashcardDeck(
       deck.emptyBackCount ?? 0,
       deck.parsePath
     );
+    pkg.engine = deck.engine;
     pkg.expiredNotionImageCount = deck.expiredNotionImageCount ?? 0;
     pkg.missingLocalImageCount = deck.missingLocalImageCount ?? 0;
     pkg.plainTextFallbackImageCount = deck.plainTextFallbackImageCount ?? 0;
@@ -628,6 +632,7 @@ export interface GetPackagesFromZipOptions {
   cardLimit?: number;
   anonymousPassId?: number | null;
   aiGift?: AiGiftMode | null;
+  giftCardAllowance?: GiftCardAllowance;
 }
 
 export const getPackagesFromZip = async (
@@ -647,6 +652,7 @@ export const getPackagesFromZip = async (
     cardLimit,
     anonymousPassId,
     aiGift,
+    giftCardAllowance,
   } = options;
   if (!fileContents) {
     return { packages: [] };
@@ -695,7 +701,14 @@ export const getPackagesFromZip = async (
         paying,
         workspace,
         onProgress,
-        { userId, requestId, crossFileDedup, anonymousPassId, aiGift }
+        {
+          userId,
+          requestId,
+          crossFileDedup,
+          anonymousPassId,
+          aiGift,
+          giftCardAllowance,
+        }
       )
     );
   }

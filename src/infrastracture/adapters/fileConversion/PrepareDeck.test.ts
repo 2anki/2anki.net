@@ -7,12 +7,12 @@ import path from 'node:path';
 import { strToU8, zipSync } from 'fflate';
 import {
   PrepareDeck,
-  keepWithinGiftCardLimit,
   parserWarning,
   prepareDeckInfoOnly,
   conversionInvokesAi,
   assembleParserFiles,
 } from './PrepareDeck';
+import { keepWithinGiftCardLimit } from '../../../lib/claude/aiCredits/gift/giftCardAllowance';
 import CardOption from '../../../lib/parser/Settings/CardOption';
 import type Workspace from '../../../lib/parser/WorkSpace';
 import { mcpOptionsToCardSettings } from '../../../services/mcp/mcpOptionsToCardSettings';
@@ -448,16 +448,16 @@ describe('PrepareDeck — Claude AI flashcards branch', () => {
     });
   });
 
-  it("keeps a gift-only deck within the month's remaining cards", () => {
+  it("keeps a gift-only deck within what is left of the job's card allowance", () => {
     const card = (name: string) => ({ name, back: 'b' });
     const decks = [
       { name: 'One', cards: [card('a'), card('b')] },
       { name: 'Two', cards: [card('c'), card('d')] },
-    ] as unknown as Parameters<typeof keepWithinGiftCardLimit>[0];
+    ];
 
     const kept = keepWithinGiftCardLimit(decks, {
       aiGift: 'only',
-      cardLimit: 3,
+      giftCardAllowance: { remaining: 3 },
     });
 
     expect(kept.heldBack).toBe(1);
@@ -466,8 +466,10 @@ describe('PrepareDeck — Claude AI flashcards branch', () => {
       ['c'],
     ]);
     expect(
-      keepWithinGiftCardLimit(decks, { aiGift: 'fallback', cardLimit: 1 })
-        .heldBack
+      keepWithinGiftCardLimit(decks, {
+        aiGift: 'fallback',
+        giftCardAllowance: { remaining: 1 },
+      }).heldBack
     ).toBe(0);
   });
 

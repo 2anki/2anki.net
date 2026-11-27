@@ -119,6 +119,11 @@ import {
   type UploadGiftModeDeps,
 } from '../lib/claude/aiCredits/gift/uploadGiftMode';
 import { AI_GIFT_MIN_MONTHLY_CARDS } from '../lib/claude/aiCredits/gift/giftTerms';
+import {
+  createGiftCardAllowance,
+  keepWithinGiftCardLimit,
+  type GiftCardLimits,
+} from '../lib/claude/aiCredits/gift/giftCardAllowance';
 import { giftWouldPayForUpload } from '../lib/claude/aiCredits/gift/giftPaysForUpload';
 import {
   releaseGiftMarker,
@@ -1392,6 +1397,14 @@ class UploadService {
     });
   }
 
+  // A gift restart follows the first run's rule: the gift pays only while the
+  // month has the minimum cards left, and the job's Claude cards stay within
+  // its allowance.
+  private async giftRestartCardLimits(owner: string): Promise<GiftCardLimits> {
+    await this.checkMonthlyCardLimit(owner, AI_GIFT_MIN_MONTHLY_CARDS, false);
+    return { aiGift: 'only', giftCardAllowance: createGiftCardAllowance() };
+  }
+
   private async noteGiftDeckOverLimit(
     jobId: string,
     owner: string,
@@ -1476,6 +1489,8 @@ class UploadService {
     // balance so it stops cleanly at zero; if a later file trips the always-on
     // per-call guard, stop issuing calls and ship the files already produced
     // rather than failing the whole job.
+    const giftLimits =
+      restartGift === 'only' ? await this.giftRestartCardLimits(owner) : null;
     const preCheck = await getAiBudgetStatus({ userId, aiGift });
     if (preCheck.exhausted) {
       throw new AiCreditsExhaustedError();
@@ -1501,8 +1516,14 @@ class UploadService {
         onProgress
       );
 
+    const keptPerFile =
+      giftLimits == null
+        ? deckInfoArrays
+        : deckInfoArrays.map(
+            (decks) => keepWithinGiftCardLimit(decks, giftLimits).decks
+          );
     const deckInfo = withUserNoteTypes(
-      deckInfoArrays.flat().filter((d) => d.cards.length > 0),
+      keptPerFile.flat().filter((d) => d.cards.length > 0),
       settings ?? new CardOption({})
     );
     if (deckInfo.length === 0) {
@@ -1517,7 +1538,7 @@ class UploadService {
     exporter.configure(deckInfo as unknown as Deck[]);
     await exporter.save();
 
-    if (restartGift === 'only') {
+    if (giftLimits != null) {
       await this.noteGiftDeckOverLimit(objectId, owner, totalCards);
     } else {
       await this.checkMonthlyCardLimit(owner, totalCards, paying);

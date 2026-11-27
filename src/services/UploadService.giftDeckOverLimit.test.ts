@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import type express from 'express';
+import { zipSync } from 'fflate';
 
 const storedKeys = vi.hoisted(() => [] as string[]);
 
@@ -133,6 +134,9 @@ import {
   getAiBudgetStatus,
 } from '../lib/claude/aiSpendGuard';
 import { jobFailureReasonFromError } from '../usecases/jobs/jobFailureReason';
+import { generateDeckInfo } from '../lib/claude/ClaudeService';
+import { AI_GIFT_MIN_MONTHLY_CARDS } from '../lib/claude/aiCredits/gift/giftTerms';
+import { AI_GIFT_CLAUDE_CARDS_PER_JOB } from '../lib/claude/aiCredits/gift/giftCardAllowance';
 
 const OWNER = 42;
 const NOW = new Date('2026-11-26T12:00:00.000Z');
@@ -298,6 +302,32 @@ function ankiAppXmlFile(cards: number) {
   };
 }
 
+function zipFile(name: string, entries: Record<string, Buffer>) {
+  const buffer = Buffer.from(
+    zipSync(
+      Object.fromEntries(
+        Object.entries(entries).map(([entry, bytes]) => [
+          entry,
+          new Uint8Array(bytes),
+        ])
+      )
+    )
+  );
+  return {
+    originalname: name,
+    mimetype: 'application/zip',
+    buffer,
+    size: buffer.length,
+  };
+}
+
+function manyClaudeFiles(count: number, topic: (i: number) => string) {
+  return Array.from({ length: count }, (_, i) => ({
+    ...htmlFile(topic(i)),
+    originalname: `notes-${i}.html`,
+  }));
+}
+
 const TWO_CLAUDE_FILES = [htmlFile('alpha'), htmlFile('beta')];
 const TWO_CLAUDE_CARDS = 2 * CLAUDE_CARDS_PER_FILE;
 const CARDS_USED_LEAVING_25 = MONTHLY_CARD_LIMIT - 25;
@@ -390,6 +420,12 @@ describe('a Claude deck the free AI credits gift paid for, past the monthly card
     ['on the web', FREE, claudeOn],
     ['from an MCP client', MCP_FREE, claudeOn],
     ['from the app', FREE, { ...claudeOn, source: 'app' }],
+    ['from a Dropbox import', FREE, { ...claudeOn, source: 'dropbox' }],
+    [
+      'from a Google Drive import',
+      FREE,
+      { ...claudeOn, source: 'google_drive' },
+    ],
   ])(
     'is stored in My decks %s instead of failing, and all its cards count toward the month',
     async (_entry, locals, body) => {
@@ -493,6 +529,87 @@ describe('a Claude deck the free AI credits gift paid for, past the monthly card
   }, 20_000);
 });
 
+describe('the Claude card allowance of one gift-paid job', () => {
+  it('caps 21 Claude files with 20 cards left at the allowance of 100 cards in total', async () => {
+    const { settled, users } = await upload({
+      files: manyClaudeFiles(21, (i) => `topic${i}`),
+      cardsUsed: MONTHLY_CARD_LIMIT - 20,
+      locals: FREE,
+    });
+
+    expect(await settled).toBe('delivered');
+    expect(users.incrementCardUsage).toHaveBeenCalledWith(
+      OWNER,
+      AI_GIFT_CLAUDE_CARDS_PER_JOB
+    );
+  }, 30_000);
+
+  it('caps 21 copies of the same content at the allowance too', async () => {
+    const { settled, users } = await upload({
+      files: manyClaudeFiles(21, () => 'alpha'),
+      cardsUsed: MONTHLY_CARD_LIMIT - 20,
+      locals: FREE,
+    });
+
+    expect(await settled).toBe('delivered');
+    expect(users.incrementCardUsage).toHaveBeenCalledWith(
+      OWNER,
+      AI_GIFT_CLAUDE_CARDS_PER_JOB
+    );
+  }, 30_000);
+});
+
+describe('an uploaded Notion export zip the gift pays for', () => {
+  const twoPageExport = () =>
+    zipFile('export.zip', {
+      'alpha.html': notionPage('alpha'),
+      'beta.html': notionPage('beta'),
+    });
+
+  it('is delivered past the limit and counted, Claude making its cards', async () => {
+    vi.mocked(generateDeckInfo).mockClear();
+
+    const { status, settled, users } = await upload({
+      files: [twoPageExport()],
+      cardsUsed: CARDS_USED_LEAVING_25,
+      locals: FREE,
+    });
+
+    expect(status()).toBe(202);
+    expect(await settled).toBe('delivered');
+    expect(generateDeckInfo).toHaveBeenCalledTimes(2);
+    expect(users.incrementCardUsage).toHaveBeenCalledWith(
+      OWNER,
+      TWO_CLAUDE_CARDS
+    );
+  }, 20_000);
+
+  it('is delivered under the limit and counted', async () => {
+    const { settled, users } = await upload({
+      files: [twoPageExport()],
+      cardsUsed: 0,
+      locals: FREE,
+    });
+
+    expect(await settled).toBe('delivered');
+    expect(users.incrementCardUsage).toHaveBeenCalledWith(
+      OWNER,
+      TWO_CLAUDE_CARDS
+    );
+  }, 20_000);
+
+  it('is refused when a large non-Claude file beside it passes what is left', async () => {
+    const { settled, users } = await upload({
+      files: [twoPageExport(), ankiAppXmlFile(5000)],
+      cardsUsed: CARDS_USED_LEAVING_25,
+      locals: FREE,
+    });
+
+    expect(await settled).toMatch(/^failed: \{"code":"monthly_limit"/);
+    expect(users.incrementCardUsage).not.toHaveBeenCalled();
+  }, 30_000);
+});
+
 describe('a deck the gift did not pay for keeps the monthly card limit', () => {
   it('fails at the limit when the gift ran out before Claude made any card and the parser made them all', async () => {
     const { status, settled, users } = await upload({
@@ -579,8 +696,12 @@ describe('a deck the gift did not pay for keeps the monthly card limit', () => {
 });
 
 describe('a restarted Claude job past the monthly card limit', () => {
-  function restartService(readers: () => UploadGiftModeDeps) {
-    const users = usersWith(MONTHLY_CARD_LIMIT - 5);
+  function restartService(
+    readers: () => UploadGiftModeDeps,
+    cardsUsed: number,
+    pages: number
+  ) {
+    const users = usersWith(cardsUsed);
     const { jobs, settled } = settlingJobs();
     const service = new UploadService(
       recordingUploads(),
@@ -592,12 +713,24 @@ describe('a restarted Claude job past the monthly card limit', () => {
     );
     const workspaceDir = path.join(workspaceBase, 'job-ws');
     fs.mkdirSync(workspaceDir, { recursive: true });
-    fs.writeFileSync(path.join(workspaceDir, 'page.html'), notionPage('gamma'));
+    for (let page = 0; page < pages; page++) {
+      fs.writeFileSync(
+        path.join(workspaceDir, `page-${page}.html`),
+        notionPage(`gamma${page}`)
+      );
+    }
     return { service, users, jobs, settled };
   }
 
-  async function restart(readers: () => UploadGiftModeDeps) {
-    const { service, users, jobs, settled } = restartService(readers);
+  async function restart(
+    readers: () => UploadGiftModeDeps,
+    { cardsUsed = MONTHLY_CARD_LIMIT - 5, pages = 1 } = {}
+  ) {
+    const { service, users, jobs, settled } = restartService(
+      readers,
+      cardsUsed,
+      pages
+    );
     const response = responseWith(FREE);
     await service.restartClaudeJob(
       { params: { jobId: 'job-ws' } } as unknown as express.Request,
@@ -607,14 +740,51 @@ describe('a restarted Claude job past the monthly card limit', () => {
   }
 
   it('is delivered when the gift pays for the restart, and its cards count', async () => {
-    const { status, settled, users } = await restart(giftReaders());
+    const { status, settled, users } = await restart(giftReaders(), {
+      cardsUsed: MONTHLY_CARD_LIMIT - AI_GIFT_MIN_MONTHLY_CARDS,
+      pages: 2,
+    });
 
     expect(status).toBe(202);
     expect(await settled).toBe('delivered');
     expect(users.incrementCardUsage).toHaveBeenCalledWith(
       OWNER,
-      CLAUDE_CARDS_PER_FILE
+      TWO_CLAUDE_CARDS
     );
+  }, 20_000);
+
+  it('delivers an interrupted gift job restarted with the minimum cards left within the job allowance', async () => {
+    const { settled, users } = await restart(giftReaders(), {
+      cardsUsed: MONTHLY_CARD_LIMIT - AI_GIFT_MIN_MONTHLY_CARDS,
+      pages: 6,
+    });
+
+    expect(await settled).toBe('delivered');
+    expect(users.incrementCardUsage).toHaveBeenCalledWith(
+      OWNER,
+      AI_GIFT_CLAUDE_CARDS_PER_JOB
+    );
+  }, 20_000);
+
+  it('refuses a gift restart in a month far past the limit before any Claude call', async () => {
+    vi.mocked(generateDeckInfo).mockClear();
+
+    const { settled, users } = await restart(giftReaders(), {
+      cardsUsed: 4 * MONTHLY_CARD_LIMIT,
+    });
+
+    expect(await settled).toMatch(/^failed: \{"code":"monthly_limit"/);
+    expect(generateDeckInfo).not.toHaveBeenCalled();
+    expect(users.incrementCardUsage).not.toHaveBeenCalled();
+  }, 20_000);
+
+  it('refuses a gift restart with one card fewer than the minimum left', async () => {
+    const { settled, users } = await restart(giftReaders(), {
+      cardsUsed: MONTHLY_CARD_LIMIT - AI_GIFT_MIN_MONTHLY_CARDS + 1,
+    });
+
+    expect(await settled).toMatch(/^failed: \{"code":"monthly_limit"/);
+    expect(users.incrementCardUsage).not.toHaveBeenCalled();
   }, 20_000);
 
   it('still fails at the limit while the gift is off', async () => {
@@ -641,7 +811,9 @@ describe('a restarted Claude job past the monthly card limit', () => {
         actualGuard.getAiBudgetStatus
       );
 
-      const { settled, users, jobs } = await restart(readers);
+      const { settled, users, jobs } = await restart(readers, {
+        cardsUsed: 0,
+      });
 
       expect(await settled).toBe(
         `failed: ${jobFailureReasonFromError(new AiCreditsExhaustedError(), 'job-ws')}`

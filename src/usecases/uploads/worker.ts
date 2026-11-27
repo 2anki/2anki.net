@@ -1,6 +1,10 @@
 import { getEventsSink } from '../../services/events/eventsSinkInstance';
 import type { AiGiftMode } from '../../lib/claude/aiCredits/gift/giftBalance';
 import {
+  createGiftCardAllowance,
+  type GiftCardAllowance,
+} from '../../lib/claude/aiCredits/gift/giftCardAllowance';
+import {
   mergeRescueCandidates,
   type RescueCandidate,
 } from '../../types/RescueCandidate';
@@ -199,7 +203,8 @@ async function processFile(
   uploadIdentity?: UploadIdentityContext,
   cardLimit?: number,
   anonymousPassId?: number | null,
-  aiGift?: AiGiftMode | null
+  aiGift?: AiGiftMode | null,
+  giftCardAllowance?: GiftCardAllowance
 ): Promise<FileResult> {
   const packages: Package[] = [];
   const warnings: string[] = [];
@@ -284,6 +289,7 @@ async function processFile(
       uploadIdentity,
       crossFileDedup,
       cardLimit,
+      giftCardAllowance,
     });
 
     if (d) {
@@ -343,6 +349,7 @@ async function processFile(
         cardLimit,
         anonymousPassId,
         aiGift,
+        giftCardAllowance,
       }
     );
     packages.push(...result.packages);
@@ -471,6 +478,8 @@ async function doGenerationWork(
     shouldDedupeAcrossFiles(paying, settings, files) || dedupeAcrossDecks
       ? createCrossFileDedupState(existingCardFingerprints ?? [])
       : undefined;
+  const giftCardAllowance =
+    aiGift === 'only' ? createGiftCardAllowance() : undefined;
 
   // One file Claude could not make cards from does not sink the others: it is
   // named in a warning instead. An outage or a credit stop still fails the
@@ -512,7 +521,8 @@ async function doGenerationWork(
       uploadIdentity,
       cardLimit,
       anonymousPassId,
-      aiGift
+      aiGift,
+      giftCardAllowance
     );
   };
   const concurrency =
