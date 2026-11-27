@@ -1,6 +1,7 @@
 import {
   AI_GIFT_CLAUDE_CARDS_PER_JOB,
   createGiftCardAllowance,
+  giftCardAllowanceSpent,
   keepWithinGiftCardLimit,
 } from './giftCardAllowance';
 import { MONTHLY_CARD_LIMIT } from '../../../../usecases/users/CheckMonthlyCardLimitUseCase';
@@ -60,4 +61,18 @@ describe('the Claude card allowance of one gift-paid job', () => {
     expect(kept).toEqual({ decks: [deckOf(5)], heldBack: 0 });
     expect(giftCardAllowance.remaining).toBe(1);
   });
+
+  it.each([
+    ['a gift-paid job with nothing left', 'only' as const, 0, true],
+    ['a gift-paid job with cards left', 'only' as const, 1, false],
+    ['a paying account drawing on the gift', 'fallback' as const, 0, false],
+    ['an upload the gift does not pay for', null, 0, false],
+  ])(
+    'tells whether %s has used the allowance up',
+    (_label, aiGift, remaining, spent) => {
+      expect(
+        giftCardAllowanceSpent({ aiGift, giftCardAllowance: { remaining } })
+      ).toBe(spent);
+    }
+  );
 });

@@ -94,7 +94,10 @@ import { track } from '../../../services/events/track';
 import { withDeckStyle } from '../../../lib/parser/buildDeckStyle';
 import { withUserNoteTypes } from '../../../lib/claude/withUserNoteTypes';
 import { AI_FILE_CONCURRENCY } from '../../../lib/claude/aiFileConcurrency';
-import { keepWithinGiftCardLimit } from '../../../lib/claude/aiCredits/gift/giftCardAllowance';
+import {
+  giftCardAllowanceSpent,
+  keepWithinGiftCardLimit,
+} from '../../../lib/claude/aiCredits/gift/giftCardAllowance';
 
 const HTML_GENERATION_CONCURRENCY = AI_FILE_CONCURRENCY;
 
@@ -1101,6 +1104,12 @@ async function buildClaudeDeck(
   pdfImageFallbackNames: Set<string>,
   tTotal: number
 ): Promise<PrepareDeckResult | undefined> {
+  if (giftCardAllowanceSpent(input)) {
+    console.info(
+      '[PrepareDeck] Claude branch: gift card allowance used up, no Claude call'
+    );
+    return undefined;
+  }
   console.log('[PrepareDeck] Claude branch: collecting HTML content');
   const htmlFiles = allFiles.filter(
     (f) => isClaudeTextInput(f.name) && f.contents

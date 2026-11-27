@@ -61,16 +61,19 @@ vi.mock('../lib/claude/ClaudeService', async (importActual) => {
           style: null,
           id: topic.length * 1000 + 7,
           settings: { template: 'specialstyle' },
-          cards: Array.from({ length: CLAUDE_CARDS_PER_FILE }, (_, i) => ({
-            name: `${topic} question ${i}`,
-            back: `${topic} answer ${i}`,
-            tags: [],
-            cloze: false,
-            number: i,
-            enableInput: false,
-            answer: '',
-            media: [],
-          })),
+          cards: Array.from(
+            { length: html.includes('BIG-DECK') ? 100 : CLAUDE_CARDS_PER_FILE },
+            (_, i) => ({
+              name: `${topic} question ${i}`,
+              back: `${topic} answer ${i}`,
+              tags: [],
+              cloze: false,
+              number: i,
+              enableInput: false,
+              answer: '',
+              media: [],
+            })
+          ),
         },
       ];
     }),
@@ -559,6 +562,27 @@ describe('the Claude card allowance of one gift-paid job', () => {
   }, 30_000);
 });
 
+describe('a gift-paid job whose allowance is used up', () => {
+  it('makes no Claude call for a later file, so it spends no gift credits', async () => {
+    vi.mocked(generateDeckInfo).mockClear();
+    const { settled, users } = await upload({
+      files: [
+        zipFile('big.zip', { 'big.html': notionPage('big', 'BIG-DECK') }),
+        htmlFile('beta'),
+      ],
+      cardsUsed: CARDS_USED_LEAVING_25,
+      locals: FREE,
+    });
+
+    expect(await settled).toBe('delivered');
+    expect(generateDeckInfo).toHaveBeenCalledTimes(1);
+    expect(users.incrementCardUsage).toHaveBeenCalledWith(
+      OWNER,
+      AI_GIFT_CLAUDE_CARDS_PER_JOB
+    );
+  }, 20_000);
+});
+
 describe('an uploaded Notion export zip the gift pays for', () => {
   const twoPageExport = () =>
     zipFile('export.zip', {
@@ -724,14 +748,22 @@ describe('a restarted Claude job past the monthly card limit', () => {
 
   async function restart(
     readers: () => UploadGiftModeDeps,
-    { cardsUsed = MONTHLY_CARD_LIMIT - 5, pages = 1 } = {}
+    {
+      cardsUsed = MONTHLY_CARD_LIMIT - 5,
+      pages = 1,
+      locals = FREE,
+    }: {
+      cardsUsed?: number;
+      pages?: number;
+      locals?: Record<string, unknown>;
+    } = {}
   ) {
     const { service, users, jobs, settled } = restartService(
       readers,
       cardsUsed,
       pages
     );
-    const response = responseWith(FREE);
+    const response = responseWith(locals);
     await service.restartClaudeJob(
       { params: { jobId: 'job-ws' } } as unknown as express.Request,
       response.res
@@ -824,4 +856,156 @@ describe('a restarted Claude job past the monthly card limit', () => {
     },
     20_000
   );
+
+  it.each([
+    ['a paying account on its plan', PAYING, giftReaders({ grant: null })],
+    ['a paying account drawing on the gift', PAYING, giftReaders()],
+    ['a pass holder', PASS_HOLDER, giftReaders({ grant: null })],
+  ])(
+    'delivers the restart of %s past the limit and counts it, as before',
+    async (_label, locals, readers) => {
+      const { settled, users } = await restart(readers, {
+        cardsUsed: 2 * MONTHLY_CARD_LIMIT,
+        pages: 6,
+        locals,
+      });
+
+      expect(await settled).toBe('delivered');
+      expect(users.incrementCardUsage).toHaveBeenCalledWith(
+        OWNER,
+        6 * CLAUDE_CARDS_PER_FILE
+      );
+    },
+    20_000
+  );
+
+  it('refuses the restart of a free account with no gift past the limit, as before', async () => {
+    const { settled, users } = await restart(giftReaders({ grant: null }), {
+      cardsUsed: MONTHLY_CARD_LIMIT - 5,
+    });
+
+    expect(await settled).toMatch(/^failed: \{"code":"monthly_limit"/);
+    expect(users.incrementCardUsage).not.toHaveBeenCalled();
+  }, 20_000);
+
+  it.each([
+    ['a free account with no gift', FREE],
+    ['a paying account', PAYING],
+  ])(
+    'delivers the restart of %s under the limit and counts it, as before',
+    async (_label, locals) => {
+      const { settled, users } = await restart(giftReaders({ grant: null }), {
+        cardsUsed: 0,
+        locals,
+      });
+
+      expect(await settled).toBe('delivered');
+      expect(users.incrementCardUsage).toHaveBeenCalledWith(
+        OWNER,
+        CLAUDE_CARDS_PER_FILE
+      );
+    },
+    20_000
+  );
+});
+
+describe('uploads the gift does not pay for run the same worker with no allowance', () => {
+  it("delivers a paying account's Claude zip in full, uncapped, as one package", async () => {
+    vi.mocked(generateDeckInfo).mockClear();
+    const { settled, users } = await upload({
+      files: [
+        zipFile('export.zip', {
+          'one.html': notionPage('one', 'BIG-DECK'),
+          'two.html': notionPage('two', 'BIG-DECK'),
+        }),
+      ],
+      cardsUsed: MONTHLY_CARD_LIMIT,
+      locals: PAYING,
+    });
+
+    expect(await settled).toBe('delivered');
+    expect(generateDeckInfo).toHaveBeenCalledTimes(2);
+    expect(storedKeys).toHaveLength(1);
+    expect(users.incrementCardUsage).toHaveBeenCalledWith(OWNER, 200);
+  }, 20_000);
+
+  it('makes every Claude call for a paying account past 100 cards', async () => {
+    vi.mocked(generateDeckInfo).mockClear();
+    const { settled, users } = await upload({
+      files: [
+        zipFile('big.zip', { 'big.html': notionPage('big', 'BIG-DECK') }),
+        htmlFile('beta'),
+      ],
+      cardsUsed: 0,
+      locals: PAYING,
+    });
+
+    expect(await settled).toBe('delivered');
+    expect(generateDeckInfo).toHaveBeenCalledTimes(2);
+    expect(users.incrementCardUsage).toHaveBeenCalledWith(
+      OWNER,
+      100 + CLAUDE_CARDS_PER_FILE
+    );
+  }, 20_000);
+
+  it.each([
+    ['a free single file', FREE, () => [htmlFile('alpha')], 20],
+    [
+      'a free zip',
+      FREE,
+      () => [
+        zipFile('export.zip', {
+          'alpha.html': notionPage('alpha'),
+          'beta.html': notionPage('beta'),
+        }),
+      ],
+      40,
+    ],
+    ['a free multi-file upload', FREE, () => TWO_CLAUDE_FILES, 40],
+    ['a synchronous MCP upload', MCP_FREE, () => [htmlFile('alpha')], 20],
+  ])(
+    'converts %s without Claude with every parser card, counted as before',
+    async (_label, locals, files, cards) => {
+      vi.mocked(generateDeckInfo).mockClear();
+      const { status, jobs, users } = await upload({
+        files: files(),
+        cardsUsed: 0,
+        locals,
+        body: { 'claude-ai-flashcards': 'false' },
+      });
+
+      expect(status()).toBe(200);
+      expect(jobs.create).not.toHaveBeenCalled();
+      expect(generateDeckInfo).not.toHaveBeenCalled();
+      expect(users.incrementCardUsage).toHaveBeenCalledWith(OWNER, cards);
+    },
+    20_000
+  );
+
+  it('converts a synchronous app upload without Claude, counted as before', async () => {
+    const { status, users } = await upload({
+      files: [htmlFile('alpha')],
+      cardsUsed: 0,
+      locals: FREE,
+      body: { 'claude-ai-flashcards': 'false', source: 'app' },
+    });
+
+    expect(status()).toBe(200);
+    expect(users.incrementCardUsage).toHaveBeenCalledWith(
+      OWNER,
+      CLAUDE_CARDS_PER_FILE
+    );
+  }, 20_000);
+
+  it('converts a signed-out upload without Claude and counts nothing', async () => {
+    const { status, users } = await upload({
+      files: [htmlFile('alpha')],
+      cardsUsed: 0,
+      locals: {},
+      body: { 'claude-ai-flashcards': 'false' },
+    });
+
+    expect(status()).toBe(200);
+    expect(users.incrementCardUsage).not.toHaveBeenCalled();
+  }, 20_000);
 });

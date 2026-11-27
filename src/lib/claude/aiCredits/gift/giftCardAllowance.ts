@@ -19,6 +19,16 @@ export interface GiftCardLimits {
   giftCardAllowance?: GiftCardAllowance;
 }
 
+// Earlier files of a gift-paid job used its whole allowance, so a Claude call
+// for this file would spend gift credits on cards that cannot ship.
+export function giftCardAllowanceSpent(limits: GiftCardLimits): boolean {
+  return (
+    limits.aiGift === 'only' &&
+    limits.giftCardAllowance != null &&
+    limits.giftCardAllowance.remaining <= 0
+  );
+}
+
 // A gift-only job's Claude cards stay within what is left of the job's
 // allowance, which each file's cards then use up. Cards past it are dropped
 // front to back and counted, the way the parser holds cards back for a free
