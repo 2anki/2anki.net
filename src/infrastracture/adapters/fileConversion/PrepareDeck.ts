@@ -1104,16 +1104,16 @@ async function buildClaudeDeck(
   pdfImageFallbackNames: Set<string>,
   tTotal: number
 ): Promise<PrepareDeckResult | undefined> {
-  if (giftCardAllowanceSpent(input)) {
+  console.log('[PrepareDeck] Claude branch: collecting HTML content');
+  const htmlFiles = allFiles.filter(
+    (f) => isClaudeTextInput(f.name) && f.contents
+  );
+  if (htmlFiles.length > 0 && giftCardAllowanceSpent(input)) {
     console.info(
       '[PrepareDeck] Claude branch: gift card allowance used up, no Claude call'
     );
     return undefined;
   }
-  console.log('[PrepareDeck] Claude branch: collecting HTML content');
-  const htmlFiles = allFiles.filter(
-    (f) => isClaudeTextInput(f.name) && f.contents
-  );
 
   // Figure images extracted per source file (PDF text-layer, DOCX) travel
   // to their own HTML via pdfFigureNamesByHtml below; keeping them out of

@@ -288,6 +288,21 @@ function htmlFile(topic: string, marker = '') {
   };
 }
 
+function csvFile(cards: number) {
+  const buffer = Buffer.from(
+    Array.from(
+      { length: cards },
+      (_, i) => `csv front ${i},csv back ${i}`
+    ).join('\n')
+  );
+  return {
+    originalname: 'extra.csv',
+    mimetype: 'text/csv',
+    buffer,
+    size: buffer.length,
+  };
+}
+
 function ankiAppXmlFile(cards: number) {
   const body = Array.from(
     { length: cards },
@@ -534,6 +549,7 @@ describe('a Claude deck the free AI credits gift paid for, past the monthly card
 
 describe('the Claude card allowance of one gift-paid job', () => {
   it('caps 21 Claude files with 20 cards left at the allowance of 100 cards in total', async () => {
+    vi.mocked(generateDeckInfo).mockClear();
     const { settled, users } = await upload({
       files: manyClaudeFiles(21, (i) => `topic${i}`),
       cardsUsed: MONTHLY_CARD_LIMIT - 20,
@@ -545,6 +561,7 @@ describe('the Claude card allowance of one gift-paid job', () => {
       OWNER,
       AI_GIFT_CLAUDE_CARDS_PER_JOB
     );
+    expect(vi.mocked(generateDeckInfo).mock.calls.length).toBeLessThan(21);
   }, 30_000);
 
   it('caps 21 copies of the same content at the allowance too', async () => {
@@ -579,6 +596,25 @@ describe('a gift-paid job whose allowance is used up', () => {
     expect(users.incrementCardUsage).toHaveBeenCalledWith(
       OWNER,
       AI_GIFT_CLAUDE_CARDS_PER_JOB
+    );
+  }, 20_000);
+});
+
+describe('a gift-paid job whose allowance is used up, then a file Claude never reads', () => {
+  it('still builds that file with the parser and delivers its cards', async () => {
+    const { settled, users } = await upload({
+      files: [
+        zipFile('big.zip', { 'big.html': notionPage('big', 'BIG-DECK') }),
+        csvFile(10),
+      ],
+      cardsUsed: CARDS_USED_LEAVING_25,
+      locals: FREE,
+    });
+
+    expect(await settled).toBe('delivered');
+    expect(users.incrementCardUsage).toHaveBeenCalledWith(
+      OWNER,
+      AI_GIFT_CLAUDE_CARDS_PER_JOB + 10
     );
   }, 20_000);
 });
