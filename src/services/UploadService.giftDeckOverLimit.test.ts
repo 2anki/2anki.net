@@ -6,6 +6,7 @@ import type express from 'express';
 import { zipSync } from 'fflate';
 
 const storedKeys = vi.hoisted(() => [] as string[]);
+const builtCardCounts = vi.hoisted(() => [] as number[]);
 
 vi.mock('@aws-sdk/client-s3', async (importActual) => {
   const actual = await importActual<typeof import('@aws-sdk/client-s3')>();
@@ -34,6 +35,15 @@ vi.mock('../lib/anki/CardGenerator', () => ({
   default: class FakePythonCardGenerator {
     constructor(private readonly currentDirectory: string) {}
     async run(): Promise<string> {
+      const deckInfo = JSON.parse(
+        fs.readFileSync(
+          path.join(this.currentDirectory, 'deck_info.json'),
+          'utf8'
+        )
+      ) as { cards: unknown[] }[];
+      builtCardCounts.push(
+        deckInfo.reduce((sum, deck) => sum + deck.cards.length, 0)
+      );
       const apkgPath = path.join(this.currentDirectory, 'deck.apkg');
       fs.writeFileSync(apkgPath, 'apkg');
       return apkgPath;
@@ -42,6 +52,11 @@ vi.mock('../lib/anki/CardGenerator', () => ({
 }));
 
 const CLAUDE_CARDS_PER_FILE = vi.hoisted(() => 20);
+const claudeCardsFor = vi.hoisted(() => (html: string) => {
+  if (html.includes('HUGE-DECK')) return 150;
+  if (html.includes('BIG-DECK')) return 100;
+  return 20;
+});
 
 vi.mock('../lib/claude/ClaudeService', async (importActual) => {
   const actual =
@@ -61,19 +76,16 @@ vi.mock('../lib/claude/ClaudeService', async (importActual) => {
           style: null,
           id: topic.length * 1000 + 7,
           settings: { template: 'specialstyle' },
-          cards: Array.from(
-            { length: html.includes('BIG-DECK') ? 100 : CLAUDE_CARDS_PER_FILE },
-            (_, i) => ({
-              name: `${topic} question ${i}`,
-              back: `${topic} answer ${i}`,
-              tags: [],
-              cloze: false,
-              number: i,
-              enableInput: false,
-              answer: '',
-              media: [],
-            })
-          ),
+          cards: Array.from({ length: claudeCardsFor(html) }, (_, i) => ({
+            name: `${topic} question ${i}`,
+            back: `${topic} answer ${i}`,
+            tags: [],
+            cloze: false,
+            number: i,
+            enableInput: false,
+            answer: '',
+            media: [],
+          })),
         },
       ];
     }),
@@ -118,6 +130,7 @@ vi.mock('./events/eventsSinkInstance', () => ({
 }));
 
 import UploadService from './UploadService';
+import type { UploadedFile } from '../lib/storage/types';
 import type JobRepository from '../data_layer/JobRepository';
 import type UsersRepository from '../data_layer/UsersRepository';
 import type { IUploadRepository } from '../data_layer/UploadRespository';
@@ -510,6 +523,20 @@ describe('a Claude deck the free AI credits gift paid for, past the monthly card
   it('is delivered when the cards Claude did not make fill exactly what is left of the month', async () => {
     const { settled, users } = await upload({
       files: [htmlFile('alpha'), ankiAppXmlFile(25)],
+      cardsUsed: CARDS_USED_LEAVING_25,
+      locals: FREE,
+    });
+
+    expect(await settled).toBe('delivered');
+    expect(users.incrementCardUsage).toHaveBeenCalledWith(
+      OWNER,
+      CLAUDE_CARDS_PER_FILE + 25
+    );
+  }, 20_000);
+
+  it('holds a parser-read CSV back to the cards left in the month instead of refusing the job', async () => {
+    const { settled, users } = await upload({
+      files: [htmlFile('alpha'), csvFile(30)],
       cardsUsed: CARDS_USED_LEAVING_25,
       locals: FREE,
     });
@@ -943,6 +970,50 @@ describe('a restarted Claude job past the monthly card limit', () => {
     },
     20_000
   );
+});
+
+describe('a pass with no account and no gift, Claude on', () => {
+  const PASS_LOCALS = {
+    subscriber: true,
+    passKind: 'day',
+    passExpiresAt: '2026-11-28T00:00:00.000Z',
+    anonymousPassId: 7,
+  };
+
+  it('converts a signed-out Day Pass upload of two files with every Claude card, no cap', async () => {
+    vi.mocked(generateDeckInfo).mockClear();
+    builtCardCounts.length = 0;
+    const { status } = await upload({
+      files: [htmlFile('alpha', 'HUGE-DECK'), htmlFile('beta', 'HUGE-DECK')],
+      cardsUsed: 0,
+      locals: PASS_LOCALS,
+    });
+
+    expect(status()).toBe(200);
+    expect(generateDeckInfo).toHaveBeenCalledTimes(2);
+    expect(builtCardCounts.reduce((sum, n) => sum + n, 0)).toBe(300);
+  }, 20_000);
+
+  it('resumes a signed-out AI preview on the pass with every Claude card, no cap', async () => {
+    vi.mocked(generateDeckInfo).mockClear();
+    const service = new UploadService(
+      recordingUploads(),
+      settlingJobs().jobs as unknown as JobRepository,
+      usersWith(0) as unknown as UsersRepository,
+      ...fakeUploadServiceDeps(),
+      undefined,
+      giftReaders()
+    );
+
+    const conversion = await service.convertStoredFileWithAiForPass(
+      7,
+      htmlFile('alpha', 'HUGE-DECK') as unknown as UploadedFile,
+      'preview-resume'
+    );
+
+    expect(generateDeckInfo).toHaveBeenCalledTimes(1);
+    expect(conversion.cardCount).toBe(150);
+  }, 20_000);
 });
 
 describe('uploads the gift does not pay for run the same worker with no allowance', () => {

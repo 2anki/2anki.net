@@ -216,7 +216,56 @@ describe('PrepareDeck — Claude AI flashcards branch', () => {
     expect(generateDeckInfo).toHaveBeenCalledTimes(1);
     expect(result?.name).toContain('My Deck');
     expect(result?.apkg).toEqual(Buffer.from('fake-apkg'));
+    expect(result?.cardCount).toBe(1);
   });
+
+  it.each([
+    ['a paying account', undefined],
+    ['a pass holder without an account', 7],
+  ])(
+    'calls Claude for every file of %s with no gift mode and keeps every card past 100',
+    async (_who, anonymousPassId) => {
+      const fiftyCards = (topic: string) => [
+        {
+          name: topic,
+          image: '',
+          style: null,
+          id: topic.length,
+          settings: { template: 'specialstyle' },
+          cards: Array.from({ length: 50 }, (_, i) => ({
+            name: `${topic} front ${i}`,
+            back: `${topic} back ${i}`,
+            tags: [],
+            cloze: false,
+            number: i,
+            enableInput: false,
+            answer: '',
+            media: [],
+          })),
+        },
+      ];
+      generateDeckInfo.mockImplementation(async (html: string) =>
+        fiftyCards(html)
+      );
+
+      const result = await PrepareDeck({
+        name: 'notes',
+        files: [
+          { name: 'one.html', contents: '<p>one</p>' },
+          { name: 'two.html', contents: '<p>two</p>' },
+          { name: 'three.html', contents: '<p>three</p>' },
+        ],
+        settings: makeSettings({ 'claude-ai-flashcards': 'true' }),
+        noLimits: true,
+        workspace: makeWorkspace(),
+        anonymousPassId,
+      });
+
+      expect(generateDeckInfo).toHaveBeenCalledTimes(3);
+      expect(result?.cardCount).toBe(150);
+      expect(result?.cardsHeldBack).toBeUndefined();
+    }
+  );
 
   it.each([
     ['a signed-in subscriber', undefined],
