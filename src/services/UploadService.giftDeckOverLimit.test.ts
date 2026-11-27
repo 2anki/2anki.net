@@ -87,6 +87,24 @@ vi.mock('../lib/claude/aiSpendGuard', async (importActual) => {
   };
 });
 
+const budgetGiftReaders = vi.hoisted(() => ({
+  current: null as null | (() => unknown),
+}));
+
+vi.mock('../data_layer/createAiGiftReaders', async (importActual) => {
+  const actual =
+    await importActual<typeof import('../data_layer/createAiGiftReaders')>();
+  return {
+    ...actual,
+    createAiGiftReaders: () => {
+      if (budgetGiftReaders.current == null) {
+        throw new Error('no gift readers for the budget read in this test');
+      }
+      return budgetGiftReaders.current();
+    },
+  };
+});
+
 vi.mock('./events/eventsSinkInstance', () => ({
   getEventsSink: () => ({
     record: () => undefined,
@@ -110,6 +128,11 @@ import { resetGiftMarkers } from '../lib/claude/aiCredits/gift/giftConversionMar
 import type { AiGiftGrant } from '../lib/claude/aiCredits/gift/giftBalance';
 import type { UploadGiftModeDeps } from '../lib/claude/aiCredits/gift/uploadGiftMode';
 import { MONTHLY_CARD_LIMIT } from '../usecases/users/CheckMonthlyCardLimitUseCase';
+import {
+  AiCreditsExhaustedError,
+  getAiBudgetStatus,
+} from '../lib/claude/aiSpendGuard';
+import { jobFailureReasonFromError } from '../usecases/jobs/jobFailureReason';
 
 const OWNER = 42;
 const NOW = new Date('2026-11-26T12:00:00.000Z');
@@ -258,6 +281,23 @@ function htmlFile(topic: string, marker = '') {
   };
 }
 
+function ankiAppXmlFile(cards: number) {
+  const body = Array.from(
+    { length: cards },
+    (_, i) =>
+      `<card><field name="Front">bulk front ${i}</field><field name="Back">bulk back ${i}</field></card>`
+  ).join('');
+  const buffer = Buffer.from(
+    `<deck name="Bulk"><fields><text name="Front" sides="10"></text><text name="Back" sides="01"></text></fields><cards>${body}</cards></deck>`
+  );
+  return {
+    originalname: 'bulk.xml',
+    mimetype: 'application/xml',
+    buffer,
+    size: buffer.length,
+  };
+}
+
 const TWO_CLAUDE_FILES = [htmlFile('alpha'), htmlFile('beta')];
 const TWO_CLAUDE_CARDS = 2 * CLAUDE_CARDS_PER_FILE;
 const CARDS_USED_LEAVING_25 = MONTHLY_CARD_LIMIT - 25;
@@ -351,7 +391,7 @@ describe('a Claude deck the free AI credits gift paid for, past the monthly card
     ['from an MCP client', MCP_FREE, claudeOn],
     ['from the app', FREE, { ...claudeOn, source: 'app' }],
   ])(
-    'is delivered in full %s and its cards count toward the month',
+    'is stored in My decks %s instead of failing, and all its cards count toward the month',
     async (_entry, locals, body) => {
       const { status, settled, users } = await upload({
         files: TWO_CLAUDE_FILES,
@@ -388,7 +428,7 @@ describe('a Claude deck the free AI credits gift paid for, past the monthly card
     info.mockRestore();
   }, 20_000);
 
-  it('is delivered when the gift ran out after Claude made one file, the parser making the other', async () => {
+  it('is delivered when the gift ran out after Claude made one file and the parser made the other within what is left', async () => {
     const { settled, users } = await upload({
       files: [htmlFile('alpha'), htmlFile('beta', 'GIFT-RAN-OUT')],
       cardsUsed: CARDS_USED_LEAVING_25,
@@ -398,8 +438,44 @@ describe('a Claude deck the free AI credits gift paid for, past the monthly card
     expect(await settled).toBe('delivered');
     expect(users.incrementCardUsage).toHaveBeenCalledWith(
       OWNER,
-      expect.any(Number)
+      TWO_CLAUDE_CARDS
     );
+  }, 20_000);
+
+  it('fails at the limit when a small Claude file rides along with a 5000-card file its own converter made', async () => {
+    const { settled, users } = await upload({
+      files: [htmlFile('alpha'), ankiAppXmlFile(5000)],
+      cardsUsed: CARDS_USED_LEAVING_25,
+      locals: FREE,
+    });
+
+    expect(await settled).toMatch(/^failed: \{"code":"monthly_limit"/);
+    expect(users.incrementCardUsage).not.toHaveBeenCalled();
+  }, 30_000);
+
+  it('is delivered when the cards Claude did not make fill exactly what is left of the month', async () => {
+    const { settled, users } = await upload({
+      files: [htmlFile('alpha'), ankiAppXmlFile(25)],
+      cardsUsed: CARDS_USED_LEAVING_25,
+      locals: FREE,
+    });
+
+    expect(await settled).toBe('delivered');
+    expect(users.incrementCardUsage).toHaveBeenCalledWith(
+      OWNER,
+      CLAUDE_CARDS_PER_FILE + 25
+    );
+  }, 20_000);
+
+  it('fails at the limit when the cards Claude did not make pass what is left by one', async () => {
+    const { settled, users } = await upload({
+      files: [htmlFile('alpha'), ankiAppXmlFile(26)],
+      cardsUsed: CARDS_USED_LEAVING_25,
+      locals: FREE,
+    });
+
+    expect(await settled).toMatch(/^failed: \{"code":"monthly_limit"/);
+    expect(users.incrementCardUsage).not.toHaveBeenCalled();
   }, 20_000);
 
   it('is delivered and counted under the limit, as before', async () => {
@@ -550,4 +626,30 @@ describe('a restarted Claude job past the monthly card limit', () => {
     expect(users.incrementCardUsage).not.toHaveBeenCalled();
     expect(jobs.deleteJob as Mock).not.toHaveBeenCalled();
   }, 20_000);
+
+  it.each([
+    ['used up', giftReaders({ spendUsd: SPENT_GIFT_USD })],
+    ['expired', giftReaders({ grant: expiredGrant })],
+  ])(
+    'stops on a gift that is %s before any delivery, the real budget read refusing',
+    async (_state, readers) => {
+      const actualGuard = await vi.importActual<
+        typeof import('../lib/claude/aiSpendGuard')
+      >('../lib/claude/aiSpendGuard');
+      budgetGiftReaders.current = readers;
+      vi.mocked(getAiBudgetStatus).mockImplementationOnce(
+        actualGuard.getAiBudgetStatus
+      );
+
+      const { settled, users, jobs } = await restart(readers);
+
+      expect(await settled).toBe(
+        `failed: ${jobFailureReasonFromError(new AiCreditsExhaustedError(), 'job-ws')}`
+      );
+      expect(users.incrementCardUsage).not.toHaveBeenCalled();
+      expect(jobs.deleteJob as Mock).not.toHaveBeenCalled();
+      budgetGiftReaders.current = null;
+    },
+    20_000
+  );
 });

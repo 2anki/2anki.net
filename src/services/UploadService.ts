@@ -855,14 +855,23 @@ function positiveId(owner: unknown): number | null {
   return owner != null && Number.isFinite(id) && id > 0 ? id : null;
 }
 
-// The person already spent gift credits on a deck Claude made while the gift
-// alone could pay, so that deck is delivered whole even past the month's free
-// cards. A deck the parser made after the gift ran out meets the limit as before.
+// The person already spent gift credits on the cards Claude made while the gift
+// alone could pay, so those cards are delivered even past the month's free
+// cards. Cards the parser or a file's own converter made still meet the limit,
+// so a small Claude file cannot carry a large non-Claude one past it.
 function giftPaidForDeck(
   admittedOnGiftAlone: boolean,
   packages: { engine?: ConversionEngine }[]
 ): boolean {
   return admittedOnGiftAlone && packages.some((p) => p.engine === 'claude');
+}
+
+function cardsNotMadeByClaude(
+  packages: { engine?: ConversionEngine; cardCount?: number }[]
+): number {
+  return packages
+    .filter((p) => p.engine !== 'claude')
+    .reduce((sum, p) => sum + (p.cardCount ?? 0), 0);
 }
 
 function giftContextOf(res: express.Response): {
@@ -2090,6 +2099,11 @@ class UploadService {
           );
           logEmptyBackAttribution(packages, this.resolveUploadSource(req));
           if (giftPaidForDeck(admittedOnGiftAlone, packages)) {
+            await this.checkMonthlyCardLimit(
+              owner,
+              cardsNotMadeByClaude(packages),
+              paying
+            );
             await this.noteGiftDeckOverLimit(ws.id, owner, totalCards);
           } else {
             await this.checkMonthlyCardLimit(owner, totalCards, paying);
