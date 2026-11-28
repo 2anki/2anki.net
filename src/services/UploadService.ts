@@ -632,6 +632,22 @@ export function walkMediaFiles(dir: string, root: string = dir): string[] {
   return results;
 }
 
+async function workspaceDeckFilenames(workspaceDir: string): Promise<string[]> {
+  const names = await fs.promises.readdir(workspaceDir);
+  return names
+    .filter((name) => name.endsWith('.apkg'))
+    .sort((a, b) => a.localeCompare(b));
+}
+
+async function removeEarlierRunDecks(workspaceDir: string): Promise<void> {
+  const earlier = await workspaceDeckFilenames(workspaceDir);
+  await Promise.all(
+    earlier.map((name) =>
+      fs.promises.rm(path.join(workspaceDir, name), { force: true })
+    )
+  );
+}
+
 async function runClaudeRestartFiles(
   htmlFiles: string[],
   mediaFiles: string[],
@@ -1430,9 +1446,8 @@ class UploadService {
     source: UploadSource | null = null,
     skippedAiFiles: AiFileFailure[] = []
   ): Promise<void> {
-    const files = await fs.promises.readdir(workspaceDir);
-    const apkgFilename = files.find((f) => f.endsWith('.apkg'));
-    if (!apkgFilename) {
+    const apkgFilenames = await workspaceDeckFilenames(workspaceDir);
+    if (apkgFilenames.length === 0) {
       throw new Error('No APKG file found in workspace');
     }
     await this.jobRepository.updateJobStatus(
@@ -1441,20 +1456,36 @@ class UploadService {
       'step3_building_deck',
       ''
     );
-    const apkgPath = path.join(workspaceDir, apkgFilename);
-    const apkgBuffer = await fs.promises.readFile(apkgPath);
     const storage = new StorageHandler();
-    const key = storage.uniqify(objectId, owner, 200, 'apkg');
-    await storage.uploadFile(key, apkgBuffer);
-    const sizeMb = FileSizeInMegaBytes(apkgPath);
-    await this.uploadRepository.update(
-      Number(owner),
-      apkgFilename,
-      key,
-      sizeMb,
-      source,
-      { skippedAiFiles }
-    );
+    const storedDecks: { filename: string; key: string; sizeMb: number }[] = [];
+    for (const [index, filename] of apkgFilenames.entries()) {
+      const apkgPath = path.join(workspaceDir, filename);
+      const keyName =
+        apkgFilenames.length === 1 ? objectId : `${objectId}-${index + 1}`;
+      const key = storage.uniqify(keyName, owner, 200, 'apkg');
+      await storage.uploadFile(key, await fs.promises.readFile(apkgPath));
+      storedDecks.push({
+        filename,
+        key,
+        sizeMb: FileSizeInMegaBytes(apkgPath),
+      });
+    }
+    for (const [index, deck] of storedDecks.entries()) {
+      await this.uploadRepository.update(
+        Number(owner),
+        deck.filename,
+        deck.key,
+        deck.sizeMb,
+        source,
+        { skippedAiFiles: index === 0 ? skippedAiFiles : [] }
+      );
+    }
+    if (storedDecks.length > 1) {
+      console.info('[UploadService] async job stored several decks', {
+        jobId: objectId,
+        decks: storedDecks.length,
+      });
+    }
     await this.usersRepository.incrementCardUsage(Number(owner), totalCards);
     const job = await this.jobRepository.findJobById(objectId, owner);
     if (job) {
@@ -1537,6 +1568,7 @@ class UploadService {
 
     const totalCards = deckInfo.reduce((sum, d) => sum + d.cards.length, 0);
     const deckName = deckInfo[0].name;
+    await removeEarlierRunDecks(workspaceDir);
     const exporter = new CustomExporter(deckName, workspaceDir);
     exporter.configure(deckInfo as unknown as Deck[]);
     await exporter.save();

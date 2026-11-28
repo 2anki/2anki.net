@@ -74,6 +74,9 @@ vi.mock('../lib/claude/ClaudeService', async (importActual) => {
       if (html.includes('GIFT-RAN-OUT')) {
         throw new guard.AiCreditsExhaustedError();
       }
+      if (html.includes('CLAUDE-DECLINES')) {
+        throw new actual.ClaudeRefusalError();
+      }
       if (giftCalls.allowed != null && giftCalls.made >= giftCalls.allowed) {
         throw new guard.AiCreditsExhaustedError();
       }
@@ -465,8 +468,9 @@ async function upload(options: {
 }) {
   const users = usersWith(options.cardsUsed);
   const { jobs, settled } = settlingJobs();
+  const uploads = recordingUploads();
   const service = new UploadService(
-    recordingUploads(),
+    uploads,
     jobs as unknown as JobRepository,
     users as unknown as UsersRepository,
     ...fakeUploadServiceDeps(),
@@ -482,7 +486,18 @@ async function upload(options: {
   } as unknown as express.Request;
   const response = responseWith(options.locals);
   await service.handleUpload(req, response.res);
-  return { ...response, jobs, settled, users };
+  return { ...response, jobs, settled, users, uploads };
+}
+
+function cardsInStoredDecks(): number {
+  return storedBodies.reduce(
+    (sum, body) => sum + Number(body.replace('cards:', '')),
+    0
+  );
+}
+
+function sortedStoredBodies(): string[] {
+  return [...storedBodies].sort((a, b) => a.localeCompare(b));
 }
 
 describe('a Claude deck the free AI credits gift paid for, past the monthly card limit', () => {
@@ -508,7 +523,7 @@ describe('a Claude deck the free AI credits gift paid for, past the monthly card
 
       expect(status()).toBe(202);
       expect(await settled).toBe('delivered');
-      expect(storedKeys).toHaveLength(1);
+      expect(storedKeys).toHaveLength(2);
       expect(users.incrementCardUsage).toHaveBeenCalledWith(
         OWNER,
         TWO_CLAUDE_CARDS
@@ -561,6 +576,7 @@ describe('a Claude deck the free AI credits gift paid for, past the monthly card
       CLAUDE_CARDS_PER_FILE
     );
     expect(apkgsInWorkspaces()).toEqual(['alpha.apkg']);
+    expect(storedBodies).toEqual([`cards:${CLAUDE_CARDS_PER_FILE}`]);
   }, 30_000);
 
   it('is delivered when the cards Claude did not make fill exactly what is left of the month', async () => {
@@ -1310,7 +1326,7 @@ describe('a gift-paid job in sequence whose decks share a name', () => {
     30_000
   );
 
-  it('keeps and counts both decks of the same name when both fit, under distinct names', async () => {
+  it('keeps, stores and counts both decks of the same name when both fit, under distinct names', async () => {
     const { settled, users } = await upload({
       files: [claudeZip(), ankiAppXmlFile(30, 'alpha')],
       cardsUsed: 0,
@@ -1323,6 +1339,10 @@ describe('a gift-paid job in sequence whose decks share a name', () => {
       CLAUDE_CARDS_PER_FILE + 30
     );
     expect(apkgsInWorkspaces()).toEqual(['alpha (2).apkg', 'alpha.apkg']);
+    expect(sortedStoredBodies()).toEqual([
+      `cards:${CLAUDE_CARDS_PER_FILE}`,
+      'cards:30',
+    ]);
   }, 30_000);
 });
 
@@ -1345,4 +1365,183 @@ describe('a job in sequence the gift does not pay for', () => {
     );
     expect(apkgsInWorkspaces()).toEqual(['alpha.apkg', 'beta.apkg']);
   }, 30_000);
+});
+
+describe('an async job of several Claude files', () => {
+  it.each([
+    ['a paying account', PAYING, 0],
+    ['a pass holder', PASS_HOLDER, 0],
+    ['a gift holder', FREE, 0],
+    ['a gift holder past the monthly limit', FREE, CARDS_USED_LEAVING_25],
+  ])(
+    'stores every deck of two files for %s and counts exactly their cards',
+    async (_label, locals, cardsUsed) => {
+      const { settled, users, uploads } = await upload({
+        files: TWO_CLAUDE_FILES,
+        cardsUsed,
+        locals,
+      });
+
+      expect(await settled).toBe('delivered');
+      expect(sortedStoredBodies()).toEqual([
+        `cards:${CLAUDE_CARDS_PER_FILE}`,
+        `cards:${CLAUDE_CARDS_PER_FILE}`,
+      ]);
+      expect(new Set(storedKeys).size).toBe(2);
+      expect(
+        vi.mocked(uploads.update).mock.calls.map((call) => call[1])
+      ).toEqual(['alpha.apkg', 'beta.apkg']);
+      expect(users.incrementCardUsage).toHaveBeenCalledTimes(1);
+      expect(users.incrementCardUsage).toHaveBeenCalledWith(
+        OWNER,
+        cardsInStoredDecks()
+      );
+    },
+    20_000
+  );
+
+  it('stores all three decks of three files under three keys', async () => {
+    const { settled, users, uploads } = await upload({
+      files: [htmlFile('alpha'), htmlFile('beta'), htmlFile('gamma')],
+      cardsUsed: 0,
+      locals: PAYING,
+    });
+
+    expect(await settled).toBe('delivered');
+    expect(storedBodies).toHaveLength(3);
+    expect(new Set(storedKeys).size).toBe(3);
+    expect(
+      vi.mocked(uploads.update).mock.calls.map((call) => [call[1], call[2]])
+    ).toEqual([
+      ['alpha.apkg', storedKeys[0]],
+      ['beta.apkg', storedKeys[1]],
+      ['gamma.apkg', storedKeys[2]],
+    ]);
+    expect(users.incrementCardUsage).toHaveBeenCalledWith(
+      OWNER,
+      3 * CLAUDE_CARDS_PER_FILE
+    );
+    expect(cardsInStoredDecks()).toBe(3 * CLAUDE_CARDS_PER_FILE);
+  }, 20_000);
+
+  it('keeps a single-file job on one key named after the job, one row and its own cards', async () => {
+    const { settled, users, uploads, body } = await upload({
+      files: [htmlFile('alpha')],
+      cardsUsed: 0,
+      locals: PAYING,
+    });
+
+    expect(await settled).toBe('delivered');
+    const { jobId } = body() as { jobId: string };
+    expect(storedKeys).toEqual([
+      expect.stringMatching(new RegExp(`^${OWNER}-\\d+-${jobId}\\.apkg$`)),
+    ]);
+    expect(uploads.update).toHaveBeenCalledTimes(1);
+    expect(uploads.update).toHaveBeenCalledWith(
+      OWNER,
+      'alpha.apkg',
+      storedKeys[0],
+      expect.any(Number),
+      null,
+      { skippedAiFiles: [] }
+    );
+    expect(users.incrementCardUsage).toHaveBeenCalledWith(
+      OWNER,
+      CLAUDE_CARDS_PER_FILE
+    );
+  }, 20_000);
+
+  it('notes a file Claude made nothing from on the first deck only, not on every deck', async () => {
+    const { settled, uploads } = await upload({
+      files: [
+        htmlFile('alpha'),
+        htmlFile('beta'),
+        htmlFile('gamma', 'CLAUDE-DECLINES'),
+      ],
+      cardsUsed: 0,
+      locals: PAYING,
+    });
+
+    expect(await settled).toBe('delivered');
+    expect(
+      vi
+        .mocked(uploads.update)
+        .mock.calls.map((call) => [call[1], call[5]?.skippedAiFiles])
+    ).toEqual([
+      ['alpha.apkg', [{ name: 'gamma.html', reason: 'declined' }]],
+      ['beta.apkg', []],
+    ]);
+  }, 20_000);
+
+  it('stores only the decks a gift job kept when a file is left out of the month', async () => {
+    const { settled, users } = await upload({
+      files: [htmlFile('alpha'), ankiAppXmlFile(30), csvFile(10)],
+      cardsUsed: CARDS_USED_LEAVING_25,
+      locals: FREE,
+    });
+
+    expect(await settled).toBe('delivered');
+    expect(sortedStoredBodies()).toEqual([
+      'cards:10',
+      `cards:${CLAUDE_CARDS_PER_FILE}`,
+    ]);
+    expect(users.incrementCardUsage).toHaveBeenCalledWith(
+      OWNER,
+      cardsInStoredDecks()
+    );
+  }, 30_000);
+});
+
+describe('a restarted Claude job of several files', () => {
+  async function restartWith(staleDecks: Record<string, string>) {
+    const users = usersWith(0);
+    const { jobs, settled } = settlingJobs();
+    const uploads = recordingUploads();
+    const service = new UploadService(
+      uploads,
+      jobs as unknown as JobRepository,
+      users as unknown as UsersRepository,
+      ...fakeUploadServiceDeps(),
+      undefined,
+      giftReaders({ grant: null })
+    );
+    const workspaceDir = path.join(workspaceBase, 'job-ws');
+    fs.mkdirSync(workspaceDir, { recursive: true });
+    fs.writeFileSync(path.join(workspaceDir, 'one.html'), notionPage('alpha'));
+    fs.writeFileSync(path.join(workspaceDir, 'two.html'), notionPage('beta'));
+    for (const [name, content] of Object.entries(staleDecks)) {
+      fs.writeFileSync(path.join(workspaceDir, name), content);
+    }
+    const response = responseWith(PAYING);
+    await service.restartClaudeJob(
+      { params: { jobId: 'job-ws' } } as unknown as express.Request,
+      response.res
+    );
+    return { settled, users, uploads };
+  }
+
+  it('stores the one package it builds with every file and counts its cards', async () => {
+    const { settled, users } = await restartWith({});
+
+    expect(await settled).toBe('delivered');
+    expect(storedBodies).toEqual([`cards:${TWO_CLAUDE_CARDS}`]);
+    expect(users.incrementCardUsage).toHaveBeenCalledWith(
+      OWNER,
+      TWO_CLAUDE_CARDS
+    );
+  }, 20_000);
+
+  it('stores only what the restart built, never a deck an earlier run left in the workspace', async () => {
+    const { settled, users } = await restartWith({
+      'aaa-earlier-run.apkg': 'cards:7',
+      'beta.apkg': 'cards:9',
+    });
+
+    expect(await settled).toBe('delivered');
+    expect(storedBodies).toEqual([`cards:${TWO_CLAUDE_CARDS}`]);
+    expect(users.incrementCardUsage).toHaveBeenCalledWith(
+      OWNER,
+      cardsInStoredDecks()
+    );
+  }, 20_000);
 });

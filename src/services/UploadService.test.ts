@@ -101,15 +101,27 @@ vi.mock('../lib/parser/WorkSpace', () => {
   };
 });
 
-vi.mock('../lib/parser/exporters/CustomExporter', () => ({
-  __esModule: true,
-  default: vi.fn().mockImplementation(function () {
-    return {
-      configure: vi.fn(),
-      save: vi.fn().mockResolvedValue(undefined),
-    };
-  }),
-}));
+vi.mock('../lib/parser/exporters/CustomExporter', async () => {
+  const nodeFs = await import('node:fs');
+  const nodePath = await import('node:path');
+  return {
+    __esModule: true,
+    default: vi.fn().mockImplementation(function (
+      _deckName: string,
+      workspace: string
+    ) {
+      return {
+        configure: vi.fn(),
+        save: vi.fn(async () => {
+          nodeFs.writeFileSync(
+            nodePath.join(workspace, 'deck.apkg'),
+            Buffer.from('apkg')
+          );
+        }),
+      };
+    }),
+  };
+});
 
 const mockStorageDelete = vi.fn().mockResolvedValue(true);
 const mockStorageUploadFile = vi.fn().mockResolvedValue(undefined);

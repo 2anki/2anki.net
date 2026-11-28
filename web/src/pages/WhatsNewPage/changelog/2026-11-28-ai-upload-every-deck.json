@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-28-ai-upload-every-deck",
+  "date": "2026-11-28",
+  "type": "fix",
+  "title": "An AI upload of several files puts every deck it makes in My decks, and counts only those cards toward your month"
+}
