@@ -60,6 +60,8 @@ class CustomExporter {
 
   media: string[];
 
+  savedApkgPath: string | null = null;
+
   constructor(firstDeckName: string, workspace: string) {
     this.firstDeckName = firstDeckName.replace(/\.html?$/i, '');
     this.workspace = workspace;
@@ -92,7 +94,8 @@ class CustomExporter {
     if (process.env.SKIP_CREATE_DECK) {
       return fs.promises.readFile(this.getPayloadInfoPath());
     }
-    const apkgPath = (await gen.run()) as string;
+    const apkgPath = path.resolve(this.workspace, (await gen.run()) as string);
+    this.savedApkgPath = apkgPath;
     return readGeneratedApkg(apkgPath);
   }
 

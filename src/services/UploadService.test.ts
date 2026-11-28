@@ -101,15 +101,27 @@ vi.mock('../lib/parser/WorkSpace', () => {
   };
 });
 
-vi.mock('../lib/parser/exporters/CustomExporter', () => ({
-  __esModule: true,
-  default: vi.fn().mockImplementation(function () {
-    return {
-      configure: vi.fn(),
-      save: vi.fn().mockResolvedValue(undefined),
-    };
-  }),
-}));
+vi.mock('../lib/parser/exporters/CustomExporter', async () => {
+  const nodeFs = await import('node:fs');
+  const nodePath = await import('node:path');
+  return {
+    __esModule: true,
+    default: vi.fn().mockImplementation(function (
+      _deckName: string,
+      workspace: string
+    ) {
+      const exporter = {
+        savedApkgPath: null as string | null,
+        configure: vi.fn(),
+        save: vi.fn(async () => {
+          exporter.savedApkgPath = nodePath.join(workspace, 'deck.apkg');
+          nodeFs.writeFileSync(exporter.savedApkgPath, Buffer.from('apkg'));
+        }),
+      };
+      return exporter;
+    }),
+  };
+});
 
 const mockStorageDelete = vi.fn().mockResolvedValue(true);
 const mockStorageUploadFile = vi.fn().mockResolvedValue(undefined);
@@ -4687,6 +4699,7 @@ describe('UploadService.promoteClaudeJobToUpload — async fs reads', () => {
           packages: [
             {
               name: 'my-deck',
+              apkgPath: path.join(tmpDir, 'my-deck.apkg'),
               cardCount: 5,
               mcqCount: 0,
               mcqSkippedCount: 0,
@@ -4930,7 +4943,13 @@ describe('UploadService.promoteClaudeJobToUpload — async fs reads', () => {
     MockGeneratePackagesUseCase.mockImplementation(function () {
       return {
         execute: vi.fn().mockResolvedValue({
-          packages: [{ name: 'my-deck', cardCount: 7 }],
+          packages: [
+            {
+              name: 'my-deck',
+              cardCount: 7,
+              apkgPath: path.join(tmpDir, 'my-deck.apkg'),
+            },
+          ],
         }),
       } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
     });
@@ -4999,6 +5018,7 @@ describe('UploadService.promoteClaudeJobToUpload — async fs reads', () => {
           packages: [
             {
               name: 'my-deck',
+              apkgPath: path.join(tmpDir, 'my-deck.apkg'),
               cardCount: 5,
               mcqCount: 0,
               mcqSkippedCount: 0,
@@ -5141,6 +5161,7 @@ describe('UploadService.promoteClaudeJobToUpload — async fs reads', () => {
           packages: [
             {
               name: 'my-deck',
+              apkgPath: path.join(tmpDir, 'my-deck.apkg'),
               cardCount: 0,
               mcqCount: 0,
               mcqSkippedCount: 0,

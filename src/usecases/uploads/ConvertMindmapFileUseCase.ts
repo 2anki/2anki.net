@@ -18,6 +18,7 @@ function parseMindmapFile(filename: string, content: string): MindmapData {
 export interface MindmapConversionResult {
   cardCount: number;
   deckName: string;
+  apkgPath?: string;
 }
 
 export async function convertMindmapFileToApkg(
@@ -39,5 +40,9 @@ export async function convertMindmapFileToApkg(
   exporter.configure(deckInfo as never);
   await exporter.save();
 
-  return { cardCount: notes.length, deckName: getDeckFilename(deckName) };
+  return {
+    cardCount: notes.length,
+    deckName: getDeckFilename(deckName),
+    apkgPath: exporter.savedApkgPath ?? undefined,
+  };
 }

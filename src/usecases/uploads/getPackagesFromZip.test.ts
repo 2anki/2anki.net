@@ -1606,3 +1606,105 @@ describe('getPackagesFromZip — Anki package renamed as zip', () => {
     expect(mockPrepareDeckInfoOnly).not.toHaveBeenCalled();
   });
 });
+
+describe('getPackagesFromZip — the deck file each package wrote', () => {
+  function zipOf(fileNames: string[]) {
+    mockZipHandlerClass.mockImplementation(function () {
+      return {
+        build: vi.fn().mockResolvedValue(undefined),
+        getFileNames: vi.fn().mockReturnValue(fileNames),
+        files: fileNames.map((name) => ({ name, contents: '<html></html>' })),
+      };
+    });
+  }
+
+  function preparedDeck(name: string) {
+    return {
+      name,
+      apkg: Buffer.from('fake-apkg'),
+      apkgPath: `/fake/built/${name}.apkg`,
+      deck: [],
+      cardCount: 1,
+      mcqCount: 0,
+      mcqSkippedCount: 0,
+      droppedImageCount: 0,
+      expiredNotionImageCount: 0,
+      emptyBackCount: 0,
+    };
+  }
+
+  it('records the batch output path on a batch package and the rebuilt path on a straggler', async () => {
+    const fileNames = Array.from({ length: 8 }, (_, i) => `deck${i}.html`);
+    zipOf(fileNames);
+    mockPrepareDeckInfoOnly.mockImplementation(({ name }: { name: string }) =>
+      Promise.resolve({
+        deckInfoPath: `/fake/${name}/deck_info.json`,
+        outputPath: `/fake/${name}/out.apkg`,
+        name,
+        inputFileName: name,
+        deck: [],
+        cardCount: 1,
+        needsIndividualBuild: false,
+      })
+    );
+    mockPrepareDeck.mockImplementation(({ name }: { name: string }) =>
+      Promise.resolve(preparedDeck(name))
+    );
+    mockCardGeneratorClass.mockImplementation(function () {
+      return {
+        runBatch: vi
+          .fn()
+          .mockImplementation((entries: Array<{ output: string }>) =>
+            Promise.resolve(
+              entries
+                .filter((e) => !e.output.includes('deck3.html'))
+                .map((e) => e.output)
+            )
+          ),
+      };
+    });
+
+    const result = await getPackagesFromZip(
+      Buffer.from('fake-zip') as unknown as Uint8Array,
+      false,
+      new CardOption({}),
+      { location: FAKE_WORKSPACE_LOCATION } as Workspace
+    );
+
+    const recorded = new Map(result.packages.map((p) => [p.name, p.apkgPath]));
+    expect(recorded.get('deck0.html')).toBe('/fake/deck0.html/out.apkg');
+    expect(recorded.get('deck3.html')).toBe('/fake/built/deck3.html.apkg');
+  });
+
+  it('records the built path on an all-in-one package', async () => {
+    zipOf(['only.html']);
+    mockPrepareDeck.mockResolvedValue(preparedDeck('only.html'));
+
+    const result = await getPackagesFromZip(
+      Buffer.from('fake-zip') as unknown as Uint8Array,
+      false,
+      new CardOption({}),
+      { location: FAKE_WORKSPACE_LOCATION } as Workspace
+    );
+
+    expect(result.packages.map((p) => p.apkgPath)).toEqual([
+      '/fake/built/only.html.apkg',
+    ]);
+  });
+
+  it('records the built path on a Claude package', async () => {
+    zipOf(['a.html', 'b.html']);
+    mockPrepareDeck.mockResolvedValue(preparedDeck('a.html'));
+
+    const result = await getPackagesFromZip(
+      Buffer.from('fake-zip') as unknown as Uint8Array,
+      true,
+      new CardOption({ 'claude-ai-flashcards': 'true' }),
+      { location: FAKE_WORKSPACE_LOCATION } as Workspace
+    );
+
+    expect(result.packages.map((p) => p.apkgPath)).toEqual([
+      '/fake/built/a.html.apkg',
+    ]);
+  });
+});

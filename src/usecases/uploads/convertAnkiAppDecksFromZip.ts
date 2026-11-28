@@ -62,7 +62,9 @@ export async function convertAnkiAppDecksFromZip(
         : Buffer.from(file.contents),
       workspace.location
     );
-    packages.push(new Package(result.deckName, result.cardCount, 0, 0));
+    const pkg = new Package(result.deckName, result.cardCount, 0, 0);
+    pkg.apkgPath = result.apkgPath;
+    packages.push(pkg);
     if (result.skippedMediaOnlyCount > 0) {
       warnings.push(
         describeSkippedMediaOnlyCards(result.skippedMediaOnlyCount)

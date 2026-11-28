@@ -47,6 +47,11 @@ import {
   apkgOversizeWarningText,
 } from '../lib/upload/apkgOversizeWarning';
 import {
+  cardsIn,
+  decksToStore,
+  type DeckToStore,
+} from '../lib/upload/decksToStore';
+import {
   DUPLICATE_GUID_WARNING_RE,
   duplicateGuidWarning,
   duplicateGuidWarningText,
@@ -1424,15 +1429,12 @@ class UploadService {
 
   private async promoteClaudeJobToUpload(
     objectId: string,
-    workspaceDir: string,
     owner: string,
-    totalCards = 0,
+    decks: readonly DeckToStore[],
     source: UploadSource | null = null,
     skippedAiFiles: AiFileFailure[] = []
   ): Promise<void> {
-    const files = await fs.promises.readdir(workspaceDir);
-    const apkgFilename = files.find((f) => f.endsWith('.apkg'));
-    if (!apkgFilename) {
+    if (decks.length === 0) {
       throw new Error('No APKG file found in workspace');
     }
     await this.jobRepository.updateJobStatus(
@@ -1441,24 +1443,73 @@ class UploadService {
       'step3_building_deck',
       ''
     );
-    const apkgPath = path.join(workspaceDir, apkgFilename);
-    const apkgBuffer = await fs.promises.readFile(apkgPath);
     const storage = new StorageHandler();
-    const key = storage.uniqify(objectId, owner, 200, 'apkg');
-    await storage.uploadFile(key, apkgBuffer);
-    const sizeMb = FileSizeInMegaBytes(apkgPath);
-    await this.uploadRepository.update(
+    const storedKeys: string[] = [];
+    const rowKeys: string[] = [];
+    try {
+      for (const [index, deck] of decks.entries()) {
+        const keyName =
+          decks.length === 1 ? objectId : `${objectId}-${index + 1}`;
+        const key = storage.uniqify(keyName, owner, 200, 'apkg');
+        await storage.uploadFile(
+          key,
+          await fs.promises.readFile(deck.apkgPath)
+        );
+        storedKeys.push(key);
+      }
+      for (const [index, deck] of decks.entries()) {
+        await this.uploadRepository.update(
+          Number(owner),
+          path.basename(deck.apkgPath),
+          storedKeys[index],
+          FileSizeInMegaBytes(deck.apkgPath),
+          source,
+          { skippedAiFiles: index === 0 ? skippedAiFiles : [] }
+        );
+        rowKeys.push(storedKeys[index]);
+      }
+    } catch (error) {
+      await this.discardPartialPromotion(owner, storage, storedKeys, rowKeys);
+      throw error;
+    }
+    if (decks.length > 1) {
+      console.info('[UploadService] async job stored several decks', {
+        jobId: objectId,
+        decks: decks.length,
+      });
+    }
+    await this.usersRepository.incrementCardUsage(
       Number(owner),
-      apkgFilename,
-      key,
-      sizeMb,
-      source,
-      { skippedAiFiles }
+      cardsIn(decks)
     );
-    await this.usersRepository.incrementCardUsage(Number(owner), totalCards);
     const job = await this.jobRepository.findJobById(objectId, owner);
     if (job) {
       await this.jobRepository.deleteJob(String(job.id), owner);
+    }
+  }
+
+  // A row that could not be removed keeps its object, so My decks never lists
+  // a deck whose file is gone.
+  private async discardPartialPromotion(
+    owner: string,
+    storage: StorageHandler,
+    storedKeys: string[],
+    rowKeys: string[]
+  ): Promise<void> {
+    for (const key of storedKeys) {
+      if (rowKeys.includes(key)) {
+        const rowRemoved = await this.uploadRepository
+          .deleteUpload(Number(owner), key)
+          .then(() => true)
+          .catch((error: unknown) => {
+            console.error('[UploadService] could not drop a partial deck row', {
+              name: error instanceof Error ? error.name : 'unknown',
+            });
+            return false;
+          });
+        if (!rowRemoved) continue;
+      }
+      await storage.delete(key);
     }
   }
 
@@ -1535,11 +1586,17 @@ class UploadService {
         : new Error('No packages produced');
     }
 
-    const totalCards = deckInfo.reduce((sum, d) => sum + d.cards.length, 0);
     const deckName = deckInfo[0].name;
     const exporter = new CustomExporter(deckName, workspaceDir);
     exporter.configure(deckInfo as unknown as Deck[]);
     await exporter.save();
+    const decks = await decksToStore(objectId, workspaceDir, [
+      {
+        apkgPath: exporter.savedApkgPath ?? undefined,
+        cardCount: deckInfo.reduce((sum, d) => sum + d.cards.length, 0),
+      },
+    ]);
+    const totalCards = cardsIn(decks);
 
     if (giftLimits != null) {
       await this.noteGiftDeckOverLimit(objectId, owner, totalCards);
@@ -1548,9 +1605,8 @@ class UploadService {
     }
     await this.promoteClaudeJobToUpload(
       objectId,
-      workspaceDir,
       owner,
-      totalCards,
+      decks,
       null,
       skippedFiles
     );
@@ -2122,21 +2178,29 @@ class UploadService {
             uploadInputFormat(req.files as UploadedFile[])
           );
           logEmptyBackAttribution(packages, this.resolveUploadSource(req));
+          const decks = await decksToStore(
+            ws.id,
+            ws.location,
+            packages.map((p) => ({
+              apkgPath: p.apkgPath,
+              cardCount: p.cardCount ?? 0,
+            }))
+          );
+          const deliveredCards = cardsIn(decks);
           if (giftPaidForDeck(admittedOnGiftAlone, packages)) {
             await this.checkMonthlyCardLimit(
               owner,
               cardsNotMadeByClaude(packages),
               paying
             );
-            await this.noteGiftDeckOverLimit(ws.id, owner, totalCards);
+            await this.noteGiftDeckOverLimit(ws.id, owner, deliveredCards);
           } else {
-            await this.checkMonthlyCardLimit(owner, totalCards, paying);
+            await this.checkMonthlyCardLimit(owner, deliveredCards, paying);
           }
           await this.promoteClaudeJobToUpload(
             ws.id,
-            ws.location,
             owner,
-            totalCards,
+            decks,
             source,
             skippedAiFiles
           );
@@ -2145,7 +2209,7 @@ class UploadService {
             anonymousId: this.trackedAnonId(req),
             props: {
               ...this.baseFunnelProps(req, res),
-              card_count_bucket: toCardCountBucket(totalCards),
+              card_count_bucket: toCardCountBucket(deliveredCards),
               ...this.pdfPageCountProps(packages),
             },
           });

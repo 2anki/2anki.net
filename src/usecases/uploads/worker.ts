@@ -191,6 +191,11 @@ export function shouldDedupeAcrossDecks(
   );
 }
 
+function withApkgPath(pkg: Package, apkgPath: string | undefined): Package {
+  pkg.apkgPath = apkgPath;
+  return pkg;
+}
+
 async function processFile(
   file: UploadedFile,
   fileContents: Buffer,
@@ -228,7 +233,12 @@ async function processFile(
       fileContents,
       workspace.location
     );
-    packages.push(new Package(result.deckName, result.cardCount, 0, 0));
+    packages.push(
+      withApkgPath(
+        new Package(result.deckName, result.cardCount, 0, 0),
+        result.apkgPath
+      )
+    );
     if (result.skippedMediaOnlyCount > 0) {
       warnings.push(
         describeSkippedMediaOnlyCards(result.skippedMediaOnlyCount)
@@ -243,7 +253,12 @@ async function processFile(
       fileContents,
       workspace.location
     );
-    packages.push(new Package(result.deckName, result.cardCount, 0, 0));
+    packages.push(
+      withApkgPath(
+        new Package(result.deckName, result.cardCount, 0, 0),
+        result.apkgPath
+      )
+    );
     return { packages, warnings };
   }
 
@@ -253,7 +268,12 @@ async function processFile(
       settings,
       workspace,
     });
-    packages.push(new Package(result.name, result.cardCount, 0, 0));
+    packages.push(
+      withApkgPath(
+        new Package(result.name, result.cardCount, 0, 0),
+        result.apkgPath
+      )
+    );
     return { packages, warnings };
   }
 
@@ -263,7 +283,12 @@ async function processFile(
       settings,
       workspace,
     });
-    packages.push(new Package(result.name, result.cardCount, 0, 0));
+    packages.push(
+      withApkgPath(
+        new Package(result.name, result.cardCount, 0, 0),
+        result.apkgPath
+      )
+    );
     return { packages, warnings };
   }
 
@@ -329,6 +354,7 @@ async function processFile(
       singleFilePackage.notionEmptyBackCount = d.notionEmptyBackCount ?? 0;
       singleFilePackage.blankBackCount = d.blankBackCount ?? 0;
       singleFilePackage.cardsLeftOut = d.cardsLeftOut ?? 0;
+      singleFilePackage.apkgPath = d.apkgPath;
       packages.push(singleFilePackage);
       if (d.warning) warnings.push(d.warning);
       warnings.push(...(d.failedFileWarnings ?? []));
@@ -411,7 +437,11 @@ async function convertInSequenceTrackingDecks(
   for (const file of files) {
     const fileWorkspace = Workspace.subdir(workspace.location);
     const result = await convert(file, fileWorkspace);
-    const apkgFiles = await liftDecksToParent(fileWorkspace, workspace);
+    const apkgFiles = await liftDecksToParent(
+      fileWorkspace,
+      workspace,
+      result.packages
+    );
     results.push({ ...result, apkgFiles });
   }
   return results;
@@ -452,8 +482,12 @@ async function convertInParallel(
   }
   const converted: ConvertedUpload[] = [];
   for (const [index, fileWorkspace] of fileWorkspaces.entries()) {
-    const apkgFiles = await liftDecksToParent(fileWorkspace, workspace);
     const result = results[index];
+    const apkgFiles = await liftDecksToParent(
+      fileWorkspace,
+      workspace,
+      result?.packages
+    );
     if (result != null) converted.push({ ...result, apkgFiles });
   }
   return converted;

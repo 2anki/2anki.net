@@ -7,6 +7,8 @@ import { zipSync } from 'fflate';
 
 const storedKeys = vi.hoisted(() => [] as string[]);
 const storedBodies = vi.hoisted(() => [] as string[]);
+const deletedKeys = vi.hoisted(() => [] as string[]);
+const storageFailure = vi.hoisted(() => ({ onPut: null as number | null }));
 const builtCardCounts = vi.hoisted(() => [] as number[]);
 
 vi.mock('@aws-sdk/client-s3', async (importActual) => {
@@ -14,8 +16,14 @@ vi.mock('@aws-sdk/client-s3', async (importActual) => {
   class RecordingS3Client {
     async send(command: { input?: { Key?: string; Body?: unknown } }) {
       if (command instanceof actual.PutObjectCommand) {
+        if (storageFailure.onPut === storedKeys.length + 1) {
+          throw new Error('storage refused the object');
+        }
         storedKeys.push(command.input?.Key ?? '');
         storedBodies.push(String(command.input?.Body ?? ''));
+      }
+      if (command instanceof actual.DeleteObjectCommand) {
+        deletedKeys.push(command.input?.Key ?? '');
       }
       return {};
     }
@@ -48,7 +56,7 @@ vi.mock('../lib/anki/CardGenerator', () => ({
       const deckName = (deckInfo[0]?.name ?? 'deck').replace(/[^\w-]/g, '_');
       const apkgPath = path.join(this.currentDirectory, `${deckName}.apkg`);
       fs.writeFileSync(apkgPath, `cards:${cards}`);
-      return apkgPath;
+      return fs.realpathSync(apkgPath);
     }
   },
 }));
@@ -73,6 +81,9 @@ vi.mock('../lib/claude/ClaudeService', async (importActual) => {
     generateDeckInfo: vi.fn(async (html: string) => {
       if (html.includes('GIFT-RAN-OUT')) {
         throw new guard.AiCreditsExhaustedError();
+      }
+      if (html.includes('CLAUDE-DECLINES')) {
+        throw new actual.ClaudeRefusalError();
       }
       if (giftCalls.allowed != null && giftCalls.made >= giftCalls.allowed) {
         throw new guard.AiCreditsExhaustedError();
@@ -449,6 +460,8 @@ afterEach(() => {
   __resetFeatureFlagModuleForTests();
   storedKeys.length = 0;
   storedBodies.length = 0;
+  deletedKeys.length = 0;
+  storageFailure.onPut = null;
   recordedEvents.length = 0;
   giftCalls.allowed = null;
   giftCalls.made = 0;
@@ -462,11 +475,13 @@ async function upload(options: {
   locals: Record<string, unknown>;
   readers?: () => UploadGiftModeDeps;
   body?: Record<string, string>;
+  uploads?: IUploadRepository;
 }) {
   const users = usersWith(options.cardsUsed);
   const { jobs, settled } = settlingJobs();
+  const uploads = options.uploads ?? recordingUploads();
   const service = new UploadService(
-    recordingUploads(),
+    uploads,
     jobs as unknown as JobRepository,
     users as unknown as UsersRepository,
     ...fakeUploadServiceDeps(),
@@ -482,7 +497,18 @@ async function upload(options: {
   } as unknown as express.Request;
   const response = responseWith(options.locals);
   await service.handleUpload(req, response.res);
-  return { ...response, jobs, settled, users };
+  return { ...response, jobs, settled, users, uploads };
+}
+
+function cardsInStoredDecks(): number {
+  return storedBodies.reduce(
+    (sum, body) => sum + Number(body.replace('cards:', '')),
+    0
+  );
+}
+
+function sortedStoredBodies(): string[] {
+  return [...storedBodies].sort((a, b) => a.localeCompare(b));
 }
 
 describe('a Claude deck the free AI credits gift paid for, past the monthly card limit', () => {
@@ -508,7 +534,7 @@ describe('a Claude deck the free AI credits gift paid for, past the monthly card
 
       expect(status()).toBe(202);
       expect(await settled).toBe('delivered');
-      expect(storedKeys).toHaveLength(1);
+      expect(storedKeys).toHaveLength(2);
       expect(users.incrementCardUsage).toHaveBeenCalledWith(
         OWNER,
         TWO_CLAUDE_CARDS
@@ -561,6 +587,7 @@ describe('a Claude deck the free AI credits gift paid for, past the monthly card
       CLAUDE_CARDS_PER_FILE
     );
     expect(apkgsInWorkspaces()).toEqual(['alpha.apkg']);
+    expect(storedBodies).toEqual([`cards:${CLAUDE_CARDS_PER_FILE}`]);
   }, 30_000);
 
   it('is delivered when the cards Claude did not make fill exactly what is left of the month', async () => {
@@ -1310,7 +1337,7 @@ describe('a gift-paid job in sequence whose decks share a name', () => {
     30_000
   );
 
-  it('keeps and counts both decks of the same name when both fit, under distinct names', async () => {
+  it('keeps, stores and counts both decks of the same name when both fit, under distinct names', async () => {
     const { settled, users } = await upload({
       files: [claudeZip(), ankiAppXmlFile(30, 'alpha')],
       cardsUsed: 0,
@@ -1323,6 +1350,10 @@ describe('a gift-paid job in sequence whose decks share a name', () => {
       CLAUDE_CARDS_PER_FILE + 30
     );
     expect(apkgsInWorkspaces()).toEqual(['alpha (2).apkg', 'alpha.apkg']);
+    expect(sortedStoredBodies()).toEqual([
+      `cards:${CLAUDE_CARDS_PER_FILE}`,
+      'cards:30',
+    ]);
   }, 30_000);
 });
 
@@ -1345,4 +1376,404 @@ describe('a job in sequence the gift does not pay for', () => {
     );
     expect(apkgsInWorkspaces()).toEqual(['alpha.apkg', 'beta.apkg']);
   }, 30_000);
+});
+
+describe('an async job of several Claude files', () => {
+  it.each([
+    ['a paying account', PAYING, 0],
+    ['a pass holder', PASS_HOLDER, 0],
+    ['a gift holder', FREE, 0],
+    ['a gift holder past the monthly limit', FREE, CARDS_USED_LEAVING_25],
+  ])(
+    'stores every deck of two files for %s and counts exactly their cards',
+    async (_label, locals, cardsUsed) => {
+      const { settled, users, uploads } = await upload({
+        files: TWO_CLAUDE_FILES,
+        cardsUsed,
+        locals,
+      });
+
+      expect(await settled).toBe('delivered');
+      expect(sortedStoredBodies()).toEqual([
+        `cards:${CLAUDE_CARDS_PER_FILE}`,
+        `cards:${CLAUDE_CARDS_PER_FILE}`,
+      ]);
+      expect(new Set(storedKeys).size).toBe(2);
+      expect(
+        vi.mocked(uploads.update).mock.calls.map((call) => call[1])
+      ).toEqual(['alpha.apkg', 'beta.apkg']);
+      expect(users.incrementCardUsage).toHaveBeenCalledTimes(1);
+      expect(users.incrementCardUsage).toHaveBeenCalledWith(
+        OWNER,
+        cardsInStoredDecks()
+      );
+    },
+    20_000
+  );
+
+  it('stores all three decks of three files under three keys', async () => {
+    const { settled, users, uploads } = await upload({
+      files: [htmlFile('alpha'), htmlFile('beta'), htmlFile('gamma')],
+      cardsUsed: 0,
+      locals: PAYING,
+    });
+
+    expect(await settled).toBe('delivered');
+    expect(storedBodies).toHaveLength(3);
+    expect(new Set(storedKeys).size).toBe(3);
+    expect(
+      vi.mocked(uploads.update).mock.calls.map((call) => [call[1], call[2]])
+    ).toEqual([
+      ['alpha.apkg', storedKeys[0]],
+      ['beta.apkg', storedKeys[1]],
+      ['gamma.apkg', storedKeys[2]],
+    ]);
+    expect(users.incrementCardUsage).toHaveBeenCalledWith(
+      OWNER,
+      3 * CLAUDE_CARDS_PER_FILE
+    );
+    expect(cardsInStoredDecks()).toBe(3 * CLAUDE_CARDS_PER_FILE);
+  }, 20_000);
+
+  it('keeps a single-file job on one key named after the job, one row and its own cards', async () => {
+    const { settled, users, uploads, body } = await upload({
+      files: [htmlFile('alpha')],
+      cardsUsed: 0,
+      locals: PAYING,
+    });
+
+    expect(await settled).toBe('delivered');
+    const { jobId } = body() as { jobId: string };
+    expect(storedKeys).toEqual([
+      expect.stringMatching(new RegExp(`^${OWNER}-\\d+-${jobId}\\.apkg$`)),
+    ]);
+    expect(uploads.update).toHaveBeenCalledTimes(1);
+    expect(uploads.update).toHaveBeenCalledWith(
+      OWNER,
+      'alpha.apkg',
+      storedKeys[0],
+      expect.any(Number),
+      null,
+      { skippedAiFiles: [] }
+    );
+    expect(users.incrementCardUsage).toHaveBeenCalledWith(
+      OWNER,
+      CLAUDE_CARDS_PER_FILE
+    );
+  }, 20_000);
+
+  it('notes a file Claude made nothing from on the first deck only, not on every deck', async () => {
+    const { settled, uploads } = await upload({
+      files: [
+        htmlFile('alpha'),
+        htmlFile('beta'),
+        htmlFile('gamma', 'CLAUDE-DECLINES'),
+      ],
+      cardsUsed: 0,
+      locals: PAYING,
+    });
+
+    expect(await settled).toBe('delivered');
+    expect(
+      vi
+        .mocked(uploads.update)
+        .mock.calls.map((call) => [call[1], call[5]?.skippedAiFiles])
+    ).toEqual([
+      ['alpha.apkg', [{ name: 'gamma.html', reason: 'declined' }]],
+      ['beta.apkg', []],
+    ]);
+  }, 20_000);
+
+  it('stores only the decks a gift job kept when a file is left out of the month', async () => {
+    const { settled, users } = await upload({
+      files: [htmlFile('alpha'), ankiAppXmlFile(30), csvFile(10)],
+      cardsUsed: CARDS_USED_LEAVING_25,
+      locals: FREE,
+    });
+
+    expect(await settled).toBe('delivered');
+    expect(sortedStoredBodies()).toEqual([
+      'cards:10',
+      `cards:${CLAUDE_CARDS_PER_FILE}`,
+    ]);
+    expect(users.incrementCardUsage).toHaveBeenCalledWith(
+      OWNER,
+      cardsInStoredDecks()
+    );
+  }, 30_000);
+});
+
+describe('an async job stores only the decks its own conversions wrote', () => {
+  const SMUGGLED = Buffer.from('bytes nobody converted');
+  const notesWithSmuggledDeck = () =>
+    zipFile('notes.zip', {
+      'alpha.html': notionPage('alpha'),
+      'smuggled.apkg': SMUGGLED,
+    });
+
+  it.each([
+    ['a paying account', PAYING, 0],
+    ['a gift account past the month', FREE, CARDS_USED_LEAVING_25],
+  ])(
+    'leaves a deck-named file from the zip out of My decks for %s',
+    async (_label, locals, cardsUsed) => {
+      const { settled, users, uploads } = await upload({
+        files: [notesWithSmuggledDeck()],
+        cardsUsed,
+        locals,
+      });
+
+      expect(await settled).toBe('delivered');
+      expect(storedBodies).toEqual([`cards:${CLAUDE_CARDS_PER_FILE}`]);
+      expect(
+        vi.mocked(uploads.update).mock.calls.map((call) => call[1])
+      ).toEqual(['alpha.apkg']);
+      expect(users.incrementCardUsage).toHaveBeenCalledWith(
+        OWNER,
+        CLAUDE_CARDS_PER_FILE
+      );
+    },
+    20_000
+  );
+
+  it('converts a zip holding a folder named like a deck and stores the real deck', async () => {
+    const { settled, users } = await upload({
+      files: [
+        zipFile('notes.zip', {
+          'alpha.html': notionPage('alpha'),
+          'pictures.apkg/photo.png': Buffer.from([0x89, 0x50, 0x4e, 0x47]),
+        }),
+      ],
+      cardsUsed: 0,
+      locals: PAYING,
+    });
+
+    expect(await settled).toBe('delivered');
+    expect(storedBodies).toEqual([`cards:${CLAUDE_CARDS_PER_FILE}`]);
+    expect(users.incrementCardUsage).toHaveBeenCalledWith(
+      OWNER,
+      CLAUDE_CARDS_PER_FILE
+    );
+  }, 20_000);
+
+  it('leaves a stray deck-named file out of a job of several files', async () => {
+    const { settled, users } = await upload({
+      files: [
+        htmlFile('alpha'),
+        zipFile('more.zip', {
+          'beta.html': notionPage('beta'),
+          'stray.apkg': SMUGGLED,
+        }),
+      ],
+      cardsUsed: 0,
+      locals: PAYING,
+    });
+
+    expect(await settled).toBe('delivered');
+    expect(sortedStoredBodies()).toEqual([
+      `cards:${CLAUDE_CARDS_PER_FILE}`,
+      `cards:${CLAUDE_CARDS_PER_FILE}`,
+    ]);
+    expect(users.incrementCardUsage).toHaveBeenCalledWith(
+      OWNER,
+      TWO_CLAUDE_CARDS
+    );
+  }, 20_000);
+
+  it.each([
+    ['a paying account', PAYING],
+    ['a pass holder', PASS_HOLDER],
+    ['a gift account', FREE],
+  ])(
+    'stores every deck of one zip that holds several decks for %s, one row each, and counts them exactly',
+    async (_label, locals) => {
+      const { settled, users, uploads } = await upload({
+        files: [
+          zipFile('decks.zip', {
+            'one.xml': ankiAppXmlFile(12, 'First').buffer,
+            'two.xml': ankiAppXmlFile(8, 'Second').buffer,
+          }),
+        ],
+        cardsUsed: 0,
+        locals,
+      });
+
+      expect(await settled).toBe('delivered');
+      expect(sortedStoredBodies()).toEqual(['cards:12', 'cards:8']);
+      expect(uploads.update).toHaveBeenCalledTimes(2);
+      expect(users.incrementCardUsage).toHaveBeenCalledWith(OWNER, 20);
+    },
+    20_000
+  );
+
+  it('stores and counts a same-named deck once, with the cards the later file left in it', async () => {
+    const { settled, users } = await upload({
+      files: [
+        zipFile('lecture.zip', { 'alpha.html': notionPage('alpha') }),
+        ankiAppXmlFile(30, 'alpha'),
+      ],
+      cardsUsed: 0,
+      locals: PAYING,
+    });
+
+    expect(await settled).toBe('delivered');
+    expect(storedBodies).toEqual(['cards:30']);
+    expect(users.incrementCardUsage).toHaveBeenCalledWith(
+      OWNER,
+      cardsInStoredDecks()
+    );
+    await vi.waitFor(() =>
+      expect(
+        recordedEvents
+          .filter((event) => event.name === 'conversion_succeeded')
+          .map((event) => event.props.card_count_bucket)
+      ).toEqual(['3-49'])
+    );
+  }, 20_000);
+
+  it('removes the decks it already stored when storing a later one fails, adding no row and no cards', async () => {
+    storageFailure.onPut = 2;
+
+    const { settled, users, uploads } = await upload({
+      files: TWO_CLAUDE_FILES,
+      cardsUsed: 0,
+      locals: PAYING,
+    });
+
+    expect(await settled).toMatch(/^failed: /);
+    expect(storedKeys).toHaveLength(1);
+    expect(deletedKeys).toEqual(storedKeys);
+    expect(uploads.update).not.toHaveBeenCalled();
+    expect(users.incrementCardUsage).not.toHaveBeenCalled();
+  }, 20_000);
+
+  it('keeps the object of a row it could not remove, so My decks never points at nothing', async () => {
+    const uploads: IUploadRepository = {
+      ...recordingUploads(),
+      update: vi
+        .fn()
+        .mockResolvedValueOnce([] as Uploads[])
+        .mockRejectedValueOnce(new Error('row refused')),
+      deleteUpload: vi.fn().mockRejectedValue(new Error('row stuck')),
+    };
+
+    const { settled, users } = await upload({
+      files: TWO_CLAUDE_FILES,
+      cardsUsed: 0,
+      locals: PAYING,
+      uploads,
+    });
+
+    expect(await settled).toMatch(/^failed: /);
+    expect(storedKeys).toHaveLength(2);
+    expect(uploads.deleteUpload).toHaveBeenCalledWith(OWNER, storedKeys[0]);
+    expect(deletedKeys).toEqual([storedKeys[1]]);
+    expect(users.incrementCardUsage).not.toHaveBeenCalled();
+  }, 20_000);
+});
+
+describe('an async job whose workspace base sits under a symlink', () => {
+  let linkedBase: string;
+
+  beforeEach(() => {
+    const realBase = fs.realpathSync(workspaceBase);
+    linkedBase = `${realBase}-linked`;
+    fs.symlinkSync(realBase, linkedBase);
+    process.env.WORKSPACE_BASE = linkedBase;
+  });
+
+  afterEach(() => {
+    fs.rmSync(linkedBase, { force: true });
+  });
+
+  it.each([
+    ['one file', [htmlFile('alpha')], [`cards:${CLAUDE_CARDS_PER_FILE}`]],
+    [
+      'two files',
+      TWO_CLAUDE_FILES,
+      [`cards:${CLAUDE_CARDS_PER_FILE}`, `cards:${CLAUDE_CARDS_PER_FILE}`],
+    ],
+  ])(
+    'stores the decks of %s the writer reported by their real paths',
+    async (_label, files, bodies) => {
+      const { settled, users } = await upload({
+        files,
+        cardsUsed: 0,
+        locals: PAYING,
+      });
+
+      expect(await settled).toBe('delivered');
+      expect(sortedStoredBodies()).toEqual(bodies);
+      expect(users.incrementCardUsage).toHaveBeenCalledWith(
+        OWNER,
+        cardsInStoredDecks()
+      );
+    },
+    20_000
+  );
+
+  it('stores the deck of a gift job, built in its own folder and lifted up', async () => {
+    const { settled } = await upload({
+      files: TWO_CLAUDE_FILES,
+      cardsUsed: CARDS_USED_LEAVING_25,
+      locals: FREE,
+    });
+
+    expect(await settled).toBe('delivered');
+    expect(storedBodies).toHaveLength(2);
+  }, 20_000);
+});
+
+describe('a restarted Claude job of several files', () => {
+  async function restartWith(staleDecks: Record<string, string>) {
+    const users = usersWith(0);
+    const { jobs, settled } = settlingJobs();
+    const uploads = recordingUploads();
+    const service = new UploadService(
+      uploads,
+      jobs as unknown as JobRepository,
+      users as unknown as UsersRepository,
+      ...fakeUploadServiceDeps(),
+      undefined,
+      giftReaders({ grant: null })
+    );
+    const workspaceDir = path.join(workspaceBase, 'job-ws');
+    fs.mkdirSync(workspaceDir, { recursive: true });
+    fs.writeFileSync(path.join(workspaceDir, 'one.html'), notionPage('alpha'));
+    fs.writeFileSync(path.join(workspaceDir, 'two.html'), notionPage('beta'));
+    for (const [name, content] of Object.entries(staleDecks)) {
+      fs.writeFileSync(path.join(workspaceDir, name), content);
+    }
+    const response = responseWith(PAYING);
+    await service.restartClaudeJob(
+      { params: { jobId: 'job-ws' } } as unknown as express.Request,
+      response.res
+    );
+    return { settled, users, uploads };
+  }
+
+  it('stores the one package it builds with every file and counts its cards', async () => {
+    const { settled, users } = await restartWith({});
+
+    expect(await settled).toBe('delivered');
+    expect(storedBodies).toEqual([`cards:${TWO_CLAUDE_CARDS}`]);
+    expect(users.incrementCardUsage).toHaveBeenCalledWith(
+      OWNER,
+      TWO_CLAUDE_CARDS
+    );
+  }, 20_000);
+
+  it('stores only what the restart built, never a deck an earlier run left in the workspace', async () => {
+    const { settled, users } = await restartWith({
+      'aaa-earlier-run.apkg': 'cards:7',
+      'beta.apkg': 'cards:9',
+    });
+
+    expect(await settled).toBe('delivered');
+    expect(storedBodies).toEqual([`cards:${TWO_CLAUDE_CARDS}`]);
+    expect(users.incrementCardUsage).toHaveBeenCalledWith(
+      OWNER,
+      cardsInStoredDecks()
+    );
+  }, 20_000);
 });

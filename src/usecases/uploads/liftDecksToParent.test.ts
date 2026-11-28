@@ -57,6 +57,44 @@ describe('liftDecksToParent', () => {
     ).toBe('second');
   });
 
+  it('moves a built deck to the name its file landed under, and leaves other decks alone', async () => {
+    const parent = makeWorkspace(root);
+    const first = makeWorkspace(path.join(root, 'first'));
+    const second = makeWorkspace(path.join(root, 'second'));
+    fs.writeFileSync(path.join(first.location, 'Notes.apkg'), 'first');
+    fs.writeFileSync(path.join(second.location, 'Notes.apkg'), 'second');
+    const elsewhere = path.join(root, 'elsewhere.apkg');
+    const built = { apkgPath: path.join(second.location, 'Notes.apkg') };
+    const unrelated = { apkgPath: elsewhere };
+
+    await liftDecksToParent(first, parent);
+    await liftDecksToParent(second, parent, [built, unrelated]);
+
+    expect(built.apkgPath).toBe(
+      path.resolve(parent.location, 'Notes (2).apkg')
+    );
+    expect(fs.readFileSync(built.apkgPath, 'utf8')).toBe('second');
+    expect(unrelated.apkgPath).toBe(elsewhere);
+  });
+
+  it('moves a deck the writer reported by its real path when the workspace sits under a symlink', async () => {
+    const realRoot = fs.realpathSync(root);
+    const linkedRoot = path.join(realRoot, 'linked');
+    fs.symlinkSync(path.join(realRoot, 'real'), linkedRoot);
+    fs.mkdirSync(path.join(realRoot, 'real'));
+    const parent = makeWorkspace(linkedRoot);
+    const child = makeWorkspace(path.join(linkedRoot, 'child'));
+    fs.writeFileSync(path.join(child.location, 'Notes.apkg'), 'deck');
+    const built = {
+      apkgPath: path.join(realRoot, 'real', 'child', 'Notes.apkg'),
+    };
+
+    await liftDecksToParent(child, parent, [built]);
+
+    expect(built.apkgPath).toBe(path.resolve(parent.location, 'Notes.apkg'));
+    expect(fs.readFileSync(built.apkgPath, 'utf8')).toBe('deck');
+  });
+
   it("merges each child's PDF image fallback names into the parent marker", async () => {
     const parent = makeWorkspace(root);
     const first = makeWorkspace(path.join(root, 'first'));
