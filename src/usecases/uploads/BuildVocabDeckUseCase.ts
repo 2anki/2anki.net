@@ -18,6 +18,7 @@ import { buildDeckStyle } from '../../lib/parser/buildDeckStyle';
 export interface VocabDeckResult {
   readonly name: string;
   readonly apkg: Buffer;
+  readonly apkgPath?: string;
   readonly cardCount: number;
   readonly source: 'kindle-clippings' | 'epub';
 }
@@ -97,14 +98,15 @@ function buildDecks(
   });
 }
 
-function exportDecks(
+async function exportDecks(
   decks: Deck[],
   parentName: string,
   workspace: Workspace
-): Promise<Buffer> {
+): Promise<{ apkg: Buffer; apkgPath?: string }> {
   const exporter = new CustomExporter(parentName, workspace.location);
   exporter.configure(decks);
-  return exporter.save();
+  const apkg = await exporter.save();
+  return { apkg, apkgPath: exporter.savedApkgPath ?? undefined };
 }
 
 export interface BuildVocabDeckInput {
@@ -137,12 +139,17 @@ export async function buildVocabDeckFromKindleClippings(
 
   const parentName = path.parse(input.file.name).name || 'Kindle Highlights';
   const decks = buildDecks(parentName, perBook, input.settings);
-  const apkg = await exportDecks(decks, parentName, input.workspace);
+  const { apkg, apkgPath } = await exportDecks(
+    decks,
+    parentName,
+    input.workspace
+  );
   const cardCount = decks.reduce((sum, d) => sum + d.cards.length, 0);
 
   return {
     name: getDeckFilename(parentName),
     apkg,
+    apkgPath,
     cardCount,
     source: 'kindle-clippings',
   };
@@ -174,11 +181,16 @@ export async function buildVocabDeckFromEpub(
     [{ book: parentName, notes }],
     input.settings
   );
-  const apkg = await exportDecks(decks, parentName, input.workspace);
+  const { apkg, apkgPath } = await exportDecks(
+    decks,
+    parentName,
+    input.workspace
+  );
 
   return {
     name: getDeckFilename(parentName),
     apkg,
+    apkgPath,
     cardCount: notes.length,
     source: 'epub',
   };

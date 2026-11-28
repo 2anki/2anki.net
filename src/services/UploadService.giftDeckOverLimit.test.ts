@@ -7,6 +7,8 @@ import { zipSync } from 'fflate';
 
 const storedKeys = vi.hoisted(() => [] as string[]);
 const storedBodies = vi.hoisted(() => [] as string[]);
+const deletedKeys = vi.hoisted(() => [] as string[]);
+const storageFailure = vi.hoisted(() => ({ onPut: null as number | null }));
 const builtCardCounts = vi.hoisted(() => [] as number[]);
 
 vi.mock('@aws-sdk/client-s3', async (importActual) => {
@@ -14,8 +16,14 @@ vi.mock('@aws-sdk/client-s3', async (importActual) => {
   class RecordingS3Client {
     async send(command: { input?: { Key?: string; Body?: unknown } }) {
       if (command instanceof actual.PutObjectCommand) {
+        if (storageFailure.onPut === storedKeys.length + 1) {
+          throw new Error('storage refused the object');
+        }
         storedKeys.push(command.input?.Key ?? '');
         storedBodies.push(String(command.input?.Body ?? ''));
+      }
+      if (command instanceof actual.DeleteObjectCommand) {
+        deletedKeys.push(command.input?.Key ?? '');
       }
       return {};
     }
@@ -452,6 +460,8 @@ afterEach(() => {
   __resetFeatureFlagModuleForTests();
   storedKeys.length = 0;
   storedBodies.length = 0;
+  deletedKeys.length = 0;
+  storageFailure.onPut = null;
   recordedEvents.length = 0;
   giftCalls.allowed = null;
   giftCalls.made = 0;
@@ -1490,6 +1500,136 @@ describe('an async job of several Claude files', () => {
       cardsInStoredDecks()
     );
   }, 30_000);
+});
+
+describe('an async job stores only the decks its own conversions wrote', () => {
+  const SMUGGLED = Buffer.from('bytes nobody converted');
+  const notesWithSmuggledDeck = () =>
+    zipFile('notes.zip', {
+      'alpha.html': notionPage('alpha'),
+      'smuggled.apkg': SMUGGLED,
+    });
+
+  it.each([
+    ['a paying account', PAYING, 0],
+    ['a gift account past the month', FREE, CARDS_USED_LEAVING_25],
+  ])(
+    'leaves a deck-named file from the zip out of My decks for %s',
+    async (_label, locals, cardsUsed) => {
+      const { settled, users, uploads } = await upload({
+        files: [notesWithSmuggledDeck()],
+        cardsUsed,
+        locals,
+      });
+
+      expect(await settled).toBe('delivered');
+      expect(storedBodies).toEqual([`cards:${CLAUDE_CARDS_PER_FILE}`]);
+      expect(
+        vi.mocked(uploads.update).mock.calls.map((call) => call[1])
+      ).toEqual(['alpha.apkg']);
+      expect(users.incrementCardUsage).toHaveBeenCalledWith(
+        OWNER,
+        CLAUDE_CARDS_PER_FILE
+      );
+    },
+    20_000
+  );
+
+  it('converts a zip holding a folder named like a deck and stores the real deck', async () => {
+    const { settled, users } = await upload({
+      files: [
+        zipFile('notes.zip', {
+          'alpha.html': notionPage('alpha'),
+          'pictures.apkg/photo.png': Buffer.from([0x89, 0x50, 0x4e, 0x47]),
+        }),
+      ],
+      cardsUsed: 0,
+      locals: PAYING,
+    });
+
+    expect(await settled).toBe('delivered');
+    expect(storedBodies).toEqual([`cards:${CLAUDE_CARDS_PER_FILE}`]);
+    expect(users.incrementCardUsage).toHaveBeenCalledWith(
+      OWNER,
+      CLAUDE_CARDS_PER_FILE
+    );
+  }, 20_000);
+
+  it('leaves a stray deck-named file out of a job of several files', async () => {
+    const { settled, users } = await upload({
+      files: [
+        htmlFile('alpha'),
+        zipFile('more.zip', {
+          'beta.html': notionPage('beta'),
+          'stray.apkg': SMUGGLED,
+        }),
+      ],
+      cardsUsed: 0,
+      locals: PAYING,
+    });
+
+    expect(await settled).toBe('delivered');
+    expect(sortedStoredBodies()).toEqual([
+      `cards:${CLAUDE_CARDS_PER_FILE}`,
+      `cards:${CLAUDE_CARDS_PER_FILE}`,
+    ]);
+    expect(users.incrementCardUsage).toHaveBeenCalledWith(
+      OWNER,
+      TWO_CLAUDE_CARDS
+    );
+  }, 20_000);
+
+  it('stores every deck of one zip that holds several decks, one row each, and counts them exactly', async () => {
+    const { settled, users, uploads } = await upload({
+      files: [
+        zipFile('decks.zip', {
+          'one.xml': ankiAppXmlFile(12, 'First').buffer,
+          'two.xml': ankiAppXmlFile(8, 'Second').buffer,
+        }),
+      ],
+      cardsUsed: 0,
+      locals: PAYING,
+    });
+
+    expect(await settled).toBe('delivered');
+    expect(sortedStoredBodies()).toEqual(['cards:12', 'cards:8']);
+    expect(uploads.update).toHaveBeenCalledTimes(2);
+    expect(users.incrementCardUsage).toHaveBeenCalledWith(OWNER, 20);
+  }, 20_000);
+
+  it('stores and counts a same-named deck once, with the cards the later file left in it', async () => {
+    const { settled, users } = await upload({
+      files: [
+        zipFile('lecture.zip', { 'alpha.html': notionPage('alpha') }),
+        ankiAppXmlFile(30, 'alpha'),
+      ],
+      cardsUsed: 0,
+      locals: PAYING,
+    });
+
+    expect(await settled).toBe('delivered');
+    expect(storedBodies).toEqual(['cards:30']);
+    expect(users.incrementCardUsage).toHaveBeenCalledWith(
+      OWNER,
+      cardsInStoredDecks()
+    );
+  }, 20_000);
+
+  it('removes the decks it already stored when storing a later one fails, adding no row and no cards', async () => {
+    storageFailure.onPut = 2;
+
+    const { settled, users, uploads } = await upload({
+      files: TWO_CLAUDE_FILES,
+      cardsUsed: 0,
+      locals: PAYING,
+    });
+
+    expect(await settled).toMatch(/^failed: /);
+    expect(storedKeys).toHaveLength(1);
+    expect(deletedKeys).toEqual(storedKeys);
+    expect(uploads.update).not.toHaveBeenCalled();
+    expect(users.incrementCardUsage).not.toHaveBeenCalled();
+  }, 20_000);
 });
 
 describe('a restarted Claude job of several files', () => {

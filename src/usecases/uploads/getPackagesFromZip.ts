@@ -283,6 +283,7 @@ async function buildDeckBatch(
       pkg.foldedToggleCount = result.foldedToggleCount ?? 0;
       pkg.notionEmptyBackCount = result.notionEmptyBackCount ?? 0;
       pkg.blankBackCount = result.blankBackCount ?? 0;
+      pkg.apkgPath = path.resolve(result.outputPath);
       packages.push(pkg);
       if (result.warning) warnings.push(result.warning);
     });
@@ -389,6 +390,7 @@ async function buildStragglerDecks(
       pkg.notionEmptyBackCount = outcome.notionEmptyBackCount ?? 0;
       pkg.blankBackCount = outcome.blankBackCount ?? 0;
       pkg.cardsLeftOut = outcome.cardsLeftOut ?? 0;
+      pkg.apkgPath = outcome.apkgPath;
       packages.push(pkg);
       if (outcome.warning) warnings.push(outcome.warning);
       warnings.push(...(outcome.failedFileWarnings ?? []));
@@ -458,6 +460,7 @@ async function buildClaudeFlashcardDeck(
     pkg.notionEmptyBackCount = deck.notionEmptyBackCount ?? 0;
     pkg.blankBackCount = deck.blankBackCount ?? 0;
     pkg.cardsLeftOut = deck.cardsLeftOut ?? 0;
+    pkg.apkgPath = deck.apkgPath;
     packages.push(pkg);
     if (deck.warning) warnings.push(deck.warning);
     warnings.push(...(deck.failedFileWarnings ?? []));
@@ -510,7 +513,11 @@ async function buildAllInOneSlot(
             uploadIdentity,
             cardLimit: perFileCardLimit,
           });
-          await liftDecksToParent(deckWorkspace, workspace);
+          await liftDecksToParent(
+            deckWorkspace,
+            workspace,
+            result == null ? [] : [result]
+          );
           return result;
         });
       })
@@ -564,6 +571,7 @@ async function buildAllInOneSlot(
       pkg.notionEmptyBackCount = outcome.notionEmptyBackCount ?? 0;
       pkg.blankBackCount = outcome.blankBackCount ?? 0;
       pkg.cardsLeftOut = outcome.cardsLeftOut ?? 0;
+      pkg.apkgPath = outcome.apkgPath;
       packages.push(pkg);
       if (outcome.warning) warnings.push(outcome.warning);
       warnings.push(...(outcome.failedFileWarnings ?? []));

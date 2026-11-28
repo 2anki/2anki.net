@@ -37,6 +37,8 @@ class Package {
 
   cardsLeftOut = 0;
 
+  apkgPath?: string;
+
   // Set by the worker from the conversion result so `conversion_succeeded` can
   // carry a bucketed page count — the denominator cards-per-page needs to tell a
   // short document's yield from a long one's. Undefined for non-PDF uploads.

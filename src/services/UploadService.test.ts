@@ -110,15 +110,15 @@ vi.mock('../lib/parser/exporters/CustomExporter', async () => {
       _deckName: string,
       workspace: string
     ) {
-      return {
+      const exporter = {
+        savedApkgPath: null as string | null,
         configure: vi.fn(),
         save: vi.fn(async () => {
-          nodeFs.writeFileSync(
-            nodePath.join(workspace, 'deck.apkg'),
-            Buffer.from('apkg')
-          );
+          exporter.savedApkgPath = nodePath.join(workspace, 'deck.apkg');
+          nodeFs.writeFileSync(exporter.savedApkgPath, Buffer.from('apkg'));
         }),
       };
+      return exporter;
     }),
   };
 });
@@ -4699,6 +4699,7 @@ describe('UploadService.promoteClaudeJobToUpload — async fs reads', () => {
           packages: [
             {
               name: 'my-deck',
+              apkgPath: path.join(tmpDir, 'my-deck.apkg'),
               cardCount: 5,
               mcqCount: 0,
               mcqSkippedCount: 0,
@@ -4942,7 +4943,13 @@ describe('UploadService.promoteClaudeJobToUpload — async fs reads', () => {
     MockGeneratePackagesUseCase.mockImplementation(function () {
       return {
         execute: vi.fn().mockResolvedValue({
-          packages: [{ name: 'my-deck', cardCount: 7 }],
+          packages: [
+            {
+              name: 'my-deck',
+              cardCount: 7,
+              apkgPath: path.join(tmpDir, 'my-deck.apkg'),
+            },
+          ],
         }),
       } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
     });
@@ -5011,6 +5018,7 @@ describe('UploadService.promoteClaudeJobToUpload — async fs reads', () => {
           packages: [
             {
               name: 'my-deck',
+              apkgPath: path.join(tmpDir, 'my-deck.apkg'),
               cardCount: 5,
               mcqCount: 0,
               mcqSkippedCount: 0,
@@ -5153,6 +5161,7 @@ describe('UploadService.promoteClaudeJobToUpload — async fs reads', () => {
           packages: [
             {
               name: 'my-deck',
+              apkgPath: path.join(tmpDir, 'my-deck.apkg'),
               cardCount: 0,
               mcqCount: 0,
               mcqSkippedCount: 0,

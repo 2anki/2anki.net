@@ -9,6 +9,7 @@ export interface AnkiAppConversionResult {
   deckName: string;
   cardCount: number;
   skippedMediaOnlyCount: number;
+  apkgPath?: string;
 }
 
 export function describeSkippedMediaOnlyCards(count: number): string {
@@ -43,5 +44,6 @@ export async function convertAnkiAppExportToApkg(
     deckName: getDeckFilename(deckName),
     cardCount: parsed.notes.length,
     skippedMediaOnlyCount: parsed.skippedMediaOnlyCount,
+    apkgPath: exporter.savedApkgPath ?? undefined,
   };
 }

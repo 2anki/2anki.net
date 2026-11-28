@@ -182,6 +182,7 @@ function dedupeFilesByName(
 interface PrepareDeckResult {
   name: string;
   apkg: Buffer;
+  apkgPath?: string;
   deck: Deck[];
   cardCount: number;
   // One entry per file of several that Claude made no cards from.
@@ -1000,6 +1001,7 @@ async function buildParserResult(
       return {
         name: getDeckFilename(parser.name ?? input.name),
         apkg,
+        apkgPath: parser.customExporter.savedApkgPath ?? undefined,
         deck: parser.payload,
         cardCount: parser.totalCardCount(),
         mcqCount: 0,
@@ -1055,6 +1057,7 @@ async function buildParserResult(
   return {
     name: getDeckFilename(parser.name),
     apkg,
+    apkgPath: parser.customExporter.savedApkgPath ?? undefined,
     deck: parser.payload,
     cardCount: parser.totalCardCount(),
     mcqCount,
@@ -1332,6 +1335,7 @@ async function buildClaudeDeck(
   return {
     name: getDeckFilename(deckName),
     apkg,
+    apkgPath: exporter.savedApkgPath ?? undefined,
     deck: [],
     cardCount: claudeCardCount,
     ...(giftCardsHeldBack > 0 ? { cardsHeldBack: giftCardsHeldBack } : {}),
