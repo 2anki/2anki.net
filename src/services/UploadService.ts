@@ -748,6 +748,9 @@ function uploadFailureReason(err: unknown): string {
   ) {
     return 'ai_credits_exhausted';
   }
+  if (err instanceof MonthlyLimitError) {
+    return 'monthly_limit';
+  }
   return jobFailureReasonCode(err);
 }
 

@@ -4,6 +4,7 @@ import {
   createGiftCardAllowance,
   type GiftCardAllowance,
 } from '../../lib/claude/aiCredits/gift/giftCardAllowance';
+import { filesLeftOutOfGiftJob } from '../../lib/claude/aiCredits/gift/giftMonthCards';
 import {
   mergeRescueCandidates,
   type RescueCandidate,
@@ -16,6 +17,7 @@ import CardOption from '../../lib/parser/Settings/CardOption';
 import { processUploadedPdf } from './processUploadedPdf';
 import Package from '../../lib/parser/Package';
 import fs from 'fs';
+import path from 'path';
 import pLimit from 'p-limit';
 import { asReadableUpload } from '../../lib/rtf/readableUpload';
 import { hasUnknownExtension } from '../../lib/storage/sniffUpload';
@@ -380,6 +382,16 @@ function canConvertInParallel(files: UploadedFile[]): boolean {
   );
 }
 
+interface ConvertedUpload extends FileResult {
+  apkgFiles: string[];
+}
+
+async function apkgFilesIn(directory: string): Promise<string[]> {
+  if (!fs.existsSync(directory)) return [];
+  const entries = await fs.promises.readdir(directory);
+  return entries.filter((entry) => entry.endsWith('.apkg'));
+}
+
 async function convertInSequence(
   files: UploadedFile[],
   workspace: Workspace,
@@ -388,6 +400,25 @@ async function convertInSequence(
   const results: FileResult[] = [];
   for (const file of files) {
     results.push(await convert(file, workspace));
+  }
+  return results;
+}
+
+// Records which decks each file added to the shared workspace, so a gift-paid
+// job can take one file's decks back out.
+async function convertInSequenceTrackingDecks(
+  files: UploadedFile[],
+  workspace: Workspace,
+  convert: (file: UploadedFile, ws: Workspace) => Promise<FileResult>
+): Promise<ConvertedUpload[]> {
+  const results: ConvertedUpload[] = [];
+  for (const file of files) {
+    const before = new Set(await apkgFilesIn(workspace.location));
+    const result = await convert(file, workspace);
+    const apkgFiles = (await apkgFilesIn(workspace.location)).filter(
+      (name) => !before.has(name)
+    );
+    results.push({ ...result, apkgFiles });
   }
   return results;
 }
@@ -402,7 +433,7 @@ async function convertInParallel(
   workspace: Workspace,
   convert: (file: UploadedFile, ws: Workspace) => Promise<FileResult>,
   concurrency: number
-): Promise<FileResult[]> {
+): Promise<ConvertedUpload[]> {
   const limit = pLimit(concurrency);
   const fileWorkspaces = files.map(() => Workspace.subdir(workspace.location));
   const failures = new Map<number, unknown>();
@@ -425,10 +456,80 @@ async function convertInParallel(
       .map(([, error]) => error);
     throw inUploadOrder.find(isWorkerTerminationError) ?? inUploadOrder[0];
   }
-  for (const fileWorkspace of fileWorkspaces) {
-    await liftDecksToParent(fileWorkspace, workspace);
+  const converted: ConvertedUpload[] = [];
+  for (const [index, fileWorkspace] of fileWorkspaces.entries()) {
+    const apkgFiles = await liftDecksToParent(fileWorkspace, workspace);
+    const result = results[index];
+    if (result != null) converted.push({ ...result, apkgFiles });
   }
-  return results.filter((result): result is FileResult => result != null);
+  return converted;
+}
+
+// Only a gift-paid job, admitted on the gift alone with the month's cards left
+// as its limit, leaves files out.
+function giftJobMonthCardsLeft(
+  aiGift: AiGiftMode | null | undefined,
+  cardLimit: number | undefined
+): number | null {
+  return aiGift === 'only' && cardLimit != null ? cardLimit : null;
+}
+
+// The left-out files' decks are removed so they cannot be delivered.
+async function keepGiftJobWithinMonth(
+  results: ConvertedUpload[],
+  workspace: Workspace,
+  monthCardsLeft: number
+): Promise<FileResult[]> {
+  const leftOut = filesLeftOutOfGiftJob(results, monthCardsLeft);
+  if (leftOut.length === 0) return results;
+  for (const result of leftOut) {
+    for (const apkg of result.apkgFiles) {
+      await fs.promises.rm(path.join(workspace.location, apkg), {
+        force: true,
+      });
+    }
+  }
+  console.info(
+    '[ai-gift] left out files whose cards Claude did not make past the monthly limit',
+    {
+      leftOutFiles: leftOut.length,
+      leftOutCards: leftOut.reduce(
+        (sum, result) =>
+          sum + result.packages.reduce((s, p) => s + (p.cardCount ?? 0), 0),
+        0
+      ),
+      monthCardsLeft,
+    }
+  );
+  return results.filter((result) => !leftOut.includes(result));
+}
+
+async function convertFiles(
+  files: UploadedFile[],
+  workspace: Workspace,
+  convert: (file: UploadedFile, ws: Workspace) => Promise<FileResult>,
+  concurrency: number,
+  giftMonthCardsLeft: number | null
+): Promise<FileResult[]> {
+  if (canConvertInParallel(files)) {
+    const converted = await convertInParallel(
+      files,
+      workspace,
+      convert,
+      concurrency
+    );
+    return giftMonthCardsLeft == null
+      ? converted
+      : keepGiftJobWithinMonth(converted, workspace, giftMonthCardsLeft);
+  }
+  if (giftMonthCardsLeft == null) {
+    return convertInSequence(files, workspace, convert);
+  }
+  return keepGiftJobWithinMonth(
+    await convertInSequenceTrackingDecks(files, workspace, convert),
+    workspace,
+    giftMonthCardsLeft
+  );
 }
 
 async function doGenerationWork(
@@ -527,9 +628,13 @@ async function doGenerationWork(
   };
   const concurrency =
     crossFileDedup == null ? resolvePerWorkerPythonCap() : AI_FILE_CONCURRENCY;
-  const results = canConvertInParallel(files)
-    ? await convertInParallel(files, workspace, convert, concurrency)
-    : await convertInSequence(files, workspace, convert);
+  const results = await convertFiles(
+    files,
+    workspace,
+    convert,
+    concurrency,
+    giftJobMonthCardsLeft(aiGift, cardLimit)
+  );
 
   for (const result of results) {
     packages = packages.concat(result.packages);

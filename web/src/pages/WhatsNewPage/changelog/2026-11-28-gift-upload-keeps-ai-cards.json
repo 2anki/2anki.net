@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-28-gift-upload-keeps-ai-cards",
+  "date": "2026-11-28",
+  "type": "fix",
+  "title": "An upload of several files on free AI credits keeps its AI cards when the other files would pass the monthly card limit"
+}

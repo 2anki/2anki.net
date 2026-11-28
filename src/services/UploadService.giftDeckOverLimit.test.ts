@@ -40,11 +40,12 @@ vi.mock('../lib/anki/CardGenerator', () => ({
           path.join(this.currentDirectory, 'deck_info.json'),
           'utf8'
         )
-      ) as { cards: unknown[] }[];
+      ) as { name?: string; cards: unknown[] }[];
       builtCardCounts.push(
         deckInfo.reduce((sum, deck) => sum + deck.cards.length, 0)
       );
-      const apkgPath = path.join(this.currentDirectory, 'deck.apkg');
+      const deckName = (deckInfo[0]?.name ?? 'deck').replace(/[^\w-]/g, '_');
+      const apkgPath = path.join(this.currentDirectory, `${deckName}.apkg`);
       fs.writeFileSync(apkgPath, 'apkg');
       return apkgPath;
     }
@@ -52,6 +53,10 @@ vi.mock('../lib/anki/CardGenerator', () => ({
 }));
 
 const CLAUDE_CARDS_PER_FILE = vi.hoisted(() => 20);
+const giftCalls = vi.hoisted(() => ({
+  allowed: null as number | null,
+  made: 0,
+}));
 const claudeCardsFor = vi.hoisted(() => (html: string) => {
   if (html.includes('HUGE-DECK')) return 150;
   if (html.includes('BIG-DECK')) return 100;
@@ -68,6 +73,10 @@ vi.mock('../lib/claude/ClaudeService', async (importActual) => {
       if (html.includes('GIFT-RAN-OUT')) {
         throw new guard.AiCreditsExhaustedError();
       }
+      if (giftCalls.allowed != null && giftCalls.made >= giftCalls.allowed) {
+        throw new guard.AiCreditsExhaustedError();
+      }
+      giftCalls.made += 1;
       const topic = /<title>(.*?)<\/title>/.exec(html)?.[1] ?? 'notes';
       return [
         {
@@ -121,9 +130,15 @@ vi.mock('../data_layer/createAiGiftReaders', async (importActual) => {
   };
 });
 
+const recordedEvents = vi.hoisted(
+  () => [] as { name: string; props: Record<string, unknown> }[]
+);
+
 vi.mock('./events/eventsSinkInstance', () => ({
   getEventsSink: () => ({
-    record: () => undefined,
+    record: (event: { name: string; props: Record<string, unknown> }) => {
+      recordedEvents.push(event);
+    },
     flushDurable: () => Promise.resolve(),
   }),
   resetEventsSinkForTesting: () => undefined,
@@ -280,9 +295,13 @@ function responseWith(locals: Record<string, unknown>) {
   };
 }
 
-function notionPage(topic: string, marker = ''): Buffer {
+function notionPage(
+  topic: string,
+  marker = '',
+  toggleCount = CLAUDE_CARDS_PER_FILE
+): Buffer {
   const toggles = Array.from(
-    { length: CLAUDE_CARDS_PER_FILE },
+    { length: toggleCount },
     (_, i) =>
       `<ul class="toggle"><li><details open=""><summary>${topic} front ${i}</summary><p>${topic} back ${i}</p></details></li></ul>`
   ).join('');
@@ -291,8 +310,12 @@ function notionPage(topic: string, marker = ''): Buffer {
   );
 }
 
-function htmlFile(topic: string, marker = '') {
-  const buffer = notionPage(topic, marker);
+function htmlFile(
+  topic: string,
+  marker = '',
+  toggleCount = CLAUDE_CARDS_PER_FILE
+) {
+  const buffer = notionPage(topic, marker, toggleCount);
   return {
     originalname: `${topic}.html`,
     mimetype: 'text/html',
@@ -396,6 +419,14 @@ function applyEnv(values: Record<string, string | undefined>) {
 
 const cardLimitWall = expect.stringMatching(/^\/limit\?kind=card_count&/);
 
+function apkgsInWorkspaces(): string[] {
+  return fs
+    .readdirSync(workspaceBase, { recursive: true, encoding: 'utf8' })
+    .filter((entry) => entry.endsWith('.apkg'))
+    .map((entry) => path.basename(entry))
+    .sort((a, b) => a.localeCompare(b));
+}
+
 const originalWorkspaceBase = process.env.WORKSPACE_BASE;
 let workspaceBase: string;
 
@@ -413,6 +444,9 @@ beforeEach(() => {
 afterEach(() => {
   __resetFeatureFlagModuleForTests();
   storedKeys.length = 0;
+  recordedEvents.length = 0;
+  giftCalls.allowed = null;
+  giftCalls.made = 0;
   process.env.WORKSPACE_BASE = originalWorkspaceBase;
   fs.rmSync(workspaceBase, { recursive: true, force: true });
 });
@@ -509,15 +543,19 @@ describe('a Claude deck the free AI credits gift paid for, past the monthly card
     );
   }, 20_000);
 
-  it('fails at the limit when a small Claude file rides along with a 5000-card file its own converter made', async () => {
+  it('leaves out a 5000-card file its own converter made beside a small Claude file, delivering and counting only the Claude cards', async () => {
     const { settled, users } = await upload({
       files: [htmlFile('alpha'), ankiAppXmlFile(5000)],
       cardsUsed: CARDS_USED_LEAVING_25,
       locals: FREE,
     });
 
-    expect(await settled).toMatch(/^failed: \{"code":"monthly_limit"/);
-    expect(users.incrementCardUsage).not.toHaveBeenCalled();
+    expect(await settled).toBe('delivered');
+    expect(users.incrementCardUsage).toHaveBeenCalledWith(
+      OWNER,
+      CLAUDE_CARDS_PER_FILE
+    );
+    expect(apkgsInWorkspaces()).toEqual(['alpha.apkg']);
   }, 30_000);
 
   it('is delivered when the cards Claude did not make fill exactly what is left of the month', async () => {
@@ -548,15 +586,34 @@ describe('a Claude deck the free AI credits gift paid for, past the monthly card
     );
   }, 20_000);
 
-  it('fails at the limit when the cards Claude did not make pass what is left by one', async () => {
+  it('leaves out a file whose cards Claude did not make pass what is left by one, delivering the Claude cards', async () => {
     const { settled, users } = await upload({
       files: [htmlFile('alpha'), ankiAppXmlFile(26)],
       cardsUsed: CARDS_USED_LEAVING_25,
       locals: FREE,
     });
 
-    expect(await settled).toMatch(/^failed: \{"code":"monthly_limit"/);
-    expect(users.incrementCardUsage).not.toHaveBeenCalled();
+    expect(await settled).toBe('delivered');
+    expect(users.incrementCardUsage).toHaveBeenCalledWith(
+      OWNER,
+      CLAUDE_CARDS_PER_FILE
+    );
+    expect(apkgsInWorkspaces()).toEqual(['alpha.apkg']);
+  }, 20_000);
+
+  it('keeps a later file that still fits after leaving out one that does not', async () => {
+    const { settled, users } = await upload({
+      files: [htmlFile('alpha'), ankiAppXmlFile(30), csvFile(10)],
+      cardsUsed: CARDS_USED_LEAVING_25,
+      locals: FREE,
+    });
+
+    expect(await settled).toBe('delivered');
+    expect(users.incrementCardUsage).toHaveBeenCalledWith(
+      OWNER,
+      CLAUDE_CARDS_PER_FILE + 10
+    );
+    expect(apkgsInWorkspaces()).not.toContain('Bulk.apkg');
   }, 20_000);
 
   it('is delivered and counted under the limit, as before', async () => {
@@ -685,15 +742,19 @@ describe('an uploaded Notion export zip the gift pays for', () => {
     );
   }, 20_000);
 
-  it('is refused when a large non-Claude file beside it passes what is left', async () => {
+  it('leaves out a large non-Claude file beside it and delivers the Claude cards', async () => {
     const { settled, users } = await upload({
       files: [twoPageExport(), ankiAppXmlFile(5000)],
       cardsUsed: CARDS_USED_LEAVING_25,
       locals: FREE,
     });
 
-    expect(await settled).toMatch(/^failed: \{"code":"monthly_limit"/);
-    expect(users.incrementCardUsage).not.toHaveBeenCalled();
+    expect(await settled).toBe('delivered');
+    expect(users.incrementCardUsage).toHaveBeenCalledWith(
+      OWNER,
+      TWO_CLAUDE_CARDS
+    );
+    expect(apkgsInWorkspaces()).not.toContain('Bulk.apkg');
   }, 30_000);
 });
 
@@ -711,6 +772,24 @@ describe('a deck the gift did not pay for keeps the monthly card limit', () => {
     expect(status()).toBe(202);
     expect(await settled).toMatch(/^failed: \{"code":"monthly_limit"/);
     expect(users.incrementCardUsage).not.toHaveBeenCalled();
+  }, 20_000);
+
+  it('records the monthly limit as the reason the conversion failed', async () => {
+    const { settled } = await upload({
+      files: [
+        htmlFile('alpha', 'GIFT-RAN-OUT'),
+        htmlFile('beta', 'GIFT-RAN-OUT'),
+      ],
+      cardsUsed: CARDS_USED_LEAVING_25,
+      locals: FREE,
+    });
+    await settled;
+
+    expect(
+      recordedEvents
+        .filter((event) => event.name === 'conversion_failed')
+        .map((event) => event.props.reason)
+    ).toEqual(['monthly_limit']);
   }, 20_000);
 
   it.each([
@@ -1115,4 +1194,53 @@ describe('uploads the gift does not pay for run the same worker with no allowanc
     expect(status()).toBe(200);
     expect(users.incrementCardUsage).not.toHaveBeenCalled();
   }, 20_000);
+});
+
+describe('a gift-paid job whose files the gift could not pay for pass the month together', () => {
+  const PARSER_CARDS_PER_FILE = 80;
+
+  it('delivers the Claude cards and the parser files that fit, when the gift paid for one file of three', async () => {
+    const { settled, users } = await upload({
+      files: [
+        htmlFile('alpha'),
+        htmlFile('beta', 'GIFT-RAN-OUT', PARSER_CARDS_PER_FILE),
+        htmlFile('gamma', 'GIFT-RAN-OUT', PARSER_CARDS_PER_FILE),
+      ],
+      cardsUsed: 0,
+      locals: FREE,
+    });
+
+    expect(await settled).toBe('delivered');
+    expect(users.incrementCardUsage).toHaveBeenCalledWith(
+      OWNER,
+      CLAUDE_CARDS_PER_FILE + PARSER_CARDS_PER_FILE
+    );
+    expect(apkgsInWorkspaces()).toEqual(['alpha.apkg', 'beta.apkg']);
+  }, 30_000);
+
+  it('delivers the Claude cards when two Claude calls ran for the first file and the gift refused the rest', async () => {
+    giftCalls.allowed = 2;
+    vi.mocked(generateDeckInfo).mockClear();
+
+    const { settled, users } = await upload({
+      files: [
+        zipFile('lecture.zip', {
+          'alpha.html': notionPage('alpha'),
+          'beta.html': notionPage('beta'),
+        }),
+        htmlFile('gamma', '', PARSER_CARDS_PER_FILE),
+        htmlFile('delta', '', PARSER_CARDS_PER_FILE),
+      ],
+      cardsUsed: 0,
+      locals: FREE,
+    });
+
+    expect(await settled).toBe('delivered');
+    expect(giftCalls.made).toBe(2);
+    expect(users.incrementCardUsage).toHaveBeenCalledWith(
+      OWNER,
+      TWO_CLAUDE_CARDS + PARSER_CARDS_PER_FILE
+    );
+    expect(apkgsInWorkspaces()).not.toContain('delta.apkg');
+  }, 30_000);
 });
