@@ -168,6 +168,9 @@ import { jobFailureReasonFromError } from '../usecases/jobs/jobFailureReason';
 import { generateDeckInfo } from '../lib/claude/ClaudeService';
 import { AI_GIFT_MIN_MONTHLY_CARDS } from '../lib/claude/aiCredits/gift/giftTerms';
 import { AI_GIFT_CLAUDE_CARDS_PER_JOB } from '../lib/claude/aiCredits/gift/giftCardAllowance';
+import { runUploadGenerationInWorker } from '../usecases/uploads/worker';
+import Workspace from '../lib/parser/WorkSpace';
+import CardOption from '../lib/parser/Settings/CardOption';
 
 const OWNER = 42;
 const NOW = new Date('2026-11-26T12:00:00.000Z');
@@ -1242,5 +1245,31 @@ describe('a gift-paid job whose files the gift could not pay for pass the month 
       TWO_CLAUDE_CARDS + PARSER_CARDS_PER_FILE
     );
     expect(apkgsInWorkspaces()).not.toContain('delta.apkg');
+  }, 30_000);
+});
+
+describe('a job with a card limit and no gift mode', () => {
+  it('leaves no file out, even beside Claude cards past the limit', async () => {
+    const result = await runUploadGenerationInWorker({
+      paying: true,
+      files: [
+        htmlFile('alpha'),
+        ankiAppXmlFile(5000),
+      ] as unknown as UploadedFile[],
+      settings: new CardOption(claudeOn),
+      workspace: new Workspace(true, 'fs'),
+      enqueuedAt: Date.now(),
+      userId: OWNER,
+      cardLimit: 25,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(
+      result.ok ? result.packages.map((p) => [p.engine, p.cardCount]) : []
+    ).toEqual([
+      ['claude', CLAUDE_CARDS_PER_FILE],
+      [undefined, 5000],
+    ]);
+    expect(apkgsInWorkspaces()).toContain('Bulk.apkg');
   }, 30_000);
 });
