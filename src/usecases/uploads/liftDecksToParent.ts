@@ -7,10 +7,14 @@ import type Workspace from '../../lib/parser/WorkSpace';
 // built in a per-conversion subdirectory has to be lifted back up. A name that
 // is already taken gets a suffix rather than replacing the deck that got there
 // first — silently overwriting is the failure this whole change removes.
-export async function liftDecksToParent(from: Workspace, to: Workspace) {
-  if (!fs.existsSync(from.location)) return;
+export async function liftDecksToParent(
+  from: Workspace,
+  to: Workspace
+): Promise<string[]> {
+  if (!fs.existsSync(from.location)) return [];
   mergePdfImageFallbackMarker(from.location, to.location);
   const entries = await fs.promises.readdir(from.location);
+  const lifted: string[] = [];
   for (const entry of entries) {
     if (!entry.endsWith('.apkg')) continue;
     const extension = path.extname(entry);
@@ -25,5 +29,7 @@ export async function liftDecksToParent(from: Workspace, to: Workspace) {
       path.join(from.location, entry),
       path.join(to.location, candidate)
     );
+    lifted.push(candidate);
   }
+  return lifted;
 }
