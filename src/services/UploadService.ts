@@ -47,6 +47,11 @@ import {
   apkgOversizeWarningText,
 } from '../lib/upload/apkgOversizeWarning';
 import {
+  cardsIn,
+  decksToStore,
+  type DeckToStore,
+} from '../lib/upload/decksToStore';
+import {
   DUPLICATE_GUID_WARNING_RE,
   duplicateGuidWarning,
   duplicateGuidWarningText,
@@ -630,67 +635,6 @@ export function walkMediaFiles(dir: string, root: string = dir): string[] {
     }
   }
   return results;
-}
-
-interface BuiltDeck {
-  apkgPath?: string;
-  cardCount: number;
-}
-
-interface DeckToStore {
-  apkgPath: string;
-  cardCount: number;
-}
-
-function isInsideWorkspace(workspaceDir: string, candidate: string): boolean {
-  const relative = path.relative(path.resolve(workspaceDir), candidate);
-  return (
-    relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative)
-  );
-}
-
-async function isRegularFile(candidate: string): Promise<boolean> {
-  try {
-    return (await fs.promises.lstat(candidate)).isFile();
-  } catch {
-    return false;
-  }
-}
-
-// What a background job stores comes from its own packages, never from a
-// directory listing: an uploaded zip can leave files named like decks in the
-// workspace, and those were never converted or counted. Two packages that wrote
-// the same file leave the later one's cards in it, so that file counts once,
-// with the cards it holds.
-async function decksToStore(
-  jobId: string,
-  workspaceDir: string,
-  builtDecks: readonly BuiltDeck[]
-): Promise<DeckToStore[]> {
-  const byPath = new Map<string, DeckToStore>();
-  for (const built of builtDecks) {
-    if (built.apkgPath == null) {
-      if (built.cardCount > 0) {
-        console.error('[UploadService] async job package has no deck file', {
-          jobId,
-        });
-      }
-      continue;
-    }
-    const apkgPath = path.resolve(built.apkgPath);
-    if (isInsideWorkspace(workspaceDir, apkgPath)) {
-      byPath.set(apkgPath, { apkgPath, cardCount: built.cardCount });
-    }
-  }
-  const decks: DeckToStore[] = [];
-  for (const deck of byPath.values()) {
-    if (await isRegularFile(deck.apkgPath)) {
-      decks.push(deck);
-    } else {
-      console.warn('[UploadService] async job deck file is missing', { jobId });
-    }
-  }
-  return decks;
 }
 
 async function runClaudeRestartFiles(
@@ -1485,13 +1429,11 @@ class UploadService {
 
   private async promoteClaudeJobToUpload(
     objectId: string,
-    workspaceDir: string,
     owner: string,
-    builtDecks: readonly BuiltDeck[],
+    decks: readonly DeckToStore[],
     source: UploadSource | null = null,
     skippedAiFiles: AiFileFailure[] = []
   ): Promise<void> {
-    const decks = await decksToStore(objectId, workspaceDir, builtDecks);
     if (decks.length === 0) {
       throw new Error('No APKG file found in workspace');
     }
@@ -1538,7 +1480,7 @@ class UploadService {
     }
     await this.usersRepository.incrementCardUsage(
       Number(owner),
-      decks.reduce((sum, deck) => sum + deck.cardCount, 0)
+      cardsIn(decks)
     );
     const job = await this.jobRepository.findJobById(objectId, owner);
     if (job) {
@@ -1546,22 +1488,27 @@ class UploadService {
     }
   }
 
+  // A row that could not be removed keeps its object, so My decks never lists
+  // a deck whose file is gone.
   private async discardPartialPromotion(
     owner: string,
     storage: StorageHandler,
     storedKeys: string[],
     rowKeys: string[]
   ): Promise<void> {
-    for (const key of rowKeys) {
-      await this.uploadRepository
-        .deleteUpload(Number(owner), key)
-        .catch((error: unknown) =>
-          console.error('[UploadService] could not drop a partial deck row', {
-            name: error instanceof Error ? error.name : 'unknown',
-          })
-        );
-    }
     for (const key of storedKeys) {
+      if (rowKeys.includes(key)) {
+        const rowRemoved = await this.uploadRepository
+          .deleteUpload(Number(owner), key)
+          .then(() => true)
+          .catch((error: unknown) => {
+            console.error('[UploadService] could not drop a partial deck row', {
+              name: error instanceof Error ? error.name : 'unknown',
+            });
+            return false;
+          });
+        if (!rowRemoved) continue;
+      }
       await storage.delete(key);
     }
   }
@@ -1639,11 +1586,17 @@ class UploadService {
         : new Error('No packages produced');
     }
 
-    const totalCards = deckInfo.reduce((sum, d) => sum + d.cards.length, 0);
     const deckName = deckInfo[0].name;
     const exporter = new CustomExporter(deckName, workspaceDir);
     exporter.configure(deckInfo as unknown as Deck[]);
     await exporter.save();
+    const decks = await decksToStore(objectId, workspaceDir, [
+      {
+        apkgPath: exporter.savedApkgPath ?? undefined,
+        cardCount: deckInfo.reduce((sum, d) => sum + d.cards.length, 0),
+      },
+    ]);
+    const totalCards = cardsIn(decks);
 
     if (giftLimits != null) {
       await this.noteGiftDeckOverLimit(objectId, owner, totalCards);
@@ -1652,14 +1605,8 @@ class UploadService {
     }
     await this.promoteClaudeJobToUpload(
       objectId,
-      workspaceDir,
       owner,
-      [
-        {
-          apkgPath: exporter.savedApkgPath ?? undefined,
-          cardCount: totalCards,
-        },
-      ],
+      decks,
       null,
       skippedFiles
     );
@@ -2231,24 +2178,29 @@ class UploadService {
             uploadInputFormat(req.files as UploadedFile[])
           );
           logEmptyBackAttribution(packages, this.resolveUploadSource(req));
+          const decks = await decksToStore(
+            ws.id,
+            ws.location,
+            packages.map((p) => ({
+              apkgPath: p.apkgPath,
+              cardCount: p.cardCount ?? 0,
+            }))
+          );
+          const deliveredCards = cardsIn(decks);
           if (giftPaidForDeck(admittedOnGiftAlone, packages)) {
             await this.checkMonthlyCardLimit(
               owner,
               cardsNotMadeByClaude(packages),
               paying
             );
-            await this.noteGiftDeckOverLimit(ws.id, owner, totalCards);
+            await this.noteGiftDeckOverLimit(ws.id, owner, deliveredCards);
           } else {
-            await this.checkMonthlyCardLimit(owner, totalCards, paying);
+            await this.checkMonthlyCardLimit(owner, deliveredCards, paying);
           }
           await this.promoteClaudeJobToUpload(
             ws.id,
-            ws.location,
             owner,
-            packages.map((p) => ({
-              apkgPath: p.apkgPath,
-              cardCount: p.cardCount ?? 0,
-            })),
+            decks,
             source,
             skippedAiFiles
           );
@@ -2257,7 +2209,7 @@ class UploadService {
             anonymousId: this.trackedAnonId(req),
             props: {
               ...this.baseFunnelProps(req, res),
-              card_count_bucket: toCardCountBucket(totalCards),
+              card_count_bucket: toCardCountBucket(deliveredCards),
               ...this.pdfPageCountProps(packages),
             },
           });

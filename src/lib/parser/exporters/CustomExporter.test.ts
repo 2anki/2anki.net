@@ -216,6 +216,18 @@ describe('CustomExporter.save', () => {
     expect(buffer.toString('utf8')).toBe('apkg-bytes');
   });
 
+  it('records the path of the apkg it read back, resolving one the generator printed relative to the workspace', async () => {
+    const dir = tempDir();
+    fs.writeFileSync(path.join(dir, 'deck.apkg'), 'apkg-bytes');
+    mockGenRun('deck.apkg');
+    const exporter = new CustomExporter('test-deck', dir);
+
+    expect(exporter.savedApkgPath).toBeNull();
+    await exporter.save();
+
+    expect(exporter.savedApkgPath).toBe(path.resolve(dir, 'deck.apkg'));
+  });
+
   it('waits for a slow-to-appear apkg instead of failing immediately', async () => {
     const dir = tempDir();
     const apkgPath = path.join(dir, 'deck.apkg');
