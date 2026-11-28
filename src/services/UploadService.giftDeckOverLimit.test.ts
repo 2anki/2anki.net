@@ -6,14 +6,16 @@ import type express from 'express';
 import { zipSync } from 'fflate';
 
 const storedKeys = vi.hoisted(() => [] as string[]);
+const storedBodies = vi.hoisted(() => [] as string[]);
 const builtCardCounts = vi.hoisted(() => [] as number[]);
 
 vi.mock('@aws-sdk/client-s3', async (importActual) => {
   const actual = await importActual<typeof import('@aws-sdk/client-s3')>();
   class RecordingS3Client {
-    async send(command: { input?: { Key?: string } }) {
+    async send(command: { input?: { Key?: string; Body?: unknown } }) {
       if (command instanceof actual.PutObjectCommand) {
         storedKeys.push(command.input?.Key ?? '');
+        storedBodies.push(String(command.input?.Body ?? ''));
       }
       return {};
     }
@@ -41,12 +43,11 @@ vi.mock('../lib/anki/CardGenerator', () => ({
           'utf8'
         )
       ) as { name?: string; cards: unknown[] }[];
-      builtCardCounts.push(
-        deckInfo.reduce((sum, deck) => sum + deck.cards.length, 0)
-      );
+      const cards = deckInfo.reduce((sum, deck) => sum + deck.cards.length, 0);
+      builtCardCounts.push(cards);
       const deckName = (deckInfo[0]?.name ?? 'deck').replace(/[^\w-]/g, '_');
       const apkgPath = path.join(this.currentDirectory, `${deckName}.apkg`);
-      fs.writeFileSync(apkgPath, 'apkg');
+      fs.writeFileSync(apkgPath, `cards:${cards}`);
       return apkgPath;
     }
   },
@@ -342,14 +343,14 @@ function csvFile(cards: number) {
   };
 }
 
-function ankiAppXmlFile(cards: number) {
+function ankiAppXmlFile(cards: number, deckName = 'Bulk') {
   const body = Array.from(
     { length: cards },
     (_, i) =>
       `<card><field name="Front">bulk front ${i}</field><field name="Back">bulk back ${i}</field></card>`
   ).join('');
   const buffer = Buffer.from(
-    `<deck name="Bulk"><fields><text name="Front" sides="10"></text><text name="Back" sides="01"></text></fields><cards>${body}</cards></deck>`
+    `<deck name="${deckName}"><fields><text name="Front" sides="10"></text><text name="Back" sides="01"></text></fields><cards>${body}</cards></deck>`
   );
   return {
     originalname: 'bulk.xml',
@@ -447,6 +448,7 @@ beforeEach(() => {
 afterEach(() => {
   __resetFeatureFlagModuleForTests();
   storedKeys.length = 0;
+  storedBodies.length = 0;
   recordedEvents.length = 0;
   giftCalls.allowed = null;
   giftCalls.made = 0;
@@ -1249,27 +1251,98 @@ describe('a gift-paid job whose files the gift could not pay for pass the month 
 });
 
 describe('a job with a card limit and no gift mode', () => {
-  it('leaves no file out, even beside Claude cards past the limit', async () => {
-    const result = await runUploadGenerationInWorker({
-      paying: true,
-      files: [
-        htmlFile('alpha'),
-        ankiAppXmlFile(5000),
-      ] as unknown as UploadedFile[],
-      settings: new CardOption(claudeOn),
-      workspace: new Workspace(true, 'fs'),
-      enqueuedAt: Date.now(),
-      userId: OWNER,
-      cardLimit: 25,
+  it.each([
+    ['paying', true, OWNER, 'claude'],
+    ['signed out with no pass', false, null, 'parser'],
+  ])(
+    'leaves no file out when %s, even beside cards past the limit',
+    async (_label, paying, userId, engine) => {
+      const result = await runUploadGenerationInWorker({
+        paying: paying as boolean,
+        files: [
+          htmlFile('alpha'),
+          ankiAppXmlFile(5000),
+        ] as unknown as UploadedFile[],
+        settings: new CardOption(claudeOn),
+        workspace: new Workspace(true, 'fs'),
+        enqueuedAt: Date.now(),
+        userId: userId as number | null,
+        cardLimit: 25,
+      });
+
+      expect(result.ok).toBe(true);
+      expect(
+        result.ok ? result.packages.map((p) => [p.engine, p.cardCount]) : []
+      ).toEqual([
+        [engine, CLAUDE_CARDS_PER_FILE],
+        [undefined, 5000],
+      ]);
+      expect(apkgsInWorkspaces()).toContain('Bulk.apkg');
+    },
+    30_000
+  );
+});
+
+describe('a gift-paid job in sequence whose decks share a name', () => {
+  const claudeZip = () =>
+    zipFile('lecture.zip', { 'alpha.html': notionPage('alpha') });
+
+  it.each([
+    ['after', () => [claudeZip(), ankiAppXmlFile(500, 'alpha')]],
+    ['before', () => [ankiAppXmlFile(500, 'alpha'), claudeZip()]],
+  ])(
+    'stores the Claude deck with its own cards when a left-out file of the same name comes %s it',
+    async (_order, files) => {
+      const { settled, users } = await upload({
+        files: files(),
+        cardsUsed: CARDS_USED_LEAVING_25,
+        locals: FREE,
+      });
+
+      expect(await settled).toBe('delivered');
+      expect(storedBodies).toEqual([`cards:${CLAUDE_CARDS_PER_FILE}`]);
+      expect(users.incrementCardUsage).toHaveBeenCalledWith(
+        OWNER,
+        CLAUDE_CARDS_PER_FILE
+      );
+      expect(apkgsInWorkspaces()).toHaveLength(1);
+    },
+    30_000
+  );
+
+  it('keeps and counts both decks of the same name when both fit, under distinct names', async () => {
+    const { settled, users } = await upload({
+      files: [claudeZip(), ankiAppXmlFile(30, 'alpha')],
+      cardsUsed: 0,
+      locals: FREE,
     });
 
-    expect(result.ok).toBe(true);
-    expect(
-      result.ok ? result.packages.map((p) => [p.engine, p.cardCount]) : []
-    ).toEqual([
-      ['claude', CLAUDE_CARDS_PER_FILE],
-      [undefined, 5000],
-    ]);
-    expect(apkgsInWorkspaces()).toContain('Bulk.apkg');
+    expect(await settled).toBe('delivered');
+    expect(users.incrementCardUsage).toHaveBeenCalledWith(
+      OWNER,
+      CLAUDE_CARDS_PER_FILE + 30
+    );
+    expect(apkgsInWorkspaces()).toEqual(['alpha (2).apkg', 'alpha.apkg']);
+  }, 30_000);
+});
+
+describe('a job in sequence the gift does not pay for', () => {
+  it('converts a free zip and another file without Claude, every deck kept and counted as before', async () => {
+    const { status, users } = await upload({
+      files: [
+        zipFile('export.zip', { 'alpha.html': notionPage('alpha') }),
+        htmlFile('beta'),
+      ],
+      cardsUsed: 0,
+      locals: FREE,
+      body: { 'claude-ai-flashcards': 'false' },
+    });
+
+    expect(status()).toBe(200);
+    expect(users.incrementCardUsage).toHaveBeenCalledWith(
+      OWNER,
+      TWO_CLAUDE_CARDS
+    );
+    expect(apkgsInWorkspaces()).toEqual(['alpha.apkg', 'beta.apkg']);
   }, 30_000);
 });

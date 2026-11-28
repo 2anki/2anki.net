@@ -386,12 +386,6 @@ interface ConvertedUpload extends FileResult {
   apkgFiles: string[];
 }
 
-async function apkgFilesIn(directory: string): Promise<string[]> {
-  if (!fs.existsSync(directory)) return [];
-  const entries = await fs.promises.readdir(directory);
-  return entries.filter((entry) => entry.endsWith('.apkg'));
-}
-
 async function convertInSequence(
   files: UploadedFile[],
   workspace: Workspace,
@@ -404,8 +398,10 @@ async function convertInSequence(
   return results;
 }
 
-// Records which decks each file added to the shared workspace, so a gift-paid
-// job can take one file's decks back out.
+// A gift-paid job may take one file's decks back out, so each file builds in
+// its own workspace and is lifted up the way the parallel path does: a deck
+// named like an earlier one gets a suffix instead of replacing it, and every
+// file knows exactly which decks are its own.
 async function convertInSequenceTrackingDecks(
   files: UploadedFile[],
   workspace: Workspace,
@@ -413,11 +409,9 @@ async function convertInSequenceTrackingDecks(
 ): Promise<ConvertedUpload[]> {
   const results: ConvertedUpload[] = [];
   for (const file of files) {
-    const before = new Set(await apkgFilesIn(workspace.location));
-    const result = await convert(file, workspace);
-    const apkgFiles = (await apkgFilesIn(workspace.location)).filter(
-      (name) => !before.has(name)
-    );
+    const fileWorkspace = Workspace.subdir(workspace.location);
+    const result = await convert(file, fileWorkspace);
+    const apkgFiles = await liftDecksToParent(fileWorkspace, workspace);
     results.push({ ...result, apkgFiles });
   }
   return results;
